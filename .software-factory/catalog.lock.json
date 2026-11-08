@@ -168,6 +168,28 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L0.THE_SERVICES_KEEP_NO_DATABASE": {
+      "severity": "high",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
+    "L0.THE_SERVICES_KEEP_THEIR_DOMAINS": {
+      "severity": "high",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L1.COMMENT_STAYS_SUCCINCT": {
       "severity": "medium",
       "scope": 13,
@@ -313,6 +335,28 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE": {
+      "severity": "critical",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
+    "L3.EVERY_DECLARED_ERROR_IS_TESTED": {
+      "severity": "high",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L3.GATE_COVERS_THE_PLAN": {
       "severity": "critical",
       "scope": 0,
@@ -432,6 +476,17 @@
     },
     "L4.RULE_PROSE_NAMES_A_REAL_COMMAND": {
       "severity": "medium",
+      "scope": 0,
+      "exclude": 0,
+      "forbidden": 0,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
+    "L4.THE_CONTRACT_DOCUMENTS_ITSELF": {
+      "severity": "high",
       "scope": 0,
       "exclude": 0,
       "forbidden": 0,

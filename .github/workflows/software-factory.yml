@@ -31,6 +31,11 @@ jobs:
       # upgrade made weaker.
       - name: Install sf
         run: cargo install --git https://github.com/nicolasmelo1/software-factory --tag v0.4.4 --locked
+      # L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE asks oasdiff whether the
+      # contract broke. The script reads the version from the toolchain lock
+      # and checks the archive against the release's checksums.
+      - name: Install oasdiff
+        run: ./scripts/install-oasdiff.sh
       # L1.EVERY_RENDERER_HOLDS_THE_FRAME runs the conformance harness against
       # every renderer, so the frame package and the renderers are compiled
       # here. Only those: the rest of the build, and every check that needs
@@ -91,7 +96,16 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # The services' gate test runs oasdiff, and a binary installed in the
+      # factory job is not on this runner.
+      - name: Install oasdiff
+        run: ./scripts/install-oasdiff.sh
       - run: npm run build
+      # The build writes packages/services/openapi.json from the contract. A
+      # committed document that differs is one nobody regenerated, and every
+      # later check here would read the regenerated one and pass.
+      - name: The committed contract is the one the code builds
+        run: git diff --exit-code -- packages/services/openapi.json
       # The release configuration, before the tests: a package that fell out
       # of the version group is cheaper to hear about here than from a machine
       # installing a set that does not fit together.

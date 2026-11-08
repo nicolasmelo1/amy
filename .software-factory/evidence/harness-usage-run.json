@@ -3,7 +3,7 @@
   "status": "passed",
   "goal": "A person sees each mounted harness subscription's own account windows beside Amy's ledger, including an unavailable reader without hiding the rest.",
   "artifact": {
-    "entry": "built workspace contracts for mounted usage readers, status and budget"
+    "entry": "the built Claude, Codex and Hermes plugins and the built CLI, each from its dist/index.js"
   },
   "observed": {
     "assertions_run": 5,

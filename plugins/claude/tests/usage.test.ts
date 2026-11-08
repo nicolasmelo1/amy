@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { USAGE_COLLECTION } from "@amykit/agent-kit";
 import { HostServices, mount } from "@amykit/core";
 import { ScriptedRunner } from "@amykit/test-fixtures";
@@ -32,6 +32,7 @@ describe("Claude account usage", () => {
     });
     expect(runner.argvFor("curl")).toEqual(["--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"]);
     expect(runner.callsTo("curl")[0]?.options).toMatchObject({ stdin: expect.stringContaining("secret-token"), timeoutMs: 5000 });
+    expect(runner.callsTo("curl")[0]?.options?.stdin).toContain('header = "anthropic-beta: oauth-2025-04-20"');
   });
 
   it("returns unavailable without a token or a valid account response", async () => {
@@ -39,5 +40,33 @@ describe("Claude account usage", () => {
       unavailable: "Claude usage is unavailable: no OAuth token is configured",
     });
     expect(parseClaudeUsage("not json")).toEqual({ unavailable: "Claude usage returned invalid JSON" });
+  });
+
+  describe("finding the login", () => {
+    afterEach(() => vi.unstubAllEnvs());
+    const KEYCHAIN = JSON.stringify({ claudeAiOauth: { accessToken: "keychain-token", refreshToken: "r", expiresAt: 1 } });
+    const keychain = (command: string, args: readonly string[]): boolean =>
+      command === "security" && args.join(" ") === "find-generic-password -s Claude Code-credentials -w";
+
+    it("reads the macOS Keychain item Claude Code writes when there is no credentials file", async () => {
+      vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "");
+      const runner = new ScriptedRunner([
+        { match: keychain, result: { stdout: KEYCHAIN } },
+        { match: (command) => command === "curl", result: { stdout: ACCOUNT } },
+      ]);
+      const reader = new ClaudeUsageReader(runner, { credentialsFile: "/nowhere/.credentials.json", platform: "darwin" });
+
+      await expect(reader.read()).resolves.toMatchObject({ windows: [{ label: "five-hour" }, { label: "seven-day" }] });
+      expect(runner.callsTo("curl")[0]?.options?.stdin).toContain("Bearer keychain-token");
+    });
+
+    it("asks no Keychain off macOS", async () => {
+      vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "");
+      const runner = new ScriptedRunner([{ match: keychain, result: { stdout: KEYCHAIN } }]);
+      const reader = new ClaudeUsageReader(runner, { credentialsFile: "/nowhere/.credentials.json", platform: "linux" });
+
+      await expect(reader.read()).resolves.toEqual({ unavailable: "Claude usage is unavailable: no OAuth token is configured" });
+      expect(runner.callsTo("security")).toEqual([]);
+    });
   });
 });

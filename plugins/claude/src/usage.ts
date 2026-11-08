@@ -17,7 +17,14 @@ interface ClaudeUsageDocument {
 export interface ClaudeUsageReaderOptions {
   readonly timeoutMs?: number;
   readonly token?: () => string | undefined;
+  /** Where Claude Code keeps its login off macOS; a test points it elsewhere. */
+  readonly credentialsFile?: string;
+  /** The platform whose credential store is asked; macOS also has the Keychain. */
+  readonly platform?: NodeJS.Platform;
 }
+
+/** The Keychain item Claude Code writes its login to on macOS. */
+const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
 /** Reads Claude's account windows without asking Claude to run an agent turn. */
 export class ClaudeUsageReader implements UsageReader {
@@ -29,7 +36,7 @@ export class ClaudeUsageReader implements UsageReader {
   ) {}
 
   async read(): Promise<UsageResult> {
-    const token = this.options.token?.() ?? oauthToken();
+    const token = this.options.token?.() ?? (await this.oauthToken());
     if (!token) return { unavailable: "Claude usage is unavailable: no OAuth token is configured" };
 
     try {
@@ -38,7 +45,8 @@ export class ClaudeUsageReader implements UsageReader {
         ["--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"],
         {
           // A curl config on stdin keeps the bearer token out of argv and process listings.
-          stdin: `header = "Authorization: Bearer ${token}"\n`,
+          // The endpoint refuses an OAuth bearer without the beta that enables it.
+          stdin: `header = "Authorization: Bearer ${token}"\nheader = "anthropic-beta: oauth-2025-04-20"\n`,
           timeoutMs: this.options.timeoutMs,
         },
       );
@@ -46,6 +54,21 @@ export class ClaudeUsageReader implements UsageReader {
       return parseClaudeUsage(result.stdout);
     } catch {
       return { unavailable: "Claude usage is unavailable" };
+    }
+  }
+
+  /** The login Claude Code keeps: the environment, its credentials file, then on macOS the Keychain. */
+  private async oauthToken(): Promise<string | undefined> {
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) return process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    const file = this.options.credentialsFile ?? path.join(os.homedir(), ".claude", ".credentials.json");
+    const stored = readCredentials(() => fs.readFileSync(file, "utf8"));
+    if (stored || (this.options.platform ?? process.platform) !== "darwin") return stored;
+    try {
+      // Read-only: prints the item's secret, the same JSON the file holds elsewhere.
+      const result = await this.runner.run("security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"], { timeoutMs: this.options.timeoutMs });
+      return result.ok ? readCredentials(() => result.stdout) : undefined;
+    } catch {
+      return undefined;
     }
   }
 }
@@ -77,12 +100,9 @@ function windowOf(label: string, period: ClaudeUsagePeriod | undefined) {
   };
 }
 
-function oauthToken(): string | undefined {
-  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) return process.env.CLAUDE_CODE_OAUTH_TOKEN;
+function readCredentials(read: () => string): string | undefined {
   try {
-    const credentials = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".claude", ".credentials.json"), "utf8")) as {
-      claudeAiOauth?: { accessToken?: unknown };
-    };
+    const credentials = JSON.parse(read()) as { claudeAiOauth?: { accessToken?: unknown } };
     return typeof credentials.claudeAiOauth?.accessToken === "string" ? credentials.claudeAiOauth.accessToken : undefined;
   } catch {
     return undefined;

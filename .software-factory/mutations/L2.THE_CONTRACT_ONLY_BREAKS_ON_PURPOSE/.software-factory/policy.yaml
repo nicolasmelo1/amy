@@ -1,0 +1,13 @@
+# Mutation fixture for L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L2.THE_CONTRACT_ONLY_BREAKS_ON_PURPOSE:
+    enabled: true
+    options:
+      run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/packages/services/gates/breaks-on-purpose.ts" --base packages/services/openapi.base.json'

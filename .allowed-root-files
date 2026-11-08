@@ -12,6 +12,8 @@ assets
 .githooks
 .github
 .gitignore
+# gitleaks reads its config from here: the default rules, and the hash locks it misreads.
+.gitleaks.toml
 .npmrc
 .software-factory
 CONTRIBUTING.md

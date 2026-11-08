@@ -1,4 +1,4 @@
-import type { SubscriptionUsage } from "./status-page.js";
+import { usageThenNow, type SubscriptionUsage } from "./status-page.js";
 import {
   BUDGET_WINDOWS,
   BudgetLimits,
@@ -8,6 +8,26 @@ import {
   ceilingFor,
   spendSince,
 } from "@amykit/core";
+
+/**
+ * `amy budget`'s report: the provider windows first, then the ledger read at
+ * the moment they have answered. An account request can take seconds, and a
+ * clock read before it would keep counting a run that left a window during
+ * the wait.
+ */
+export async function budgetReport(input: {
+  readonly limits: BudgetLimits;
+  readonly usage: () => Promise<readonly SubscriptionUsage[]>;
+  readonly events: (since: Date) => readonly Event[];
+  readonly clock: () => Date;
+}): Promise<string[]> {
+  const { usage, now } = await usageThenNow(input.usage, input.clock);
+  // Read once, over the longest window any ceiling could be set on, rather
+  // than once per window: two reads of a growing file can disagree, and a
+  // report whose windows disagree is worse than a slower one.
+  const longest = Math.max(...BUDGET_WINDOWS.map((window) => window.ms));
+  return budgetLines(input.events(new Date(now.getTime() - longest)), input.limits, now, usage);
+}
 
 /**
  * What `amy budget` prints, as lines, so the arithmetic is testable.

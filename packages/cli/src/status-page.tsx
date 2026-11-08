@@ -84,6 +84,19 @@ export interface SubscriptionUsage {
   readonly result: UsageResult;
 }
 
+/**
+ * The provider windows, then the moment to read everything else at. An
+ * account request can take seconds; a clock read before it would date the
+ * queue, the ledger and the snapshot to before the wait.
+ */
+export async function usageThenNow(
+  usage: () => Promise<readonly SubscriptionUsage[]>,
+  clock: () => Date = () => new Date(),
+): Promise<{ readonly usage: readonly SubscriptionUsage[]; readonly now: Date }> {
+  const answered = await usage();
+  return { usage: answered, now: clock() };
+}
+
 /** What the page is asked for beyond the snapshot: finished work too, and where the questions wait. */
 export interface StatusOptions {
   readonly all: boolean;

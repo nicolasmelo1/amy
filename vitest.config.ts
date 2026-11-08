@@ -74,7 +74,8 @@ export default defineConfig({
       "@amykit/ui/frame": resolve(here, "packages/ui/src/frame/index.ts"),
       "@amykit/ui-conformance": resolve(here, "packages/ui-conformance/src/index.ts"),
       "@amykit/ui": resolve(here, "packages/ui/src/index.ts"),
-      "@amykit/test-fixtures": resolve(here, "packages/test-fixtures/src/index.ts")
+      "@amykit/test-fixtures": resolve(here, "packages/test-fixtures/src/index.ts"),
+      "@amykit/services": resolve(here, "packages/services/src/index.ts")
     },
   },
 });

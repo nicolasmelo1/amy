@@ -101,7 +101,7 @@ describe("Ollama Cloud account usage", () => {
     });
   });
 
-  it("keeps a legacy nested included response visibly unofficial", () => {
+  it("keeps legacy fractions nested under included unofficial", () => {
     expect(parseOllamaCloudUsage({ included: { session: { usage: 0.03 } } })).toEqual({
       windows: [{ label: "Session", usedPercent: 3 }],
       unofficial: true,

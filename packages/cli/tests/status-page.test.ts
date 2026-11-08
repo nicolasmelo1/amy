@@ -1,6 +1,6 @@
 import { renderText } from "@amykit/ui";
 import { describe, expect, it } from "vitest";
-import { statusView, type StatusRecord, type StatusSnapshot } from "../src/status-page.js";
+import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot } from "../src/status-page.js";
 import { recordsToShow, standing } from "../src/status-view.js";
 
 const INBOX = "/home/amy/profiles/default/needs-input";
@@ -192,5 +192,16 @@ describe("amy status, as a view", () => {
     expect(page).toContain("phases: workflow");
     expect(page).toContain("brief is out: this work arrives already briefed");
     expect(page).toContain("prove is out: a person reviews this work");
+  });
+});
+
+describe("usageThenNow", () => {
+  it("reads the clock once the provider windows have answered, so status dates the queue after the wait", async () => {
+    let now = new Date("2026-11-07T12:00:00.000Z");
+    const read = await usageThenNow(async () => {
+      now = new Date("2026-11-07T12:00:02.000Z");
+      return [];
+    }, () => now);
+    expect(read.now.toISOString()).toBe("2026-11-07T12:00:02.000Z");
   });
 });

@@ -63,7 +63,7 @@ crosses:
   - { mechanism: events-and-notifications, answer: works, proof: "test:plugins/file-log/tests/FileEventLog.test.ts; inspection reads an absent log without creating it" }
   - { mechanism: briefs, answer: works, proof: "test:plugins/file-brief-store/tests/FileBriefStore.test.ts; inspection reads an absent brief directory without creating it" }
 guarantee:
-  - { holds: "reading usage runs no agent, spends no attempt and writes nothing", not_against: "provider-side accounting of an account request" }
+  - { holds: "reading usage runs no agent, spends no attempt and writes nothing", not_against: "provider-side accounting of an account request; a conversation plugin that prepares its own state when it is mounted, such as Telegram creating its topic directories and identity file on the first mount of a bot" }
 failures:
   - { step: read, when: "a provider answer fails", goes_to: "that subscription reports unavailable while the others remain visible" }
 cut:

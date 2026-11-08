@@ -1,0 +1,11 @@
+# The default rules, and one path they misread. The hash locks under
+# .software-factory/locks hold sha256 digests keyed by file path, and a path
+# with "api" in it beside a 64-character hex digest reads as an API key to
+# generic-api-key. Nothing secret is ever written there: `sf lock` writes
+# digests and nothing else.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "sf's hash locks: digests keyed by path"
+paths = ['''^\.software-factory/locks/[a-z-]+\.lock\.json$''']

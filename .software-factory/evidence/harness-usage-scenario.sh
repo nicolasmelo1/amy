@@ -15,25 +15,39 @@ npx vitest run \
   packages/cli/tests/budget.test.ts \
   packages/cli/tests/status-page.test.ts >/dev/null
 
-# The gate's normalizers must be the published provider exports, not source
-# aliases that a packed installation never loads.
-node --input-type=module <<'NODE'
+# Recorded provider answers go through each plugin's built dist/index.js, in
+# another process: a barrel that forgot an export, or a dist nobody rebuilt,
+# fails here though every unit test above imports src.
+node --input-type=module - "$repo" <<'NODE'
+import { deepStrictEqual } from "node:assert/strict";
 import { pathToFileURL } from "node:url";
+const built = (name) => import(pathToFileURL(`${process.argv[2]}/plugins/${name}/dist/index.js`).href);
+const claude = await built("claude");
+const codex = await built("codex");
+const hermes = await built("hermes-agent");
 
-const root = process.cwd();
-const claude = await import(pathToFileURL(`${root}/plugins/claude/dist/index.js`).href);
-const codex = await import(pathToFileURL(`${root}/plugins/codex/dist/index.js`).href);
-const hermes = await import(pathToFileURL(`${root}/plugins/hermes-agent/dist/index.js`).href);
+deepStrictEqual(claude.parseClaudeUsage(JSON.stringify({
+  five_hour: { utilization: 42, resets_at: "2026-11-07T15:00:00.000Z" },
+  seven_day: { utilization: 18, resets_at: "2026-11-12T12:00:00.000Z" },
+})), { windows: [
+  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-07T15:00:00.000Z" },
+  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-12T12:00:00.000Z" },
+] });
 
-const claudeUsage = claude.parseClaudeUsage(JSON.stringify({ five_hour: { utilization: 42 } }));
-const codexUsage = await new codex.CodexUsageReader({
-  readRateLimits: async () => ({ rateLimits: { primary: { usedPercent: 18, windowDurationMins: 300 } } }),
-}).read();
-const hermesUsage = hermes.parseHermesUsage(JSON.stringify({ windows: [{ label: "Session", used_percent: 37 }] }));
+deepStrictEqual(await new codex.CodexUsageReader({ readRateLimits: async () => ({ rateLimits: {
+  primary: { usedPercent: 24, windowDurationMins: 300, resetsAt: 1_800_000_000 },
+  secondary: { usedPercent: 61, windowDurationMins: 10_080, resetsAt: 1_800_604_800 },
+} }) }).read(), { windows: [
+  { label: "five-hour", usedPercent: 24, startsAt: "2027-01-15T03:00:00.000Z", resetsAt: "2027-01-15T08:00:00.000Z" },
+  { label: "weekly", usedPercent: 61, startsAt: "2027-01-15T08:00:00.000Z", resetsAt: "2027-01-22T08:00:00.000Z" },
+] });
 
-if (claudeUsage.windows?.[0]?.usedPercent !== 42 || codexUsage.windows?.[0]?.usedPercent !== 18 || hermesUsage.windows?.[0]?.usedPercent !== 37) {
-  throw new Error(`built provider exports did not normalize recorded usage: ${JSON.stringify({ claudeUsage, codexUsage, hermesUsage })}`);
-}
+deepStrictEqual(hermes.parseHermesUsage(JSON.stringify({ provider: "openai-codex", windows: [
+  { label: "Session", used_percent: 37, resets_at: "2026-11-07T14:00:00.000Z" },
+] })), { windows: [{ label: "Session", usedPercent: 37, resetsAt: "2026-11-07T14:00:00.000Z" }] });
+
+deepStrictEqual(hermes.parseOllamaCloudUsage({ limits: { session: { usage: 0.03 } } }), { windows: [{ label: "Session", usedPercent: 3 }], unofficial: true });
+deepStrictEqual(hermes.parseOllamaCloudUsage({ included: { session: { usage: 0.03 } } }), { windows: [{ label: "Session", usedPercent: 3 }], unofficial: true });
 NODE
 
 # The built CLI must retain a working reader when another one rejects. A page
@@ -73,6 +87,22 @@ if (available?.result?.windows?.[0]?.usedPercent !== 12 || rejecting?.result?.un
 }
 NODE
 
+# The built budget lists both subscriptions beside, never inside, Amy's own
+# totals: the provider's 12% leaves every rolling window at zero runs.
+AMY_HOME="$world" node packages/cli/dist/index.js budget > "$world/budget.txt"
+node - "$world/budget.txt" <<'NODE'
+const fs = require("node:fs");
+const text = fs.readFileSync(process.argv[2], "utf8");
+const [ledger, usage = ""] = text.split("subscription usage:");
+const totals = ledger.split("\n").filter((line) => / run\(s\) /.test(line));
+if (totals.length === 0 || !totals.every((line) => /\s0 run\(s\) /.test(line)) || /12%|Available|Rejecting/.test(ledger)) {
+  throw new Error(`built budget mixed provider windows into Amy's totals:\n${text}`);
+}
+if (!/Available.*Session: 12%/.test(usage) || !/Rejecting: unavailable/.test(usage)) {
+  throw new Error(`built budget did not list both subscriptions beside the ledger:\n${text}`);
+}
+NODE
+
 node - "$report" <<'NODE'
 const fs = require("node:fs");
 const report = process.argv[2];
@@ -87,7 +117,7 @@ fs.writeFileSync(report, `${JSON.stringify({
   scenario: "harness-usage",
   status: "passed",
   goal: "A person sees each mounted harness subscription's own account windows beside Amy's ledger, including an unavailable reader without hiding the rest.",
-  artifact: { entry: "built workspace contracts for mounted usage readers, status and budget" },
+  artifact: { entry: "the built Claude, Codex and Hermes plugins and the built CLI, each from its dist/index.js" },
   observed: { assertions_run: assertions.length, assertions_failed: 0 },
   assertions,
 }, null, 2)}\n`);
