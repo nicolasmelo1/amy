@@ -17,6 +17,7 @@ import { WorkflowRuntime } from "./runtime.js";
 import { Action, Moved, Plan, WorkRecord } from "./work.js";
 import { ActionContext, ActionImplementation, FoundWork, ProgressPolicy } from "./runtime.js";
 import { WORKFLOW_RUNTIME } from "./runtime.js";
+import type { BriefRecord } from "./ports/Brief.js";
 
 const PORT_NEED = Symbol("workflow-port-need");
 
@@ -93,6 +94,39 @@ export function workflowActions<Effect extends Action>() {
   ) => actions;
 }
 
+/** One thing a brief check refuses: the section it is about and the rule it broke. */
+export interface BriefRefusal {
+  readonly section: string;
+  readonly rule: string;
+}
+
+/** One operation a mounted plugin offers, as a brief check reads it: its id and its input's JSON Schema. */
+export interface BriefOperation {
+  readonly id: string;
+  readonly input: Readonly<Record<string, unknown>>;
+}
+
+/** What a brief check is handed beside the brief: what the mounted machine can do. */
+export interface BriefCheckScope {
+  /** Every operation the mounted plugins offer, so a section naming one nothing offers can be refused. */
+  readonly operations: readonly BriefOperation[];
+}
+
+/**
+ * The sections a workflow asks a brief to answer, in the order it asks them,
+ * and the rule that judges whether the brief is ready.
+ *
+ * The core never parses a section: the workflow names them and judges them.
+ * The host refuses a declared section the brief leaves empty, then asks
+ * `check`, so a check only says what a present section gets wrong. A brief
+ * phase that declares no `check` is told so by `amy doctor`, never handed one
+ * that always passes.
+ */
+export interface BriefDeclaration {
+  readonly sections: readonly string[];
+  check?(record: BriefRecord, scope: BriefCheckScope): readonly BriefRefusal[] | Promise<readonly BriefRefusal[]>;
+}
+
 type Claims<S extends ConfigSchema, P extends object> =
   | readonly string[]
   | ((args: { readonly config: ConfigOf<S>; readonly policy: P }) => readonly string[]);
@@ -108,6 +142,8 @@ export interface WorkflowPlugin<R extends WorkRecord = WorkRecord, O = unknown, 
    * names, and `amy status` reads the mounted one's through the workflow.
    */
   readonly phases?: ProjectPhases;
+  /** The brief this workflow asks for and how it judges one, readable without a mount: what `amy brief check` runs. */
+  readonly brief?: BriefDeclaration;
 }
 
 // Registered rather than private: a workflow may be defined against another
@@ -212,6 +248,8 @@ interface DeclarationBase<
    * phase it names is absent. See `ProjectPhases`.
    */
   readonly phases?: ProjectPhases;
+  /** The sections a brief answers for this workflow, in order, and the check that judges them. See `BriefDeclaration`. */
+  readonly brief?: BriefDeclaration;
   // No `states`, `waiting` or `terminal`: the states come only from the
   // `workflow.mmd` the host reads beside the workflow.
   readonly configSchema: S;
@@ -329,6 +367,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
     ...(declaration.setup ? { setup: declaration.setup as unknown as readonly PluginSetup[] } : {}),
     ...(declaration.environment ? { environment: declaration.environment } : {}),
     ...(declaration.phases ? { phases: declaration.phases } : {}),
+    ...(declaration.brief ? { brief: briefFits(declaration.name, declaration.brief) } : {}),
     newRecord: (workId: string, now: Date): R => assembled().newRecord(workId, now) as R,
     [DRAW]: (diagram: Diagram | Error) => drawnWith(declaration, diagram),
     register(registry: Registry, untyped: PluginContext) {
@@ -1077,4 +1116,25 @@ function phasesFit(workflow: string, phases: ProjectPhases): void {
   if (empty.length > 0) {
     throw new Error(`the ${workflow} workflow's \`phases\` names ${empty.map(([phase]) => `\`${phase}\``).join(", ")} with no reason: say in one sentence why it is absent`);
   }
+}
+
+/**
+ * A brief declaration names at least one section, each once and each in
+ * words: a section with no name is one nobody can be asked, and a name given
+ * twice is one answer written to two places.
+ *
+ * Checked where the declaration is read, because `amy brief` reads it
+ * without a mount, and a phase is called rather than mounted.
+ */
+function briefFits(workflow: string, brief: BriefDeclaration): BriefDeclaration {
+  const sections = Array.isArray(brief.sections) ? brief.sections : [];
+  const problems: string[] = [];
+  if (sections.length === 0) problems.push("names no section");
+  const blank = sections.filter((name) => typeof name !== "string" || name.trim() === "");
+  if (blank.length > 0) problems.push("names a section with no name");
+  const twice = sections.filter((name, at) => sections.indexOf(name) !== at);
+  if (twice.length > 0) problems.push(`names ${[...new Set(twice)].map((name) => `\`${name}\``).join(", ")} more than once`);
+  if (brief.check !== undefined && typeof brief.check !== "function") problems.push("has a `check` that is not a function");
+  if (problems.length > 0) throw new Error(`the ${workflow} workflow's \`brief\` ${problems.join(" and ")}`);
+  return brief;
 }

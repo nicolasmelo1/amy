@@ -443,6 +443,11 @@
           "description": ""
         },
         {
+          "title": "Grooming reads the sections its workflow declares",
+          "path": "/design/grooming-reads-the-sections-its-workflow-declares",
+          "description": ""
+        },
+        {
           "title": "No port method ships unproven",
           "path": "/design/no-port-method-ships-unproven",
           "description": ""
@@ -1141,6 +1146,11 @@
           "depth": 3,
           "title": "Treat structured provider usage limits as waits rather than attempts.",
           "slug": "treat-structured-provider-usage-limits-as-waits-rather-than-attempts"
+        },
+        {
+          "depth": 3,
+          "title": "**Grooming reads the sections its workflow declares.**",
+          "slug": "grooming-reads-the-sections-its-workflow-declares"
         },
         {
           "depth": 3,
@@ -3080,6 +3090,17 @@
       ]
     },
     {
+      "path": "/design/grooming-reads-the-sections-its-workflow-declares",
+      "file": "docs/design/grooming-reads-the-sections-its-workflow-declares.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/grooming-reads-the-sections-its-workflow-declares.md",
+      "title": "Grooming reads the sections its workflow declares",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/no-port-method-ships-unproven",
       "file": "docs/design/no-port-method-ships-unproven.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/no-port-method-ships-unproven.md",
@@ -4358,6 +4379,26 @@
           "depth": 3,
           "title": "amy brief",
           "slug": "amy-brief"
+        },
+        {
+          "depth": 3,
+          "title": "amy brief check",
+          "slug": "amy-brief-check"
+        },
+        {
+          "depth": 3,
+          "title": "amy brief sections",
+          "slug": "amy-brief-sections"
+        },
+        {
+          "depth": 3,
+          "title": "amy brief show",
+          "slug": "amy-brief-show"
+        },
+        {
+          "depth": 3,
+          "title": "amy brief write",
+          "slug": "amy-brief-write"
         },
         {
           "depth": 3,
@@ -6790,6 +6831,55 @@
           "path": [
             "brief"
           ],
+          "description": "The current statement of a feature, the sections its workflow asks for, and whether it is ready",
+          "arguments": [],
+          "options": [],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
+            "brief",
+            "check"
+          ],
+          "description": "Judge a brief against every phase's declared sections and check; exits non-zero while anything is refused",
+          "arguments": [
+            {
+              "name": "<id>",
+              "required": true,
+              "description": "the brief id, as the workflow named it"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--json",
+              "description": "the refusals and the next section to ask, as data"
+            }
+          ],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
+            "brief",
+            "sections"
+          ],
+          "description": "The sections the workflow's brief asks for, in the order grooming asks them, and which phase asks each",
+          "arguments": [],
+          "options": [
+            {
+              "flags": "--json",
+              "description": "the same list as data, for an agent grooming the brief"
+            }
+          ],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
+            "brief",
+            "show"
+          ],
           "description": "The current statement of a feature, as the workflow keeps it",
           "arguments": [
             {
@@ -6802,6 +6892,38 @@
             {
               "flags": "--json",
               "description": "the same snapshot as data, for something else to render"
+            }
+          ],
+          "isDefault": true,
+          "hidden": false
+        },
+        {
+          "path": [
+            "brief",
+            "write"
+          ],
+          "description": "Answer one section of a brief through the brief port, replacing what it said before",
+          "arguments": [
+            {
+              "name": "<id>",
+              "required": true,
+              "description": "the brief id, as the workflow named it"
+            },
+            {
+              "name": "<section>",
+              "required": true,
+              "description": "a section the workflow's brief declares"
+            },
+            {
+              "name": "[body]",
+              "required": false,
+              "description": "the answer; read from standard input when omitted or `-`"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--explains <ids>",
+              "description": "the work ids the brief explains, comma-separated; kept from the stored brief when omitted"
             }
           ],
           "isDefault": false,
@@ -7265,8 +7387,8 @@
       },
       {
         "name": "amy-groom",
-        "version": "1.0.0",
-        "description": "Groom a feature into the brief a workflow reads before it builds — by reading the ticket and the code at its base, then interrogating one question at a time until every requirement names its source.",
+        "version": "2.0.0",
+        "description": "Groom a feature into the brief a workflow reads before it builds — by reading the ticket and the code at its base, then asking one question at a time, section by section in the order the workflow declares them, until `amy brief check` is green.",
         "directory": "packages/cli/skills/amy-groom"
       },
       {
@@ -9184,6 +9306,29 @@
   ],
   "factory": {
     "gates": [
+      {
+        "name": "a-brief-is-groomed-through-amy",
+        "activation": [
+          "packages/core/src/define-workflow.ts",
+          "packages/cli/src/project.ts",
+          "packages/cli/src/index.ts",
+          "packages/cli/src/doctor.ts",
+          "packages/cli/skills/amy-groom/**",
+          "plugins/file-brief-store/src/**"
+        ],
+        "evidence": ".software-factory/evidence/a-brief-is-groomed-through-amy.json",
+        "plan": "docs/design/grooming-reads-the-sections-its-workflow-declares.md",
+        "assertions": [
+          "brief_check.the_sections_are_the_workflows",
+          "brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule",
+          "brief_check.the_groomer_writes_only_through_the_brief_port",
+          "brief_check.grooming_asks_the_section_the_check_names_next",
+          "brief_check.the_groomed_brief_is_stored_through_the_brief_port",
+          "brief_check.the_groomed_brief_is_green",
+          "brief_check.the_doctor_names_the_brief_check"
+        ],
+        "scenario": ".software-factory/evidence/a-brief-is-groomed-through-amy-scenario.sh"
+      },
       {
         "name": "a-plugin-of-your-own",
         "activation": [
@@ -11237,6 +11382,22 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "grooming-reads-the-sections-its-workflow-declares",
+        "title": "**Grooming reads the sections its workflow declares.**",
+        "body": "A workflow declares the brief it asks for — `brief: { sections, check }` in\nits `defineWorkflow` — and amy judges a brief against it: `amy brief sections`\nlists what to answer, in order (in a project, the brief's own sections, then\neach later phase's, a `prove/` scenario included); `amy brief write <id>\n<section>` answers one through the brief port; and `amy brief check <id>`\nexits non-zero while any phase's check, or a declared section left blank,\nrefuses it, naming the phase, the section and the rule. A check is handed\nevery operation the mounted plugins offer, so a scenario naming one nothing\noffers is refused. `amy doctor` reports a brief phase that exports no check\nrather than passing it.\n\n`amy-groom` now asks the sections the workflow declares, one question at a\ntime in the order the check names them, and stops when it is green. Before, a\nbrief's readiness was judged only inside each workflow's code, with no\ncommand to ask it, and the shipped skill asked questions of its own.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "harness-usage",

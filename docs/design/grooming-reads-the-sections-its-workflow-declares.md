@@ -25,17 +25,17 @@ touches:
   - packages/cli/src/project.ts
   - packages/cli/tests/project.test.ts
 criteria:
-  - { id: A1, statement: "amy brief check exits zero on a brief the workflow's check accepts and non-zero naming the section and rule on one it refuses", proof: "deferred:test:packages/cli/tests/brief-check.test.ts", sources: [S1, S2, S4, S5] }
-  - { id: A2, statement: "a workflow with a brief/ phase and no exported check is reported by amy doctor", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S6] }
-  - { id: A3, statement: "amy-groom names the sections it will ask about from the workflow's declaration, not from a list of its own", proof: "unspecified:a skill's behaviour is checked by a transcript run, and the harness for that is not designed", sources: [S7] }
-  - { id: A4, statement: "a brief groomed through the skill is stored through the brief port and amy brief check is green on it", proof: "deferred:scenario through the installed executable, the skill driven by a recorded transcript", sources: [S8, S9] }
-  - { id: A5, statement: "the shipped skill names no tracker, no team and no private workflow", proof: "deferred:test reading the skill's text", sources: [S3] }
-  - { id: A6, statement: "when prove/ declares a scenario section, amy brief check refuses a brief without it, naming prove/; amy-groom moves past the brief's sections while that is the only refusal, asks it, and stops green once answered", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S8, S10, S12, S14] }
-  - { id: A7, statement: "a phase's check sees every mounted operation's name and input schema, and refuses a section naming one no plugin offers", proof: "deferred:test:packages/cli/tests/brief-check.test.ts", sources: [S11, S13] }
+  - { id: A1, statement: "amy brief check exits zero on a brief the workflow's check accepts and non-zero naming the section and rule on one it refuses", proof: "test:packages/cli/tests/brief-check.test.ts, assertion:brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule", sources: [S1, S2, S4, S5], done: true }
+  - { id: A2, statement: "a workflow with a brief/ phase and no exported check is reported by amy doctor", proof: "test:packages/cli/tests/doctor.test.ts, assertion:brief_check.the_doctor_names_the_brief_check", sources: [S6], done: true }
+  - { id: A3, statement: "amy-groom names the sections it will ask about from the workflow's declaration, not from a list of its own", proof: "test:packages/cli/tests/brief-check.test.ts, assertion:brief_check.the_sections_are_the_workflows", sources: [S7], done: true }
+  - { id: A4, statement: "a brief groomed through the skill is stored through the brief port and amy brief check is green on it", proof: "assertion:brief_check.the_groomed_brief_is_green", sources: [S8, S9], done: true }
+  - { id: A5, statement: "the shipped skill names no tracker, no team and no private workflow", proof: "test:packages/cli/tests/brief-check.test.ts", sources: [S3], done: true }
+  - { id: A6, statement: "when prove/ declares a scenario section, amy brief check refuses a brief without it, naming prove/; amy-groom moves past the brief's sections while that is the only refusal, asks it, and stops green once answered", proof: "test:packages/cli/tests/project.test.ts", sources: [S8, S10, S12, S14], done: true }
+  - { id: A7, statement: "a phase's check sees every mounted operation's name and input schema, and refuses a section naming one no plugin offers", proof: "test:packages/cli/tests/brief-check.test.ts", sources: [S11, S13], done: true }
 crosses:
   - { mechanism: calls, answer: n/a, why: "defineWorkflow gains an optional brief member; how one workflow calls another is unchanged" }
   - { mechanism: hooks, answer: n/a, why: "the brief check runs from amy brief check, not around a plan; before, after and interrupt are unchanged" }
-  - { mechanism: briefs, answer: works, proof: "deferred:A4" }
+  - { mechanism: briefs, answer: works, proof: "assertion:brief_check.the_groomed_brief_is_stored_through_the_brief_port, assertion:brief_check.the_groomer_writes_only_through_the_brief_port, assertion:brief_check.grooming_asks_the_section_the_check_names_next" }
 guarantee:
   - { holds: "amy brief check is green only on a brief the workflow's own check accepts", not_against: "a workflow check that accepts a brief it should refuse" }
   - { holds: "the shipped skill tells the agent to write only through the brief port", not_against: "an agent that ignores the skill and writes to a tracker or code host itself" }
@@ -43,10 +43,27 @@ guarantee:
 cut:
   - "a default check that always passes for a workflow declaring none"
   - "the skill writing to a tracker or code host"
+deviations:
+  - "packages/core/src/index.ts: exports BriefDeclaration, BriefRefusal, BriefOperation and BriefCheckScope, the types a workflow's brief member is written against"
+  - "`amy brief sections` and `amy brief write <id> <section>` beside `check`: the skill needs a door to read the sections and to write through the port (S8); `amy brief <id>` is `show`, its default, unchanged"
+  - "amy refuses a declared section the brief leaves blank before asking the workflow's check, naming the phase that declared it: a phase may declare sections with no check (S10), and its sections are still asked for"
+  - "`amy brief check --json` answers `next`: a refused section the brief already answers first, else the first refused section in grooming order — the rule of S14 made mechanical, so the skill follows it rather than restating it"
+  - "a check that throws is a refusal naming the workflow, not a crash: the check is a workflow's code, run on an operator's command"
+  - "a brief declaration naming no section, a blank one or one twice is refused where defineWorkflow reads it"
+  - "S7's BaseSource: no command exposes the port, so the skill reads the base the way GitBaseSource does — fetch to a named destination, pin the commit, read with git show and git grep at it, never a checkout"
+  - ".software-factory/policy.yaml, .software-factory/evidence/a-brief-is-groomed-through-amy*: the gate holding A4, its scenario through the installed executable and the transcript a separate agent recorded running the shipped skill"
+  - "package.json: npm run e2e runs the new scenario"
+  - ".software-factory/evidence/**: every activated gate re-run and re-sealed"
+  - "README.md, docs/concepts/harnesses.md, docs/development/the-gate.md, docs/reference/cli.md, docs/manifest.json, docs/changelog/index.md: generated from the new commands, the skill, the gate and the changeset"
+  - "registry/cli.json, registry/core.json: generated registry items"
+  - ".changeset/grooming-reads-the-sections-its-workflow-declares.md: the release note"
+  - "plans/next-steps.md, plans/grooming-happens-in-the-window.md: the delivered row leaves the board, and the plan citing this one cites where it lives now"
 exit: "a workflow declaring four sections and a check gets a brief groomed by the shipped amy-groom from an agent not the one running amy, stored through the brief port, and amy brief check green on it"
 ---
 # Grooming reads the sections its workflow declares
 
-The brief port keeps a workflow's sections, but nothing checks a brief and no
-shipped skill grooms one, so a person writing a brief has to know where each
-workflow's readiness code lives.
+Nothing checked a brief and the shipped skill asked questions of its own. A
+workflow now declares `brief: { sections, check }`; `amy brief check` runs
+every phase's check against the stored brief and the mounted operations, and
+`amy-groom` asks what it names next, writing through the brief port, until
+it is green.

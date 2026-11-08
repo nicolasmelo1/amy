@@ -89,6 +89,36 @@ describe("diagnose", () => {
     });
   });
 
+  it("reports a project whose brief/ phase exports no check, rather than passing it", async () => {
+    const declared = await diagnose(deps({
+      briefs: [
+        { phase: "brief", workflow: "workflow-invoices-brief", declaration: { sections: ["Goal", "Criteria"] } },
+        { phase: "workflow", workflow: "workflow-invoices-work" },
+      ],
+    }));
+    const silent = await diagnose(deps({ briefs: [{ phase: "brief", workflow: "workflow-invoices-brief" }] }));
+
+    for (const checks of [declared, silent]) {
+      const check = labelled(checks, "brief check");
+      expect(check?.ok).toBe(false);
+      expect(check?.detail).toContain("`brief/` (workflow-invoices-brief) exports no brief check");
+    }
+  });
+
+  it("passes a brief phase that exports a check, naming the sections it judges", async () => {
+    const checks = await diagnose(deps({
+      briefs: [{ phase: "brief", workflow: "workflow-invoices-brief", declaration: { sections: ["Goal", "Criteria"], check: () => [] } }],
+    }));
+
+    expect(labelled(checks, "brief check")).toEqual({ label: "brief check", ok: true, detail: "`brief/` (workflow-invoices-brief) judges Goal, Criteria" });
+  });
+
+  it("asks nothing about a brief check when no phase grooms a brief", async () => {
+    const checks = await diagnose(deps({ briefs: [{ phase: "workflow", workflow: "workflow-invoices-work" }] }));
+
+    expect(labelled(checks, "brief check")).toBeUndefined();
+  });
+
   it("fails when there is no config file", async () => {
     const checks = await diagnose(deps());
 

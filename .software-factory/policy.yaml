@@ -727,6 +727,31 @@ gates:
       - "project.no_phase_state_escapes_home"
       - "project.a_phase_never_reads_an_old_profiles_records"
 
+  # A brief is groomed through amy: the sections asked are the workflow's,
+  # every answer goes through the brief port, and the brief check says when it
+  # is ready. The scenario replays a session an agent recorded running the
+  # shipped amy-groom, through the installed executable; a change to the
+  # declaration, the composed check, the commands or the skill is a change to
+  # what that run proved.
+  a-brief-is-groomed-through-amy:
+    activation:
+      - "packages/core/src/define-workflow.ts"
+      - "packages/cli/src/project.ts"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/doctor.ts"
+      - "packages/cli/skills/amy-groom/**"
+      - "plugins/file-brief-store/src/**"
+    evidence: ".software-factory/evidence/a-brief-is-groomed-through-amy.json"
+    plan: "docs/design/grooming-reads-the-sections-its-workflow-declares.md"
+    required_assertions:
+      - "brief_check.the_sections_are_the_workflows"
+      - "brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule"
+      - "brief_check.the_groomer_writes_only_through_the_brief_port"
+      - "brief_check.grooming_asks_the_section_the_check_names_next"
+      - "brief_check.the_groomed_brief_is_stored_through_the_brief_port"
+      - "brief_check.the_groomed_brief_is_green"
+      - "brief_check.the_doctor_names_the_brief_check"
+
   # A private workflow should be its policy, prompts and gate commands, and
   # import the rest. This gate holds every gap that stopped one doing so to
   # an observation: the built adapters and real git for the reads and the

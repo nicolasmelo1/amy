@@ -2,13 +2,14 @@
 name: amy-groom
 description: >-
   Groom a feature into the brief a workflow reads before it builds — by
-  reading the ticket and the code at its base, then interrogating one question
-  at a time until every requirement names its source. Use when somebody says
-  "groom PROJ-123", "write the brief for…", "/amy-groom <id>", or wants a
-  ticket held until its brief says what was asked for. Learns the brief's
-  format and check from the workflow that judges it; writes a local file and
-  nothing to the tracker, the code host or chat.
-version: 1.0.0
+  reading the ticket and the code at its base, then asking one question at a
+  time, section by section in the order the workflow declares them, until
+  `amy brief check` is green. Use when somebody says "groom PROJ-123", "write
+  the brief for…", "/amy-groom <id>", or wants a ticket held until its brief
+  says what was asked for. The sections and the check come from the workflow;
+  every answer is written through `amy brief write`, and nothing goes to the
+  tracker, the code host or chat.
+version: 2.0.0
 platforms: [macos, linux]
 metadata:
   hermes:
@@ -18,107 +19,125 @@ metadata:
 
 # Grooming a brief
 
-A brief is what a workflow reads to know what a ticket was asked to do, and
-grooming has one rule: **a requirement names its source, or it is cut.** Not
-flagged, not recorded as an assumption — cut, with the reason, where the next
-round and the reviewer can see it was considered.
+A brief is what a workflow reads to know what a piece of work was asked to
+do, and grooming has one rule:
+**a requirement names its source, or it is cut.** Not flagged, not recorded
+as an assumption — cut, with the reason, where the next round and the
+reviewer can see it was considered.
 
-This skill is the method, not the format. The format belongs to the workflow
-that judges the brief, so it comes from that workflow's parser, never from
-memory.
+This skill is the method, never the format. Which sections a brief has, in
+which order, and what makes one ready belong to the workflow that judges it:
+amy reads them off that workflow's declaration and runs its check. Nothing
+below names a section; ask what `amy brief sections` names.
 
-## Find the workflow that owns the brief
+Everything here is a shell command, so it runs from any agent that reads
+skills — one beside the machine running amy, or one the operator talks to
+from a phone.
 
-1. Read `~/.amy/config.yaml`. The workflows are under `workflows:`; the one
-   that judges briefs is usually its own phase beside the one that builds
-   (`amy workflow list` names them). Its plugin slice says where a
-   declaration is read from — a local directory, or a block on the feature
-   issue — and the brief is filed under the ticket's tracker parent, its
-   `briefId`, or the ticket itself when it has none.
-2. Open that workflow's package and read its brief reference and its parser
-   before the first question: what keys a declaration has, what it refuses
-   and by which code, and the command that checks a file. If the reference and
-   the parser disagree, the parser wins — say so.
-3. If no mounted workflow judges a brief, there is nothing for a declaration
-   to be read by. Say that, and stop: a file nobody reads holds no ticket.
+## What the workflow asks for
+
+```sh
+amy brief sections --json            # add --workflow <name> when there is more than one
+```
+
+answers the sections in the order grooming asks them: in a project, the
+brief's own sections first, then each later phase's in walk order — a
+`prove/` phase asks for its scenario there. `phases[].check` says whether each
+phase exports a check.
+
+- If the command says the workflow declares no brief, there is nothing for a
+  brief to be read by. Say that and stop: a brief nobody reads holds no work.
+- If the brief phase has no check, `amy brief check` will refuse every brief
+  and `amy doctor` says so. Tell the person; do not groom against a check that
+  does not exist.
+- When a workflow's prose and its check disagree about a section, the check is
+  what amy runs: the parser wins — say so.
 
 ## What this never does
 
 - **Write where the team reads.** No tracker comment or description edit, no
   pull request, no chat message. Reading the ticket is the only tracker call.
-  If the brief belongs on the issue, the person pastes it.
+  Every answer goes through `amy brief write`, which writes through the brief
+  port the workflow reads; never edit the files behind it.
 - **Invent a source.** No design frame nobody opened, no decision nobody said.
-  A requirement with no source goes to `cut` with its reason.
-- **Move a checkout.** The code is read at a commit (`git grep <rev>`,
-  `git show <rev>:<path>`, `git cat-file -e <rev>:<path>`), never by switching
-  a branch somebody is working on.
-- **Edit a brief a workflow has started on** without saying that it resets
+  A requirement with no source goes to the cuts with its reason.
+- **Move a checkout.** The code is read at a commit, never by switching a
+  branch somebody is working on.
+- **Rewrite a brief a workflow has started on** without saying that it resets
   what was judged against it.
 
 ## Before the first question
 
 1. **The ticket.** Read it, its parent and its comments, read-only. The
    product ticket is the first source.
-2. **The base.** The branch the work will start from — a stacked ticket's is
-   its parent ticket's branch, as the workflow's config says. Fetch in the
-   standing checkout and pin one commit: `git rev-parse origin/<base>`. Every
-   fact about the code in this brief is read at that commit.
+2. **The base.** The branch the work will start from, as the workflow's config
+   says. Read it the way amy's base source does: fetch it to a named
+   destination, `git fetch --no-tags origin +refs/heads/<base>:refs/remotes/origin/<base>`,
+   pin one commit with `git rev-parse origin/<base>`, and read every fact about
+   the code at that commit — `git show <rev>:<path>`, `git grep <text> <rev>`,
+   `git cat-file -e <rev>:<path>`. No checkout, no switch.
 3. **The code at that commit.** Find what the feature would touch and what
    already does part of it. A requirement the base already meets is a cut,
    not a requirement.
+4. **The brief as it stands.** `amy brief check <id> --json`. A brief not
+   stored yet refuses every section; one already groomed shows what is left.
 
 Show back what you read in a few lines — the ask, the base and its commit,
-what already exists, where the sources disagree — before asking anything.
+what already exists, where the sources disagree, the sections the workflow
+asks for — before asking anything.
 
 ## How it runs
 
-**One question at a time**, each carrying the answer you would give and why,
-so agreeing is cheap and disagreeing is deliberate. **After each answer, show
-the declaration as it now stands, as a diff** against the round before. Write
-no file until the person says go; then write it and run the check.
+Ask about the section `amy brief check <id> --json` names as `next`, **one
+question at a time**, each carrying the answer you would give and why, so
+agreeing is cheap and disagreeing is deliberate. Show the section as it would
+be written before writing it.
 
-Ask in this order — each is only checkable once the one before is settled:
+Write the section once the person agrees, piping the answer so a line
+starting with `-` is never read as a flag:
 
-1. **Sources.** What may ask for anything: the product ticket, a design frame
-   actually opened, an integration's documented data model, and a decision —
-   who, when, what was said. The person in this conversation counts, named.
-   An image of a design pasted into a ticket is that ticket, not the design.
-2. **Requirements.** One behaviour each, a concrete example, the sources that
-   ask for it, and whether a person sees it. Anything no source asks for is
-   proposed as a cut, never as a requirement.
-3. **Open questions.** What cannot be answered now, and which requirements
-   each one stops. A question that stops nothing is a note. One that stops a
-   requirement a ticket covers keeps that ticket waiting — that is the point:
-   an answer becomes a decision source.
-4. **The split.** Which ticket covers which requirements, in which
-   repository, the files it touches, what is out of its scope, and the files a
-   reviewer might expect in the diff and will not find.
-5. **Whatever else the workflow's format asks** — a module's imports, a new
-   mechanism against what exists at the base, an order of slices. Run every
-   search it names at the pinned commit yourself; a hit is a cut.
+```sh
+amy brief write <id> "<section>" --explains <work ids> <<'EOF'
+…the answer…
+EOF
+amy brief check <id> --json
+```
 
-Stop when nothing is left assumed, not after N questions. Questions about
-naming, formats and empty values are the ones a reviewer raises first: ask
-them here, where the answer can be written down as a source.
+`--explains` is needed only on the first write; later ones keep it. Then read
+the check:
 
-## The check
+- **`next` names a section already answered** — the check refused what was
+  written. Ask about it again, carrying the rule it broke. Do not move on.
+- **`next` names a section not answered yet** — every refusal left is about a
+  section still to ask, so move on to it, even when it belongs to a later
+  phase.
+- **`ok` is true** — stop. The brief is groomed.
 
-Run the workflow's own check on the file after every write and fix until it
-is green. A check run outside the workflow usually cannot see the base branch
-or the tracker, so close that gap by hand before calling it done:
+A refusal with no `section` is about the declaration, not the brief — a
+missing check, a check that threw. It is the workflow's to fix: say it and
+stop.
 
-- every path the split touches exists at the pinned commit, or is meant to be
+Stop when the check is green, not after N questions. Questions about naming,
+formats and empty values are the ones a reviewer raises first: ask them here,
+where the answer can be written down as a source.
+
+## The check cannot see everything
+
+`amy brief check` runs every phase's check against the stored brief and the
+operations the mounted plugins offer. What it cannot see, close by hand
+before calling it done:
+
+- every path the brief names exists at the pinned commit, or is meant to be
   new;
-- every search the format names finds nothing at that commit;
-- every ticket the split names is filed under the feature in the tracker —
-  its parent is the feature, or the brief is named after the ticket itself.
-  A brief the tracker files a ticket away from is a brief that ticket never
-  reads.
+- every search the brief claims finds nothing does find nothing at that
+  commit;
+- the work ids the brief explains are the ones the tracker files under the
+  feature — a brief explaining a ticket the tracker files elsewhere is one
+  that ticket never reads.
 
 ## Done
 
-Say, in this order: the file path, the check output, the base commit it was
-read at, the cuts, and the open questions with what each blocks. Then what the
-person does next — usually a tick of the phase that judges briefs, a tick of
-the workflow that reads the verdict, and `amy brief <FEATURE>` for what was
-published.
+Say, in this order: the brief id and the green `amy brief check` output, the
+base commit it was read at, the cuts, and the open questions with what each
+blocks. Then what the person does next — usually a tick of the workflow that
+reads the brief, and `amy brief <id>` for what it now says.

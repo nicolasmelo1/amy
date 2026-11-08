@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { ConfigField, ConfigSchema, Plan, WorkRecord } from "@amykit/core";
+import type { BriefDeclaration, BriefRecord, ConfigField, ConfigSchema, Plan, WorkRecord } from "@amykit/core";
 import { CALLED, defineWorkflow, settled, withDiagram } from "@amykit/core";
 import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
@@ -17,7 +17,7 @@ import { DEFAULT_CONFIG } from "../src/config.js";
 import { isFilesystemWorkflow, load, pluginsRootResolver } from "../src/loader.js";
 import { profileDaemonPids, profileOwnedDirectories, profilePaths } from "../src/paths.js";
 import { profiles } from "../src/profiles.js";
-import { composeProject, phasesOf, resolvePhases } from "../src/project.js";
+import { briefsOf, checkBrief, composeProject, phasesOf, resolvePhases, sectionsOf, withSection } from "../src/project.js";
 import { hostPaths, pluginSlices, worktreeNamespace } from "../src/slices.js";
 
 /** One phase's plugin, as the composition reads it. */
@@ -39,6 +39,8 @@ function declaredPhase(
     readonly writes?: unknown;
     /** One decision per state, replacing the default march down the states. */
     readonly decisions?: Readonly<Record<string, (record: WorkRecord) => Plan>>;
+    /** The sections the phase asks the brief for, and its check. */
+    readonly brief?: BriefDeclaration;
   },
 ) {
   const ends = spec.terminal.filter((end) => !spec.states.includes(end));
@@ -49,6 +51,7 @@ function declaredPhase(
     ...(spec.takes ? { input: spec.takes } : {}),
     ...(spec.returns ? { output: Object.fromEntries(Object.entries(spec.returns).map(([end, returns]) => [end, () => returns])) } : {}),
     ...(spec.writes ? { trackerWrites: spec.writes as never } : {}),
+    ...(spec.brief ? { brief: spec.brief } : {}),
     needs: {},
     record: () => ({}),
     discover: async () => [],
@@ -683,3 +686,89 @@ export const plugin = defineWorkflow({
 `;
   return { source, diagram: diagramFor(spec.states, spec.terminal) };
 }
+
+describe("a project's brief is every phase's sections", () => {
+  const root = path.join("/projects", "invoices");
+  const sectionOf = (record: BriefRecord, name: string) => record.sections.find((one) => one.name === name)?.body ?? "";
+
+  /** A project whose brief asks Goal and Criteria, and whose proof asks for a Scenario naming offered operations. */
+  function project() {
+    const brief = declaredPhase("brief-of-invoices", {
+      states: ["BRIEFED"], terminal: ["BRIEFED"],
+      brief: {
+        sections: ["Goal", "Criteria"],
+        check: (record) => sectionOf(record, "Criteria").split("\n").every((line) => /^- .+ \(source: S\d+\)$/.test(line))
+          ? []
+          : [{ section: "Criteria", rule: "every criterion names its source" }],
+      },
+    });
+    const work = declaredPhase("work-of-invoices", { states: ["OPENED"], terminal: ["OPENED"] });
+    const prove = declaredPhase("prove-of-invoices", {
+      states: ["CHECKED"], terminal: ["SATISFIED"],
+      brief: {
+        sections: ["Scenario"],
+        check: (record, { operations }) => sectionOf(record, "Scenario").split("\n").filter((line) => line.trim() !== "")
+          .filter((line) => !operations.some((one) => one.id === line.trim()))
+          .map((line) => ({ section: "Scenario", rule: `no mounted plugin offers \`${line.trim()}\`` })),
+      },
+    });
+    const composed = composeProject({
+      profile: { name: "invoices", settings: {} },
+      slices: {},
+      phases: [
+        { phase: "brief", plugin: brief, name: brief.name },
+        { phase: "workflow", plugin: work, name: work.name },
+        { phase: "prove", plugin: prove, name: prove.name },
+      ],
+      absent: {},
+      root,
+    });
+    expect(composed.problems).toEqual([]);
+    return briefsOf(composed.plugin);
+  }
+
+  const operations = [{ id: "browser.open", input: { type: "object", properties: { url: { type: "string" } } } }];
+
+  it("asks the brief's own sections first, then each later phase's, in walk order", () => {
+    expect(sectionsOf(project())).toEqual([
+      { phase: "brief", section: "Goal" },
+      { phase: "brief", section: "Criteria" },
+      { phase: "prove", section: "Scenario" },
+    ]);
+  });
+
+  it("refuses a brief without prove/'s scenario, naming prove/, and grooming asks it once the brief's sections are green", async () => {
+    const briefs = project();
+    let sections = withSection(briefs, null, "Goal", "One currency on every invoice line.");
+    sections = withSection(briefs, { sections }, "Criteria", "- the total shows one currency (source: S1)");
+    const stored: BriefRecord = { id: "invoices", sections, questions: [], explains: [], createdAt: "", updatedAt: "", revision: 2 };
+
+    const before = await checkBrief(briefs, "invoices", stored, operations);
+    // The only refusal left is a section the brief's phase never asked:
+    // grooming moves past the brief's own sections to it.
+    expect(before.refusals).toEqual([
+      { phase: "prove", workflow: "workflow-prove-of-invoices", section: "Scenario", rule: "`prove/` (workflow-prove-of-invoices) asks for it, and the brief does not answer it" },
+    ]);
+    expect(before.next).toEqual({ phase: "prove", section: "Scenario" });
+
+    const answered = { ...stored, sections: withSection(briefs, stored, "Scenario", "browser.open"), revision: 3 };
+    const after = await checkBrief(briefs, "invoices", answered, operations);
+    expect(after.refusals).toEqual([]);
+    expect(after.next).toBeNull();
+    expect(answered.sections.map((one) => one.name)).toEqual(["Goal", "Criteria", "Scenario"]);
+  });
+
+  it("asks an answered section again when a refusal names it, before any later one", async () => {
+    const briefs = project();
+    const stored: BriefRecord = {
+      id: "invoices",
+      sections: [{ name: "Goal", body: "One currency." }, { name: "Criteria", body: "- the total shows one currency" }],
+      questions: [], explains: [], createdAt: "", updatedAt: "", revision: 2,
+    };
+
+    const result = await checkBrief(briefs, "invoices", stored, operations);
+
+    expect(result.refusals.map((one) => [one.phase, one.section])).toEqual([["brief", "Criteria"], ["prove", "Scenario"]]);
+    expect(result.next).toEqual({ phase: "brief", section: "Criteria" });
+  });
+});

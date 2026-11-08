@@ -35,7 +35,11 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | Command | What it does |
 | :-- | :-- |
 | [`amy add`](#amy-add) | Add a workflow or a plugin: install it, mount it, and check the machine boots |
-| [`amy brief`](#amy-brief) | The current statement of a feature, as the workflow keeps it |
+| [`amy brief`](#amy-brief) | The current statement of a feature, the sections its workflow asks for, and whether it is ready |
+| [`amy brief check`](#amy-brief-check) | Judge a brief against every phase's declared sections and check; exits non-zero while anything is refused |
+| [`amy brief sections`](#amy-brief-sections) | The sections the workflow's brief asks for, in the order grooming asks them, and which phase asks each |
+| [`amy brief show`](#amy-brief-show) | The current statement of a feature, as the workflow keeps it |
+| [`amy brief write`](#amy-brief-write) | Answer one section of a brief through the brief port, replacing what it said before |
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
 | [`amy config`](#amy-config) | What this machine would read, if it mounted |
 | [`amy config explain [plugin]`](#amy-config-explain [plugin]) | Every setting the machine and its mounted plugins carry, with its type, default and why |
@@ -89,10 +93,18 @@ amy add [options] <spec>
 
 ### `amy brief`
 
-The current statement of a feature, as the workflow keeps it
+The current statement of a feature, the sections its workflow asks for, and whether it is ready
 
 ```sh
-amy brief [options] <id>
+amy brief
+```
+
+### `amy brief check`
+
+Judge a brief against every phase's declared sections and check; exits non-zero while anything is refused
+
+```sh
+amy brief check [options] <id>
 ```
 
 | Argument | Required | What it is |
@@ -101,7 +113,55 @@ amy brief [options] <id>
 
 | Option | Default | What it does |
 | :-- | :-- | :-- |
+| `--json` |  | the refusals and the next section to ask, as data |
+
+### `amy brief sections`
+
+The sections the workflow's brief asks for, in the order grooming asks them, and which phase asks each
+
+```sh
+amy brief sections [options]
+```
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--json` |  | the same list as data, for an agent grooming the brief |
+
+### `amy brief show`
+
+The current statement of a feature, as the workflow keeps it
+
+```sh
+amy brief show [options] <id>
+```
+
+Runs when `amy brief` is given no subcommand.
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<id>` | yes | the brief id, as the workflow named it |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
 | `--json` |  | the same snapshot as data, for something else to render |
+
+### `amy brief write`
+
+Answer one section of a brief through the brief port, replacing what it said before
+
+```sh
+amy brief write [options] <id> <section> [body]
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `<id>` | yes | the brief id, as the workflow named it |
+| `<section>` | yes | a section the workflow's brief declares |
+| `[body]` | no | the answer; read from standard input when omitted or `-` |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--explains <ids>` |  | the work ids the brief explains, comma-separated; kept from the stored brief when omitted |
 
 ### `amy budget`
 

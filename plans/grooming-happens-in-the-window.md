@@ -1,6 +1,6 @@
 ---
 sources:
-  - { id: S1, kind: reference, ref: "plans/grooming-reads-the-sections-its-workflow-declares.md", said: "tickets reach amy when a person moves them into the working status; a brief comes from somebody running the amy-groom skill in an agent, beside amy rather than inside it" }
+  - { id: S1, kind: reference, ref: "docs/design/grooming-reads-the-sections-its-workflow-declares.md", said: "tickets reach amy when a person moves them into the working status; a brief comes from somebody running the amy-groom skill in an agent, beside amy rather than inside it" }
   - { id: S2, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "grooming is that plan's window conversation with a shape: the workflow's sections, one question at a time, amy brief check after each; it should start where the work is listed" }
   - { id: S3, kind: decision, said: "+ groom in nav 2 searches the tracker read-only and opens a grooming conversation about the picked existing ticket" }
   - { id: S4, kind: decision, said: "amy never creates a ticket: the tracker is where a person writes; a draft of ticket text is something to copy, not something sent" }
