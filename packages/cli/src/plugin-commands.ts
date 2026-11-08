@@ -1,13 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Command, Option } from "commander";
 import {
   Check,
-  CommandContext,
   CommandOutput,
+  DeclaredOperation,
+  Operation,
   Plugin,
   PluginCheck,
-  PluginCommand,
   CommandRunner,
   PluginFile,
   PluginSetup,
@@ -29,6 +28,7 @@ import { pluginList, pluginSlices } from "./slices.js";
 export const BUILT_IN_COMMANDS: readonly string[] = [
   "init", "doctor", "add", "remove", "update", "start", "stop", "status",
   "tick", "run", "look", "queue", "budget", "brief", "skills", "workflow", "plugin",
+  "contract", "config", "mount-check",
   // Hidden from `amy --help`, and still the host's: a script's way to queue
   // work without moving any, and the two halves of the loop a supervisor runs.
   "discover", "daemon", "after-daemon",
@@ -43,13 +43,14 @@ export interface Contribution {
   readonly plugin: Plugin;
   /** Every configured profile that mounts it, which is who may run it. */
   readonly profiles: readonly Profile[];
-  readonly commands: readonly PluginCommand[];
+  /** Every operation it declares: each with `cli` words is a command too. */
+  readonly operations: readonly Operation[];
   readonly checks: readonly PluginCheck[];
   readonly files: readonly PluginFile[];
   readonly setup: readonly PluginSetup[];
   /**
    * What each profile mounts under this name, when it is its own: a profile
-   * that forked the package gets the fork's commands, checks, files and setup.
+   * that forked the package gets the fork's operations, checks, files and setup.
    */
   readonly byProfile?: ReadonlyMap<string, Contribution>;
 }
@@ -61,7 +62,10 @@ export function forProfile(contribution: Contribution, profile: Pick<Profile, "n
 
 export interface Gathered {
   readonly contributions: readonly Contribution[];
-  /** Names two owners both claim: refused before anything runs. */
+  /**
+   * Names two owners both claim, and a plugin still declaring the commands
+   * amy no longer reads: refused before anything runs.
+   */
   readonly problems: readonly string[];
 }
 
@@ -96,7 +100,20 @@ export async function gather(
     }
   }
   const all = [...contributions.values()].map((contribution) => ({ ...contribution, byProfile: byProfile.get(contribution.owner) }));
-  return { contributions: all, problems: conflicts(all) };
+  return { contributions: all, problems: [...retired(all), ...conflicts(all)] };
+}
+
+/**
+ * A plugin that still declares `commands`, named with the member amy no
+ * longer reads. Refused rather than ignored: a plugin whose commands quietly
+ * vanished would read as a machine that lost them.
+ */
+function retired(contributions: readonly Contribution[]): string[] {
+  const plugins = contributions.flatMap((contribution) => [contribution.plugin, ...[...(contribution.byProfile?.values() ?? [])].map((own) => own.plugin)]);
+  const named = new Set(plugins.filter((plugin) => (plugin as { commands?: unknown }).commands !== undefined).map((plugin) => plugin.name));
+  return [...named].map((name) =>
+    `${name} declares \`commands\`, which amy no longer reads: a plugin declares \`operations\`, and the command line is drawn from them`,
+  );
 }
 
 function contributionOf(plugin: Plugin, spec: string, profiles: readonly Profile[]): Contribution {
@@ -105,7 +122,7 @@ function contributionOf(plugin: Plugin, spec: string, profiles: readonly Profile
     spec,
     plugin,
     profiles,
-    commands: plugin.commands ?? [],
+    operations: (plugin.operations ?? []) as readonly DeclaredOperation[] as readonly Operation[],
     checks: plugin.checks ?? [],
     files: plugin.files ?? [],
     setup: plugin.setup ?? [],
@@ -116,36 +133,90 @@ function contributionOf(plugin: Plugin, spec: string, profiles: readonly Profile
 function merged(existing: Contribution, own: Contribution): Contribution {
   return {
     ...existing,
-    commands: existing.commands.length > 0 ? existing.commands : own.commands,
+    operations: existing.operations.length > 0 ? existing.operations : own.operations,
     checks: existing.checks.length > 0 ? existing.checks : own.checks,
     files: existing.files.length > 0 ? existing.files : own.files,
     setup: existing.setup.length > 0 ? existing.setup : own.setup,
   };
 }
 
-/** A command name belongs to one owner, and the host's names are not on offer. */
+/**
+ * An operation id and a command's first word each belong to one owner, and the
+ * host's names are not on offer. Within one package, a group of words is a
+ * group or an operation, never both, and has at most one default.
+ */
 function conflicts(contributions: readonly Contribution[]): string[] {
-  const owners = new Map<string, string>();
+  const ids = new Map<string, string>();
+  const words = new Map<string, string>();
   const problems: string[] = [];
 
   for (const contribution of contributions) {
-    for (const command of contribution.commands) {
-      if (BUILT_IN_COMMANDS.includes(command.name)) {
+    for (const operation of contribution.operations) {
+      const heldId = ids.get(operation.id);
+      if (heldId && heldId !== contribution.owner) {
+        problems.push(`the operation \`${operation.id}\` is declared by both ${heldId} and ${contribution.owner}; an id is owned once`);
+      } else {
+        ids.set(operation.id, contribution.owner);
+      }
+
+      const first = operation.cli?.words[0];
+      if (first === undefined) continue;
+      if (BUILT_IN_COMMANDS.includes(first)) {
         problems.push(
-          `${contribution.owner} declares \`amy ${command.name}\`, which this host already owns; a plugin cannot replace a built-in command`,
+          `${contribution.owner} declares \`amy ${first}\`, which this host already owns; a plugin cannot replace a built-in command`,
         );
         continue;
       }
-      const held = owners.get(command.name);
+      const held = words.get(first);
       if (held && held !== contribution.owner) {
-        problems.push(`\`amy ${command.name}\` is declared by both ${held} and ${contribution.owner}; a name is owned once`);
+        problems.push(`\`amy ${first}\` is declared by both ${held} and ${contribution.owner}; a name is owned once`);
         continue;
       }
-      owners.set(command.name, contribution.owner);
+      words.set(first, contribution.owner);
     }
+    problems.push(...spellings(contribution));
   }
 
   return problems;
+}
+
+/** One package's words: no path spelled twice, no path both an operation and a group, one default a group. */
+function spellings(contribution: Contribution): string[] {
+  const problems: string[] = [];
+  const spelled = contribution.operations.filter((operation) => operation.cli && operation.cli.words.length > 0);
+  const paths = new Map<string, string>();
+  const defaults = new Map<string, string>();
+  for (const operation of spelled) {
+    const words = operation.cli!.words;
+    const path = words.join(" ");
+    const held = paths.get(path);
+    if (held) problems.push(`${contribution.owner} spells both \`${held}\` and \`${operation.id}\` as \`amy ${path}\`; a command runs one operation`);
+    paths.set(path, operation.id);
+    if (operation.cli!.default) {
+      const group = words.slice(0, -1).join(" ");
+      const before = defaults.get(group);
+      if (before) problems.push(`${contribution.owner} makes both \`${before}\` and \`${operation.id}\` the default of \`amy ${group}\`; a group has one`);
+      defaults.set(group, operation.id);
+    }
+    if (inputFieldsOf(operation).includes("json")) {
+      problems.push(`\`${operation.id}\` takes an input field named \`json\`, which every command keeps for --json`);
+    }
+  }
+  for (const operation of spelled) {
+    const path = operation.cli!.words.join(" ");
+    const under = [...paths.keys()].find((other) => other.startsWith(`${path} `));
+    if (under) problems.push(`${contribution.owner} spells \`${operation.id}\` as \`amy ${path}\`, which is also the group \`amy ${under}\` sits under`);
+  }
+  return problems;
+}
+
+function inputFieldsOf(operation: Operation): string[] {
+  try {
+    const schema = operation.input["~standard"].jsonSchema.input({ target: "draft-2020-12" });
+    return Object.keys((schema.properties ?? {}) as Record<string, unknown>);
+  } catch {
+    return [];
+  }
 }
 
 /** What a command needs from the process that registered it. */
@@ -159,206 +230,13 @@ export interface CommandEnvironment {
   readonly out: CommandOutput;
 }
 
-/**
- * Registers every plugin command under its own name, marked with its package.
- *
- * A command the machine never mounted does not exist, and it is nobody's
- * before that: what a machine can do is what it mounted, which is the
- * difference between a framework and a program with plugins attached.
- */
-export function register(program: Command, contributions: readonly Contribution[], env: CommandEnvironment): void {
-  for (const contribution of contributions) {
-    const names = new Map(contributions.map((one) => [one.spec, one.owner]));
-    for (const command of contribution.commands) declare(program, command, contribution, env, names);
-
-  }
-}
-
-function declare(
-  parent: Command,
-  declaration: PluginCommand,
-  contribution: Contribution,
-  env: CommandEnvironment,
-  names: ReadonlyMap<string, string>,
-  inheritedMount = false,
-  inherited: Record<string, string | boolean | undefined> = {},
-  typed: readonly string[] = [],
-): void {
-  // A subcommand runs its own action, so `mount: true` on the parent has to
-  // reach it: `amy worktrees list` is one command in two words.
-  const mount = inheritedMount || declaration.mount === true;
-  const command = parent
-    .command(declaration.name, declaration.default ? { isDefault: true } : undefined)
-    .description(`${declaration.description} (from ${contribution.owner})`);
-
-  withArguments(command, declaration);
-  withFlags(command, declaration);
-
-  for (const sub of declaration.subcommands ?? []) {
-    // A parent's flags are the subcommand's context too: `amy worktrees list
-    // --repo acme/api` is one sentence, and nobody reading it expects the
-    // first word to be forgotten by the second.
-    declare(command, sub, contribution, env, names, mount, { ...inherited, ...(command.opts() as Record<string, string | boolean | undefined>) }, [...typed, declaration.name]);
-  }
-
-  command.action(async (...passed: unknown[]) => {
-    const invoked = passed[passed.length - 1] as Command;
-    await run({ declaration, typed: [...typed, declaration.name] }, contribution, env, invoked, names, mount, inherited);
-  });
-}
-
-/** The positional arguments, in the order the command types them. */
-function withArguments(command: Command, declaration: PluginCommand): void {
-  for (const argument of declaration.args ?? []) {
-    // Commander reads the brackets, not the name: `<name...>` is a required
-    // list even when the declaration says `optional`, so the two spell
-    // independently.
-    const name = argument.variadic ? `${argument.name}...` : argument.name;
-    command.argument(argument.optional ? `[${name}]` : `<${name}>`, argument.description ?? "");
-  }
-}
-
-/** The flags, written the way the help prints them. */
-function withFlags(command: Command, declaration: PluginCommand): void {
-  for (const flag of declaration.flags ?? []) {
-    const option = new Option(flag.flags, flag.description ?? "");
-    if (flag.default !== undefined) option.default(flag.default);
-    command.addOption(option);
-  }
-}
-
-async function run(
-  asked: { declaration: PluginCommand; typed: readonly string[] },
-  contribution: Contribution,
-  env: CommandEnvironment,
-  invoked: Command,
-  names: ReadonlyMap<string, string>,
-  mount: boolean,
-  inherited: Record<string, string | boolean | undefined> = {},
-): Promise<void> {
-  if (!asked.declaration.run) {
-    invoked.help();
-    return;
-  }
-
-  const chosen = env.profileFor(contribution);
-  if (!chosen.ok) {
-    env.out.error(chosen.problem);
-    process.exitCode = 1;
-    return;
-  }
-  // The command the chosen profile's own implementation declares by this path.
-  const own = forProfile(contribution, chosen.profile);
-  const declaration = lookup([own], asked.typed)?.command;
-  if (!declaration?.run) {
-    env.out.error(`\`amy ${asked.typed.join(" ")}\` is not declared by the ${contribution.owner} that ${chosen.profile.name} mounts`);
-    process.exitCode = 1;
-    return;
-  }
-
-  const ports = mount ? await mounted(declaration, chosen.profile, env) : undefined;
-  if (mount && !ports) return;
-
-  const context: CommandContext = {
-    state: stateDirectory(env.home, chosen.profile),
-    home: env.home,
-    settings: settingsFor(own, chosen.profile, env.home, env.config, names),
-    args: invoked.args,
-    options: { ...inherited, ...invoked.opts() },
-    out: env.out,
-    ...(ports ? { ports } : {}),
-  };
-
-  await declaration.run(context);
-}
-
-/**
- * A `mount: true` command gets the ports, or the reason the machine did not
- * come up. Never a half-built context: a command that needs the machine and
- * has half of it would report something other than why it is broken.
- */
-async function mounted(
-  declaration: PluginCommand,
-  profile: Profile,
-  env: CommandEnvironment,
-): Promise<ReadonlyMap<PortKind, object> | undefined> {
-  const outcome = await env.mount(profile);
-  if (outcome.ok) return outcome.ports;
-
-  env.out.error(`\`amy ${declaration.name}\` needs the machine ${profile.name} drives, which did not come up: ${outcome.problems.join("; ")}`);
-  process.exitCode = 1;
-  return undefined;
-}
-
 /** The directory one profile owns: its records and queue live one level down. */
-function stateDirectory(home: string, profile: Profile): string {
+export function stateDirectory(home: string, profile: Profile): string {
   return path.join(home, path.dirname(directoriesFor(profile).records));
 }
 
-/** Runs one command a plugin brought, by the path it is typed under. */
-export async function runNamed(
-  contributions: readonly Contribution[],
-  typed: readonly string[],
-  args: readonly string[],
-  options: Readonly<Record<string, string | boolean | undefined>>,
-  env: CommandEnvironment,
-  /** Named by a caller that is not a person, so nothing can be ambiguous. */
-  profileName?: string,
-): Promise<boolean> {
-  const found = lookup(contributions, typed);
-  if (!found) return false;
-
-  const chosen = profileName
-    ? namedProfile(found.contribution, profileName)
-    : env.profileFor(found.contribution);
-  if (!chosen.ok) throw new Error(chosen.problem);
-  const own = lookup([forProfile(found.contribution, chosen.profile)], typed) ?? found;
-
-  const mount = mountAlong(contributions, typed);
-  const ports = mount ? await mounted(own.command, chosen.profile, env) : undefined;
-  if (mount && !ports) return false;
-
-  // The settings this profile carries land on the name the mount reads the
-  // plugin by — what the config named, and what the module answered.
-  const names = new Map(contributions.map((one) => [one.spec, one.owner]));
-  await own.command.run?.({
-    state: stateDirectory(env.home, chosen.profile),
-    home: env.home,
-    settings: settingsFor(own.contribution, chosen.profile, env.home, env.config, names),
-    args,
-    options,
-    out: env.out,
-    ...(ports ? { ports } : {}),
-  });
-  return true;
-}
-
-/** Whether a command, or a parent it is typed under, needs the mounted ports. */
-function mountAlong(contributions: readonly Contribution[], typed: readonly string[]): boolean {
-  const [name, ...rest] = typed;
-  const owner = contributions.find((contribution) => contribution.commands.some((command) => command.name === name));
-  let command = owner?.commands.find((candidate) => candidate.name === name);
-  let mount = command?.mount === true;
-  for (const step of rest) {
-    command = command?.subcommands?.find((candidate) => candidate.name === step);
-    mount = mount || command?.mount === true;
-  }
-  return mount;
-}
-
-function lookup(
-  contributions: readonly Contribution[],
-  typed: readonly string[],
-): { contribution: Contribution; command: PluginCommand } | undefined {
-  const [name, ...rest] = typed;
-  const owner = contributions.find((contribution) => contribution.commands.some((command) => command.name === name));
-  let command = owner?.commands.find((candidate) => candidate.name === name);
-  for (const step of rest) command = command?.subcommands?.find((candidate) => candidate.name === step);
-  return owner && command ? { contribution: owner, command } : undefined;
-}
-
 /** The settings this plugin's slice carries, refused by name when they are wrong. */
-function settingsFor(contribution: Contribution, profile: Profile, home: string, config: AmyConfig, pluginNames?: ReadonlyMap<string, string>): Record<string, unknown> {
+export function settingsFor(contribution: Contribution, profile: Profile, home: string, config: AmyConfig, pluginNames?: ReadonlyMap<string, string>): Record<string, unknown> {
   // The settings a profile carries land on the name the mount reads the
   // plugin by — the same name-or-spec question a local workflow poses, and
   // the same map that answers it: what the config named, and what the
@@ -521,7 +399,7 @@ export async function checks(
 }
 
 /** The profile a caller named, refused when that profile does not mount it. */
-function namedProfile(
+export function namedProfile(
   contribution: Contribution,
   name: string,
 ): { ok: true; profile: Profile } | { ok: false; problem: string } {

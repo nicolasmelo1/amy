@@ -13,6 +13,7 @@ import { declaredActions, declaredBinding, unrunnable } from "./dispatch.js";
 import { Builds } from "./builds.js";
 import { checkoutsFromWorkspace, lentWhenRead } from "./checkouts.js";
 import { isDeferred } from "./deferred.js";
+import { MountedOperation, OPERATIONS_COLLECTION } from "./operation.js";
 import { WORKFLOW_RUNTIME, WorkflowRuntime } from "./runtime.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
@@ -120,6 +121,7 @@ export async function mount(
 
     mounted.plugins.push(plugin.name);
     registered.push({ plugin, ctx });
+    offerOperations(plugin, settings, host, mounted, problems);
   }
 
   // Every deferred implementation, built once every plugin has registered and
@@ -935,4 +937,27 @@ function catalogued(mounted: Mounted, action: string, implementation: unknown): 
     return `action \`${action}\`: needs the \`${spec.port}\` port, which nothing mounted`;
   }
   return null;
+}
+
+/**
+ * A mounted plugin's operations, put where an action finds them by id.
+ *
+ * The host does it rather than the plugin, so an operation is offered by
+ * being declared: a plugin that forgot to contribute its own would have an
+ * operation every door but the workflow's could reach. An id two mounted
+ * plugins both declare is refused at boot, naming both.
+ */
+function offerOperations(plugin: Plugin, settings: Record<string, unknown>, host: HostServices, mounted: Mounted, problems: string[]): void {
+  if (!plugin.operations?.length) return;
+  const offered = mounted.contributions.get(OPERATIONS_COLLECTION) ?? new Map<string, object>();
+  mounted.contributions.set(OPERATIONS_COLLECTION, offered);
+  const scope = { state: host.paths.profile ?? host.paths.state, home: host.paths.state, settings };
+  for (const operation of plugin.operations) {
+    const held = offered.get(operation.id) as MountedOperation | undefined;
+    if (held) {
+      problems.push(`the operation \`${operation.id}\` is declared by both ${held.owner} and ${plugin.name}; an id is owned once`);
+      continue;
+    }
+    offered.set(operation.id, { owner: plugin.name, operation, scope } satisfies MountedOperation);
+  }
 }

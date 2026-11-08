@@ -2,6 +2,7 @@ import { HarnessReply } from "./ports/Harness.js";
 import { Notifier } from "./ports/Notifier.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ActionContext } from "./runtime.js";
+import { Contract, ErrorEnvelope, MountedOperation, defineContract, invoke } from "./operation.js";
 import { WorkRecord } from "./work.js";
 
 /** What an action is handed beside its ports: a word to the operator that may be lost. */
@@ -15,7 +16,26 @@ export interface ActionDuties {
    * fails the action, so the look is tried again rather than recorded as said.
    */
   announce(text: string): Promise<void>;
+  /**
+   * Calls a mounted plugin's operation by id, the way the command line does:
+   * the input is validated against its schema before the handler, the output
+   * after it.
+   *
+   * An output, or a stream's events in order, answers `ok`. A declared error,
+   * an input the schema refused, or an id no plugin this profile mounted
+   * offers answers the error, naming the id. Something the operation never
+   * declared fails the action, the way any port that broke does.
+   */
+  operate(id: string, input: unknown): Promise<Operated>;
 }
+
+/** What an action is answered when it calls an operation. */
+export type Operated =
+  | { readonly ok: true; readonly output: unknown }
+  | { readonly ok: false; readonly error: ErrorEnvelope };
+
+/** A mounted operation by id, with the ports of the mount it was offered on. */
+export type OperationLookup = (id: string) => (MountedOperation & { port(name: string): unknown }) | undefined;
 
 /**
  * The ports one action receives, and the word it may say, bound to the work.
@@ -39,6 +59,7 @@ export function actionPorts<P extends object>(
   work: ActionContext<WorkRecord, unknown>,
   log: EventLog | undefined,
   now: () => Date,
+  operations: OperationLookup = () => undefined,
 ): { readonly ports: P } & ActionDuties {
   const append = (kind: "agent.run" | "notify.failed", detail: Record<string, unknown>): void => {
     try {
@@ -81,7 +102,35 @@ export function actionPorts<P extends object>(
         append("notify.failed", { error: error instanceof Error ? error.message : String(error), text });
       }
     },
+    operate: (id, input) => operate(operations, id, input),
   };
+}
+
+async function operate(operations: OperationLookup, id: string, input: unknown): Promise<Operated> {
+  const offered = operations(id);
+  if (!offered) {
+    return { ok: false, error: { code: "amy.unknown_operation", message: `no plugin this profile mounts offers the operation \`${id}\`` } };
+  }
+  const contract: Contract = defineContract([offered.operation]);
+  const ran = await invoke(contract, id, input, { port: offered.port, plugin: offered.scope });
+  switch (ran.kind) {
+    case "output":
+      return { ok: true, output: ran.output };
+    case "error":
+    case "refused":
+      return { ok: false, error: ran.error };
+    case "internal":
+      throw new Error(ran.error.message);
+    case "stream": {
+      const events: { event: string; data: unknown }[] = [];
+      for await (const item of ran.events) {
+        if (item.kind === "event") events.push({ event: item.event, data: item.data });
+        else if (item.kind === "error") return { ok: false, error: item.error };
+        else throw new Error(item.error.message);
+      }
+      return { ok: true, output: events };
+    }
+  }
 }
 
 type Method = (...args: unknown[]) => unknown;

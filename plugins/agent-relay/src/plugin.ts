@@ -4,10 +4,11 @@ import {
   Agent,
   AskContext,
   HarnessReply,
-  CommandOutput,
   LogBudget,
-  PluginCommand,
+  defineOperation,
   definePlugin,
+  fail,
+  scopeOf,
   PluginContext,
   Registry,
   deferred,
@@ -15,77 +16,121 @@ import {
   parseBudget,
   ConfigOf,
 } from "@amykit/core";
-import { MODELS_DEV_URL, ModelsDevCatalog, OVERRIDE_FILE, SpecTable, forgetSpecTable, refreshFrom, specTable } from "@amykit/model-specs";
+import { MODELS_DEV_URL, ModelsDevCatalog, OVERRIDE_FILE, RefreshReport, forgetSpecTable, refreshFrom, specTable } from "@amykit/model-specs";
 import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders } from "@amykit/agent-kit";
+import { z } from "zod";
 import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
 import { DEFAULT_SKILL_ROOT, installedSkills, locateSkill, parseSkills, skillsNamed } from "./skills.js";
 
-type Settings = ConfigOf<typeof configSchema>;
+
+/** Dollars per million tokens, which is how a price list is written. */
+const perMillion = (perToken: number): number => Math.round(perToken * 1_000_000 * 10_000) / 10_000;
 
 /**
- * What each model is believed to cost.
+ * What each model is believed to cost, as this plugin's own operations:
+ * `amy models` and `amy models refresh`.
  *
  * Here rather than in the host because the price table is the business of the
  * one thing that spends an agent: a machine with no relay has nothing to
  * price, and a price list that came with the CLI was a fact about a package
  * rather than about this install.
  */
-const models: PluginCommand<Settings> = {
-  name: "models",
-  description: "What each model is believed to cost",
-  subcommands: [
-    {
-      name: "show",
-      description: "The price table in force",
-      default: true,
-      run({ home, out }) {
-        const table = specTable(home);
-        out.line(`source: ${table.source}`);
-        out.line();
-        for (const spec of table.models) {
-          const tier = spec.thresholdTokens
-            ? `  (above ${spec.thresholdTokens.toLocaleString()} input tokens every rate changes)`
-            : "";
-          out.line(
-            `  ${spec.model.padEnd(22)} in ${perMillion(spec.inputPerToken)}  ` +
-              `out ${perMillion(spec.outputPerToken)}  ` +
-              `cache r/w ${perMillion(spec.cacheReadPerToken)}/${perMillion(spec.cacheWritePerToken)}${tier}`,
-          );
-        }
-        out.line();
-        out.line(table.note);
-      },
-    },
-    {
-      name: "refresh",
-      description: "Take the base rates from models.dev, keeping what it does not carry",
-      flags: [
-        { flags: "--dry-run", description: "say what would change and write nothing" },
-        { flags: "--stale-after <days>", description: "refresh only a table written more than this many days ago" },
-      ],
-      async run({ home, options, out }) {
-        const staleAfter = options.staleAfter === undefined ? undefined : Number(options.staleAfter);
-        if (staleAfter !== undefined && !isStale(home, staleAfter)) {
-          out.line(`the price table is younger than ${staleAfter} day(s); nothing to refresh`);
-          return;
-        }
+const showPrices = defineOperation({
+  id: "models.show-prices",
+  domain: "models",
+  summary: "The price table in force",
+  description:
+    "Reads the price table every agent call on this machine is priced from, in dollars per million tokens. " +
+    "Above a model's threshold every rate changes. Changes nothing.",
+  input: z.object({}),
+  output: z.object({
+    source: z.string().describe("source"),
+    models: z.array(z.object({
+      model: z.string().describe("model"),
+      input: z.number().describe("in $/M"),
+      output: z.number().describe("out $/M"),
+      cacheRead: z.number().optional().describe("cache read $/M"),
+      cacheWrite: z.number().optional().describe("cache write $/M"),
+      threshold: z.number().int().optional().describe("rates change above, tokens"),
+    })).describe("models"),
+    note: z.string().describe("note"),
+  }),
+  writes: [],
+  http: { method: "get", path: "/models/prices" },
+  cli: { words: ["models", "show"], default: true },
+  examples: [{
+    summary: "one model",
+    input: {},
+    output: { source: "vendored", models: [{ model: "claude-sonnet-5-5", input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 }], note: "prices are believed, not billed" },
+  }],
+  async handler(_input, context) {
+    const { home } = scopeOf(context, "models.show-prices");
+    const table = specTable(home);
+    return {
+      source: table.source,
+      models: table.models.map((spec) => ({
+        model: spec.model,
+        input: perMillion(spec.inputPerToken),
+        output: perMillion(spec.outputPerToken),
+        ...(spec.cacheReadPerToken === undefined ? {} : { cacheRead: perMillion(spec.cacheReadPerToken) }),
+        ...(spec.cacheWritePerToken === undefined ? {} : { cacheWrite: perMillion(spec.cacheWritePerToken) }),
+        ...(spec.thresholdTokens ? { threshold: spec.thresholdTokens } : {}),
+      })),
+      note: table.note,
+    };
+  },
+});
 
-        const table = await refreshed(home, out);
-        if (!table || options.dryRun === true) return;
+const refreshPrices = defineOperation({
+  id: "models.refresh-prices",
+  domain: "models",
+  summary: "Take the base rates from models.dev, keeping what it does not carry",
+  description:
+    "Fetches models.dev and writes its base rates over this machine's price table, keeping long-context tiering, which models.dev does not publish. " +
+    "A table younger than `staleAfter` days is left alone; a dry run writes nothing; a models.dev that cannot be reached leaves the table exactly as it was.",
+  input: z.object({
+    dryRun: z.boolean().default(false).describe("say what would change and write nothing"),
+    staleAfter: z.number().optional().describe("refresh only a table written more than this many days ago"),
+  }),
+  output: z.object({
+    outcome: z.enum(["written", "dry-run", "fresh"]).describe("outcome"),
+    changes: z.array(z.object({
+      model: z.string().describe("model"),
+      field: z.string().describe("rate"),
+      was: z.number().describe("was $/M"),
+      now: z.number().describe("now $/M"),
+    })).describe("changed"),
+    unmatched: z.array(z.string()).describe("models.dev does not know"),
+    file: z.string().optional().describe("wrote"),
+  }),
+  errors: { "models.unreachable": { description: "models.dev could not be reached or answered something unreadable; the table was left as it was" } },
+  writes: ["price-table"],
+  http: { method: "post", path: "/models/prices/refresh" },
+  cli: { words: ["models", "refresh"] },
+  examples: [{
+    summary: "a table younger than a week",
+    input: { staleAfter: 7 },
+    output: { outcome: "fresh", changes: [], unmatched: [] },
+  }],
+  async handler({ dryRun, staleAfter }, context) {
+    const { home } = scopeOf(context, "models.refresh-prices");
+    if (staleAfter !== undefined && !isStale(home, staleAfter)) return { outcome: "fresh" as const, changes: [], unmatched: [] };
 
-        const file = path.join(home, OVERRIDE_FILE);
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, `${JSON.stringify(table, null, 2)}\n`, "utf-8");
-        forgetSpecTable();
-        out.line(`\nwrote ${file}`);
-        out.line("Long-context tiering was kept: models.dev does not publish it.");
-      },
-    },
-  ],
-};
+    const report = await refreshed(home);
+    if ("reason" in report) return fail("models.unreachable", `the price table was left as it was: ${report.reason}`);
+    const changes = report.changed.map((change) => ({ model: change.model, field: change.field, was: perMillion(change.was), now: perMillion(change.now) }));
+    if (dryRun) return { outcome: "dry-run" as const, changes, unmatched: report.unmatched };
+
+    const file = path.join(home, OVERRIDE_FILE);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${JSON.stringify(report.table, null, 2)}\n`, "utf-8");
+    forgetSpecTable();
+    return { outcome: "written" as const, changes, unmatched: report.unmatched, file };
+  },
+});
 
 /** Whether the table on this machine is older than a number of days. */
 function isStale(home: string, days: number): boolean {
@@ -105,46 +150,23 @@ function isStale(home: string, days: number): boolean {
  * the next agent call paying for yesterday's price is a smaller problem than
  * a table emptied because a network call failed.
  */
-async function refreshed(home: string, out: Pick<CommandOutput, "line" | "error">): Promise<SpecTable | undefined> {
+async function refreshed(home: string): Promise<RefreshReport | { reason: string }> {
   try {
     // Bounded, because this runs on a start and an update: a price list is
     // not worth holding a loop up for, and a machine with no route out must
     // come back to the table it already had rather than wait.
     const response = await fetch(MODELS_DEV_URL, { signal: AbortSignal.timeout(5_000) });
-    if (!response.ok) {
-      out.error(`${MODELS_DEV_URL} answered ${response.status}`);
-      process.exitCode = 1;
-      return undefined;
-    }
-
-    const report = refreshFrom((await response.json()) as ModelsDevCatalog, specTable(home));
-    if (report.changed.length === 0) out.line("nothing changed");
-    for (const change of report.changed) {
-      out.line(`  ${change.model} ${change.field}: ${perMillion(change.was)} -> ${perMillion(change.now)}`);
-    }
-    for (const model of report.unmatched) {
-      out.line(`  ${model}: models.dev does not know it, left as it was`);
-    }
-    return report.table;
+    if (!response.ok) return { reason: `${MODELS_DEV_URL} answered ${response.status}` };
+    return refreshFrom((await response.json()) as ModelsDevCatalog, specTable(home));
   } catch (error) {
-    out.error(`the price table was left as it was: ${error instanceof Error ? error.message : String(error)}`);
-    process.exitCode = 1;
-    return undefined;
+    return { reason: error instanceof Error ? error.message : String(error) };
   }
-}
-
-/** Dollars per million tokens, which is how a price list is written. */
-function perMillion(perToken: number | undefined): string {
-  if (perToken === undefined) return "—";
-  const dollars = perToken * 1_000_000;
-  const decimals = Number.isInteger(dollars * 100) ? 2 : 4;
-  return `$${dollars.toFixed(decimals)}`;
 }
 
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-agent-relay",
   configSchema,
-  commands: [models],
+  operations: [showPrices, refreshPrices],
   register(registry, ctx) {
     // Deferred: the harnesses it relays to are contributed by plugins that
     // may be listed after this one. The host builds it once every plugin has

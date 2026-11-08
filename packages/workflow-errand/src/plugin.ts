@@ -6,14 +6,17 @@ import {
   ConfigSchema,
   Harness,
   Notifier,
-  PluginCommand,
   Store,
   Worktree,
   call,
+  defineOperation,
   defineWorkflow,
+  fail,
   optional,
   port,
+  scopeOf,
 } from "@amykit/core";
+import { z } from "zod";
 import { plugin as pullRequest } from "@amykit/workflow-pull-request";
 import { Effect, decide } from "./decide.js";
 import { DEFAULT_POLICY } from "./observation.js";
@@ -63,40 +66,48 @@ type Settings = ConfigOf<typeof configSchema>;
 /**
  * Something to do, said in passing.
  *
- * The shortest road into this machine, and the one command that has to work
- * on a machine that will not mount: it writes a file and puts it on the
+ * The shortest road into this machine, and the one operation that has to
+ * work on a machine that will not mount: it writes a file and puts it on the
  * queue, and nothing else is asked of it. Owning it here rather than in the
  * host is what stops every install carrying a verb only this workflow can
- * honour.
+ * honour. `amy btw` is its command.
  */
-const btw: PluginCommand<Settings> = {
-  name: "btw",
-  description: "Something to do, said in passing. Goes on the queue, never becomes a ticket",
-  args: [{ name: "text", description: "what to do, in your own words" }],
-  flags: [
-    { flags: "--repo <owner/name>", description: "the repository it is in" },
-    { flags: "--source <who>", description: "who asked", default: "somebody at a keyboard" },
-  ],
-  run({ home, settings, args, options, out }) {
-    const repo = (options.repo as string | undefined) ?? settings.repos[0];
-    if (!repo) {
-      out.error("no repository: pass --repo, or list one under `repos`.");
-      process.exitCode = 1;
-      return;
-    }
+const captureTask = defineOperation({
+  id: "errand.capture-task",
+  domain: "errand",
+  summary: "Something to do, said in passing. Goes on the queue, never becomes a ticket",
+  description:
+    "Writes the remark down as a task file and puts it on the queue in one step, against the repository named or the first of `repos`. " +
+    "Never opens a ticket, never resolves the remark against anything, and needs no mounted machine.",
+  input: z.object({
+    text: z.string().describe("what to do, in your own words"),
+    repo: z.string().optional().describe("the repository it is in; the first of `repos` when unsaid"),
+    source: z.string().default("somebody at a keyboard").describe("who asked"),
+  }),
+  output: z.object({
+    id: z.string().describe("noted"),
+    repo: z.string().describe("in"),
+  }),
+  errors: { "errand.no_repository": { description: "no repository was named and `repos` lists none" } },
+  writes: ["queue"],
+  http: { method: "post", path: "/errand/tasks", status: 201 },
+  cli: { words: ["btw"], positional: ["text"] },
+  examples: [{
+    summary: "a remark about one repository",
+    input: { text: "the deps in the api are stale", repo: "acme/api" },
+    output: { id: "2026-11-07-the-deps-in-the-api-are-stale", repo: "acme/api" },
+  }],
+  async handler({ text, repo, source }, context) {
+    const { home, settings } = scopeOf<Settings>(context, "errand.capture-task");
+    const where = repo ?? settings.repos[0];
+    if (!where) return fail("errand.no_repository", "no repository: pass --repo, or list one under `repos`.");
 
     const now = new Date();
-    const text = args[0] ?? "";
-    const task = writeTaskFile(
-      path.join(home, settings.tasksDirectory),
-      { repo, text, source: String(options.source ?? "somebody at a keyboard") },
-      now,
-    );
+    const task = writeTaskFile(path.join(home, settings.tasksDirectory), { repo: where, text, source }, now);
     new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: task.id, reason: "said in passing" }, now);
-
-    out.line(`noted ${task.id} in ${repo}`);
+    return { id: task.id, repo: where };
   },
-};
+});
 
 export const needs = {
   tasks: port<Tasks>(),
@@ -157,7 +168,7 @@ export const plugin = defineWorkflow({
     }),
   },
   decide,
-  commands: [btw],
+  operations: [captureTask],
   record: () => ({}),
   discover,
   observe,

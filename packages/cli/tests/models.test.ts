@@ -2,14 +2,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { defineOperation } from "@amykit/core";
 import type { Plugin } from "@amykit/core";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { Contribution, gather, runNamed } from "../src/plugin-commands.js";
+import { Contribution, gather } from "../src/plugin-commands.js";
+import { runById } from "../src/operations/commands.js";
 import { STALE_AFTER_DAYS, refreshPricesWhenStale } from "../src/prices.js";
 import { profiles } from "../src/profiles.js";
 
 /**
- * The price table is the relay's, and so is the command that refreshes it.
+ * The price table is the relay's, and so is the operation that refreshes it.
  * What the host owns is the *moment*: an update or a start on a machine that
  * mounted the relay, and nothing at all on one that did not.
  */
@@ -22,19 +25,26 @@ function config() {
   };
 }
 
-function fakeRelay(): Plugin {
+function fakeRelay(asked: unknown[] = []): Plugin {
   return {
     name: "@amykit/plugin-agent-relay",
     register() {},
-    commands: [
-      {
-        name: "models",
-        description: "What each model is believed to cost",
-        subcommands: [
-          { name: "refresh", description: "Refresh the table", run: () => {} },
-        ],
+    operations: [defineOperation({
+      id: "models.refresh-prices",
+      domain: "models",
+      summary: "Refresh the table",
+      description: "Records what it was asked. Changes nothing.",
+      input: z.object({ staleAfter: z.number().optional().describe("days") }),
+      output: z.object({ outcome: z.string().describe("outcome") }),
+      writes: [],
+      http: { method: "post", path: "/models/prices/refresh" },
+      cli: { words: ["models", "refresh"] },
+      examples: [{ summary: "fresh", input: {}, output: { outcome: "fresh" } }],
+      async handler(input) {
+        asked.push(input);
+        return { outcome: "fresh" };
       },
-    ],
+    })],
   };
 }
 
@@ -78,14 +88,16 @@ describe("keeping the price table current", () => {
     process.exitCode = 0;
   });
 
-  it("asks the relay's own command, and only a table older than a week", async () => {
+  it("asks the relay's own operation, and only a table older than a week", async () => {
     const { said, env } = environment();
-    await refreshPricesWhenStale(await contributionsIn(home, fakeRelay()), env);
+    const asked: unknown[] = [];
+    await refreshPricesWhenStale(await contributionsIn(home, fakeRelay(asked)), env);
 
-    // Nothing was asked of the file: the command was invoked, and it is the
-    // one that decides whether a week has passed.
-    expect(await runNamed(await contributionsIn(home, fakeRelay()), ["models", "refresh"], [], { staleAfter: STALE_AFTER_DAYS }, env)).toBe(true);
-    expect(STALE_AFTER_DAYS).toBe("7");
+    // Nothing was asked of the file: the operation was invoked, and it is the
+    // one that decides whether a week has passed. A refresh that worked says
+    // nothing on a start.
+    expect(asked).toEqual([{ staleAfter: 7 }]);
+    expect(STALE_AFTER_DAYS).toBe(7);
     expect(said).toEqual([]);
   });
 
@@ -94,7 +106,7 @@ describe("keeping the price table current", () => {
     const asked = vi.fn();
     const withoutRelay = (await contributionsIn(home)).map((contribution) => ({
       ...contribution,
-      commands: contribution.commands.filter((command) => command.name !== "models"),
+      operations: contribution.operations.filter((operation) => operation.id !== "models.refresh-prices"),
     }));
 
     await refreshPricesWhenStale(withoutRelay, { ...env, out: { line: asked, error: asked } });
@@ -123,17 +135,17 @@ describe("keeping the price table current", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => catalog })));
 
     const { env } = environment();
-    const ran = await runNamed(gathered.contributions, ["models", "refresh"], [], { staleAfter: STALE_AFTER_DAYS }, { ...env, home });
-    expect(ran).toBe(true);
+    const ran = await runById(gathered.contributions, "models.refresh-prices", { staleAfter: STALE_AFTER_DAYS }, { ...env, home });
+    expect(ran).toBe(0);
     expect(fs.readFileSync(table, "utf-8")).not.toBe(`${before}\n`);
 
     // Newer than the window: the table is left exactly as it was, and the
-    // command says why it did nothing.
+    // operation says why it did nothing.
     const fresh = fs.readFileSync(table, "utf-8");
     const said: string[] = [];
-    await runNamed(gathered.contributions, ["models", "refresh"], [], { staleAfter: STALE_AFTER_DAYS }, { ...env, home, out: { line: (text = "") => said.push(text), error: (text) => said.push(text) } });
+    await runById(gathered.contributions, "models.refresh-prices", { staleAfter: STALE_AFTER_DAYS }, { ...env, home, out: { line: (text = "") => said.push(text), error: (text) => said.push(text) } });
     expect(fs.readFileSync(table, "utf-8")).toBe(fresh);
-    expect(said.join("\n")).toContain("nothing to refresh");
+    expect(said.join("\n")).toMatch(/outcome\s+fresh/);
 
     // The network fails: the table is the one that was there, byte for byte.
     fs.utimesSync(table, eightDaysAgo, eightDaysAgo);
@@ -141,10 +153,10 @@ describe("keeping the price table current", () => {
       throw new Error("getaddrinfo ENOTFOUND models.dev");
     }));
     const failed: string[] = [];
-    await runNamed(gathered.contributions, ["models", "refresh"], [], { staleAfter: STALE_AFTER_DAYS }, { ...env, home, out: { line: (text = "") => failed.push(text), error: (text: string) => failed.push(text) } });
+    const code = await runById(gathered.contributions, "models.refresh-prices", { staleAfter: STALE_AFTER_DAYS }, { ...env, home, out: { line: (text = "") => failed.push(text), error: (text: string) => failed.push(text) } });
 
     expect(fs.readFileSync(table, "utf-8")).toBe(fresh);
     expect(failed.join("\n")).toContain("left as it was");
-    expect(process.exitCode).toBe(1);
+    expect(code).toBe(1);
   });
 });

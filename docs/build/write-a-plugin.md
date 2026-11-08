@@ -216,6 +216,73 @@ registry.engine(new ConcurrentEngine(…));
 Each is claimed once. A second plugin claiming the same one is a refusal naming
 both.
 
+### Bring an operation to every door
+
+A plugin does not write commands. It declares **operations**, and every door
+is drawn from them: the command line, `amy contract`, and a workflow's action.
+Installing the plugin adds all three at once; removing it takes all three away.
+
+```ts
+import { defineOperation, definePlugin, fail, scopeOf } from "@amykit/core";
+import { z } from "zod";
+
+const greet = defineOperation({
+  id: "greeting.greet",
+  domain: "greeting",
+  summary: "Greet somebody",                       // what amy --help prints
+  description: "Answers a greeting. Remembers nobody.",
+  input: z.object({
+    who: z.string().describe("who to greet"),
+    times: z.number().int().default(1).describe("how many times"),
+  }),
+  output: z.object({ text: z.string().describe("said") }),
+  errors: { "greeting.nobody": { description: "the name was empty" } },
+  writes: [],
+  http: { method: "post", path: "/greetings" },
+  cli: { words: ["greet"], positional: ["who"] }, // amy greet <who> [--times <number>]
+  examples: [{ summary: "one name", input: { who: "Ada" }, output: { text: "hello, Ada" } }],
+  async handler({ who, times }, context) {
+    const { settings } = scopeOf<{ greeting: string }>(context, "greeting.greet");
+    if (who === "") return fail("greeting.nobody", "there is nobody to greet");
+    return { text: `${settings.greeting}, ${who}`.repeat(times) };
+  },
+});
+
+export const plugin = definePlugin({ name: "@acme/plugin-greeting", configSchema, operations: [greet], register() {} });
+```
+
+What the command line does with it, without a line of yours:
+
+- **Arguments come from the input schema.** Each field named in `positional` is
+  an argument; every other field is a flag (`staleAfter` is `--stale-after`).
+  A number is parsed, a boolean is a bare flag, an array repeats, an enum lists
+  its values in the help. A value that does not parse is refused with exit 2,
+  naming the flag.
+- **The output is drawn from itself and its schema.** An object prints as
+  labelled fields, an array of objects as a table, an enum coloured; a field's
+  label is its `title`, else its description, else its name — so keep
+  descriptions short. No operation draws its own terminal output.
+- **`--json` is for whatever reads it.** The output as JSON, a stream as JSON
+  Lines, an error as the `{ code, message, details? }` envelope on stderr.
+- **The exit code is the outcome:** 0 an output, 1 a declared error, 2 an input
+  refused, 70 anything the operation never declared.
+- `cli.default: true` makes an operation what its group means alone:
+  `roster show` with it is also `amy roster`.
+
+An operation is read before anything mounts, so it answers on a machine that
+will not boot. One that needs the ports declares `mount: true` and reads them
+with `context.port(name)`; when the machine will not assemble it is refused,
+naming why. It is local-only in `amy contract` unless it says `localOnly: false`.
+
+An operation id and a command's first word each belong to one package; a second
+claiming either is refused at load, naming both. A plugin still declaring
+`commands` is refused at load too: that member is gone.
+
+A workflow's action reaches another plugin's operation by id —
+`await operate("greeting.greet", { who: "Ada" })` — and gets `{ ok: true, output }`
+or `{ ok: false, error }` for a declared error, an input the schema refused, or
+an id no plugin its profile mounts offers.
+
 ## 5. Validate what you cannot judge alone
 
 If your plugin *composes* others, its settings cannot be checked in `register` —

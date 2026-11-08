@@ -58,7 +58,6 @@ silently never applied.
 
 | Command | What it does |
 | :-- | :-- |
-| `amy worktrees` | Inspect and tidy the isolated checkouts work runs in |
 | `amy worktrees list` | Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention |
 | `amy worktrees remove` | Remove one worktree, refusing an in-flight or dirty one unless --force |
 | `amy worktrees prune` | Remove every terminal, clean tree past its retention, and nothing else |

@@ -90,35 +90,24 @@ interface Machine {
 }
 
 /**
- * The command, check and file declarations a mounted package carries, read
+ * The operation, check and file declarations a mounted package carries, read
  * off the module rather than restated in prose: the README's table is the
  * package's own answer, so a declaration that changes names a README that
- * fails the docs check.
+ * fails the docs check. An operation reaches the table by the command it is.
  */
 function bringsOf(plugin: unknown): Brought | undefined {
   const read = plugin as Record<string, unknown> | undefined;
   const list = (key: string): readonly unknown[] =>
     Array.isArray(read?.[key]) ? (read?.[key] as readonly unknown[]) : [];
-  if (list("commands").length + list("checks").length + list("files").length === 0) {
+  if (list("operations").length + list("checks").length + list("files").length === 0) {
     return undefined;
   }
 
   const commandOf = (raw: unknown): BroughtCommand | undefined => {
-    const command = raw as Record<string, unknown> | undefined;
-    if (typeof command?.name !== "string" || typeof command?.description !== "string") return undefined;
-    const subcommands = (Array.isArray(command.subcommands) ? command.subcommands : [])
-      .map((step) => {
-        const sub = step as Record<string, unknown>;
-        return typeof sub?.name === "string" && typeof sub?.description === "string"
-          ? { name: sub.name, description: sub.description }
-          : undefined;
-      })
-      .filter((sub): sub is { name: string; description: string } => sub !== undefined);
-    return {
-      name: command.name,
-      description: command.description,
-      ...(subcommands.length > 0 ? { subcommands } : {}),
-    };
+    const operation = raw as { summary?: unknown; cli?: { words?: unknown } } | undefined;
+    const words = operation?.cli?.words;
+    if (!Array.isArray(words) || words.length === 0 || typeof operation?.summary !== "string") return undefined;
+    return { name: words.join(" "), description: operation.summary };
   };
 
   const text = (key: string, field: string): string[] =>
@@ -129,7 +118,7 @@ function bringsOf(plugin: unknown): Brought | undefined {
       })
       .filter((value): value is string => value !== undefined);
 
-  const commands = list("commands").map(commandOf).filter((one): one is BroughtCommand => one !== undefined);
+  const commands = list("operations").map(commandOf).filter((one): one is BroughtCommand => one !== undefined);
   return { commands, checks: text("checks", "name"), files: text("files", "path") };
 }
 

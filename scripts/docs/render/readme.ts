@@ -221,10 +221,7 @@ function bringsOf(brings: Brought): string {
   const brought: string[] = [];
 
   if (brings.commands.length > 0) {
-    const rows = brings.commands.flatMap((command) => [
-      [`\`amy ${command.name}\``, command.description],
-      ...(command.subcommands ?? []).map((sub) => [`\`amy ${command.name} ${sub.name}\``, sub.description]),
-    ]);
+    const rows = brings.commands.map((command) => [`\`amy ${command.name}\``, command.description]);
     brought.push(
       table(["Command", "What it does"], rows),
       "",

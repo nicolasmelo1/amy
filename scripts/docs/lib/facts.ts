@@ -118,11 +118,10 @@ export interface WorkflowShape {
 
 type PackageKind = "unbuilt" | "cli" | "unloadable" | "library" | "plugin" | "workflow";
 
-/** One command a package declares beside its register, as the README renders it. */
+/** One command a package's operation is, as the README renders it: its words and its summary. */
 export interface BroughtCommand {
   name: string;
   description: string;
-  subcommands?: { name: string; description: string }[];
 }
 
 /** What a mounted package names in its own module, for the README to state. */

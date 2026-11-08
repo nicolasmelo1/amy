@@ -6,14 +6,17 @@ import {
   ConfigSchema,
   Harness,
   Notifier,
-  PluginCommand,
   Store,
   Worktree,
   call,
+  defineOperation,
   defineWorkflow,
+  fail,
   optional,
   port,
+  scopeOf,
 } from "@amykit/core";
+import { z } from "zod";
 import { plugin as pullRequest } from "@amykit/workflow-pull-request";
 import { Effect, decide } from "./decide.js";
 import { DEFAULT_POLICY } from "./observation.js";
@@ -71,39 +74,47 @@ type Settings = ConfigOf<typeof configSchema>;
 /**
  * Friction, written down.
  *
- * A file and a queue entry, and nothing else: the command that captures a
+ * A file and a queue entry, and nothing else: the operation that captures a
  * complaint has to work on the machine that is complaining, which is exactly
- * the machine whose mount refused. The host carried it for every install
- * because it had nowhere else to put it; here it belongs to the workflow that
- * reads what it writes.
+ * the machine whose mount refused. Here it belongs to the workflow that
+ * reads what it writes; `amy note` is its command.
  */
-const note: PluginCommand<Settings> = {
-  name: "note",
-  description: "Write a piece of friction down, and put it on the queue",
-  args: [{ name: "text", description: "what went wrong, in your own words" }],
-  flags: [
-    { flags: "--repo <owner/name>", description: "the repository it is about" },
-    { flags: "--source <who>", description: "who noticed", default: "somebody at a keyboard" },
-  ],
-  run({ home, settings, args, options, out }) {
-    const repo = (options.repo as string | undefined) ?? settings.repos[0];
-    if (!repo) {
-      out.error("no repository: pass --repo, or list one under `repos`.");
-      process.exitCode = 1;
-      return;
-    }
+const captureNote = defineOperation({
+  id: "note-to-plan.capture-note",
+  domain: "note-to-plan",
+  summary: "Write a piece of friction down, and put it on the queue",
+  description:
+    "Writes the friction down as a note file and puts it on the queue in one step, against the repository named or the first of `repos`. " +
+    "Never drafts the plan itself, and needs no mounted machine.",
+  input: z.object({
+    text: z.string().describe("what went wrong, in your own words"),
+    repo: z.string().optional().describe("the repository it is about; the first of `repos` when unsaid"),
+    source: z.string().default("somebody at a keyboard").describe("who noticed"),
+  }),
+  output: z.object({
+    id: z.string().describe("noted"),
+    repo: z.string().describe("about"),
+  }),
+  errors: { "note-to-plan.no_repository": { description: "no repository was named and `repos` lists none" } },
+  writes: ["queue"],
+  http: { method: "post", path: "/note-to-plan/notes", status: 201 },
+  cli: { words: ["note"], positional: ["text"] },
+  examples: [{
+    summary: "friction in one repository",
+    input: { text: "the gate takes two minutes to say nothing", repo: "acme/amy" },
+    output: { id: "2026-11-07-the-gate-takes-two-minutes-to-say-nothing", repo: "acme/amy" },
+  }],
+  async handler({ text, repo, source }, context) {
+    const { home, settings } = scopeOf<Settings>(context, "note-to-plan.capture-note");
+    const where = repo ?? settings.repos[0];
+    if (!where) return fail("note-to-plan.no_repository", "no repository: pass --repo, or list one under `repos`.");
 
     const now = new Date();
-    const written = writeNoteFile(
-      path.join(home, settings.notesDirectory),
-      { repo, text: args[0] ?? "", source: String(options.source ?? "somebody at a keyboard") },
-      now,
-    );
+    const written = writeNoteFile(path.join(home, settings.notesDirectory), { repo: where, text, source }, now);
     new FileQueue(path.join(home, settings.queueDirectory)).enqueue({ workId: written.id, reason: "written down by hand" }, now);
-
-    out.line(`noted ${written.id} about ${repo}`);
+    return { id: written.id, repo: where };
   },
-};
+});
 
 export const needs = {
   notes: port<Notes>(),
@@ -158,7 +169,7 @@ export const plugin = defineWorkflow({
     }),
   },
   decide,
-  commands: [note],
+  operations: [captureNote],
   record: () => ({}),
   discover,
   observe,

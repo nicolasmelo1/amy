@@ -40,20 +40,20 @@ touches:
   - docs/build/**
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "a plugin outside this repository declaring one operation, installed with amy add, appears in amy --help marked with its package and in amy contract, runs, and both disappear when it is removed", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S2, S6, S12, S15, S16] }
-  - { id: A2, statement: "a plugin declaring commands is refused at load, naming the plugin and the removed member", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S1, S3] }
-  - { id: A3, statement: "on a machine whose config will not mount, an operation without mount runs, and one with mount: true is refused naming why", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S4, S5] }
-  - { id: A4, statement: "a number, a boolean, an array and an enum field each parse from argv as their schema says, and a bad value is refused with exit 2 naming the flag", proof: "deferred:test:packages/cli/tests/operations/argv.test.ts", sources: [S6, S7, S11] }
-  - { id: A5, statement: "with --json, an output prints as JSON that validates against the document, a stream as JSON Lines, and a declared error as the envelope on stderr with exit 1", proof: "deferred:test:packages/cli/tests/operations/json.test.ts", sources: [S8, S11] }
-  - { id: A6, statement: "without --json, the same output prints its object as labelled fields and its array of objects as a table, from the output and its schema alone", proof: "deferred:test:packages/cli/tests/operations/draw.test.ts", sources: [S9, S10] }
-  - { id: A7, statement: "two plugins claiming one operation id or one cli word are refused at load, naming both packages", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S12] }
-  - { id: A8, statement: "a plugin operation that does not declare localOnly: false is local-only in amy contract", proof: "deferred:test:packages/cli/tests/plugin-commands.test.ts", sources: [S13] }
-  - { id: A9, statement: "amy btw, note, roster, worktrees and models keep their words and their gate assertions, now as operations", proof: "deferred:assertion:lifecycle.a_workflow_command_is_its_own", sources: [S14] }
-  - { id: A10, statement: "an action calls another plugin's operation by id and receives its output; input the schema refuses, or an id no mounted plugin offers, is the declared error naming the id", proof: "deferred:test:packages/core/tests/action-ports.test.ts", sources: [S17, S18] }
+  - { id: A1, statement: "a plugin outside this repository declaring one operation, installed with amy add, appears in amy --help marked with its package and in amy contract, runs, and both disappear when it is removed", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S2, S6, S12, S15, S16], done: true }
+  - { id: A2, statement: "a plugin declaring commands is refused at load, naming the plugin and the removed member", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S1, S3], done: true }
+  - { id: A3, statement: "on a machine whose config will not mount, an operation without mount runs, and one with mount: true is refused naming why", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S4, S5], done: true }
+  - { id: A4, statement: "a number, a boolean, an array and an enum field each parse from argv as their schema says, and a bad value is refused with exit 2 naming the flag", proof: "test:packages/cli/tests/operations/argv.test.ts", sources: [S6, S7, S11], done: true }
+  - { id: A5, statement: "with --json, an output prints as JSON that validates against the document, a stream as JSON Lines, and a declared error as the envelope on stderr with exit 1", proof: "test:packages/cli/tests/operations/json.test.ts", sources: [S8, S11], done: true }
+  - { id: A6, statement: "without --json, the same output prints its object as labelled fields and its array of objects as a table, from the output and its schema alone", proof: "test:packages/cli/tests/operations/draw.test.ts", sources: [S9, S10], done: true }
+  - { id: A7, statement: "two plugins claiming one operation id or one cli word are refused at load, naming both packages", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S12], done: true }
+  - { id: A8, statement: "a plugin operation that does not declare localOnly: false is local-only in amy contract", proof: "test:packages/cli/tests/plugin-commands.test.ts", sources: [S13], done: true }
+  - { id: A9, statement: "amy btw, note, roster, worktrees and models keep their words and their gate assertions, now as operations", proof: "assertion:lifecycle.a_workflow_command_is_its_own", sources: [S14], done: true }
+  - { id: A10, statement: "an action calls another plugin's operation by id and receives its output; input the schema refuses, or an id no mounted plugin offers, is the declared error naming the id", proof: "test:packages/core/tests/action-ports.test.ts", sources: [S17, S18], done: true }
 crosses:
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3, A10" }
-  - { mechanism: install-and-update, answer: works, proof: "deferred:A1" }
-  - { mechanism: workflow-tooling, answer: works, proof: "deferred:A9" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "A3, A10" }
+  - { mechanism: install-and-update, answer: works, proof: "A1" }
+  - { mechanism: workflow-tooling, answer: works, proof: "A9" }
   - { mechanism: calls, answer: n/a, why: "defineWorkflow gains operations beside its actions; how an action is called is unchanged" }
   - { mechanism: hooks, answer: n/a, why: "an operation is not a hook and runs outside the machine's transitions; hooks are unchanged" }
   - { mechanism: agent-replies, answer: n/a, why: "amy models becomes an operation over the same price table; how an agent's reply is read is unchanged" }
@@ -65,6 +65,27 @@ guarantee:
 cut:
   - "keeping PluginCommand beside operations: refused, two ways to declare one thing is the drift this removes (S3)"
   - "an operation drawing its own terminal output: refused (S10)"
+deviations:
+  - "packages/core/src/operation.ts: CliBinding gains `default`, so `amy roster`, `amy worktrees` and `amy models` keep meaning their show and list words (S14)"
+  - "packages/core/src/operation.ts: OperationContext gains `plugin`, the scope a plugin's operation runs in, read with `scopeOf`; OPERATIONS_COLLECTION and MountedOperation name what a mount offers an action"
+  - "packages/core/src/mount.ts: the mount offers every mounted plugin's operations to actions by id, and refuses an id two mounted plugins declare (A10)"
+  - "packages/cli/src/prices.ts: the price refresh a start and an update ask for runs `models.refresh-prices` by id, and says nothing when it worked"
+  - "packages/cli/tests/models.test.ts: the price refresh test drives the operation instead of the removed command"
+  - "packages/cli/package.json and packages/cli/tsconfig.json: the command line depends on @amykit/services, whose contract `amy contract` prints (S15)"
+  - "packages/workflow-errand/package.json, packages/workflow-note-to-plan/package.json, packages/workflow-ticket-to-qa/package.json, plugins/agent-relay/package.json, plugins/file-worktree/package.json, package-lock.json: Zod is now a runtime dependency"
+  - "BUILT_IN_COMMANDS gains contract, config and mount-check, the host's own names a plugin could otherwise have claimed"
+  - "an operation declaring mount: true on a machine that will not assemble exits 70 with `amy.unmounted`: neither a declared error nor an input refused"
+  - "a field's label is its title, else its description, else its name (S9): a title lets a field keep a long description and a short label"
+  - "the five operations' output is drawn, not written by hand (S10): `amy worktrees` drops its orphan hint, which its description carries, and an empty prune draws `removed (none)`"
+  - "scripts/docs/sources/packages.ts, scripts/docs/lib/facts.ts, scripts/docs/render/readme.ts: a README's command table is read from the package's operations"
+  - ".software-factory/evidence/ticket-to-qa/drive.ts: the roster confirmation's date and the empty prune are read as the drawn output prints them; every assertion keeps its id"
+  - ".software-factory/evidence/**, .software-factory/locks/**, .software-factory/catalog.lock.json: every activated gate re-run and re-sealed, and sf lock for the new dependencies"
+  - "README.md, docs/concepts/architecture.md, docs/reference/cli.md, docs/reference/configuration.md, docs/start/installation.md, docs/manifest.json: generated from the new declarations"
+  - "packages/workflow-ticket-to-qa/README.md, plugins/agent-relay/README.md, plugins/file-worktree/README.md: generated, their command tables read from the operations"
+  - "registry/cli.json, registry/core.json, registry/plugin-agent-relay.json, registry/plugin-file-worktree.json: generated registry items"
+  - "registry/workflow-errand.json, registry/workflow-note-to-plan.json, registry/workflow-ticket-to-qa.json: generated registry items"
+  - ".changeset/a-plugin-brings-operations-not-commands.md: the release note"
+  - "plans/next-steps.md, plans/grooming-reads-the-sections-its-workflow-declares.md: the delivered row leaves the board, and the plan citing this one cites where it lives now"
 exit: "a plugin written outside this repository declares one operation, and after amy add it is a command in amy --help, an entry in amy contract, and prints the same output as JSON and as a table"
 ---
 # A plugin brings operations, not commands

@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
 import { ActionSpec } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
-import { PluginCheck, PluginCommand, PluginFile, PluginSetup } from "./commands.js";
+import { PluginCheck, PluginFile, PluginSetup } from "./commands.js";
+import { DeclaredOperation, OPERATIONS_COLLECTION, MountedOperation } from "./operation.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, ValueFor, validateConfig } from "./config-schema.js";
 import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
@@ -225,11 +226,11 @@ interface DeclarationBase<
   /** Each state the diagram marks \`call\`, bound to the workflow it calls. */
   readonly calls?: Readonly<Record<string, Call>>;
   /**
-   * The commands, checks and files this workflow brings, read beside
+   * The operations, checks and files this workflow brings, read beside
    * `register` rather than through it: they have to answer when the machine
    * does not mount, which is when a workflow's own `amy roster` matters most.
    */
-  readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
+  readonly operations?: readonly DeclaredOperation[];
   readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
   readonly files?: readonly PluginFile<ConfigOf<S>>[];
   /** What `amy init` prepares for this workflow, and the environment variables it reads: a plugin's own, carried as they are. */
@@ -318,7 +319,7 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
   const plugin = {
     name: declaration.pluginName ?? `workflow-${declaration.name}`,
     configSchema: declaration.configSchema,
-    ...(declaration.commands ? { commands: declaration.commands as unknown as readonly PluginCommand[] } : {}),
+    ...(declaration.operations ? { operations: declaration.operations } : {}),
     ...(declaration.checks ? { checks: declaration.checks as unknown as readonly PluginCheck[] } : {}),
     ...(declaration.files ? { files: declaration.files as unknown as readonly PluginFile[] } : {}),
     ...(declaration.setup ? { setup: declaration.setup as unknown as readonly PluginSetup[] } : {}),
@@ -946,6 +947,17 @@ function decisionsFit(workflow: string, states: readonly string[], decide: Reado
   throw new Error(`the ${workflow} workflow's \`decide\` does not match its states: ${details.join("; ")}`);
 }
 
+/**
+ * The operations the plugins this profile mounted offer, read when an action
+ * asks: a plugin listed after the workflow has still offered its own.
+ */
+function operationsOf(ctx: PluginContext): (id: string) => (MountedOperation & { port(name: string): unknown }) | undefined {
+  return (id) => {
+    const offered = ctx.contributions(OPERATIONS_COLLECTION).get(id) as MountedOperation | undefined;
+    return offered ? { ...offered, port: (name: string) => ctx.port(name) } : undefined;
+  };
+}
+
 function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends Needs, R extends WorkRecord, O>(
   declaration: Declaration<S, P, N, R, O>,
   scope: WorkflowPieceContext<S, P, N>,
@@ -955,7 +967,7 @@ function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends N
   for (const [name, implementation] of Object.entries(declared)) {
     actions[name] = typeof implementation === "function"
       ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(
-        { ...scope, ...actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now) },
+        { ...scope, ...actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now, operationsOf(scope.ctx)) },
         work,
         effect,
       )

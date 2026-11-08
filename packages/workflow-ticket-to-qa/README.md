@@ -98,9 +98,8 @@ silently never applied.
 
 | Command | What it does |
 | :-- | :-- |
-| `amy roster` | Who is reviewing today |
-| `amy roster confirm` | Stamp the roster with today's date |
 | `amy roster show` | Print the roster and whether it is current |
+| `amy roster confirm` | Stamp the roster with today's date |
 
 Typed on a machine that mounted this package, and unknown on one that did not.
 

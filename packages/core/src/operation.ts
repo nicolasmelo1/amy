@@ -44,11 +44,45 @@ export interface CliBinding {
   readonly words: readonly string[];
   /** Input fields taken by position, in order; every other field is a flag. */
   readonly positional?: readonly string[];
+  /**
+   * What the words before the last one mean on their own: `amy roster` is
+   * `amy roster show` when the operation spelled `roster show` says so. One
+   * per group of words, or the command line would have to guess.
+   */
+  readonly default?: boolean;
+}
+
+/**
+ * What a plugin's operation is handed beside the ports: the directory the
+ * profile running it owns, the machine's state root, and the plugin's own
+ * settings slice, validated the way a mount's are.
+ */
+export interface OperationScope<Settings extends Record<string, unknown> = Record<string, unknown>> {
+  /** The profile's state directory: everything a plugin owns lives under it. */
+  readonly state: string;
+  /** The machine's state root, for the one file that is nobody's profile. */
+  readonly home: string;
+  readonly settings: Settings;
 }
 
 /** What a handler is handed besides its input: the mounted ports, by name. */
 export interface OperationContext {
+  /**
+   * A mounted port. An operation that does not declare `mount: true` runs
+   * before anything mounts, and asking for a port there is refused by name.
+   */
   port(name: string): unknown;
+  /** Present when the operation is a plugin's: where it runs and with what settings. */
+  readonly plugin?: OperationScope;
+}
+
+/**
+ * The scope a plugin's operation runs in, typed by the settings it declared;
+ * refused, naming the operation, when the caller handed none.
+ */
+export function scopeOf<Settings extends Record<string, unknown>>(context: OperationContext, id: string): OperationScope<Settings> {
+  if (!context.plugin) throw new Error(`\`${id}\` is a plugin's operation, and its caller handed it no profile to run in`);
+  return context.plugin as OperationScope<Settings>;
 }
 
 /** One event a streaming operation yields. */
@@ -129,6 +163,20 @@ export function defineOperation(operation: Operation): Operation {
 
 export function isStream(operation: Operation): operation is StreamOperation {
   return "events" in operation;
+}
+
+/**
+ * The collection the mount puts every mounted plugin's operations in, keyed
+ * by id: what an action reaches by `operate`, and nothing a profile did not
+ * mount.
+ */
+export const OPERATIONS_COLLECTION = "amy.operations";
+
+/** One mounted plugin's operation, with the scope it runs in on this mount. */
+export interface MountedOperation {
+  readonly owner: string;
+  readonly operation: DeclaredOperation;
+  readonly scope: OperationScope;
 }
 
 /** Every operation a door can reach, by id. */

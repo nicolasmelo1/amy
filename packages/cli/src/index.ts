@@ -90,10 +90,11 @@ import {
   checks as pluginChecks,
   gather,
   migrateRootFiles,
-  register,
   runSetup,
   writeFiles,
 } from "./plugin-commands.js";
+import { register } from "./operations/commands.js";
+import { installContract } from "./operations/contract.js";
 import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
 import { addWorkflowInto } from "./workflow-add.js";
@@ -2839,6 +2840,27 @@ function commandEnvironment(): CommandEnvironment {
 
 register(program, contributions, commandEnvironment());
 
+program
+  .command("contract")
+  .description("This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document")
+  .option("--check", "say whether the contract builds, and refuse one that does not")
+  .action((options: { check?: boolean }) => {
+    let document: Record<string, unknown>;
+    try {
+      document = installContract(contributions);
+    } catch (error) {
+      console.error(`the contract does not build: ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 1;
+      return;
+    }
+    if (!options.check) {
+      console.log(JSON.stringify(document, null, 2));
+      return;
+    }
+    const paths = Object.values((document.paths ?? {}) as Record<string, Record<string, unknown>>);
+    console.log(`the contract builds: ${paths.reduce((count, methods) => count + Object.keys(methods).length, 0)} operation(s)`);
+  });
+
 // So a name this machine does not provide can be answered here rather than by
 // commander's bare "unknown command", which reads as if amy had never heard of
 // it. Help and version still leave through the same door, with status 0.
@@ -2869,5 +2891,8 @@ program.parseAsync(process.argv).catch((error: unknown) => {
     return;
   }
   console.error(message);
-  process.exitCode = 1;
+  // An operation's command exits 2 for an argument commander refused, which
+  // is an input refused; every other command keeps 1.
+  const exit = (error as { exitCode?: unknown }).exitCode;
+  process.exitCode = typeof exit === "number" && exit > 0 ? exit : 1;
 });
