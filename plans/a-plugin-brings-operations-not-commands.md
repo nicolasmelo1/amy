@@ -1,5 +1,5 @@
 ---
-base: ccd67f60c665bea1586ff5e978f9adfa60494048
+base: 6a1b9d3604a7dca7339cdd78eb5acd55ca258764
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/commands.ts", said: "a PluginCommand takes args as strings and answers through out.line: it speaks to a terminal, with no typed input or output any other door could read" }
   - { id: S2, kind: decision, said: "a plugin declares operations, not commands: adding or removing a plugin adds or removes its route, its command and its SDK method at once. Decided 2026-11-04" }
@@ -15,7 +15,7 @@ sources:
   - { id: S12, kind: reference, ref: "packages/cli/src/plugin-commands.ts", said: "a command name belongs to one owner, amy --help marks it with the package, and the built-ins are not on offer; the same ownership holds for operation ids and cli words" }
   - { id: S13, kind: decision, said: "a plugin's operation is local-only unless it says otherwise, so installing a plugin never opens a route over TCP by surprise" }
   - { id: S14, kind: decision, said: "amy btw (errand), amy note (note-to-plan), amy roster (ticket-to-qa), amy worktrees (file-worktree) and amy models (agent-relay) become operations in this row, keeping their words" }
-  - { id: S16, kind: reference, ref: "plans/amy-speaks-in-domains.md", said: "no door is written by hand, and a plugin changes the contract: its operations reach every door when installed and leave every door when removed" }
+  - { id: S16, kind: reference, ref: "docs/design/amy-speaks-in-domains.md", said: "no door is written by hand, and a plugin changes the contract: its operations reach every door when installed and leave every door when removed" }
   - { id: S15, kind: decision, said: "amy contract prints the install's whole contract, services and mounted plugins, as an OpenAPI document; amy contract --check refuses one that does not build" }
   - { id: S17, kind: decision, said: "a workflow is one more door: an action calls a mounted plugin's operation by id with input its schema validates, and gets the output or the declared error, as the command line does. Decided 2026-11-06" }
   - { id: S18, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "each step of a scenario calls an operation by name with its input; a driver is reached only through the operations it offers" }
