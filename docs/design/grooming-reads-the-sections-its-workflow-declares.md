@@ -14,6 +14,8 @@ sources:
   - { id: S11, kind: decision, said: "a brief check is handed the name and input schema of every operation the mounted plugins offer, so a section can be refused for naming one nothing offers. Decided 2026-11-06" }
   - { id: S12, kind: reference, ref: "plans/a-phase-is-proven-not-asserted.md", said: "the scenario is a section of the brief settled while grooming, and the brief check refuses a step naming an operation no mounted plugin offers" }
   - { id: S14, kind: decision, said: "after a section, grooming moves on when every refusal left names a section it has not asked yet, and stops only when the whole check is green, every phase's included. Decided 2026-11-06" }
+  - { id: S15, kind: decision, said: "with no brief/ phase, the brief check refuses unless at least one phase declaring sections exports a check; a sections-only phase beside one that judges is fine, and amy doctor says the same. Decided 2026-11-08" }
+  - { id: S16, kind: decision, said: "a phase's check runs only once every section that phase declares is answered; the blank ones are refused by name until then, so a check never parses a half-groomed brief. Decided 2026-11-08" }
   - { id: S13, kind: reference, ref: "docs/design/a-plugin-brings-operations-not-commands.md", said: "a plugin declares operations with typed input and output, read before anything mounts" }
 touches:
   - packages/core/src/define-workflow.ts
@@ -25,8 +27,8 @@ touches:
   - packages/cli/src/project.ts
   - packages/cli/tests/project.test.ts
 criteria:
-  - { id: A1, statement: "amy brief check exits zero on a brief the workflow's check accepts and non-zero naming the section and rule on one it refuses", proof: "test:packages/cli/tests/brief-check.test.ts, assertion:brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule", sources: [S1, S2, S4, S5], done: true }
-  - { id: A2, statement: "a workflow with a brief/ phase and no exported check is reported by amy doctor", proof: "test:packages/cli/tests/doctor.test.ts, assertion:brief_check.the_doctor_names_the_brief_check", sources: [S6], done: true }
+  - { id: A1, statement: "amy brief check exits zero on a brief the workflow's check accepts and non-zero naming the section and rule on one it refuses", proof: "test:packages/cli/tests/brief-check.test.ts, assertion:brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule", sources: [S1, S2, S4, S5, S15, S16], done: true }
+  - { id: A2, statement: "a workflow with a brief/ phase and no exported check is reported by amy doctor", proof: "test:packages/cli/tests/doctor.test.ts, assertion:brief_check.the_doctor_names_the_brief_check", sources: [S6, S15], done: true }
   - { id: A3, statement: "amy-groom names the sections it will ask about from the workflow's declaration, not from a list of its own", proof: "test:packages/cli/tests/brief-check.test.ts, assertion:brief_check.the_sections_are_the_workflows", sources: [S7], done: true }
   - { id: A4, statement: "a brief groomed through the skill is stored through the brief port and amy brief check is green on it", proof: "assertion:brief_check.the_groomed_brief_is_green", sources: [S8, S9], done: true }
   - { id: A5, statement: "the shipped skill names no tracker, no team and no private workflow", proof: "test:packages/cli/tests/brief-check.test.ts", sources: [S3], done: true }

@@ -188,11 +188,53 @@ describe("a brief check sees what the mounted plugins offer", () => {
 
 describe("the section grooming asks next", () => {
   it("asks a refused section it already answered again, before one still unanswered", async () => {
-    const { Sources: _skipped, ...rest } = READY;
-    const result = await checkBrief(briefsOf(groomed), "invoice-currency", brief({ ...rest, Criteria: "- rounding" }), open);
+    const briefs = [...briefsOf(groomed), { phase: "prove" as const, workflow: "workflow-prove", declaration: { sections: ["Proof"], check: () => [] } }];
 
-    expect(result.refusals.map((one) => one.section)).toEqual(["Sources", "Criteria"]);
+    const result = await checkBrief(briefs, "invoice-currency", brief({ ...READY, Criteria: "- rounding" }), open);
+
+    expect(result.refusals.map((one) => one.section)).toEqual(["Criteria", "Proof"]);
     expect(result.next).toEqual({ phase: null, section: "Criteria" });
+  });
+});
+
+describe("a check is handed only a brief answering its own sections", () => {
+  // A parser written as most are: it assumes the sections it declared are there.
+  const strict = { name: "workflow-strict", brief: { sections: ["Goal", "Criteria"], check: (record: BriefRecord) => record.sections.find((one) => one.name === "Criteria")!.body.includes("source") ? [] : [{ section: "Criteria", rule: "names no source" }] } };
+
+  it("does not run while a section it declares is blank, so grooming is told the first section to ask", async () => {
+    const result = await checkBrief(briefsOf(strict), "invoice-currency", null, open);
+
+    expect(result.refusals.map((one) => one.section)).toEqual(["Goal", "Criteria"]);
+    expect(result.next).toEqual({ phase: null, section: "Goal" });
+  });
+
+  it("runs once every section it declares is answered", async () => {
+    const result = await checkBrief(briefsOf(strict), "invoice-currency", brief({ Goal: "One currency.", Criteria: "- the total" }), open);
+
+    expect(result.refusals).toEqual([{ phase: null, workflow: "workflow-strict", section: "Criteria", rule: "names no source" }]);
+  });
+});
+
+describe("a project whose brief/ is declared absent", () => {
+  it("refuses when no phase declaring sections exports a check, rather than answering green", async () => {
+    const briefs = [{ phase: "workflow" as const, workflow: "workflow-work", declaration: { sections: ["Goal"] } }];
+
+    const result = await checkBrief(briefs, "invoice-currency", brief({ Goal: "One currency." }), open);
+
+    expect(result.refusals).toEqual([
+      { phase: "workflow", workflow: "workflow-work", rule: expect.stringContaining("`workflow/` (workflow-work) declares no brief check") },
+    ]);
+  });
+
+  it("accepts a sections-only phase beside another phase that judges", async () => {
+    const briefs = [
+      { phase: "workflow" as const, workflow: "workflow-work", declaration: { sections: ["Goal"] } },
+      { phase: "prove" as const, workflow: "workflow-prove", declaration: { sections: ["Scenario"], check: () => [] } },
+    ];
+
+    const result = await checkBrief(briefs, "invoice-currency", brief({ Goal: "One currency.", Scenario: "browser.open" }), open);
+
+    expect(result.refusals).toEqual([]);
   });
 });
 

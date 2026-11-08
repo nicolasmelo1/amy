@@ -523,15 +523,28 @@ export async function checkBrief(
   return { id, revision: record.revision, refusals, next: nextSection(briefs, refusals, answered) };
 }
 
-/** The brief phase declaring no check, as a refusal: no check is not a check that passes. */
+/**
+ * No check where one is owed, as a refusal: no check is not a check that
+ * passes. The brief phase owes one; without a brief phase, at least one of
+ * the phases declaring sections does, and a sections-only phase is fine
+ * beside another that judges.
+ */
 function uncheckedOwner(briefs: readonly PhaseBrief[]): readonly BriefCheckRefusal[] {
-  const owner = briefPhase(briefs);
-  if (!owner || owner.declaration?.check !== undefined) return [];
+  const unchecked = uncheckedBrief(briefs);
+  if (!unchecked) return [];
   return [{
-    phase: owner.phase,
-    workflow: owner.workflow,
-    rule: `${where(owner)} declares no brief check, so nothing can say this brief is ready — declare \`brief: { sections, check }\` in its defineWorkflow`,
+    phase: unchecked.phase,
+    workflow: unchecked.workflow,
+    rule: `${where(unchecked)} declares no brief check, so nothing can say this brief is ready — declare \`brief: { sections, check }\` in its defineWorkflow`,
   }];
+}
+
+/** The phase that owes a brief check and exports none, or undefined when every check owed is there. */
+export function uncheckedBrief(briefs: readonly PhaseBrief[]): PhaseBrief | undefined {
+  const owner = briefPhase(briefs);
+  if (owner) return owner.declaration?.check === undefined ? owner : undefined;
+  const declared = declaring(briefs);
+  return declared.length > 0 && declared.every((one) => one.declaration.check === undefined) ? declared[0] : undefined;
 }
 
 /** One phase's refusals: the declared sections left blank, then what its own check refuses. */
@@ -544,7 +557,10 @@ async function judged(
   const refusals: BriefCheckRefusal[] = one.declaration.sections
     .filter((section) => (answered.get(section) ?? "").trim() === "")
     .map((section) => ({ phase: one.phase, workflow: one.workflow, section, rule: `${where(one)} asks for it, and the brief does not answer it` }));
-  if (!one.declaration.check) return refusals;
+  // A check is handed only a brief answering every section its phase
+  // declares: a parser never has to survive a half-groomed brief, and the
+  // blank sections are already refused, by name, above.
+  if (!one.declaration.check || refusals.length > 0) return refusals;
   try {
     const refused = await one.declaration.check(record, { operations });
     for (const refusal of refused) refusals.push({ phase: one.phase, workflow: one.workflow, section: refusal.section, rule: refusal.rule });

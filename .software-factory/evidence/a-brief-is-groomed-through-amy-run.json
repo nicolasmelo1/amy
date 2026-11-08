@@ -10,8 +10,8 @@
   "observed": {
     "assertions_run": 7,
     "assertions_failed": 0,
-    "transcript_steps": 16,
-    "sections_written": 6
+    "transcript_steps": 19,
+    "sections_written": 7
   },
   "assertions": [
     {

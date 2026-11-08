@@ -113,6 +113,20 @@ describe("diagnose", () => {
     expect(labelled(checks, "brief check")).toEqual({ label: "brief check", ok: true, detail: "`brief/` (workflow-invoices-brief) judges Goal, Criteria" });
   });
 
+  it("reports a project with brief/ declared absent whose declaring phases export no check", async () => {
+    const unchecked = await diagnose(deps({ briefs: [{ phase: "workflow", workflow: "workflow-invoices-work", declaration: { sections: ["Goal"] } }] }));
+    const judged = await diagnose(deps({
+      briefs: [
+        { phase: "workflow", workflow: "workflow-invoices-work", declaration: { sections: ["Goal"] } },
+        { phase: "prove", workflow: "workflow-invoices-prove", declaration: { sections: ["Scenario"], check: () => [] } },
+      ],
+    }));
+
+    expect(labelled(unchecked, "brief check")?.ok).toBe(false);
+    expect(labelled(unchecked, "brief check")?.detail).toContain("`workflow/` (workflow-invoices-work) exports no brief check");
+    expect(labelled(judged, "brief check")).toEqual({ label: "brief check", ok: true, detail: "`prove/` (workflow-invoices-prove) judges Scenario" });
+  });
+
   it("asks nothing about a brief check when no phase grooms a brief", async () => {
     const checks = await diagnose(deps({ briefs: [{ phase: "workflow", workflow: "workflow-invoices-work" }] }));
 

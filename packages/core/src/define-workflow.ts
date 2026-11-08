@@ -117,10 +117,10 @@ export interface BriefCheckScope {
  * and the rule that judges whether the brief is ready.
  *
  * The core never parses a section: the workflow names them and judges them.
- * The host refuses a declared section the brief leaves empty, then asks
- * `check`, so a check only says what a present section gets wrong. A brief
- * phase that declares no `check` is told so by `amy doctor`, never handed one
- * that always passes.
+ * The host refuses a declared section the brief leaves empty, and asks
+ * `check` only once every section this workflow declares is answered, so a
+ * check never parses a half-groomed brief. A brief phase that declares no
+ * `check` is told so by `amy doctor`, never handed one that always passes.
  */
 export interface BriefDeclaration {
   readonly sections: readonly string[];

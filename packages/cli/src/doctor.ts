@@ -6,7 +6,7 @@ import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
-import type { PhaseBrief } from "./project.js";
+import { type PhaseBrief, uncheckedBrief } from "./project.js";
 
 export type { Check } from "@amykit/core";
 
@@ -143,17 +143,22 @@ function configContents({ config, gatePort, workspacePort }: DoctorDeps): Check[
  * nothing.
  */
 function briefCheck(briefs: readonly PhaseBrief[]): Check[] {
-  const owner = briefs.find((one) => one.phase === "brief") ?? briefs.find((one) => one.phase === null);
-  if (!owner) return [];
-  const who = owner.phase === null ? `the ${owner.workflow} workflow` : `\`brief/\` (${owner.workflow})`;
-  if (owner.declaration?.check === undefined) {
+  const who = (one: PhaseBrief) => (one.phase === null ? `the ${one.workflow} workflow` : `\`${one.phase}/\` (${one.workflow})`);
+  const unchecked = uncheckedBrief(briefs);
+  if (unchecked) {
     return [{
       label: "brief check",
       ok: false,
-      detail: `${who} exports no brief check — declare \`brief: { sections, check }\` in its defineWorkflow; until then \`amy brief check\` refuses every brief`,
+      detail: `${who(unchecked)} exports no brief check — declare \`brief: { sections, check }\` in its defineWorkflow; until then \`amy brief check\` refuses every brief`,
     }];
   }
-  return [{ label: "brief check", ok: true, detail: `${who} judges ${owner.declaration.sections.join(", ")}` }];
+  const judging = briefs.filter((one) => one.declaration?.check !== undefined);
+  if (judging.length === 0) return [];
+  return [{
+    label: "brief check",
+    ok: true,
+    detail: judging.map((one) => `${who(one)} judges ${one.declaration!.sections.join(", ")}`).join("; "),
+  }];
 }
 
 function workflowWrites(workflow: Workflow | undefined): Check {
