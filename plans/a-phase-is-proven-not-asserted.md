@@ -1,5 +1,5 @@
 ---
-base: 0dc5319c214126f161b0b576588db3a02f1c18ae
+base: 5ffcd87cd6caf2bdd3dde019433f9e2c77f01eb5
 sources:
   - { id: S1, kind: reference, ref: "docs/design/a-project-is-three-phases.md", said: "asks for the slot; this plan is what goes in the third, the phase that exists nowhere in amy today" }
   - { id: S2, kind: decision, said: "a workflow's walkthrough drives the lifecycle against a fake world in milliseconds: right for a state machine, silent on whether the produced work holds" }
@@ -40,9 +40,11 @@ sources:
   - { id: S38, kind: reference, ref: "plans/the-examples-are-not-the-machine.md", said: "the shipped workflows move to examples/ under their same package names" }
   - { id: S39, kind: decision, said: "leases are the machine's, kept under Amy home and shared by every project and profile: one account is one resource however many projects reach it. Decided 2026-11-07" }
   - { id: S40, kind: code, ref: "packages/cli/src/profiles.ts", symbol: "artifactDirectory", said: "each project's artifact root is its own, so a lease kept there would be invisible to another project needing the same account" }
+  - { id: S41, kind: decision, said: "feature-grooming becomes a workflow a project's brief/ calls: a defineWorkflow declaring the brief's sections and check, returning the criteria it settled, and still mounting the ports it mounted. Decided 2026-11-08" }
 touches:
   - plugins/prove/**
   - examples/a-whole-project/**
+  - packages/workflow-feature-grooming/**
   - plugins/agent-browser/**
   - plugins/agent-desktop/**
   - plugins/terminal/**
@@ -73,7 +75,7 @@ criteria:
   - { id: A17, statement: "the browser plugin opens, snapshots, acts on refs and diffs through agent-browser, the desktop plugin snapshots and acts through agent-desktop, and the terminal plugin runs a program, sends keys, waits for text and reads the screen through terminal-use", proof: "deferred:test:plugins/agent-browser/tests/operations.test.ts", sources: [S30, S32, S35] }
   - { id: A18, statement: "a UI check passes when the accessibility trees match and the pixels differ within the threshold, goes to an agent otherwise, and is unsupported when the agent cannot settle it or the sizes differ", proof: "deferred:test:plugins/agent-browser/tests/ui-check.test.ts", sources: [S31, S33] }
   - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "deferred:test:plugins/prove/tests/replay.test.ts", sources: [S34] }
-  - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38] }
+  - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38, S41] }
   - { id: A21, statement: "two runs from different projects needing the same resource never hold it past its capacity, and the one waiting starts when the other releases", proof: "deferred:test:plugins/prove/tests/lease.test.ts", sources: [S39, S40] }
 crosses:
   - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A12, A14; a run waiting for a lease or a person is a look, not an attempt" }
@@ -83,6 +85,8 @@ crosses:
   - { mechanism: calls, answer: n/a, why: "the proving workflow is called as the project's PROVE phase like any phase; a scenario is its input, not a call" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "a resource lease is the proving plugin's own, kept under Amy home; branch leases and lent revisions are unchanged" }
   - { mechanism: profiles-and-state, answer: works, proof: "deferred:A21; the lease directory is the machine's, like the Slack thread map, and no profile's own state is written" }
+  - { mechanism: diagram, answer: works, proof: "deferred:A20; feature-grooming gains a workflow.mmd, read and refused at mount like every other" }
+  - { mechanism: record-migration, answer: n/a, why: "feature-grooming was never a workflow, so no record of it was ever saved to migrate" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "a proof writes project artifacts and asks through the conversation; no tracker or code-host write is added" }
 guarantee:
   - { holds: "a proven unit's scenario holds against the real system", not_against: "a well-proven scenario for the wrong feature" }
