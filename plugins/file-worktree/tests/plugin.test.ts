@@ -2,7 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { mount as mountPlugins } from "@amykit/core";
+import { defineContract, invoke, mount as mountPlugins } from "@amykit/core";
+import type { DeclaredOperation, WorktreeInfo } from "@amykit/core";
 import { WorktreeManager } from "../src/manager.js";
 import { plugin } from "../src/plugin.js";
 
@@ -88,5 +89,27 @@ describe("the file worktree plugin", () => {
     if (!outcome.ok) {
       expect(outcome.problems.join("\n")).toContain("`baseBranch` names 7 for `acme/widgets`, which is not a branch name");
     }
+  });
+});
+
+describe("removing a tree, as an operation", () => {
+  const tree = (state: WorktreeInfo["state"], clean: boolean) =>
+    ({ workId: "W-1", repo: "acme/api", workflow: "phase", path: "/trees/W-1", state, clean, branch: "b", acquiredAt: "", updatedAt: "", retentionEligible: true, prunable: false }) as WorktreeInfo;
+  const remove = (states: WorktreeInfo[], release: () => Promise<boolean>, force = false) => {
+    const operation = (plugin.operations ?? []).find((one) => one.id === "worktree.remove-tree") as DeclaredOperation;
+    return invoke(defineContract([operation]), "worktree.remove-tree", { workId: "W-1", force }, { port: () => ({ states: async () => states, release }) });
+  };
+
+  it("answers an in-flight or dirty tree as the declared refusal, and removes nothing", async () => {
+    let released = 0;
+    const ran = await remove([tree("in-flight", true)], async () => ++released > 0);
+    expect(ran).toMatchObject({ kind: "error", error: { code: "worktree.refused" } });
+    expect(released).toBe(0);
+  });
+
+  it("lets a failure that is not the refusal propagate as internal, even under --force", async () => {
+    const ran = await remove([tree("terminal", true)], async () => { throw new Error("could not read .git"); }, true);
+    expect(ran).toMatchObject({ kind: "internal", error: { code: "amy.internal" } });
+    expect((ran as { error: { message: string } }).error.message).toContain("could not read .git");
   });
 });

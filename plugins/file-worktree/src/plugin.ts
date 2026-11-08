@@ -170,16 +170,19 @@ const removeTree = defineOperation({
     const found = (await manager.states()).filter((state) => state.workId === workId);
     if (found.length === 0) return fail("worktree.not_found", `no worktree for ${workId}`);
 
-    let removed = 0;
-    const refusals: string[] = [];
-    for (const state of found) {
-      try {
-        if (await manager.release(workId, state.repo, { force })) removed += 1;
-      } catch (error) {
-        refusals.push(error instanceof Error ? error.message : String(error));
-      }
+    // The safety refusal is read from the trees' own states, so it is the one
+    // failure answered as declared; anything `release` throws past it — a
+    // broken checkout, a git that failed — is not a refusal, and propagates.
+    const refusals = force ? [] : found.filter((state) => state.state === "in-flight" || !state.clean);
+    if (refusals.length > 0) {
+      const why = refusals.map((state) => `${state.path} is ${state.state === "in-flight" ? "still in flight" : "dirty"}`).join("; ");
+      return fail("worktree.refused", `refusing to remove the tree(s) for ${workId}: ${why} (use --force to remove them anyway)`);
     }
-    if (refusals.length > 0) return fail("worktree.refused", refusals.join("; "), { removed });
+
+    let removed = 0;
+    for (const state of found) {
+      if (await manager.release(workId, state.repo, { force })) removed += 1;
+    }
     return { removed };
   },
 });

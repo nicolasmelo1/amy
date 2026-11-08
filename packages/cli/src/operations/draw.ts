@@ -79,16 +79,18 @@ function isBlock(value: unknown): boolean {
 
 function drawFields(value: Record<string, unknown>, schema: Json | undefined, root: Json | undefined, color: boolean, indent: string): string[] {
   const keys = keysOf(value, schema).filter((key) => value[key] !== undefined);
-  const width = Math.max(0, ...keys.filter((key) => !isBlock(value[key])).map((key) => labelOf(key, propertyOf(schema, key, root)).length));
+  const width = keys.filter((key) => !isBlock(value[key])).reduce((widest, key) => Math.max(widest, labelOf(key, propertyOf(schema, key, root)).length), 0);
   const lines: string[] = [];
   for (const key of keys) {
     const field = propertyOf(schema, key, root);
     const label = labelOf(key, field);
     const one = value[key];
     if (isRecord(one)) {
-      lines.push(`${indent}${paint(label, BOLD, color)}`, ...drawFields(one, field, root, color, `${indent}  `));
+      lines.push(`${indent}${paint(label, BOLD, color)}`);
+      append(lines, drawFields(one, field, root, color, `${indent}  `));
     } else if (isBlock(one)) {
-      lines.push(`${indent}${paint(label, BOLD, color)}`, ...drawArray(one as unknown[], field, root, color, `${indent}  `));
+      lines.push(`${indent}${paint(label, BOLD, color)}`);
+      append(lines, drawArray(one as unknown[], field, root, color, `${indent}  `));
     } else {
       lines.push(`${indent}${pad(label, width)}  ${scalar(one, field, color)}`.trimEnd());
     }
@@ -105,12 +107,24 @@ function drawArray(value: readonly unknown[], schema: Json | undefined, root: Js
 
 /** Rows of objects as a table: one column per field any row carries, headed by its label. */
 function table(rows: readonly Record<string, unknown>[], schema: Json | undefined, root: Json | undefined, color: boolean, indent: string): string[] {
-  const keys = keysOf(Object.assign({}, ...rows) as Record<string, unknown>, schema).filter((key) => rows.some((row) => row[key] !== undefined));
+  // Loops, never a spread of the rows: an output of a few hundred thousand
+  // rows would pass more arguments than a call can take.
+  const present = new Set<string>();
+  for (const row of rows) for (const key of Object.keys(row)) if (row[key] !== undefined) present.add(key);
+  const keys = keysOf(Object.fromEntries([...present].map((key) => [key, true])), schema).filter((key) => present.has(key));
   const headers = keys.map((key) => paint(labelOf(key, propertyOf(schema, key, root)), BOLD, color));
   const cells = rows.map((row) => keys.map((key) => scalar(row[key], propertyOf(schema, key, root), color)));
-  const widths = keys.map((_, column) => Math.max(visible(headers[column]!), ...cells.map((row) => visible(row[column]!))));
+  const widths = headers.map((header) => visible(header));
+  for (const row of cells) row.forEach((cell, column) => (widths[column] = Math.max(widths[column]!, visible(cell))));
   const line = (row: readonly string[]): string => `${indent}${row.map((cell, column) => pad(cell, widths[column]!)).join("  ")}`.trimEnd();
-  return [line(headers), ...cells.map(line)];
+  const lines = [line(headers)];
+  for (const row of cells) lines.push(line(row));
+  return lines;
+}
+
+/** Adds every line to the end, without spreading them into one call's arguments. */
+function append(lines: string[], more: readonly string[]): void {
+  for (const one of more) lines.push(one);
 }
 
 /** Whether this process may colour what it draws. */

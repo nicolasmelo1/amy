@@ -62,4 +62,11 @@ describe("an operation without --json", () => {
     expect(draw(value, schema, false)).toEqual(["state    terminal", "trees", "  work  clean", "  A-1   yes", "removed  (none)"]);
     expect(draw(value, schema, true)[0]).toBe("state    \u001b[33mterminal\u001b[0m");
   });
+
+  it("draws an output of two hundred thousand rows without passing them as one call's arguments", () => {
+    const rows = Array.from({ length: 200_000 }, (_, n) => ({ n }));
+    const drawn = draw({ rows }, { type: "object", properties: { rows: { type: "array", description: "rows", items: { type: "object", properties: { n: { type: "number" } } } } } }, false);
+    expect(drawn).toHaveLength(200_002);
+    expect(drawn[2]).toBe("  0");
+  });
 });
