@@ -153,6 +153,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 | Gate | What expires it | Assertions |
 | :-- | :-- | :-- |
+| `a-brief-is-groomed-through-amy` | `packages/core/src/define-workflow.ts`<br>`packages/cli/src/project.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/doctor.ts`<br>`packages/cli/skills/amy-groom/**`<br>`plugins/file-brief-store/src/**` | 7 |
 | `a-plugin-of-your-own` | `packages/cli/src/fork.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts` | 4 |
 | `a-private-workflow-composes` | `packages/core/src/git.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/ports/CodeHost.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/ports/Notifier.ts`<br>`packages/core/src/ports/Queue.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/operator.ts`<br>`packages/core/src/runtime.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/linear/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`plugins/file-queue/src/**` | 53 |
 | `a-question-is-not-an-answer` | `packages/core/src/ports/Conversation.ts`<br>`packages/core/src/actions.ts`<br>`packages/workflow-ticket-to-qa/src/**`<br>`packages/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/slack/src/**`<br>`plugins/serial-engine/src/**` | 8 |

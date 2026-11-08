@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "gate": "a-brief-is-groomed-through-amy",
+  "implementation_sha256": "753cbade99f4e6dfd0f7cea3193ef5604597b92464a17917b2a7755e8fbbc608",
+  "runs": [
+    {
+      "scenario": "a-brief-is-groomed-through-amy",
+      "status": "passed",
+      "actor": "Claude (agent), replaying through the installed executable on macOS the amy-groom session a separate Claude agent recorded, for Nicolas Melo",
+      "report": ".software-factory/evidence/a-brief-is-groomed-through-amy-run.json",
+      "report_sha256": "192ad3b8bc7918260738a0af54df82f6db305281253e7597231a58434c69f80c",
+      "required_assertions": [
+        "brief_check.the_sections_are_the_workflows",
+        "brief_check.a_refused_brief_exits_non_zero_naming_section_and_rule",
+        "brief_check.the_groomer_writes_only_through_the_brief_port",
+        "brief_check.grooming_asks_the_section_the_check_names_next",
+        "brief_check.the_groomed_brief_is_stored_through_the_brief_port",
+        "brief_check.the_groomed_brief_is_green",
+        "brief_check.the_doctor_names_the_brief_check"
+      ]
+    }
+  ]
+}

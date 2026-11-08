@@ -6,6 +6,7 @@ import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
+import { type PhaseBrief, uncheckedBrief } from "./project.js";
 
 export type { Check } from "@amykit/core";
 
@@ -63,6 +64,11 @@ export interface DoctorDeps {
   conversationPort?: object;
   /** The selected workflow's declared external-write surface, if it mounted. */
   workflow?: Workflow;
+  /**
+   * What the selected workflow's phases declared about the brief, in walk
+   * order; absent or empty when no phase grooms one.
+   */
+  briefs?: readonly PhaseBrief[];
 }
 
 /**
@@ -80,6 +86,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     autoUpdateSettings(deps.config),
     ...pluginSettings(deps),
     workflowWrites(deps.workflow),
+    ...briefCheck(deps.briefs ?? []),
     ...leftBehind(deps),
     ...environment(deps),
     ...(await tools(deps)),
@@ -124,6 +131,34 @@ function configContents({ config, gatePort, workspacePort }: DoctorDeps): Check[
   }
 
   return checks;
+}
+
+/**
+ * Whether the phase that grooms the brief can say a brief is ready.
+ *
+ * A project's `brief/`, or a workflow declaring a brief of its own, with no
+ * check is reported rather than given one that always passes: `amy brief
+ * check` would refuse every brief it is asked about, and the operator should
+ * hear that before grooming one. A machine with no brief phase is asked
+ * nothing.
+ */
+function briefCheck(briefs: readonly PhaseBrief[]): Check[] {
+  const who = (one: PhaseBrief) => (one.phase === null ? `the ${one.workflow} workflow` : `\`${one.phase}/\` (${one.workflow})`);
+  const unchecked = uncheckedBrief(briefs);
+  if (unchecked) {
+    return [{
+      label: "brief check",
+      ok: false,
+      detail: `${who(unchecked)} exports no brief check — declare \`brief: { sections, check }\` in its defineWorkflow; until then \`amy brief check\` refuses every brief`,
+    }];
+  }
+  const judging = briefs.filter((one) => one.declaration?.check !== undefined);
+  if (judging.length === 0) return [];
+  return [{
+    label: "brief check",
+    ok: true,
+    detail: judging.map((one) => `${who(one)} judges ${one.declaration!.sections.join(", ")}`).join("; "),
+  }];
 }
 
 function workflowWrites(workflow: Workflow | undefined): Check {

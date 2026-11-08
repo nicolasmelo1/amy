@@ -118,7 +118,7 @@ amy is driven *from* harnesses as well as driving them. Its skills ship inside
 | :-- | :-- |
 | `/amy` | Drive amy, the machine that walks a work ticket from the tracker's working status to a QA handoff, and turns friction it hits into a plan in the repository that friction is about. |
 | `/amy-btw` | Capture something said in passing as work amy will actually do — "btw the deps in the api are stale", "also check whether that monitor is still firing" — without opening a ticket and without leaving what you are doing. |
-| `/amy-groom` | Groom a feature into the brief a workflow reads before it builds — by reading the ticket and the code at its base, then interrogating one question at a time until every requirement names its source. |
+| `/amy-groom` | Groom a feature into the brief a workflow reads before it builds — by reading the ticket and the code at its base, then asking one question at a time, section by section in the order the workflow declares them, until `amy brief check` is green. |
 | `/amy-init` | Set amy up on this machine end to end — the state directory, the config, the roster, the plugins it needs installed, the credentials, the notification channel — by reading what is already here and asking only what the machine cannot answer. |
 | `/amy-show-me` | Show what an amy workflow is and where its work has got to, visually — the state machine, the path one piece of work took, what is waiting on what. |
 | `/amy-status` | Answer "where is my work" from the project's side rather than the machine's — what is open, what amy is working on right now, what is waiting on you, what is stuck — across every workflow at once, as a page you can keep open. |

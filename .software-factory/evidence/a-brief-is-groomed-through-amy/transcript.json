@@ -1,0 +1,175 @@
+{
+  "recorded": "2026-11-08, by a separate Claude agent (Sonnet) following packages/cli/skills/amy-groom/SKILL.md against this project, grooming INV-7 from the pasted ticket and a one-file repository, after a check runs only on its own sections answered (S16); every amy command it ran, in order, with what it piped in",
+  "brief": "INV-7",
+  "steps": [
+    {
+      "argv": [
+        "brief",
+        "sections",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Goal",
+        "--explains",
+        "INV-7"
+      ],
+      "stdin": "The invoice view shows the invoice's ISO currency code after the total (for example `1234.50 EUR`), so customers with multi-currency accounts can tell what the total is.\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Sources"
+      ],
+      "stdin": "- INV-7, written by Dana (product), 2026-11-07: the total prints as a bare number; show the ISO currency code after it; the currency comes from the invoice's own `currency` field; rounding stays as it is; PDF export is INV-8.\n- Code at `main` commit 5bdff191e2dfd5928879b9325bc524da7f1ae912: `src/total.ts` exports `invoiceTotal(lines)`, which returns the sum of line amounts as `toFixed(2)`. A search for \"currency\" at that commit finds nothing, so the `currency` field is known only from Dana's ticket.\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Criteria"
+      ],
+      "stdin": "- The invoice total is shown followed by a single space and the invoice's `currency` value, for example `1234.50 EUR`. Source: INV-7 (Dana).\n- The currency is read from the invoice's own `currency` field, not from an account default or a constant. Source: INV-7 (Dana).\n- The number part is unchanged: still the sum of line amounts with `toFixed(2)`. Source: INV-7 (\"Rounding stays as it is\") and `src/total.ts` at 5bdff191.\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Out of scope"
+      ],
+      "stdin": "- PDF export of the invoice: a separate ticket, INV-8 (Dana, INV-7).\n- Any change to rounding or to how the number is computed: INV-7 says rounding stays as it is.\n- Currency symbols, locale formatting, thousands separators, or conversion between currencies: INV-7 asks only for the ISO code after the total; no source asks for more.\n- Behavior when an invoice has no `currency` value: no source says what to show, and the code at 5bdff191 has no such field to inspect. Cut for lack of a source, not decided.\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Sources"
+      ],
+      "stdin": "S1: INV-7, written by Dana (product), 2026-11-07: the total prints as a bare number; show the ISO currency code after it; the currency comes from the invoice's own `currency` field; rounding stays as it is; PDF export is INV-8.\nS2: `src/total.ts` at main commit 5bdff191e2dfd5928879b9325bc524da7f1ae912: `invoiceTotal(lines)` returns the sum of line amounts as `toFixed(2)`. A search for \"currency\" at that commit finds nothing, so the `currency` field is known only from S1.\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Criteria"
+      ],
+      "stdin": "- The invoice total is shown followed by a single space and the invoice's `currency` value, for example `1234.50 EUR` (source: S1)\n- The currency is read from the invoice's own `currency` field, not from an account default or a constant (source: S1)\n- The number part is unchanged: still the sum of line amounts with `toFixed(2)` (source: S1, S2)\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "write",
+        "INV-7",
+        "Criteria"
+      ],
+      "stdin": "- The invoice total is shown followed by a single space and the invoice's `currency` value, for example `1234.50 EUR` (source: S1)\n- The currency is read from the invoice's own `currency` field, not from an account default or a constant (source: S1)\n- The number part is unchanged: still the sum of line amounts with `toFixed(2)`, as `invoiceTotal` does today (source: S1)\n"
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7",
+        "--json"
+      ],
+      "stdin": ""
+    },
+    {
+      "argv": [
+        "brief",
+        "check",
+        "INV-7"
+      ],
+      "stdin": ""
+    }
+  ]
+}

@@ -1,7 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  BriefDeclaration,
+  BriefOperation,
+  BriefRecord,
   ConfigSchema,
+  Mounted,
+  MountedOperation,
+  OPERATIONS_COLLECTION,
+  Operation,
   ConfigField,
   Plugin,
   ProjectPhases,
@@ -15,6 +22,7 @@ import {
   withDiagram,
 } from "@amykit/core";
 import { PROJECT_PHASES, Profile, ProjectIdentity } from "./profiles.js";
+import { inputSchemaOf } from "./operations/schema.js";
 
 /**
  * A project is one workflow, and amy derives it from the project's folders.
@@ -370,7 +378,9 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     },
     calls: bindingsFor(args.phases, contexts) as never,
   });
-  return withDiagram(composed, projectDiagram(args.phases), "the project's own folders");
+  const drawn = withDiagram(composed, projectDiagram(args.phases), "the project's own folders");
+  PHASE_BRIEFS.set(drawn, args.phases.map((one) => ({ phase: one.phase, workflow: one.name, declaration: one.plugin.brief })));
+  return drawn;
 }
 
 /** Whether every criterion a brief named appears in the proof's returned answer. */
@@ -388,4 +398,235 @@ function criteriaOf(value: unknown): readonly string[] {
   if (typeof value !== "object" || value === null) return [];
   const criteria = (value as { readonly criteria?: unknown }).criteria;
   return Array.isArray(criteria) && criteria.every((criterion): criterion is string => typeof criterion === "string") ? criteria : [];
+}
+
+/**
+ * One phase's brief, as `amy brief` reads it: the phase that asks, the
+ * workflow it is, and what it declared — nothing, for a phase that asks the
+ * brief for no section.
+ */
+export interface PhaseBrief {
+  /** The project folder, or null for a workflow that is not a project's phase. */
+  readonly phase: ProjectPhaseFolder | null;
+  readonly workflow: string;
+  readonly declaration?: BriefDeclaration;
+}
+
+/** What each composed project's phases declared about the brief, keyed by the plugin the walk mounts. */
+const PHASE_BRIEFS = new WeakMap<object, readonly PhaseBrief[]>();
+
+/**
+ * Every brief declaration a mounted workflow answers for, in the order a
+ * brief is groomed: a project's phases in walk order — the brief's own
+ * sections, then each later phase's — or a lone workflow's own.
+ */
+export function briefsOf(plugin: object | undefined): readonly PhaseBrief[] {
+  if (!plugin) return [];
+  const phases = PHASE_BRIEFS.get(plugin);
+  if (phases) return phases;
+  const own = plugin as { readonly name?: string; readonly brief?: BriefDeclaration };
+  return own.brief ? [{ phase: null, workflow: own.name ?? "the workflow", declaration: own.brief }] : [];
+}
+
+/** The phases whose declaration a brief check runs: the ones that declare one. */
+function declaring(briefs: readonly PhaseBrief[]): readonly (PhaseBrief & { readonly declaration: BriefDeclaration })[] {
+  return briefs.filter((one): one is PhaseBrief & { readonly declaration: BriefDeclaration } => one.declaration !== undefined);
+}
+
+/** The brief phase: the project's `brief/`, or a lone workflow that declares a brief. */
+function briefPhase(briefs: readonly PhaseBrief[]): PhaseBrief | undefined {
+  return briefs.find((one) => one.phase === "brief") ?? briefs.find((one) => one.phase === null);
+}
+
+/** Every section a brief answers, in grooming order, each named once, with the phase that asks it. */
+export function sectionsOf(briefs: readonly PhaseBrief[]): readonly { readonly phase: ProjectPhaseFolder | null; readonly section: string }[] {
+  const seen = new Set<string>();
+  const sections: { phase: ProjectPhaseFolder | null; section: string }[] = [];
+  for (const one of declaring(briefs)) {
+    for (const section of one.declaration.sections) {
+      if (seen.has(section)) continue;
+      seen.add(section);
+      sections.push({ phase: one.phase, section });
+    }
+  }
+  return sections;
+}
+
+/** The operations the mounted plugins offer, as a brief check is handed them: id and input schema. */
+export function operationsOffered(mounted: Pick<Mounted, "contributions"> | undefined): readonly BriefOperation[] {
+  const offered = mounted?.contributions.get(OPERATIONS_COLLECTION);
+  if (!offered) return [];
+  return [...offered.entries()]
+    .map(([id, entry]) => ({ id, input: inputOf(id, (entry as MountedOperation).operation) }))
+    .sort((one, other) => one.id.localeCompare(other.id));
+}
+
+function inputOf(id: string, operation: MountedOperation["operation"]): Readonly<Record<string, unknown>> {
+  try {
+    return inputSchemaOf(operation as unknown as Operation);
+  } catch (error) {
+    // A stand-in schema would accept every input, so a check validating a
+    // section against it would pass what the operation refuses.
+    throw new Error(`the operation \`${id}\` offers no input schema a brief check can read: ${messageOf(error)}`, { cause: error });
+  }
+}
+
+/** What was thrown, as words: an Error's message, anything else as it prints. */
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** One refusal as `amy brief check` reports it: which phase asked, about which section, and why. */
+interface BriefCheckRefusal {
+  readonly phase: ProjectPhaseFolder | null;
+  readonly workflow: string;
+  /** The section the refusal is about; absent when it is about the declaration rather than a section. */
+  readonly section?: string;
+  readonly rule: string;
+}
+
+/** What `amy brief check` answers: the refusals, and the section grooming asks next. */
+export interface BriefCheckResult {
+  readonly id: string;
+  /** Zero when the brief is not stored yet. */
+  readonly revision: number;
+  readonly refusals: readonly BriefCheckRefusal[];
+  /**
+   * The section grooming asks next, or null when the brief is green or
+   * nothing refused names a section: a refused section the brief already
+   * answers first, else the first refused section in grooming order. Grooming
+   * moves past a phase while every refusal left names a section not yet
+   * answered, and asks a section again when a refusal names one it answered.
+   */
+  readonly next: { readonly phase: ProjectPhaseFolder | null; readonly section: string } | null;
+}
+
+/**
+ * Judges a brief against every phase that declares one.
+ *
+ * A declared section the brief leaves out or blank is refused by the host,
+ * naming the phase that asked it. Then each phase's own `check` is asked,
+ * with the operations the mounted plugins offer, and what it refuses is
+ * reported under that phase. The brief phase declaring no check is a refusal
+ * of its own: no check is not a check that passes.
+ */
+export async function checkBrief(
+  briefs: readonly PhaseBrief[],
+  id: string,
+  stored: BriefRecord | null,
+  operations: readonly BriefOperation[],
+): Promise<BriefCheckResult> {
+  const record: BriefRecord = stored ?? { id, sections: [], questions: [], explains: [], createdAt: "", updatedAt: "", revision: 0 };
+  const answered = new Map(record.sections.map((section) => [section.name, section.body]));
+  const refusals: BriefCheckRefusal[] = [...uncheckedOwner(briefs)];
+  for (const one of declaring(briefs)) refusals.push(...await judged(one, record, answered, operations));
+  return { id, revision: record.revision, refusals, next: nextSection(briefs, refusals, answered) };
+}
+
+/**
+ * No check where one is owed, as a refusal: no check is not a check that
+ * passes. The brief phase owes one; without a brief phase, at least one of
+ * the phases declaring sections does, and a sections-only phase is fine
+ * beside another that judges.
+ */
+function uncheckedOwner(briefs: readonly PhaseBrief[]): readonly BriefCheckRefusal[] {
+  const unchecked = uncheckedBrief(briefs);
+  if (!unchecked) return [];
+  return [{
+    phase: unchecked.phase,
+    workflow: unchecked.workflow,
+    rule: `${where(unchecked)} declares no brief check, so nothing can say this brief is ready — declare \`brief: { sections, check }\` in its defineWorkflow`,
+  }];
+}
+
+/** The phase that owes a brief check and exports none, or undefined when every check owed is there. */
+export function uncheckedBrief(briefs: readonly PhaseBrief[]): PhaseBrief | undefined {
+  const owner = briefPhase(briefs);
+  if (owner) return owner.declaration?.check === undefined ? owner : undefined;
+  const declared = declaring(briefs);
+  return declared.length > 0 && declared.every((one) => one.declaration.check === undefined) ? declared[0] : undefined;
+}
+
+/** One phase's refusals: the declared sections left blank, then what its own check refuses. */
+async function judged(
+  one: PhaseBrief & { readonly declaration: BriefDeclaration },
+  record: BriefRecord,
+  answered: ReadonlyMap<string, string>,
+  operations: readonly BriefOperation[],
+): Promise<readonly BriefCheckRefusal[]> {
+  const refusals: BriefCheckRefusal[] = one.declaration.sections
+    .filter((section) => (answered.get(section) ?? "").trim() === "")
+    .map((section) => ({ phase: one.phase, workflow: one.workflow, section, rule: `${where(one)} asks for it, and the brief does not answer it` }));
+  // A check is handed only a brief answering every section its phase
+  // declares: a parser never has to survive a half-groomed brief, and the
+  // blank sections are already refused, by name, above.
+  if (!one.declaration.check || refusals.length > 0) return refusals;
+  try {
+    const refused = await one.declaration.check(record, { operations });
+    for (const refusal of refused) refusals.push({ phase: one.phase, workflow: one.workflow, section: refusal.section, rule: refusal.rule });
+  } catch (error) {
+    refusals.push({ phase: one.phase, workflow: one.workflow, rule: `${where(one)}'s check threw: ${messageOf(error)}` });
+  }
+  return refusals;
+}
+
+/**
+ * A refused section the brief already answers is asked again before any
+ * section still unanswered: grooming moves on only while every refusal left
+ * names a section it has not asked yet.
+ */
+function nextSection(
+  briefs: readonly PhaseBrief[],
+  refusals: readonly BriefCheckRefusal[],
+  answered: ReadonlyMap<string, string>,
+): BriefCheckResult["next"] {
+  const refused = new Set(refusals.flatMap((refusal) => (refusal.section === undefined ? [] : [refusal.section])));
+  const inOrder = sectionsOf(briefs).filter((one) => refused.has(one.section));
+  return inOrder.find((one) => (answered.get(one.section) ?? "").trim() !== "") ?? inOrder[0] ?? null;
+}
+
+/** How a refusal names who asked: the project folder, or the workflow. */
+function where(one: PhaseBrief): string {
+  return one.phase === null ? `the ${one.workflow} workflow` : `\`${one.phase}/\` (${one.workflow})`;
+}
+
+/**
+ * A brief with one section answered: the sections in grooming order, an
+ * answer replacing the one before it, and any section the brief carries that
+ * no phase declares kept where it was, after them.
+ */
+export function withSection(
+  briefs: readonly PhaseBrief[],
+  stored: Pick<BriefRecord, "sections"> | null,
+  section: string,
+  body: string,
+): { name: string; body: string }[] {
+  const declared = sectionsOf(briefs).map((one) => one.section);
+  const bodies = new Map((stored?.sections ?? []).map((one) => [one.name, one.body]));
+  bodies.set(section, body);
+  return [
+    ...declared.filter((name) => bodies.has(name)).map((name) => ({ name, body: bodies.get(name)! })),
+    ...(stored?.sections ?? []).filter((one) => !declared.includes(one.name)),
+  ];
+}
+
+/**
+ * Whether the workflow asks for a brief at all: a phase declares sections,
+ * or a project carries a `brief/` phase — which, declaring no check, is
+ * refused rather than read as a brief with nothing to answer.
+ */
+export function asksForABrief(briefs: readonly PhaseBrief[]): boolean {
+  return briefs.some((one) => one.declaration !== undefined || one.phase === "brief");
+}
+
+/** Whether writing these sections and this membership would change what the stored brief says. */
+export function briefMoved(
+  stored: Pick<BriefRecord, "sections" | "explains">,
+  sections: readonly { readonly name: string; readonly body: string }[],
+  explains: readonly string[],
+): boolean {
+  const same = <T>(one: readonly T[], other: readonly T[], equal: (a: T, b: T) => boolean) =>
+    one.length === other.length && one.every((item, at) => equal(item, other[at]!));
+  return !same(stored.sections, sections, (a, b) => a.name === b.name && a.body === b.body)
+    || !same(stored.explains, explains, (a, b) => a === b);
 }

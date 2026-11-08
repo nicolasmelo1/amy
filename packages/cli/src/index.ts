@@ -13,6 +13,7 @@ import {
   ConfigSchema,
   Engine,
   FileStopSwitch,
+  Mounted,
   NodeCommandRunner,
   WorkRecord,
   Workflow,
@@ -55,7 +56,7 @@ import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, assembleProfile } from "./assemble.js";
-import { phasesOf } from "./project.js";
+import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
@@ -486,6 +487,7 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
       loaded.plugins.flatMap((plugin) => (plugin.environment ? [[plugin.name, plugin.environment]] : [])),
     ),
     conversationPort: mounted?.ports.get("conversation"),
+    briefs: problem ? [] : briefsOf(assembled.ok && assembled.workflowPlugin ? assembled.workflowPlugin : "bySpec" in loaded ? loaded.bySpec.get(profile.workflow) : undefined),
   });
   // After the host's own, and only for what this profile mounted: a check a
   // workflow brought is the workflow's knowledge, and a red one fails the
@@ -982,8 +984,12 @@ program
     });
   });
 
-program
+const brief = program
   .command("brief")
+  .description("The current statement of a feature, the sections its workflow asks for, and whether it is ready");
+
+brief
+  .command("show", { isDefault: true })
   .description("The current statement of a feature, as the workflow keeps it")
   .argument("<id>", "the brief id, as the workflow named it")
   .option("--json", "the same snapshot as data, for something else to render")
@@ -1029,6 +1035,132 @@ program
     console.log();
     console.log(view.text);
   });
+
+brief
+  .command("sections")
+  .description("The sections the workflow's brief asks for, in the order grooming asks them, and which phase asks each")
+  .option("--json", "the same list as data, for an agent grooming the brief")
+  .action(async (options: { json?: boolean }) => {
+    const opened = await openBrief(selected());
+    if (!opened.ok) return refuseBrief(opened.why);
+    const sections = sectionsOf(opened.briefs);
+    if (options.json) {
+      console.log(JSON.stringify({
+        phases: opened.briefs.map((one) => ({
+          phase: one.phase,
+          workflow: one.workflow,
+          sections: one.declaration?.sections ?? [],
+          check: one.declaration?.check !== undefined,
+        })),
+        sections,
+      }, null, 2));
+      return;
+    }
+    for (const one of sections) console.log(`${one.phase === null ? "" : `${one.phase}/  `}${one.section}`);
+  });
+
+brief
+  .command("write")
+  .description("Answer one section of a brief through the brief port, replacing what it said before")
+  .argument("<id>", "the brief id, as the workflow named it")
+  .argument("<section>", "a section the workflow's brief declares")
+  .argument("[body]", "the answer; read from standard input when omitted or `-`")
+  .option("--explains <ids>", "the work ids the brief explains, comma-separated; kept from the stored brief when omitted")
+  .action(async (id: string, section: string, text: string | undefined, options: { explains?: string }) => {
+    const opened = await openBrief(selected());
+    if (!opened.ok) return refuseBrief(opened.why);
+    const declared = sectionsOf(opened.briefs).map((one) => one.section);
+    if (!declared.includes(section)) {
+      return refuseBrief(`\`${section}\` is not a section this workflow's brief declares — it asks for ${declared.map((name) => `\`${name}\``).join(", ")}`);
+    }
+    const body = text === undefined || text === "-" ? await readStandardInput() : text;
+    if (body.trim() === "") return refuseBrief(`the answer to \`${section}\` is empty: a blank section is one the brief does not answer`);
+    // Read, then written whole through the port, which replaces the brief
+    // atomically: the section order is the declaration's, never the order
+    // the answers happened to arrive in.
+    const stored = await opened.store.get(id);
+    const explains = options.explains !== undefined
+      ? options.explains.split(",").map((one) => one.trim()).filter((one) => one !== "")
+      : stored?.explains ?? [];
+    const sections = withSection(opened.briefs, stored, section, body.replace(/\s+$/, ""));
+    // A brief is written only when its text moved: the same answer again
+    // keeps its revision, and its age for retirement.
+    if (stored && !briefMoved(stored, sections, explains)) {
+      console.log(`\`${section}\` already says that in ${stored.id}, revision ${stored.revision}: nothing written`);
+      return;
+    }
+    const written = await opened.store.write({ id, sections, explains, at: new Date().toISOString() });
+    console.log(`wrote \`${section}\` to ${written.id}, revision ${written.revision}`);
+  });
+
+brief
+  .command("check")
+  .description("Judge a brief against every phase's declared sections and check; exits non-zero while anything is refused")
+  .argument("<id>", "the brief id, as the workflow named it")
+  .option("--json", "the refusals and the next section to ask, as data")
+  .action(async (id: string, options: { json?: boolean }) => {
+    const opened = await openBrief(selected());
+    if (!opened.ok) return refuseBrief(opened.why);
+    let operations: ReturnType<typeof operationsOffered>;
+    try {
+      operations = operationsOffered(opened.mounted);
+    } catch (error) {
+      return refuseBrief((error as Error).message);
+    }
+    const result = await checkBrief(opened.briefs, id, await opened.store.get(id), operations);
+    if (result.refusals.length > 0) process.exitCode = 1;
+    if (options.json) {
+      console.log(JSON.stringify({ ...result, ok: result.refusals.length === 0 }, null, 2));
+      return;
+    }
+    if (result.revision === 0) console.log(`no brief \`${id}\` is stored yet: every section is still to answer`);
+    if (result.refusals.length === 0) {
+      console.log(`${id}, revision ${result.revision}: ready — every phase's check accepts it`);
+      return;
+    }
+    for (const refusal of result.refusals) {
+      const phase = refusal.phase === null ? "" : `${refusal.phase}/ `;
+      console.log(`refused  ${phase}${refusal.section === undefined ? "" : `${refusal.section}: `}${refusal.rule}`);
+    }
+    if (result.next) console.log(`next: ${result.next.phase === null ? "" : `${result.next.phase}/ `}${result.next.section}`);
+  });
+
+/** The mounted brief port and what the selected workflow declares about briefs, or why there is neither. */
+async function openBrief(
+  profile: Profile,
+): Promise<{ ok: true; store: BriefStore; briefs: readonly PhaseBrief[]; mounted: Mounted } | { ok: false; why: string }> {
+  // Assembled, as `amy brief show` is: the store is a mounted port, and the
+  // operations a check is handed are the ones this profile mounts.
+  const assembled = await assemble(profile);
+  if (!assembled.ok) return { ok: false, why: `amy could not start: ${assembled.problems.join("; ")}` };
+  const store = assembled.mounted.ports.get("brief") as BriefStore | undefined;
+  if (!store) return { ok: false, why: "nothing mounted the `brief` port" };
+  const briefs = briefsOf(await workflowPluginOf(profile, assembled));
+  if (!asksForABrief(briefs)) {
+    return { ok: false, why: `the ${profile.name} workflow declares no brief: there are no sections to answer and no check to run` };
+  }
+  return { ok: true, store, briefs, mounted: assembled.mounted };
+}
+
+/** The workflow plugin a profile runs: the composed walk for a project, the configured workflow otherwise. */
+async function workflowPluginOf(profile: Profile, assembled: Assembled): Promise<object | undefined> {
+  if (assembled.ok && assembled.workflowPlugin) return assembled.workflowPlugin;
+  const loaded = await loadMountable([profile.workflow], profile.name);
+  return loaded.bySpec.get(profile.workflow);
+}
+
+function refuseBrief(why: string): void {
+  console.error(why);
+  process.exitCode = 1;
+}
+
+/** Everything piped to the command, for an answer too long for one argument. */
+async function readStandardInput(): Promise<string> {
+  if (process.stdin.isTTY) return "";
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString("utf-8");
+}
 
 program
   .command("status")

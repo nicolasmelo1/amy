@@ -51,7 +51,7 @@ export { FileLeases, LeaseHeld } from "./leases.js";
 export type { BranchLeases } from "./leases.js";
 export { expandDiagram } from "./expand.js";
 export type { Call, CallBinding, CallStep, CalleeReference, LaneStanding, Signature } from "./calls.js";
-export type { PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
+export type { BriefCheckScope, BriefDeclaration, BriefOperation, BriefRefusal, PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";
 
 export type {
   Engine,

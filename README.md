@@ -85,7 +85,7 @@ arguments, options and defaults.
 | Command | What it does |
 | :-- | :-- |
 | `amy add` | Add a workflow or a plugin: install it, mount it, and check the machine boots |
-| `amy brief` | The current statement of a feature, as the workflow keeps it |
+| `amy brief` | The current statement of a feature, the sections its workflow asks for, and whether it is ready |
 | `amy budget` | What the agents have spent, and how close that is to the ceiling |
 | `amy config` | What this machine would read, if it mounted |
 | `amy contract` | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
@@ -118,7 +118,7 @@ npm run gate
 
 This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a deliberately broken fixture.
 
-**26 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**27 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end readme-factory -->
 
