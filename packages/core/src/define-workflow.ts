@@ -320,6 +320,10 @@ function drawnWith<S extends ConfigSchema, P extends object, N extends Needs, R 
     name: declaration.pluginName ?? `workflow-${declaration.name}`,
     configSchema: declaration.configSchema,
     ...(declaration.operations ? { operations: declaration.operations } : {}),
+    // A workflow compiled against an older core may still pass `commands`. It
+    // is carried as it came, so the host's load refuses it by name rather than
+    // the commands disappearing without a word.
+    ...retiredCommandsOf(declaration),
     ...(declaration.checks ? { checks: declaration.checks as unknown as readonly PluginCheck[] } : {}),
     ...(declaration.files ? { files: declaration.files as unknown as readonly PluginFile[] } : {}),
     ...(declaration.setup ? { setup: declaration.setup as unknown as readonly PluginSetup[] } : {}),
@@ -945,6 +949,12 @@ function decisionsFit(workflow: string, states: readonly string[], decide: Reado
     ...(forked.length ? [`${named(forked)} ${forked.length === 1 ? "is a fork" : "are forks"}, moved by its lanes; the join is where the decision is`] : []),
   ];
   throw new Error(`the ${workflow} workflow's \`decide\` does not match its states: ${details.join("; ")}`);
+}
+
+/** `commands` a declaration still carries, kept so the host can refuse them by name. */
+function retiredCommandsOf(declaration: object): { readonly commands?: unknown } {
+  const commands = (declaration as { commands?: unknown }).commands;
+  return commands === undefined ? {} : { commands };
 }
 
 /**

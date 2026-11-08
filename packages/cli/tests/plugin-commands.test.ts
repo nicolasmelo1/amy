@@ -103,6 +103,45 @@ describe("a plugin's operations, check and file", () => {
     expect(idClash.problems.join("\n")).toContain("the operation `demo.greet` is declared by both @acme/plugin-demo and @acme/plugin-other");
   });
 
+  it("brings an operation a profile's fork adds to the command line and the contract, run only where it is mounted", async () => {
+    const forked = demo({ operations: [greet, otherOperation("demo.added", ["demo-added"])] });
+    const other: Profile = { ...WORK, name: "forked" };
+    const config = { ...CONFIG, workflows: { ...CONFIG.workflows, forked: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } } };
+    const gathered = await gather(config, [WORK, other], async (specs, profile) => loading(profile === "forked" ? forked : demo())(specs));
+    expect(gathered.problems).toEqual([]);
+
+    const contribution = gathered.contributions[0]!;
+    expect(contribution.operations.map((operation) => operation.id)).toEqual(["demo.greet", "demo.ticks", "demo.added"]);
+    const document = installContract(gathered.contributions) as { paths: Record<string, unknown> };
+    expect(document.paths["/demo/added"]).toBeDefined();
+
+    const heard = spoken();
+    const made = program().program;
+    register(made, gathered.contributions, { ...environment(heard.out), profileFor: () => ({ ok: true as const, profile: WORK }) });
+    await made.parseAsync(["node", "amy", "demo-added"]);
+    expect(heard.errors.join("\n")).toContain("`demo.added` is not declared by the @acme/plugin-demo that work mounts");
+    expect(process.exitCode).toBe(2);
+    process.exitCode = 0;
+  });
+
+  it("refuses a workflow compiled against an older core that still passes commands to defineWorkflow", async () => {
+    const { defineWorkflow } = await import("@amykit/core");
+    const legacy = defineWorkflow({
+      name: "legacy",
+      pluginName: "@acme/plugin-demo",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      record: () => ({}),
+      decide: {},
+      observe: async () => ({}),
+      actions: {},
+      commands: [{ name: "legacy", description: "the old way", run: () => {} }],
+    } as never) as Plugin;
+    const gathered = await gather(CONFIG, [WORK], loading(legacy));
+    expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares `commands`, which amy no longer reads");
+  });
+
   it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
     const gathered = await gather(CONFIG, [WORK], loading(demo({
       operations: [greet, otherOperation("demo.open", ["demo-open"], { localOnly: false })],

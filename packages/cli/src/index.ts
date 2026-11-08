@@ -93,7 +93,7 @@ import {
   runSetup,
   writeFiles,
 } from "./plugin-commands.js";
-import { register } from "./operations/commands.js";
+import { ANSWERED, register } from "./operations/commands.js";
 import { installContract } from "./operations/contract.js";
 import { refreshPricesWhenStale } from "./prices.js";
 import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, writeWorkflow } from "./workflow.js";
@@ -2890,7 +2890,9 @@ program.parseAsync(process.argv).catch((error: unknown) => {
     process.exitCode = 1;
     return;
   }
-  console.error(message);
+  // An operation's command has already said what it refused, in the manner
+  // it was asked for; a second line would break a reader of --json.
+  if (code !== ANSWERED) console.error(message);
   // An operation's command exits 2 for an argument commander refused, which
   // is an input refused; every other command keeps 1.
   const exit = (error as { exitCode?: unknown }).exitCode;

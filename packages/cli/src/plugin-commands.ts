@@ -133,7 +133,10 @@ function contributionOf(plugin: Plugin, spec: string, profiles: readonly Profile
 function merged(existing: Contribution, own: Contribution): Contribution {
   return {
     ...existing,
-    operations: existing.operations.length > 0 ? existing.operations : own.operations,
+    // Every profile's operations, by id: a fork that adds one brings its
+    // command and its contract entry like any other, and the first profile's
+    // declaration answers for an id two of them share.
+    operations: [...existing.operations, ...own.operations.filter((operation) => !existing.operations.some((held) => held.id === operation.id))],
     checks: existing.checks.length > 0 ? existing.checks : own.checks,
     files: existing.files.length > 0 ? existing.files : own.files,
     setup: existing.setup.length > 0 ? existing.setup : own.setup,

@@ -64,16 +64,30 @@ function declare(parent: Command, operation: Operation, contribution: Contributi
   declareInput(command, operation);
   command.option("--json", "print the output as JSON, a stream as JSON Lines, and an error as the envelope on stderr");
   // An argument commander itself refuses — one missing, one too many, a flag
-  // nobody declared — is an input refused, and exits as one.
+  // nobody declared — is an input refused: said here, as the envelope under
+  // --json, and exits as one. Commander's own line is not printed beside it.
+  command.configureOutput({ outputError: () => {} });
   command.exitOverride((error) => {
     if (error.code === "commander.helpDisplayed" || error.code === "commander.help" || error.code === "commander.version") throw error;
-    throw new CommanderError(EXIT.refused, error.code, error.message);
+    const message = error.message.replace(/^error: /, "");
+    refuse({ code: "amy.input", message }, EXIT.refused, { json: askedForJson(command) }, env.out);
+    throw new CommanderError(EXIT.refused, ANSWERED, message);
   });
   command.action(async (...passed: unknown[]) => {
     const invoked = passed[passed.length - 1] as Command;
     const { json, ...options } = invoked.opts<Record<string, unknown>>();
     process.exitCode = await run(contribution, operation.id, { args: invoked.processedArgs, options }, json === true, env, names);
   });
+}
+
+/** The code of an error already said to the person: the entry point exits with it and says nothing more. */
+export const ANSWERED = "amy.answered";
+
+/** Whether the command line that reached this command asked for --json, read before commander could parse it. */
+function askedForJson(command: Command): boolean {
+  let root = command;
+  while (root.parent) root = root.parent;
+  return ((root as unknown as { rawArgs?: readonly string[] }).rawArgs ?? []).includes("--json");
 }
 
 /** What was typed at one operation's command. */

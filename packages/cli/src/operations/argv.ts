@@ -23,11 +23,22 @@ function fieldsOf(operation: Operation): Field[] {
     const position = positional.indexOf(name);
     return {
       name,
-      schema: resolved(schema, root) ?? schema,
+      schema: inlined(schema, root),
       required: required.has(name),
       ...(position >= 0 ? { position } : { attribute: new Option(flagOf(name)).attributeName() }),
     };
   });
+}
+
+/**
+ * A field's schema with its references followed against the input's root,
+ * its array items' too: a field lifted out of the root no longer carries the
+ * `$defs` a `#/$defs/...` item points at.
+ */
+function inlined(schema: Json, root: Json): Json {
+  const own = resolved(schema, root) ?? schema;
+  if (!own.items || typeof own.items !== "object") return own;
+  return { ...own, items: inlined(own.items as Json, root) };
 }
 
 /** What the help says beside a field: its description, its values, its default. */
