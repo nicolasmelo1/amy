@@ -40,6 +40,7 @@ describe("Claude account usage", () => {
       unavailable: "Claude usage is unavailable: no OAuth token is configured",
     });
     expect(parseClaudeUsage("not json")).toEqual({ unavailable: "Claude usage returned invalid JSON" });
+    expect(parseClaudeUsage("null")).toEqual({ unavailable: "Claude usage returned invalid JSON" });
   });
 
   describe("finding the login", () => {

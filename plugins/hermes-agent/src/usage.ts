@@ -93,13 +93,15 @@ export class HermesUsageReader implements UsageReader {
 
 /** Maps Hermes's documented snake_case report to the host's usage contract. */
 export function parseHermesUsage(json: string): UsageResult {
-  let document: HermesUsageDocument;
+  let document: HermesUsageDocument | undefined;
   try {
-    document = JSON.parse(json) as HermesUsageDocument;
+    const parsed = JSON.parse(json) as unknown;
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) document = parsed as HermesUsageDocument;
   } catch {
     return unavailable("Hermes usage returned invalid JSON");
   }
 
+  if (!document) return unavailable("Hermes usage returned invalid JSON");
   if (!Array.isArray(document.windows)) return unavailable("Hermes usage returned no windows");
   const windows = document.windows.flatMap((value) => officialWindow(value));
   return windows.length > 0 ? { windows } : unavailable("Hermes usage returned no measured windows");

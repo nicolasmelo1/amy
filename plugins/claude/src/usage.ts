@@ -75,12 +75,14 @@ export class ClaudeUsageReader implements UsageReader {
 
 /** Normalizes the account endpoint's percentage measurements. */
 export function parseClaudeUsage(json: string): UsageResult {
-  let document: ClaudeUsageDocument;
+  let document: ClaudeUsageDocument | undefined;
   try {
-    document = JSON.parse(json) as ClaudeUsageDocument;
+    const parsed = JSON.parse(json) as unknown;
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) document = parsed as ClaudeUsageDocument;
   } catch {
     return { unavailable: "Claude usage returned invalid JSON" };
   }
+  if (!document) return { unavailable: "Claude usage returned invalid JSON" };
   const windows = [
     windowOf("five-hour", document.five_hour),
     windowOf("seven-day", document.seven_day),

@@ -75,6 +75,7 @@ describe("Hermes account usage", () => {
 
   it("fails closed on malformed documents and measurements Hermes did not provide", () => {
     expect(parseHermesUsage("not json")).toEqual({ unavailable: "Hermes usage returned invalid JSON" });
+    expect(parseHermesUsage("null")).toEqual({ unavailable: "Hermes usage returned invalid JSON" });
     expect(parseHermesUsage(JSON.stringify({ windows: [{ label: "Session", used_percent: null }] }))).toEqual({
       unavailable: "Hermes usage returned no measured windows",
     });

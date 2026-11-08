@@ -8,12 +8,14 @@ export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-codex",
   configSchema,
   async register(registry, ctx) {
-    const version = await ctx.runner.run("codex", ["--version"]);
-    const reported = version.stdout.trim() || version.stderr.trim() || "unknown";
-    if (!version.ok || !isCompatibleVersion(reported)) {
-      throw new Error(
-        `codex app-server protocol ${reported} is incompatible; expected codex-cli 0.166.x`,
-      );
+    if (!ctx.readOnly) {
+      const version = await ctx.runner.run("codex", ["--version"]);
+      const reported = version.stdout.trim() || version.stderr.trim() || "unknown";
+      if (!version.ok || !isCompatibleVersion(reported)) {
+        throw new Error(
+          `codex app-server protocol ${reported} is incompatible; expected codex-cli 0.166.x`,
+        );
+      }
     }
     const tiers = ctx.config.models;
 

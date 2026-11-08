@@ -1,4 +1,5 @@
 import { HostServices, mount } from "@amykit/core";
+import { USAGE_COLLECTION } from "@amykit/agent-kit";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import { describe, expect, it } from "vitest";
 import { plugin } from "../src/plugin.js";
@@ -31,5 +32,12 @@ describe("mounting the Codex adapter", () => {
     expect(outcome.ok === false && outcome.problems.join(" ")).toContain(
       "codex-cli 0.167.0",
     );
+  });
+
+  it("keeps the usage reader available to read-only inspection when Codex cannot boot", async () => {
+    const outcome = await mount([plugin], {}, { ...host("missing"), readOnly: true });
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok && [...outcome.mounted.contributions.get(USAGE_COLLECTION)!.keys()]).toEqual(["Codex"]);
   });
 });
