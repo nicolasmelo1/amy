@@ -59,3 +59,22 @@ describe("a passed agent step is replayed", () => {
     expect(world.asked).toHaveLength(2);
   });
 });
+
+describe("a replay is kept only when the step's assertions passed", () => {
+  it("does not keep the calls of an agent step whose assertion failed, and asks the agent again next time", async () => {
+    const world = new ProveWorld();
+    world.brief("TBO-21", SCENARIO);
+    world.harnessReplies = ['{"calls":[{"operation":"page.read","input":{"ref":"e2"}}]}', CALLS];
+    const mounted = await world.mounted([operationsPlugin("site", {
+      "page.open": () => ({}),
+      "page.click": () => ({}),
+      "page.read": (input) => ({ badge: input.ref === "e2" ? "Unpaid" : "Paid" }),
+    })]);
+
+    expect((await walk(world, mounted, newRun(mounted, "TBO-21/PROVE#1"))).record.state).toBe("refused");
+    const again = await walk(world, mounted, newRun(mounted, "TBO-21/PROVE#2"));
+
+    expect(world.asked).toHaveLength(2);
+    expect(again.record.state).toBe("PROVEN");
+  });
+});

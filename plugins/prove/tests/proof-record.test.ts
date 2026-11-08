@@ -14,7 +14,7 @@ const SCENARIO = "name: one-call\nsteps:\n  - { id: open, operation: page.open, 
 
 function proof(overrides: Partial<ProofRecord> = {}): ProofRecord {
   return {
-    unit: "TBO-8", scenario: "one-call", assertions: [{ id: "opened", status: "passed" }], ranBy: "amy", manual: false,
+    unit: "TBO-8", scenario: "one-call", outcome: "proven", assertions: [{ id: "opened", status: "passed" }], ranBy: "amy", manual: false,
     against: [], codeDigest: "a1", briefRevision: 2, at: "2026-11-08T12:00:00.000Z", ...overrides,
   };
 }
@@ -58,7 +58,7 @@ describe("a person records a manual run as the proof", () => {
     expect(recorded).toMatchObject({ kind: "output", output: { ranBy: "ada", manual: true, against: ["staging"], assertions: [{ id: "badge", criterion: "C1", status: "passed" }, { id: "pixels", status: "unsupported" }] } });
 
     const shown = await invoke(contract, "prove.show", { unit: "TBO-9", revision: 3 }, context);
-    expect(shown).toMatchObject({ kind: "output", output: { proven: false, why: "`pixels` is unsupported: no reason given" } });
+    expect(shown).toMatchObject({ kind: "output", output: { proven: false, why: "the run was refused: `pixels` is unsupported: no reason given" } });
 
     const refused = await invoke(contract, "prove.record", { unit: "TBO-9", scenario: "s", by: "ada", assertion: ["badge"], revision: 3 }, context);
     expect(refused).toMatchObject({ kind: "error", error: { code: "prove.assertion" } });

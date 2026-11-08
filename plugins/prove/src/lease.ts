@@ -17,6 +17,8 @@ import path from "node:path";
 interface Seat {
   readonly priority: number;
   readonly expiresAt: number;
+  /** When it first asked, kept so a seat given back waits where it waited. */
+  readonly since?: number;
 }
 
 interface Waiter {
@@ -30,6 +32,8 @@ interface Waiter {
 interface Ledger {
   holders: Record<string, Seat>;
   waiting: Record<string, Waiter>;
+  /** The last holder, taking the resource down: no seat is given until it is down. */
+  draining?: string;
 }
 
 export interface Claim {
@@ -66,12 +70,13 @@ export class Leases {
         return { held: true };
       }
       const already = ledger.waiting[claim.holder];
-      ledger.waiting[claim.holder] = { priority: claim.priority, since: already?.since ?? now, expiresAt };
-      const free = this.freeSeats(claim.capacity, Object.keys(ledger.holders).length);
+      const since = already?.since ?? now;
+      ledger.waiting[claim.holder] = { priority: claim.priority, since, expiresAt };
+      const free = ledger.draining === undefined ? this.freeSeats(claim.capacity, Object.keys(ledger.holders).length) : 0;
       const ahead = queue(ledger).indexOf(claim.holder);
       if (ahead < free) {
         delete ledger.waiting[claim.holder];
-        ledger.holders[claim.holder] = { priority: claim.priority, expiresAt };
+        ledger.holders[claim.holder] = { priority: claim.priority, expiresAt, since };
         return { held: true };
       }
       return { held: false, holders: Object.keys(ledger.holders).sort(), ahead: ahead - Math.max(free, 0) };
@@ -93,6 +98,44 @@ export class Leases {
     this.locked(resource, (ledger) => {
       delete ledger.holders[holder];
       delete ledger.waiting[holder];
+      if (ledger.draining === holder) delete ledger.draining;
+    });
+  }
+
+  /**
+   * Gives a held seat back and waits for it again, where it waited before:
+   * a run that could not take every resource it needs holds none of them,
+   * or two runs each holding what the other waits on would wait forever.
+   */
+  yield(resource: string, holder: string, ttlMs: number): void {
+    this.locked(resource, (ledger, now) => {
+      const seat = ledger.holders[holder];
+      if (!seat) return;
+      delete ledger.holders[holder];
+      ledger.waiting[holder] = { priority: seat.priority, since: seat.since ?? now, expiresAt: now + ttlMs };
+    });
+  }
+
+  /**
+   * Whether this holder is the last one on the resource. When it is, it
+   * keeps its seat and the resource drains — no seat is given — until its
+   * `release`, so taking the resource down never pulls it from under a run
+   * that just claimed it. Otherwise its seat is given back at once. A
+   * holder whose seat ran out with nobody else on the resource is the last.
+   */
+  leaveLast(resource: string, holder: string, ttlMs: number): boolean {
+    return this.locked(resource, (ledger, now) => {
+      const others = Object.keys(ledger.holders).filter((one) => one !== holder);
+      if (others.length === 0) {
+        // A seat that ran out while nobody took it is still this run's to
+        // take down: it holds the resource again while it drains.
+        ledger.holders[holder] ??= { priority: 0, expiresAt: now + ttlMs };
+        ledger.draining = holder;
+        return true;
+      }
+      delete ledger.holders[holder];
+      delete ledger.waiting[holder];
+      return false;
     });
   }
 
@@ -126,7 +169,7 @@ export class Leases {
   private read(resource: string): Ledger {
     try {
       const parsed = JSON.parse(fs.readFileSync(this.file(resource), "utf-8")) as Partial<Ledger>;
-      return { holders: parsed.holders ?? {}, waiting: parsed.waiting ?? {} };
+      return { holders: parsed.holders ?? {}, waiting: parsed.waiting ?? {}, ...(parsed.draining ? { draining: parsed.draining } : {}) };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return { holders: {}, waiting: {} };
       throw error;
@@ -159,6 +202,7 @@ export class Leases {
 function expire(ledger: Ledger, now: number): void {
   for (const [holder, seat] of Object.entries(ledger.holders)) if (seat.expiresAt <= now) delete ledger.holders[holder];
   for (const [holder, waiter] of Object.entries(ledger.waiting)) if (waiter.expiresAt <= now) delete ledger.waiting[holder];
+  if (ledger.draining !== undefined && !ledger.holders[ledger.draining]) delete ledger.draining;
 }
 
 /** The waiters in the order seats go to them: priority first, then who asked first. */

@@ -1,7 +1,7 @@
 import { Plan, WorkRecord, act, advance, settled, wait } from "@amykit/core";
 import { AssertionResult, StepResult, blocking, evaluate, holds } from "./assertions.js";
 import type { Resource } from "./resources.js";
-import { Fixture, Scenario, Step } from "./scenario.js";
+import { Fixture, OperationCall, Scenario, Step } from "./scenario.js";
 
 export type ProveState = "READING" | "LEASING" | "PREPARING" | "RUNNING" | "ASKING" | "PROVEN" | "refused";
 
@@ -37,6 +37,8 @@ export interface ProveRecord extends WorkRecord {
   /** Fixtures a person made hold, which are not ensured again this run. */
   heldByPerson?: string[];
   results?: Record<string, StepResult>;
+  /** The calls each agent step made this run, kept as its replay only if its assertions pass. */
+  agentCalls?: Record<string, OperationCall[]>;
   /** When each wait-until step first checked, its deadline counted from there. */
   untilSince?: Record<string, string>;
   asking?: Asking;
@@ -72,7 +74,7 @@ export type Effect =
   | { type: "run-step"; step: string }
   | { type: "ask"; step?: string; fixture?: string; question: string; deadlineMs: number }
   | { type: "escalate" }
-  | { type: "finish" };
+  | { type: "finish"; outcome: "proven" | "refused"; why: string };
 
 type Decision = (record: ProveRecord, observation: Observation, policy: Policy) => Plan;
 
@@ -80,6 +82,20 @@ type Decision = (record: ProveRecord, observation: Observation, policy: Policy) 
 export function nextStep(record: ProveRecord): Step | undefined {
   const done = record.results ?? {};
   return record.scenario?.steps.find((one) => !Object.hasOwn(done, one.id));
+}
+
+/**
+ * The steps that keep a run from holding whatever its assertions say: one
+ * that failed, or one nothing could evaluate, means the scenario did not
+ * hold against the system, asserted on or not.
+ */
+export function stepsBlocking(record: ProveRecord): string[] {
+  return Object.entries(record.results ?? {}).flatMap(([step, result]) => (result.status === "done" ? [] : [`the step \`${step}\` ${result.status === "failed" ? "failed" : "could not be evaluated"}: ${result.why}`]));
+}
+
+/** An end of the run: the move, and the effect that records the proof and lets go of what it held. */
+function end(outcome: "PROVEN" | "refused", why: string, ...before: Effect[]): Plan {
+  return advance(outcome, why, ...before, { type: "finish", outcome: outcome === "PROVEN" ? "proven" : "refused", why });
 }
 
 /** What the run proved: each assertion against the steps' results. */
@@ -106,7 +122,7 @@ export const decide = {
     const needed = record.scenario?.resources ?? [];
     const unknown = needed.filter((one) => !Object.hasOwn(policy.resources, one));
     if (unknown.length > 0) {
-      return advance("refused", `the scenario needs ${unknown.map((one) => `\`${one}\``).join(", ")}, which no configured resource is`, { type: "finish" });
+      return end("refused", `the scenario needs ${unknown.map((one) => `\`${one}\``).join(", ")}, which no configured resource is`);
     }
     const missing = needed.filter((one) => !(record.held ?? []).includes(one));
     if (missing.length === 0) return advance("PREPARING", needed.length > 0 ? `holds a seat on ${needed.map((one) => `\`${one}\``).join(", ")}` : "the scenario needs no resource");
@@ -116,7 +132,7 @@ export const decide = {
   PREPARING: (record, observation, policy) => {
     const lost = lostLease(observation);
     if (lost) return lost;
-    if (record.failed) return advance("refused", record.failed, { type: "finish" });
+    if (record.failed) return end("refused", record.failed);
     if (record.fixtureAsk) {
       return advance("ASKING", `the fixture \`${record.fixtureAsk.fixture}\` cannot reach its state on its own`, {
         type: "ask", fixture: record.fixtureAsk.fixture, question: record.fixtureAsk.question, deadlineMs: policy.fixtureDeadlineMs,
@@ -132,13 +148,16 @@ export const decide = {
     const step = nextStep(record);
     if (!step) {
       const assertions = verdictOf(record);
-      return holds(assertions)
-        ? advance("PROVEN", `every assertion of \`${record.scenario?.name}\` passed`, { type: "finish" })
-        : advance("refused", blocking(assertions).join("; "), { type: "finish" });
+      const broken = [...stepsBlocking(record), ...(holds(assertions) ? [] : blocking(assertions))];
+      return broken.length === 0 ? end("PROVEN", `every step and assertion of \`${record.scenario?.name}\` passed`) : end("refused", broken.join("; "));
     }
     if (step.kind === "human") return advance("ASKING", `the step \`${step.id}\` asks a person`, { type: "ask", step: step.id, question: step.ask, deadlineMs: step.deadlineMs });
-    if (step.kind === "wait-until" && record.untilSince?.[step.id]) {
-      return wait(holding(policy, step.everyMs), `waiting until \`${step.operation}\` holds for \`${step.id}\``, { type: "run-step", step: step.id });
+    const since = step.kind === "wait-until" ? record.untilSince?.[step.id] : undefined;
+    if (step.kind === "wait-until" && since) {
+      // The next check comes no later than the deadline, so a check past it
+      // is the one that fails the step rather than one that passes late.
+      const left = Date.parse(since) + step.deadlineMs - Date.parse(observation.now);
+      return wait(holding(policy, Math.max(1, Math.min(step.everyMs, left))), `waiting until \`${step.operation}\` holds for \`${step.id}\``, { type: "run-step", step: step.id });
     }
     // A wait-until's first check is a look like its later ones: what costs an
     // attempt is a step that acts, not one that reads until the world agrees.
@@ -149,17 +168,19 @@ export const decide = {
   ASKING: (record, observation, policy) => {
     const asking = record.asking;
     if (!asking) return advance(record.fixtureAsk ? "PREPARING" : "RUNNING", "nothing is being asked");
-    // The deadline before the seats: a run nobody answered is over, whether
-    // or not its seats outlived the wait.
-    if (!observation.reply && observation.now >= asking.deadlineAt) {
-      return advance("refused", `nobody answered \`${asking.step ?? asking.fixture}\` before ${asking.deadlineAt}`, { type: "escalate" }, { type: "finish" });
+    // The deadline before the seats: a run nobody answered in time is over,
+    // whether or not its seats outlived the wait, and an answer that came
+    // after the deadline is not one in time however soon it is read.
+    const reply = observation.reply && observation.reply.at <= asking.deadlineAt ? observation.reply : undefined;
+    if (!reply && observation.now >= asking.deadlineAt) {
+      return end("refused", `nobody answered \`${asking.step ?? asking.fixture}\` before ${asking.deadlineAt}`, { type: "escalate" });
     }
     const lost = lostLease(observation);
     if (lost) return lost;
-    if (observation.reply) {
+    if (reply) {
       return asking.fixture
-        ? advance("PREPARING", `${observation.reply.author} made the fixture \`${asking.fixture}\` hold`)
-        : advance("RUNNING", `${observation.reply.author} answered \`${asking.step}\``);
+        ? advance("PREPARING", `${reply.author} made the fixture \`${asking.fixture}\` hold`)
+        : advance("RUNNING", `${reply.author} answered \`${asking.step}\``);
     }
     return wait(holding(policy, policy.askEveryMs), `waiting on a person for \`${asking.step ?? asking.fixture}\``, { type: "renew" });
   },

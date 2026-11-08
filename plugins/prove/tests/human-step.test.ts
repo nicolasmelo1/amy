@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Leases } from "../src/lease.js";
-import { leasesAt } from "../src/plugin.js";
+import { holderOf, leasesAt } from "../src/plugin.js";
 import { ProveWorld, newRun, operationsPlugin, walk } from "./world.js";
 
 const ok = () => ({ ok: true, output: "" });
@@ -44,7 +44,7 @@ describe("a human step", () => {
     }
 
     expect(waited.state).toBe("ASKING");
-    expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual(["TBO-14/PROVE#1"]);
+    expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual([holderOf(world.host().paths, { id: "TBO-14/PROVE#1" })]);
   });
 
   it("resumes on an answer", async () => {
@@ -68,5 +68,18 @@ describe("a human step", () => {
     expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual([]);
     expect(world.ran).toContain("account-down");
     expect(done.record.verdict?.refused).toMatch(/^nobody answered `look` before /);
+  });
+});
+
+describe("an answer after the deadline", () => {
+  it("is not one in time: the run is refused and its leases released", async () => {
+    const { world, mounted, record } = await asking();
+    world.clock += 3600000 + 1;
+    world.answer("thread-TBO-14", "sorry, late — yes");
+
+    const done = await walk(world, mounted, record);
+
+    expect(done.record.state).toBe("refused");
+    expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual([]);
   });
 });

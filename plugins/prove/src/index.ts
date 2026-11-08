@@ -1,4 +1,4 @@
-export { configSchema, leasesAt, needs, plugin, proofsAt, unitOf } from "./plugin.js";
+export { configSchema, holderOf, leasesAt, needs, plugin, proofsAt, unitOf } from "./plugin.js";
 export type { Settings } from "./plugin.js";
 export { decide, nextStep, verdictOf } from "./decide.js";
 export type { Asking, Effect, Observation, Policy, ProveRecord, ProveState } from "./decide.js";

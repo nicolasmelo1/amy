@@ -74,18 +74,20 @@ seat. Waiting for a seat is a look, never an attempt.
 through `PORT` and a stable `https://<name>.localhost`; in a linked git
 worktree the branch becomes a subdomain, so the main checkout and a worktree on
 `fix-ui` serve `shop.localhost` and `fix-ui.shop.localhost` at once. The
-proving plugin never names it: it is three command lines in the config.
+proving plugin never names it: it is three command lines in the config. Each
+app's `up` keeps the process it started, and its `down` stops that process and
+no other, because both worktrees run the same command line.
 
 ```yaml
 plugins:
   "@amykit/plugin-command":
     allow:
-      shop-main-up: "cd ~/work/shop && nohup portless shop npm run dev > /tmp/shop-main.log 2>&1 &"
+      shop-main-up: "cd ~/work/shop && { nohup portless shop npm run dev > /tmp/shop-main.log 2>&1 & echo $! > /tmp/shop-main.pid; }"
       shop-main-check: "curl -fsS --retry 30 --retry-connrefused --retry-delay 1 https://shop.localhost/health"
-      shop-main-down: "pkill -f 'portless shop npm run dev' || true"
-      shop-fix-ui-up: "cd ~/work/shop-fix-ui && nohup portless shop npm run dev > /tmp/shop-fix-ui.log 2>&1 &"
+      shop-main-down: "kill $(cat /tmp/shop-main.pid) && rm /tmp/shop-main.pid"
+      shop-fix-ui-up: "cd ~/work/shop-fix-ui && { nohup portless shop npm run dev > /tmp/shop-fix-ui.log 2>&1 & echo $! > /tmp/shop-fix-ui.pid; }"
       shop-fix-ui-check: "curl -fsS --retry 30 --retry-connrefused --retry-delay 1 https://fix-ui.shop.localhost/health"
-      shop-fix-ui-down: "pkill -f 'shop-fix-ui.*portless' || true"
+      shop-fix-ui-down: "kill $(cat /tmp/shop-fix-ui.pid) && rm /tmp/shop-fix-ui.pid"
   "@amykit/plugin-prove":
     resources:
       shop-main: { capacity: 1, up: shop-main-up, check: shop-main-check, down: shop-main-down }

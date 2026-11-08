@@ -40,6 +40,11 @@ export class Replays {
     }
   }
 
+  /** Forgets a kept replay: one whose step's assertions failed would pin a wrong attempt. */
+  remove(scenario: string, step: string): void {
+    fs.rmSync(this.file(scenario, step), { force: true });
+  }
+
   put(scenario: string, step: string, replay: Replay): void {
     const file = this.file(scenario, step);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -77,32 +82,39 @@ export function untilMissed(step: Extract<Step, { kind: "wait-until" }>, last: S
   };
 }
 
+/** What an agent step ended with, and the calls that got it there: kept as its replay only once its assertions pass. */
+export interface AgentRun {
+  readonly result: StepResult;
+  readonly calls: readonly OperationCall[];
+}
+
 /**
  * Runs an agent step. A replay kept from a run that passed is called first,
  * with no model; the harness is asked only when there is none, or from the
  * call where the replay broke. What the agent cannot settle is unsupported.
+ * Nothing is kept here: the run keeps the calls once the step's assertions
+ * pass.
  */
-export async function runAgent(scenario: string, step: Extract<Step, { kind: "agent" }>, ports: StepPorts): Promise<StepResult> {
+export async function runAgent(scenario: string, step: Extract<Step, { kind: "agent" }>, ports: StepPorts): Promise<AgentRun> {
   const kept = ports.replays.get(scenario, step.id);
   const replayed = kept ? await replay(kept, ports) : { ran: [] };
-  if (replayed.last && !replayed.broke) return replayed.last;
+  if (replayed.last && !replayed.broke) return { result: replayed.last, calls: replayed.ran };
+  const unsupported = (why: string): AgentRun => ({ result: { status: "unsupported", why }, calls: [] });
 
-  if (!ports.ask) return { status: "unsupported", why: `the step \`${step.id}\` needs an agent, and no harness is mounted` };
+  if (!ports.ask) return unsupported(`the step \`${step.id}\` needs an agent, and no harness is mounted`);
   const reply = await ports.ask(agentPrompt(step, ports.offered, replayed.ran, replayed.broke));
-  if (reply.run.outcome !== "completed") return { status: "unsupported", why: `the agent did not finish \`${step.id}\`: ${reply.run.output || reply.run.outcome}` };
+  if (reply.run.outcome !== "completed") return unsupported(`the agent did not finish \`${step.id}\`: ${reply.run.output || reply.run.outcome}`);
   const answer = answerIn(reply.text);
-  if (!answer) return { status: "unsupported", why: `the agent answered \`${step.id}\` with no calls amy can read` };
-  if ("unsupported" in answer) return { status: "unsupported", why: answer.unsupported };
+  if (!answer) return unsupported(`the agent answered \`${step.id}\` with no calls amy can read`);
+  if ("unsupported" in answer) return unsupported(answer.unsupported);
   const ran = [...replayed.ran];
   let last: StepResult | undefined;
   for (const one of answer.calls) {
     last = await call(ports, one);
-    if (last.status !== "done") return last;
+    if (last.status !== "done") return { result: last, calls: [] };
     ran.push(one);
   }
-  if (!last) return { status: "unsupported", why: `the agent called nothing for \`${step.id}\`` };
-  ports.replays.put(scenario, step.id, { calls: ran });
-  return last;
+  return last ? { result: last, calls: ran } : unsupported(`the agent called nothing for \`${step.id}\``);
 }
 
 /** A kept replay's calls, in order, until one breaks: what ran, the last result, and where it broke. */
@@ -131,7 +143,9 @@ type Answer = { readonly calls: readonly OperationCall[] } | { readonly unsuppor
 
 /** The last JSON object in a reply, read as the calls to make or why it cannot be settled. */
 function answerIn(text: string): Answer | undefined {
-  for (let start = text.lastIndexOf("{"); start >= 0; start = text.lastIndexOf("{", start - 1)) {
+  // `lastIndexOf("{", -1)` searches position zero again, so the scan stops
+  // explicitly once it has tried the first character.
+  for (let start = text.lastIndexOf("{"); start >= 0; start = start === 0 ? -1 : text.lastIndexOf("{", start - 1)) {
     let parsed: unknown;
     try {
       parsed = JSON.parse(text.slice(start, text.lastIndexOf("}") + 1));

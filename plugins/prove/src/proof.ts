@@ -16,6 +16,10 @@ import { AssertionResult, blocking, holds } from "./assertions.js";
 export interface ProofRecord {
   readonly unit: string;
   readonly scenario: string;
+  /** How the run ended: an assertion passing is not a proof when a step of the run failed. */
+  readonly outcome: "proven" | "refused";
+  /** Why it was refused, when it was. */
+  readonly refused?: string;
   readonly assertions: readonly AssertionResult[];
   /** `amy`, or the person who ran it by hand. */
   readonly ranBy: string;
@@ -75,6 +79,7 @@ export class ProofStore {
     if (proof.briefRevision !== current.briefRevision) {
       return { proven: false, proof, why: `the proof certified revision ${proof.briefRevision} of the brief, and the brief is at ${current.briefRevision} now` };
     }
+    if (proof.outcome !== "proven") return { proven: false, proof, why: `the run was refused: ${proof.refused ?? "no reason recorded"}` };
     if (!holds(proof.assertions)) return { proven: false, proof, why: blocking(proof.assertions).join("; ") || "the proof asserts nothing" };
     return { proven: true, proof };
   }

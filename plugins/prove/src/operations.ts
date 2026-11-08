@@ -1,6 +1,7 @@
 import path from "node:path";
 import { OperationScope, defineOperation, fail, scopeOf } from "@amykit/core";
 import { z } from "zod";
+import { blocking, holds } from "./assertions.js";
 import { PROOFS_DIRECTORY, ProofStore } from "./proof.js";
 
 /**
@@ -27,6 +28,8 @@ const assertionInput = z.object({
 const proofOutput = z.object({
   unit: z.string(),
   scenario: z.string(),
+  outcome: z.enum(["proven", "refused"]),
+  refused: z.string().optional(),
   ranBy: z.string(),
   manual: z.boolean(),
   against: z.array(z.string()),
@@ -66,7 +69,7 @@ const recordProof = defineOperation({
     summary: "a person proved the badge by hand",
     input: { unit: "TBO-12", scenario: "paid-invoice-badge", by: "ada", assertion: ["badge@C1=passed"], revision: 3 },
     output: {
-      unit: "TBO-12", scenario: "paid-invoice-badge", ranBy: "ada", manual: true, against: [], codeDigest: null, briefRevision: 3,
+      unit: "TBO-12", scenario: "paid-invoice-badge", outcome: "proven", ranBy: "ada", manual: true, against: [], codeDigest: null, briefRevision: 3,
       at: "2026-11-08T12:00:00.000Z", assertions: [{ id: "badge", criterion: "C1", status: "passed" }],
     },
   }],
@@ -84,6 +87,8 @@ const recordProof = defineOperation({
     const proof = {
       unit: input.unit,
       scenario: input.scenario,
+      outcome: holds(assertions) ? "proven" as const : "refused" as const,
+      ...(holds(assertions) ? {} : { refused: blocking(assertions).join("; ") }),
       assertions,
       ranBy: input.by,
       manual: true,

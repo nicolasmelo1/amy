@@ -173,7 +173,7 @@ export interface Look {
 }
 
 /** One look, the way the engine takes it: observe, plan, run the actions, remember. */
-async function look(mounted: Mounted, record: ProveRecord, now: Date): Promise<{ record: ProveRecord; look: Look }> {
+export async function look(mounted: Mounted, record: ProveRecord, now: Date): Promise<{ record: ProveRecord; look: Look }> {
   const observation = await mounted.runtime.observe(record);
   const plan = mounted.workflow.plan(record, observation, mounted.runtime.policy);
   const outcomes: Record<string, unknown> = {};

@@ -18,7 +18,7 @@ import {
   port,
 } from "@amykit/core";
 import { StepResult } from "./assertions.js";
-import { Effect, Observation, Policy, ProveRecord, decide, verdictOf } from "./decide.js";
+import { Effect, Observation, Policy, ProveRecord, decide, stepsBlocking, verdictOf } from "./decide.js";
 import { ensure, readFixtures } from "./fixtures.js";
 import { Leases } from "./lease.js";
 import { proofOperations } from "./operations.js";
@@ -73,6 +73,15 @@ export function proofsAt(paths: { readonly state: string; readonly profile?: str
   return path.join(paths.artifacts ?? paths.profile ?? paths.state, PROOFS_DIRECTORY);
 }
 
+/**
+ * Who holds a seat: the run, named by the profile it runs in. A work id is
+ * unique only inside its profile, and two projects can both be proving
+ * `TBO-1/PROVE#1` against one account.
+ */
+export function holderOf(paths: { readonly state: string; readonly profile?: string }, record: { readonly id: string }): string {
+  return `${paths.profile ?? paths.state}#${record.id}`;
+}
+
 /** The machine's leases, under Amy home: shared by every project and profile. */
 export function leasesAt(home: string): string {
   return path.join(home, "leases");
@@ -95,7 +104,7 @@ async function observe(scope: Scope, record: ProveRecord): Promise<Observation> 
   const unit = unitOf(record);
   const now = scope.ctx.now().toISOString();
   const { leases } = stores(scope);
-  const lost = (record.held ?? []).filter((resource) => !leases.holds(resource, record.id));
+  const lost = (record.held ?? []).filter((resource) => !leases.holds(resource, holderOf(scope.ctx.paths, record)));
   let read: Pick<Observation, "scenario" | "problems" | "briefRevision"> = { problems: [], briefRevision: record.briefRevision ?? 0 };
   if (record.state === "READING") {
     const brief = await scope.ports.brief.get(unit);
@@ -115,25 +124,26 @@ async function observe(scope: Scope, record: ProveRecord): Promise<Observation> 
 /** Renews every seat the run holds, so a run that is still moving never loses one. */
 function renew(scope: ActionScope, record: ProveRecord): void {
   const { leases } = stores(scope);
-  for (const resource of record.held ?? []) leases.renew(resource, record.id, scope.policy.leaseTtlMs);
+  for (const resource of record.held ?? []) leases.renew(resource, holderOf(scope.ctx.paths, record), scope.policy.leaseTtlMs);
 }
 
 const actions = {
   lease: async (scope: ActionScope, work: Work) => {
     const { leases } = stores(scope);
     const record = work.record;
-    const held = [...(record.held ?? [])];
-    for (const resource of record.scenario?.resources ?? []) {
-      const claimed = leases.claim({
-        resource,
-        capacity: scope.policy.resources[resource]!.capacity,
-        holder: record.id,
-        priority: record.input?.priority ?? 0,
-        ttlMs: scope.policy.leaseTtlMs,
-      });
-      if (claimed.held && !held.includes(resource)) held.push(resource);
-    }
-    work.outcomes.held = held;
+    const holder = holderOf(scope.ctx.paths, record);
+    const needed = record.scenario?.resources ?? [];
+    const held = needed.filter((resource) => leases.claim({
+      resource,
+      capacity: scope.policy.resources[resource]!.capacity,
+      holder,
+      priority: record.input?.priority ?? 0,
+      ttlMs: scope.policy.leaseTtlMs,
+    }).held);
+    // All or none: a run holding part of what it needs while it waits for the
+    // rest would wait forever on a run holding the other part.
+    if (held.length < needed.length) for (const resource of held) leases.yield(resource, holder, scope.policy.leaseTtlMs);
+    work.outcomes.held = held.length < needed.length ? [] : held;
   },
 
   renew: async (scope: ActionScope, work: Work) => renew(scope, work.record),
@@ -157,18 +167,22 @@ const actions = {
     if (step.kind === "deterministic") result = await runDeterministic(step, { operate });
     else if (step.kind === "agent") {
       const agent = scope.ports.agent;
-      result = await runAgent(record.scenario!.name, step, {
+      const ran = await runAgent(record.scenario!.name, step, {
         operate,
         replays,
         offered: [...scope.ctx.contributions(OPERATIONS_COLLECTION).keys()].sort(),
         ...(agent ? { ask: (prompt: string) => agent.ask(prompt, scope.ctx.paths.profile ?? scope.ctx.paths.state, { workId: record.id, step: step.id }) } : {}),
       });
+      result = ran.result;
+      work.outcomes.agentCalls = { ...record.agentCalls, [step.id]: [...ran.calls] };
     } else if (step.kind === "wait-until") {
-      const now = scope.ctx.now();
-      const since = record.untilSince?.[step.id] ?? now.toISOString();
+      const since = record.untilSince?.[step.id] ?? scope.ctx.now().toISOString();
       const checked = await checkUntil(step, { operate });
-      if (checked.holds) result = checked.result;
-      else if (now.getTime() - Date.parse(since) >= step.deadlineMs) result = untilMissed(step, checked.result);
+      // Measured once the check answered: a check that only finishes past
+      // the deadline is past it, whatever it found.
+      const late = scope.ctx.now().getTime() - Date.parse(since) > step.deadlineMs;
+      if (late) result = untilMissed(step, checked.result);
+      else if (checked.holds) result = checked.result;
       else work.outcomes.untilSince = { ...record.untilSince, [step.id]: since };
     }
     if (result) work.outcomes.result = { step: step.id, result };
@@ -215,21 +229,19 @@ const actions = {
     });
   },
 
-  finish: async (scope: ActionScope, work: Work) => {
+  finish: async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "finish" }>) => {
     const record = work.record;
-    const { leases, proofs } = stores(scope);
-    const said: string[] = [];
-    for (const name of record.up ?? []) {
-      const failed = await takeDown(name, scope.policy.resources[name]!, scope.ports.commands!);
-      if (failed) said.push(failed);
-    }
-    for (const resource of record.scenario?.resources ?? []) leases.release(resource, record.id);
+    const { proofs, replays } = stores(scope);
+    const said = await letGo(scope, record);
     if (record.scenario) {
+      keepReplays(replays, record);
       const called = record.scenario.steps.flatMap((one) => (one.kind === "deterministic" || one.kind === "wait-until" ? [one.operation] : []));
       const owners = [...new Set(called.map((id) => ownerOf(scope, id)).filter((owner): owner is string => owner !== undefined))];
       proofs.write({
         unit: unitOf(record),
         scenario: record.scenario.name,
+        outcome: effect.outcome,
+        ...(effect.outcome === "refused" ? { refused: effect.why } : {}),
         assertions: verdictOf(record),
         ranBy: "amy",
         manual: false,
@@ -242,6 +254,43 @@ const actions = {
     for (const line of said) await scope.announce(line);
   },
 };
+
+/**
+ * Takes down what the run brought up and gives back its seats. A resource
+ * other runs still hold stays up: only its last holder takes it down, and no
+ * seat is given while it does.
+ */
+async function letGo(scope: ActionScope, record: ProveRecord): Promise<string[]> {
+  const { leases } = stores(scope);
+  const holder = holderOf(scope.ctx.paths, record);
+  const said: string[] = [];
+  for (const name of record.scenario?.resources ?? []) {
+    if ((record.up ?? []).includes(name) && leases.leaveLast(name, holder, scope.policy.leaseTtlMs)) {
+      const failed = await takeDown(name, scope.policy.resources[name]!, scope.ports.commands!);
+      if (failed) said.push(failed);
+    }
+    leases.release(name, holder);
+  }
+  return said;
+}
+
+/**
+ * An agent step's calls become its replay only when every assertion on the
+ * step passed; a replay whose step's assertions failed is forgotten, so the
+ * next run asks the agent again rather than repeating a wrong attempt.
+ */
+function keepReplays(replays: Replays, record: ProveRecord): void {
+  const scenario = record.scenario!;
+  const verdict = verdictOf(record);
+  for (const step of scenario.steps) {
+    if (step.kind !== "agent") continue;
+    const ids = new Set(scenario.assertions.filter((one) => one.step === step.id).map((one) => one.id));
+    const passed = record.results?.[step.id]?.status === "done" && verdict.filter((one) => ids.has(one.id)).every((one) => one.status === "passed");
+    const calls = record.agentCalls?.[step.id] ?? [];
+    if (passed && calls.length > 0) replays.put(scenario.name, step.id, { calls });
+    else if (!passed) replays.remove(scenario.name, step.id);
+  }
+}
 
 /** Brings up every resource the run has not; false, with why, when one would not come up. */
 async function broughtUp(scope: ActionScope, work: Work): Promise<boolean> {
@@ -287,7 +336,7 @@ async function digestOf(scope: ActionScope): Promise<string | null> {
 }
 
 /** The record fields an action's outcome lands in, under the same names. */
-const FOLDED = ["held", "up", "digest", "failed", "fixtureAsk", "prepared", "untilSince", "asking"] as const;
+const FOLDED = ["held", "up", "digest", "failed", "fixtureAsk", "prepared", "untilSince", "asking", "agentCalls"] as const;
 
 /** Folds what the actions found onto the record, and what leaving a state lets go of. */
 function remember(record: ProveRecord, outcomes: Record<string, unknown>, observation: Observation, moved: Moved | null): ProveRecord {
@@ -344,8 +393,8 @@ function refusalOf(from: string, before: ProveRecord, after: ProveRecord, observ
   if (after.failed) return after.failed;
   if (from === "ASKING") return `nobody answered \`${before.asking?.step ?? before.asking?.fixture}\` before ${before.asking?.deadlineAt}`;
   if (from === "LEASING") return "the scenario needs a resource no configuration names";
-  const failing = verdictOf(after).filter((one) => one.status !== "passed");
-  return failing.length > 0 ? failing.map((one) => `\`${one.id}\` is ${one.status}`).join("; ") : `refused at ${observation.now}`;
+  const failing = [...stepsBlocking(after), ...verdictOf(after).filter((one) => one.status !== "passed").map((one) => `\`${one.id}\` is ${one.status}`)];
+  return failing.length > 0 ? failing.join("; ") : `refused at ${observation.now}`;
 }
 
 /** The criteria a run answered: each criterion an assertion that passed names. */

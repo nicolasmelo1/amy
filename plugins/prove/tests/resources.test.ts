@@ -81,6 +81,15 @@ describe("the documented web example", () => {
       await commands.run(one.up!);
       await commands.run(one.check);
     }
+    const downs: string[] = [];
+    for (const one of Object.values(resources)) {
+      await commands.run(one.down!);
+      downs.push(lines.at(-1)!);
+    }
+    // Both worktrees run one command line, so each stops the process it started, never the other's.
+    expect(downs[0]).toContain("shop-main.pid");
+    expect(downs[1]).toContain("shop-fix-ui.pid");
+    expect(downs.join("\n")).not.toMatch(/pkill|killall/);
 
     expect(lines.filter((line) => line.includes("portless shop npm run dev"))).toHaveLength(2);
     expect(lines.some((line) => line.includes("https://shop.localhost/"))).toBe(true);

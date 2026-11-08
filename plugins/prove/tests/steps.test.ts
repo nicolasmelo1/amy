@@ -98,3 +98,54 @@ describe("each kind of step", () => {
     expect(record.state).toBe("refused");
   });
 });
+
+describe("a run is proven only when every step held", () => {
+  it("refuses a run whose unasserted step failed, and its proof does not count", async () => {
+    const world = new ProveWorld();
+    world.brief("TBO-30", scenario(
+      "  - { id: pay, operation: invoices.pay, input: {} }\n  - { id: open, operation: page.open, input: {} }",
+      "  - { id: opened, step: open, path: status, equals: ok }",
+    ));
+    const mounted = await world.mounted([operationsPlugin("shop", { "invoices.pay": () => new Error("card declined"), "page.open": () => ({ status: "ok" }) })]);
+
+    const { record } = await walk(world, mounted, newRun(mounted, "TBO-30/PROVE#1"));
+
+    expect(record.state).toBe("refused");
+    expect(record.verdict?.refused).toContain("the step `pay` failed");
+    const { ProofStore } = await import("../src/proof.js");
+    expect(new ProofStore(`${world.artifacts}/proofs`).standing("TBO-30", { codeDigest: null, briefRevision: 1 })).toMatchObject({ proven: false, why: expect.stringContaining("the run was refused") });
+  });
+
+  it("fails a wait-until check that only holds once its deadline passed, however long the check took", async () => {
+    const world = new ProveWorld();
+    world.brief("TBO-31", scenario(
+      "  - { id: settle, kind: wait-until, operation: job.status, input: {}, expect: { path: state, equals: done }, deadlineMs: 1000, everyMs: 5000 }",
+      "  - { id: settled, step: settle, path: state, equals: done }",
+    ));
+    let checks = 0;
+    const mounted = await world.mounted([operationsPlugin("jobs", { "job.status": () => {
+      checks += 1;
+      if (checks === 2) world.clock += 2000;
+      return { state: checks >= 2 ? "done" : "running" };
+    } })]);
+
+    const { record, looks } = await walk(world, mounted, newRun(mounted, "TBO-31/PROVE#1"), { throughWaits: true });
+
+    // No wait outlasts the deadline, though the step asks to check every five seconds.
+    for (const one of looks.filter((taken) => taken.plan.kind === "wait")) expect((one.plan as { retryAfterMs: number }).retryAfterMs).toBeLessThanOrEqual(1000);
+    expect(checks).toBe(2);
+    expect(record.state).toBe("refused");
+    expect(record.results?.settle?.status).toBe("failed");
+  });
+
+  it("answers unsupported, rather than hanging, on a reply that only opens a JSON object", async () => {
+    const world = new ProveWorld();
+    world.brief("TBO-32", scenario("  - { id: open, operation: page.open, input: {} }\n  - { id: read, kind: agent, prompt: read it }", "  - { id: badge, step: read, path: badge }"));
+    world.harnessReplies = ['{"calls":['];
+    const mounted = await world.mounted([operationsPlugin("site", { "page.open": () => ({}) })]);
+
+    const { record } = await walk(world, mounted, newRun(mounted, "TBO-32/PROVE#1"));
+
+    expect(record.results?.read).toEqual({ status: "unsupported", why: "the agent answered `read` with no calls amy can read" });
+  });
+});
