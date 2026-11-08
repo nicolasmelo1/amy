@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), installing the command onto a scratch machine with .software-factory/evidence/amy-add-remove-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/amy-add-remove-run.json",
-      "report_sha256": "ebf83f3d2b8002ee33db92c30c8971b002b113396e6be4bfadde4a9da480c442",
+      "report_sha256": "954d1e93975ae1ef7f68b993a01f3b75ba2be55a3a54f0732c8bcf2afc294bfe",
       "required_assertions": [
         "add.a_path_becomes_a_workflow_that_runs",
         "add.adding_one_plugin_keeps_the_recommendation",

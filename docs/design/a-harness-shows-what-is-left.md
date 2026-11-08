@@ -44,6 +44,8 @@ touches:
   - scripts/write-install-manifest.ts
   - .software-factory/policy.yaml
   - .software-factory/evidence/harness-usage-scenario.sh
+  - .software-factory/evidence/amy-add-remove-scenario.sh
+  - .software-factory/evidence/amy-add-remove*.json
   - .software-factory/evidence/harness-usage*.json
   - docs/**
   - README.md

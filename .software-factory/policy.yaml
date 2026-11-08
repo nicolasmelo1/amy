@@ -579,6 +579,7 @@ gates:
     required_assertions:
       - "add.a_path_becomes_a_workflow_that_runs"
       - "add.a_plugin_can_be_added_before_any_workflow"
+      - "add.a_plugin_add_installs_no_unrelated_plugin"
       - "add.adding_one_plugin_keeps_the_recommendation"
       - "add.removing_keeps_the_state"
       - "add.a_removal_that_would_not_boot_is_refused"
