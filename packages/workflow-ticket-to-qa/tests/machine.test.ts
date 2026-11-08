@@ -6,6 +6,7 @@ import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, d
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
 import { plan } from "../src/machine.js";
+import { actionsFor } from "../src/actions.js";
 import {
   HEAD,
   OLD_HEAD,
@@ -129,6 +130,40 @@ describe("CLARIFYING", () => {
     ]);
   });
 
+  const closedAsked = {
+    ...asked,
+    questions: [{ prompt: "Which currency should the invoice total be shown in?", answers: ["BRL", "USD"] }],
+  };
+
+  it("treats a selected answer as a decision under discuss and returns it beside its question", () => {
+    const selected = {
+      author: "ada",
+      body: "",
+      at: "2026-09-03T12:00:00.000Z",
+      fromAmy: false,
+      answer: { ask: "Which currency should the invoice total be shown in?", chosen: ["BRL"] },
+    };
+
+    const p = expectAdvance(plan(record("CLARIFYING", { triage: closedAsked }), observation({ conversation: [amyAsked, selected] }), { ...policy, conversation: "discuss" }));
+
+    expect(p.effects).toEqual([{ type: "triage", conversation: [
+      "You asked: - Which currency should the invoice total be shown in?",
+      "ada answered: Which currency should the invoice total be shown in?: BRL",
+    ] }]);
+  });
+
+  it.each([
+    ["a foreign ask", { ask: "Who approves this?", chosen: ["BRL"] }],
+    ["a stale ask", { ask: "Which currency did the last triage ask for?", chosen: ["BRL"] }],
+    ["an invalid choice", { ask: "Which currency should the invoice total be shown in?", chosen: ["EUR"] }],
+    ["an empty choice", { ask: "Which currency should the invoice total be shown in?", chosen: [] }],
+  ])("does not leave CLARIFYING for %s", (_name, answer) => {
+    const selected = { author: "ada", body: "", at: "2026-09-03T12:00:00.000Z", fromAmy: false, answer };
+
+    expect(expectWait(plan(record("CLARIFYING", { triage: closedAsked }), observation({ conversation: [selected] }), { ...policy, conversation: "discuss" })).why)
+      .toBe("waiting for an answer in the work thread");
+  });
+
   it("does not read its own question, quoted back, as the answer", () => {
     // A tracker that copies the body into a reply, or a system that quotes
     // the thread, must not pass for an answer: only one line carries
@@ -173,6 +208,63 @@ describe("CLARIFYING", () => {
         "ada answered: In BRL, the same as the rest of the invoice.",
       ]),
     });
+  });
+});
+
+describe("asking structured triage questions", () => {
+  it("posts a closed answer set as an ask only when the conversation declares asks", async () => {
+    const thread = { id: "thread-PROJ-1239" };
+    const post = vi.fn().mockResolvedValue("message-1");
+    const conversation: Conversation = {
+      asks: true,
+      open: vi.fn().mockResolvedValue(thread),
+      post,
+      replies: vi.fn().mockResolvedValue([]),
+    };
+    const announce = vi.fn().mockResolvedValue(undefined);
+
+    await actionsFor(policy)["ask-question"]!({
+      ports: { conversation, tracker: {}, brief: undefined },
+      ctx: { now: () => WORKDAY },
+      announce,
+    } as never, {
+      record: { id: "PROJ-1239" },
+      observation: { ticket: observation().ticket },
+      outcomes: {},
+    } as never, {
+      type: "ask-question",
+      questions: [{ prompt: "Which currency?", answers: ["BRL", "USD"] }],
+    });
+
+    expect(post).toHaveBeenCalledWith(thread, {
+      text: "Which currency?",
+      ask: { id: "Which currency?", prompt: "Which currency?", form: "choice", answers: ["BRL", "USD"] },
+    });
+  });
+
+  it("falls back to numbered text when the conversation does not declare asks", async () => {
+    const thread = { id: "thread-PROJ-1239" };
+    const post = vi.fn().mockResolvedValue("message-1");
+    const conversation: Conversation = {
+      open: vi.fn().mockResolvedValue(thread),
+      post,
+      replies: vi.fn().mockResolvedValue([]),
+    };
+
+    await actionsFor(policy)["ask-question"]!({
+      ports: { conversation, tracker: {}, brief: undefined },
+      ctx: { now: () => WORKDAY },
+      announce: vi.fn().mockResolvedValue(undefined),
+    } as never, {
+      record: { id: "PROJ-1239" },
+      observation: { ticket: observation().ticket },
+      outcomes: {},
+    } as never, {
+      type: "ask-question",
+      questions: [{ prompt: "Which currency?", answers: ["BRL", "USD"] }],
+    });
+
+    expect(post).toHaveBeenCalledWith(thread, { text: "1. Which currency?\n   1. BRL\n   2. USD" });
   });
 });
 

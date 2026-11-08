@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   Agent,
+  Ask,
   AttemptOutcome,
   Comment,
   Conversation,
@@ -8,6 +9,7 @@ import {
   EventLog,
   FollowUpRequest,
   Gate,
+  Reply,
   Ticket,
   Tracker,
   TrackerReads,
@@ -61,7 +63,15 @@ describe("the ports belong to the core", () => {
 
   it("exports the conversation contract a workflow and adapter share", () => {
     const conversation: Conversation = null as unknown as Conversation;
+    const ask: Ask = { id: "currency", prompt: "Which currency?", form: "choice", answers: ["BRL", "USD"] };
+    const approval: Ask = { id: "approve", prompt: "Ship it?", form: "approval", answers: ["approve", "reject"] };
+    // @ts-expect-error approval has precisely these two controls, in this order.
+    const malformedApproval: Ask = { id: "approve", prompt: "Ship it?", form: "approval", answers: ["approve"] };
+    const reply: Reply = { at: "now", author: "ada", text: "", files: [], answer: { ask: ask.id, chosen: ["BRL"] } };
     expect(conversation).toBeNull();
+    expect(approval.answers).toEqual(["approve", "reject"]);
+    expect(malformedApproval).toBeDefined();
+    expect(reply.answer).toEqual({ ask: "currency", chosen: ["BRL"] });
   });
 
   it("names every write capability a tracker action can resolve to", () => {

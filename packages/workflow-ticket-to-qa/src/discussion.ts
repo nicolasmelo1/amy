@@ -11,7 +11,7 @@ import { Discussion, TicketRecord } from "./record.js";
 
 /** As the person marked it, or as the policy reads a reply nobody marked. */
 export function readAs(said: Said, policy: Policy): ReplyKind {
-  return said.kind ?? (policy.conversation === "discuss" ? "discussion" : "decision");
+  return said.answer ? "decision" : (said.kind ?? (policy.conversation === "discuss" ? "discussion" : "decision"));
 }
 
 /** Whether a person, not this machine, has decided. */

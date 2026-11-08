@@ -309,7 +309,7 @@ describe("rate limits", () => {
 });
 
 describe("what amy doctor asks", () => {
-  const SCOPES = { "x-oauth-scopes": "chat:write,groups:read,groups:history,files:read" };
+  const SCOPES = { "x-oauth-scopes": "chat:write,groups:read,groups:history,files:read,reactions:write,reactions:read" };
 
   it("reports the token, the channel and the scopes a private channel needs", async () => {
     const http = new ScriptedHttp([
@@ -322,7 +322,7 @@ describe("what amy doctor asks", () => {
     expect(checks).toEqual([
       { label: "slack token", ok: true, detail: "amy in Workshop" },
       { label: `slack channel ${CHANNEL}`, ok: true, detail: "#amy-work" },
-      { label: "slack scopes", ok: true, detail: "chat:write, groups:read, groups:history, files:read" },
+      { label: "slack scopes", ok: true, detail: "chat:write, groups:read, groups:history, files:read, reactions:write, reactions:read" },
     ]);
   });
 
@@ -339,7 +339,7 @@ describe("what amy doctor asks", () => {
 
   it("fails the channel, naming the fix, when the bot can read it but is not in it", async () => {
     const http = new ScriptedHttp([
-      { match: method("auth.test"), answer: ok(whoAmI(BOT), { "x-oauth-scopes": "chat:write,channels:read,channels:history,files:read" }) },
+      { match: method("auth.test"), answer: ok(whoAmI(BOT), { "x-oauth-scopes": "chat:write,channels:read,channels:history,files:read,reactions:write" }) },
       { match: method("conversations.info"), answer: ok({ channel: { id: CHANNEL, name: "amy-work", is_private: false, is_member: false } }) },
     ]);
 
@@ -347,7 +347,7 @@ describe("what amy doctor asks", () => {
 
     expect(checks).toContainEqual({ label: `slack channel ${CHANNEL}`, ok: false, detail: "the bot is not in #amy-work; invite it there with /invite" });
     // The scopes are their own question, and still answered.
-    expect(checks).toContainEqual({ label: "slack scopes", ok: true, detail: "chat:write, channels:read, channels:history, files:read" });
+    expect(checks).toContainEqual({ label: "slack scopes", ok: false, detail: "missing reactions:read" });
   });
 
   it("says the channel cannot be seen when Slack says so", async () => {

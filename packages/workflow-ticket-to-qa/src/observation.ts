@@ -1,5 +1,5 @@
 import { PullRequestView } from "@amykit/core";
-import { Comment, ReplyKind } from "@amykit/core";
+import { Comment, ReplyAnswer, ReplyKind } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
 
@@ -60,7 +60,7 @@ export interface Observation {
  * One thing said back, and what it is when the medium let the person say.
  * Unmarked is the common case, and `policy.conversation` reads it.
  */
-export type Said = Comment & { kind?: ReplyKind };
+export type Said = Comment & { kind?: ReplyKind; answer?: ReplyAnswer };
 
 export interface Policy {
   maxImplementAttempts: number;

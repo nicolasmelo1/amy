@@ -51,7 +51,10 @@ touches:
   - packages/workflow-ticket-to-qa/src/actions.ts
   - packages/workflow-ticket-to-qa/src/machine.ts
   - packages/workflow-ticket-to-qa/src/record.ts
+  - packages/workflow-ticket-to-qa/src/observation.ts
+  - packages/workflow-ticket-to-qa/src/discussion.ts
   - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - packages/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
   - packages/workflow-ticket-to-qa/tests/asks.property.test.ts
   - packages/workflow-testkit/src/world.ts

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Conversation, Reply, ThreadRef } from "@amykit/core";
+import { Ask, Conversation, Reply, ThreadRef } from "@amykit/core";
 import { BotApi, BotApiRefusal, TooLarge } from "./BotApi.js";
 
 export interface TelegramConversationOptions {
@@ -91,9 +91,26 @@ interface TelegramMessage {
   photo?: TelegramPhotoSize[];
 }
 
+interface TelegramCallbackQuery {
+  id: string;
+  from: TelegramUser;
+  message?: TelegramMessage;
+  data?: string;
+}
+
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  callback_query?: TelegramCallbackQuery;
+}
+
+/** A posted structured ask and its durable selection/acceptance state. */
+interface FiledAsk {
+  ask: Ask;
+  messageId: number;
+  at: string;
+  selected: number[];
+  accepted?: { at: string; chosen: string[] };
 }
 
 /** A reply as filed under its topic: what it said, and the files it carried, not yet fetched. */
@@ -122,6 +139,7 @@ interface Filed {
  * twice) and nothing else.
  */
 export class TelegramConversation implements Conversation {
+  readonly asks = true as const;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   /** Who this profile's directory is: a directory removed and made again is somebody else. */
   private readonly identity: string;
@@ -186,22 +204,29 @@ export class TelegramConversation implements Conversation {
     return opened;
   }
 
-  async post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string> {
+  async post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string> {
     if (message.files?.length) {
       // amy asks in words; the operator's pictures come the other way.
       throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
     }
     let sent = "";
     const topic = topicOf(thread);
-    for (const part of parts(message.text)) {
+    const text = message.ask ? [message.text, message.ask.prompt].filter(Boolean).join("\n") : message.text;
+    const rendered = parts(text);
+    for (const [index, part] of rendered.entries()) {
       const result = await this.api.call<{ message_id: number }>("sendMessage", {
         chat_id: this.chat(),
         message_thread_id: topic,
         text: part,
+        ...(message.ask && index === rendered.length - 1 ? { reply_markup: keyboardFor(message.ask, askKey(message.ask.id), []) } : {}),
       });
       sent = String(result.message_id);
       // When it was posted, by this machine's clock, kept by its id: what tells a reply written before it apart.
       createOnce(path.join(this.options.directory, "posted", String(topic), `${result.message_id}.json`), { at: new Date().toISOString() }, this.options.directory);
+      if (message.ask && index === rendered.length - 1) {
+        const state: FiledAsk = { ask: message.ask, messageId: result.message_id, at: new Date().toISOString(), selected: [] };
+        createOnce(this.askFile(topic, message.ask.id), state, this.options.directory);
+      }
     }
     return sent;
   }
@@ -224,7 +249,12 @@ export class TelegramConversation implements Conversation {
       const { paths, skipped } = await this.downloadAll(topic, filed.files);
       replies.push({ at: filed.at, author: filed.author, text: [filed.text, ...skipped].filter(Boolean).join("\n"), files: paths, ...(filed.kind ? { kind: filed.kind } : {}) });
     }
-    return replies;
+    for (const asked of this.askedUnder(topic)) {
+      const accepted = asked.accepted;
+      if (!accepted || instantToMicros(accepted.at) <= after) continue;
+      replies.push({ at: accepted.at, author: this.operator, text: asked.ask.prompt, files: [], kind: "decision", answer: { ask: asked.ask.id, chosen: accepted.chosen } });
+    }
+    return replies.sort((a, b) => a.at.localeCompare(b.at));
   }
 
   /**
@@ -255,7 +285,7 @@ export class TelegramConversation implements Conversation {
     }
     try {
       // Not confirming anything: no offset, so nothing filed is skipped.
-      await this.api.call("getUpdates", { limit: 1, timeout: 0, allowed_updates: ["message"] });
+      await this.api.call("getUpdates", { limit: 1, timeout: 0, allowed_updates: ["message", "callback_query"] });
       checks.push({ label: "telegram updates", ok: true, detail: "read by amy alone" });
     } catch (error) {
       const conflict = error instanceof BotApiRefusal && error.code === 409;
@@ -296,14 +326,79 @@ export class TelegramConversation implements Conversation {
         ...(offset === undefined ? {} : { offset }),
         timeout: 0,
         limit: 100,
-        allowed_updates: ["message"],
+        allowed_updates: ["message", "callback_query"],
       });
       if (updates.length === 0) return;
       for (const update of updates) {
         const message = update.message;
         if (message && isAnAnswer(message)) this.file(message);
+        if (update.callback_query) await this.fileCallback(update.callback_query);
       }
       this.confirm(Math.max(...updates.map((update) => update.update_id)) + 1);
+    }
+  }
+
+  /** Handles a button only after resolving its real topic owner from the callback message. */
+  private async fileCallback(callback: TelegramCallbackQuery): Promise<void> {
+    if (String(callback.from.id) !== this.operator) {
+      await this.api.call("answerCallbackQuery", { callback_query_id: callback.id });
+      return;
+    }
+    const message = callback.message;
+    const topic = message?.message_thread_id;
+    const key = message && topic !== undefined ? `${message.chat.id}-${topic}` : undefined;
+    const owner = key ? readJson<Owner>(path.join(this.shared(), "owners", `${key}.json`)) : undefined;
+    const place = owner && topic !== undefined ? this.inboxOf(owner, topic) : undefined;
+    let text: string | undefined;
+    if (!place || !message || topic === undefined) text = "this question is no longer open";
+    else {
+      const parsed = callback.data ? parseCallback(callback.data) : undefined;
+      const state = parsed ? this.askByKey(place.directory, topic, parsed.key) : undefined;
+      if (!state || state.messageId !== message.message_id || state.accepted) text = "this question is no longer open";
+      else if (parsed?.send) {
+        if (state.ask.form !== "choices") text = "this question is no longer open";
+        else {
+          state.accepted = { at: new Date().toISOString(), chosen: state.selected.map((index) => state.ask.answers[index]!).filter(Boolean) };
+          this.writeAsk(place.directory, topic, state);
+          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
+        }
+      } else if (parsed && parsed.index !== undefined && parsed.index >= 0 && parsed.index < state.ask.answers.length) {
+        if (state.ask.form === "choices") {
+          state.selected = state.selected.includes(parsed.index) ? state.selected.filter((index) => index !== parsed.index) : [...state.selected, parsed.index].sort((a, b) => a - b);
+          this.writeAsk(place.directory, topic, state);
+          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: keyboardFor(state.ask, parsed.key, state.selected) });
+        } else {
+          state.accepted = { at: new Date().toISOString(), chosen: [state.ask.answers[parsed.index]!] };
+          this.writeAsk(place.directory, topic, state);
+          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
+        }
+      } else text = "this question is no longer open";
+    }
+    await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
+  }
+
+  private askFile(topic: number, id: string): string {
+    return path.join(this.options.directory, "asks", String(topic), `${askKey(id)}.json`);
+  }
+
+  private askByKey(directory: string, topic: number, key: string): FiledAsk | undefined {
+    return readJson<FiledAsk>(path.join(directory, "asks", String(topic), `${key}.json`));
+  }
+
+  private writeAsk(directory: string, topic: number, state: FiledAsk): void {
+    writeJson(path.join(directory, "asks", String(topic), `${askKey(state.ask.id)}.json`), state);
+  }
+
+  private askedUnder(topic: number): FiledAsk[] {
+    const directory = path.join(this.options.directory, "asks", String(topic));
+    try {
+      return fs.readdirSync(directory).filter((name) => name.endsWith(".json")).flatMap((name) => {
+        const state = readJson<FiledAsk>(path.join(directory, name));
+        return state ? [state] : [];
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
     }
   }
 
@@ -527,6 +622,26 @@ export class TelegramConversation implements Conversation {
       if (ownedBy(lock, me)) fs.rmSync(lock, { recursive: true, force: true });
     }
   }
+}
+
+/** A compact, opaque ask id for callback_data; Telegram permits at most 64 bytes. */
+function askKey(id: string): string {
+  return createHash("sha256").update(id).digest("hex").slice(0, 24);
+}
+
+function callbackData(key: string, action: string): string {
+  return `amy:${key}:${action}`;
+}
+
+function parseCallback(data: string): { key: string; index?: number; send: boolean } | undefined {
+  const match = /^amy:([0-9a-f]{24}):(send|\d+)$/.exec(data);
+  if (!match) return undefined;
+  return match[2] === "send" ? { key: match[1]!, send: true } : { key: match[1]!, index: Number(match[2]), send: false };
+}
+
+function keyboardFor(ask: Ask, key: string, selected: number[]): { inline_keyboard: { text: string; callback_data: string }[][] } {
+  const answers = ask.answers.map((answer, index) => ({ text: ask.form === "choices" && selected.includes(index) ? `✓ ${answer}` : answer, callback_data: callbackData(key, String(index)) }));
+  return { inline_keyboard: ask.form === "choices" ? [...answers.map((answer) => [answer]), [{ text: "Send", callback_data: callbackData(key, "send") }]] : answers.map((answer) => [answer]) };
 }
 
 /**
