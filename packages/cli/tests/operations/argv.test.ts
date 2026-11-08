@@ -132,4 +132,51 @@ describe("an operation's input, from argv", () => {
     expect(heard.errors.map((line) => JSON.parse(line))).toEqual([{ code: "amy.input", message: "missing required argument 'to'" }]);
     expect(made.help.join("")).toBe("");
   });
+
+  it("reads the fields of an input whose root is a reference into its own definitions", async () => {
+    const heard = await echoing({
+      $ref: "#/$defs/input",
+      $defs: { input: { type: "object", properties: { size: { type: "integer", description: "size" } }, required: ["size"] } },
+    }, ["--size", "3"]);
+    expect(heard).toEqual({ size: 3 });
+  });
+
+  it("lets a boolean without a default be typed false as well as true", async () => {
+    const schema = { type: "object", properties: { enabled: { type: "boolean", description: "on" } }, required: ["enabled"] };
+    expect(await echoing(schema, ["--enabled"])).toEqual({ enabled: true });
+    expect(await echoing(schema, ["--no-enabled"])).toEqual({ enabled: false });
+  });
 });
+
+/** Runs an operation that answers its input, declared over a hand-written input schema. */
+async function echoing(input: Record<string, unknown>, argv: readonly string[]): Promise<unknown> {
+  const schema: OperationSchema = {
+    "~standard": {
+      version: 1,
+      vendor: "test",
+      validate: (value: unknown) => ({ value }),
+      jsonSchema: { input: () => input, output: () => ({ type: "object" }) },
+    },
+  } as unknown as OperationSchema;
+  const echo = defineOperation({
+    id: "demo.echo",
+    domain: "demo",
+    summary: "Echo what it was given",
+    description: "Answers its input. Changes nothing.",
+    input: schema,
+    output: schema,
+    writes: [],
+    http: { method: "post", path: "/demo/echo" },
+    cli: { words: ["echo"] },
+    examples: [{ summary: "anything", input: {}, output: {} }],
+    async handler(given) {
+      return given;
+    },
+  });
+  const gathered = await gather(CONFIG, [WORK], loading(demo({ operations: [echo] })));
+  const heard = spoken();
+  const made = program().program;
+  register(made, gathered.contributions, environment(heard.out));
+  await made.parseAsync(["node", "amy", "echo", ...argv, "--json"]);
+  return JSON.parse(heard.said.join("\n"));
+}

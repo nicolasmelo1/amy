@@ -15,7 +15,10 @@ interface Field {
 
 /** The fields of an operation's input, in the order its schema declares them. */
 function fieldsOf(operation: Operation): Field[] {
-  const root = inputSchemaOf(operation);
+  // The root may itself be a reference into its own definitions: its fields
+  // are read where it points, and every reference resolves against the whole.
+  const whole = inputSchemaOf(operation);
+  const root = resolved(whole, whole) ?? whole;
   const properties = (root.properties ?? {}) as Record<string, Json>;
   const required = new Set((root.required ?? []) as string[]);
   const positional = operation.cli?.positional ?? [];
@@ -23,7 +26,7 @@ function fieldsOf(operation: Operation): Field[] {
     const position = positional.indexOf(name);
     return {
       name,
-      schema: inlined(schema, root),
+      schema: inlined(schema, whole),
       required: required.has(name),
       ...(position >= 0 ? { position } : { attribute: new Option(flagOf(name)).attributeName() }),
     };
@@ -84,7 +87,10 @@ export function declareInput(command: Command, operation: Operation): void {
   for (const field of fields.filter((one) => one.position === undefined)) {
     const flag = flagOf(field.name);
     if (typeOf(field.schema) === "boolean") {
-      command.addOption(new Option(field.schema.default === true ? `--no-${flag.slice(2)}` : flag, helpOf(field)));
+      // A bare flag says true and its `--no-` form says false, so both values
+      // can be typed; left out, the field is the schema's to default.
+      if (field.schema.default !== true) command.addOption(new Option(flag, helpOf(field)));
+      command.addOption(new Option(`--no-${flag.slice(2)}`, field.schema.default === true ? helpOf(field) : `the opposite of ${flag}`));
       continue;
     }
     const option = new Option(`${flag} ${placeholderOf(field.schema)}`, helpOf(field));

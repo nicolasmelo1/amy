@@ -154,7 +154,12 @@ function conflicts(contributions: readonly Contribution[]): string[] {
   const problems: string[] = [];
 
   for (const contribution of contributions) {
+    const own = new Set<string>();
     for (const operation of contribution.operations) {
+      // One package declaring an id twice would run the first handler under
+      // the second's words.
+      if (own.has(operation.id)) problems.push(`${contribution.owner} declares the operation \`${operation.id}\` twice; an id is one operation`);
+      own.add(operation.id);
       const heldId = ids.get(operation.id);
       if (heldId && heldId !== contribution.owner) {
         problems.push(`the operation \`${operation.id}\` is declared by both ${heldId} and ${contribution.owner}; an id is owned once`);

@@ -142,6 +142,11 @@ describe("a plugin's operations, check and file", () => {
     expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares `commands`, which amy no longer reads");
   });
 
+  it("refuses one package declaring an operation id twice under two spellings", async () => {
+    const twice = await gather(CONFIG, [WORK], loading(demo({ operations: [otherOperation("demo.same", ["same-one"]), otherOperation("demo.same", ["same-two"])] })));
+    expect(twice.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.same` twice");
+  });
+
   it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
     const gathered = await gather(CONFIG, [WORK], loading(demo({
       operations: [greet, otherOperation("demo.open", ["demo-open"], { localOnly: false })],

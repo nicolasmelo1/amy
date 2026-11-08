@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 25062,
+      "pid": 50793,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 301645f and left one comment",
-      "the automated reviewer looked at ebe4945 and had nothing to say",
+      "the automated reviewer looked at 7d4682f and left one comment",
+      "the automated reviewer looked at a24e0c1 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on ebe4945",
+      "ada asked for changes on a24e0c1",
       "the owner settled the disagreement on the ticket",
-      "ada approved 48e12ea",
-      "the automated reviewer looked at 48e12ea and had nothing to say",
-      "the automated reviewer looked at aa41a76 and had nothing to say",
-      "ada approved aa41a76"
+      "ada approved b452f90",
+      "the automated reviewer looked at b452f90 and had nothing to say",
+      "the automated reviewer looked at 6ea2278 and had nothing to say",
+      "ada approved 6ea2278"
     ],
     "agent_calls": [
       "triage",
@@ -106,7 +106,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-08T03:55:40.269Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-08T03:55:39.930Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-08T04:16:43.466Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-08T04:16:43.143Z): Which currency should the invoice total be shown in?\"\n}"
     },
     "budget": "Claude: unavailable — Claude usage is unavailable: no OAuth token is configured",
     "second_run_transitions": 22,
@@ -114,12 +114,12 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-yyEhHD/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "c46b659d5d1fa2a46993368e722818f4b438397a"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-ezjiGp/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "2f900b67c59b63e2b93ecc3753a262e92dc097b3"
       },
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-yyEhHD/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "301645f49832496481155b2a76b25f33029800aa"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-ezjiGp/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "7d4682f5cd68dbf79c51b63c65460cb396b93b30"
       }
     ]
   },
