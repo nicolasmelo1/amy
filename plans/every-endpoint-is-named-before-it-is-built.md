@@ -96,8 +96,10 @@ touches:
   - packages/services/tests/surface.test.ts
   - .software-factory/policy.yaml
   - .software-factory/mutations/**
-  - packages/cli/src/operations/schema.ts
-  - packages/cli/tests/operations/schema.test.ts
+  - packages/core/src/operation-schema.ts
+  - packages/core/src/mount.ts
+  - packages/core/tests/operation-schema.test.ts
+  - packages/core/tests/mount.test.ts
 untouched:
   - packages/ui/src/vocabulary.ts
 criteria:
@@ -117,10 +119,10 @@ criteria:
   - { id: A14, statement: "listDevices, unpairDevice and setRemoteAccess are absent over TCP and answer on the socket, and unpairDevice ends that device's sessions", proof: "deferred:assertion:server.the_devices_are_the_owners_to_manage", sources: [S80, S81, S82] }
   - { id: A15, statement: "a pairing request is approved on the socket only with its matching code, and a device approved read-only pokes only after setDeviceActing grants it, in the same session", proof: "deferred:assertion:server.approving_and_granting_are_the_owners", sources: [S83, S84] }
   - { id: A16, statement: "surface.yaml lists getThread with ask and answer on its transcript and addThreadTurn taking an answer, and an answer to an ask already answered is 409 threads.ask_answered", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S86] }
-  - { id: A17, statement: "a plugin whose operation input is a root object of the accepted field types, with a #/$defs ref followed once, mounts and every door spells it", proof: "deferred:test:packages/cli/tests/operations/schema.test.ts", sources: [S88, S89, S91] }
-  - { id: A18, statement: "each shape S90 refuses is refused at mount, naming the plugin and the field, every refusal in one list", proof: "deferred:test:packages/cli/tests/operations/schema.test.ts", sources: [S87, S90] }
+  - { id: A17, statement: "a plugin whose operation input is a root object of the accepted field types, with a #/$defs ref followed once, mounts and every door spells it", proof: "deferred:test:packages/core/tests/operation-schema.test.ts", sources: [S88, S89, S91] }
+  - { id: A18, statement: "each shape S90 refuses is refused at mount, naming the plugin and the field, every refusal in one list, with no door loaded", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S87, S90] }
 crosses:
-  - { mechanism: mount-and-capabilities, answer: n/a, why: "an operation's writes are checked against the server's registry, not a workflow's claimed capabilities; mount and actions are unchanged" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:test:packages/core/tests/mount.test.ts — mount() refuses a schema outside S88 with no door loaded (A18); writes are still checked against the registry, not a workflow's claims" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "surface.yaml only names operations, and none writes to a tracker or forge (cut)" }
   - { mechanism: rendering, answer: n/a, why: "views are named in surface.yaml only; packages/ui and the intent vocabulary are untouched, and A7 reads the vocabulary as it is" }
 guarantee:

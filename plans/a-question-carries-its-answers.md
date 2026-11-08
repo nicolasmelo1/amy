@@ -27,7 +27,7 @@ sources:
   - { id: S24, kind: decision, said: "replies is a function of the thread and since: a retry from the same since gets the accepted answer again, and only a different later answer is dropped. Decided 2026-11-05" }
   - { id: S25, kind: decision, said: "an adapter keeps no accepted answer in memory: it recomputes it from the thread on every call, and Telegram writes each press to its state directory when it arrives, since getUpdates keeps updates 24 hours. Decided 2026-11-05" }
   - { id: S26, kind: decision, said: "an ask's answers are 2 to 10 distinct, non-empty strings, each within the medium's button-label limit; anything else, from triage or any caller, is posted and read as a plain question. Decided 2026-11-08" }
-  - { id: S27, kind: decision, said: "only a keycap within the ask's range and ✅ on a choices ask are marks; any other reaction (7️⃣ on three answers, ✅ on a single choice) is ignored, never an answer nor a competing mark. Decided 2026-11-08" }
+  - { id: S27, kind: decision, said: "only a keycap within range, ✅ or ❌ on an approval, and ✅ on a choices ask are marks; any other reaction (7️⃣ on three answers, ✅ on a single choice) is ignored and competes with nothing. Decided 2026-11-08" }
   - { id: S28, kind: decision, said: "an accepted answer is sticky: Slack writes it to its state directory as Telegram writes each press, so a mark removed later does not undo it; S25's recompute stops once an ask is answered. Decided 2026-11-08" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
@@ -86,7 +86,7 @@ guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
   - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see" }
   - { holds: "an ask is shown as a form only with 2 to 10 distinct, non-empty answers that fit a button; every other ask is a plain question", not_against: "two answers that differ only in a way the person cannot see, such as trailing spaces or look-alike characters" }
-  - { holds: "only a keycap within range, or ✅ on choices, is a mark; once accepted, an answer survives its mark being removed", not_against: "a mark removed before any look read it, which polling cannot see" }
+  - { holds: "only a keycap within range, ✅ or ❌ on an approval, or ✅ on choices, is a mark; once accepted, an answer survives its mark being removed", not_against: "a mark removed before any look read it, which polling cannot see" }
   - { holds: "a form never stops the typed reply: the person can always answer in words, and it reads as it reads today", not_against: "a workflow whose own code ignores text replies to a question it asked as a form" }
 failures:
   - { step: replies, when: "one look sees competing marks on an ask: ✅ and ❌, or two keycaps on a choice", goes_to: "no answer; amy says once in the thread which marks it saw, and the next look reads again" }

@@ -13,7 +13,7 @@ sources:
   - { id: S10, kind: decision, said: "amy workflow export <name> --yaml prints states with label and classes, initial, terminal, transitions with label or event:, calls, forks, and an about: block of name, ports, phases and brief sections" }
   - { id: S11, kind: reference, ref: "plans/the-command-line-holds-no-rule.md", said: "every built-in but daemon and after-daemon is an operation in the services contract, and the command line is generated from it" }
   - { id: S12, kind: decision, said: "export --yaml is a format of the workflow export operation in the services, its schema in the contract, so the generated command, route and SDK method carry it alike" }
-  - { id: S13, kind: decision, said: "the writer refuses, naming it, a Diagram the reader could not produce: a state name outside NAME or RESERVED in diagram.ts, or a label with a double quote, a newline, or a leading colon or space. Decided 2026-11-08" }
+  - { id: S13, kind: decision, said: "the writer refuses, naming it, a Diagram the reader could not produce: a state name outside NAME or RESERVED, a description with a double quote or newline, or a transition label with a newline or edge whitespace. Decided 2026-11-08" }
   - { id: S14, kind: decision, said: "a line amy does not read (a note, a style, a class or classDef assignment, any other) that names a state the edit removed is dropped; a new state's lines are written after the last transition. Decided 2026-11-08" }
 touches:
   - packages/core/src/diagram.ts
@@ -30,7 +30,7 @@ criteria:
   - { id: A1, statement: "for every diagram the reader accepts, writing it and reading it back gives the same states, classes, calls, forks, labels and transitions", proof: "deferred:property:packages/core/tests/diagram-writer.property.test.ts#a_label_is_dropped", sources: [S1, S5, S6, S7, S9] }
   - { id: A2, statement: "for every accepted diagram, writing it keeps every line amy does not read, in its place, except one naming a state the edit removed", proof: "deferred:property:packages/core/tests/diagram-writer.property.test.ts#an_unread_line_is_lost", sources: [S9, S14] }
   - { id: A3, statement: "export --yaml on the shipped workflows prints states, classes, transitions, events and about, writes no file, and its help says the shape is edited in workflow.mmd", proof: "deferred:test:packages/services/tests/workflow-export.test.ts", sources: [S2, S3, S4, S8, S10, S11, S12] }
-  - { id: A4, statement: "the writer refuses a Diagram holding a reserved or malformed state name, a label with a double quote or a newline, or a label starting with a colon or a space, naming it, and writes nothing", proof: "deferred:test:packages/core/tests/diagram-writer.test.ts", sources: [S5, S13] }
+  - { id: A4, statement: "the writer refuses a Diagram holding a reserved or malformed state name, a description with a double quote or a newline, or a transition label with a newline or edge whitespace, naming it, and writes nothing", proof: "deferred:test:packages/core/tests/diagram-writer.test.ts", sources: [S5, S13] }
   - { id: A5, statement: "removing a state drops every unread line naming it, so the written file reads back with no refusal; a state added by the edit has its lines after the last transition", proof: "deferred:property:packages/core/tests/diagram-writer.property.test.ts#an_orphaned_line_is_kept", sources: [S9, S14] }
 crosses:
   - { mechanism: diagram, answer: works, proof: "deferred:A1, A2, A4, A5; the reader is unchanged and the writer is proven against it" }

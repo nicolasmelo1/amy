@@ -16,7 +16,7 @@ sources:
   - { id: S13, kind: decision, said: "after such an exit the next look either fails again and announces again, or succeeds and announces the recovery that corrects the notice; nothing durable replays it. Decided 2026-11-05" }
   - { id: S14, kind: decision, said: "no durable failure state is added: an exit between a notice and the queue save is outside this plan. Decided 2026-11-05" }
   - { id: S15, kind: decision, said: "a read is a gh api call with no --method that is not graphql, or a graphql call whose document starts with query; everything else, every mutation included, is a write and is never retried. Decided 2026-11-08" }
-  - { id: S16, kind: decision, said: "transient is a non-zero exit with HTTP 5xx or a network error on stderr, or exit 0 with a body JSON.parse refuses; a 429, a 403 or a 200 with GraphQL errors is thrown once. Decided 2026-11-08" }
+  - { id: S16, kind: decision, said: "transient is a non-zero exit with HTTP 5xx or a network error on stderr, or exit 0 from a JSON read whose body JSON.parse refuses; 429, 403 or a 200 with GraphQL errors is thrown once. Decided 2026-11-08" }
   - { id: S17, kind: code, ref: "plugins/github/src/GitHubCodeHost.ts", symbol: "graphql", said: "queries and mutations (threadMutation) both go through gh api graphql, so the command alone does not say whether a call writes" }
 touches:
   - plugins/serial-engine/src/Worker.ts
@@ -34,7 +34,7 @@ criteria:
   - { id: A4, statement: "a gh read failing twice with a transient error then succeeding returns the answer; a write or a 4xx is tried once", proof: "deferred:property:plugins/github/tests/gh-retry.property.test.ts#a_write_is_retried", sources: [S9, S10] }
   - { id: A5, statement: "a process stopped between the ceiling notice and the save announces the ceiling again if the next look fails, and the recovery if the dependency came back between processes", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S11, S12, S13, S14] }
   - { id: A6, statement: "a graphql call whose document starts with mutation, and any call with --method, is tried once whatever it fails with; a graphql query failing transiently is retried", proof: "deferred:property:plugins/github/tests/gh-retry.property.test.ts#a_mutation_is_retried", sources: [S10, S15, S17] }
-  - { id: A7, statement: "an exit 0 whose body is empty or cut is retried as transient; a 429, a 403 and a 200 with GraphQL errors are thrown on the first try", proof: "deferred:test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S1, S16] }
+  - { id: A7, statement: "an exit 0 from a JSON read whose body is empty or cut is retried as transient, a --jq text read is not; 429, 403 and a 200 with GraphQL errors are thrown on the first try", proof: "deferred:test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S1, S16] }
 crosses:
   - { mechanism: budget-and-evidence, answer: n/a, why: "only the wording and timing of the failure notice change; no budget check or evidence count is touched" }
   - { mechanism: engines, answer: works, proof: "deferred:A1, A2; the concurrent engine is the serial engine's Worker" }
