@@ -98,6 +98,7 @@ deviations:
   - "scripts/install-oasdiff.sh: the one place that reads oasdiff's version and installs it, called by both CI jobs that run it and by the setup script"
   - ".github/workflows/release.yml: the release runs the suite on a clean runner, and the services' gate test needs oasdiff there too"
   - ".gitleaks.toml: the locked openapi.json gives generated.lock.json a digest keyed by a path with api in it, which gitleaks reads as an API key; the hash locks are allowlisted by path"
+  - "plugins/slack/src/**, plugins/slack/tests/plugin.test.ts and registry/plugin-slack.json: later usage inspection mounts every configured plugin read-only, so Slack no longer creates its state while registering; this adapter correction does not change the services contract"
   - ".allowed-root-files: declares .gitleaks.toml"
   - "plans/next-steps.md: the delivered row leaves the board"
 exit: "with one example domain in a mutation fixture, sf verify shows each of five rules tripping on its fixture; the clean tree builds a document every rule accepts, and invoke runs a Zod and an ArkType operation alike"

@@ -77,7 +77,7 @@ export class HermesUsageReader implements UsageReader {
     try {
       const result = await this.runner.run(
         "curl",
-        ["--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"],
+        ["--disable", "--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"],
         {
           // Keep the bearer token off argv and process listings.
           stdin: `header = "Authorization: Bearer ${token}"\n`,

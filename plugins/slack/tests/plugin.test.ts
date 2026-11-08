@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { configSchema, plugin, resolveToken, SlackApi } from "../src/index.js";
 
 /** What the slack plugin mounts, and what it refuses to mount with. */
-function mount(slice: Record<string, unknown>) {
+function mount(slice: Record<string, unknown>, context: { state?: string; readOnly?: boolean } = {}) {
   const ports = new Map<string, object>();
   const registry = {
     port: (kind: string, impl: object) => void ports.set(kind, impl),
@@ -14,7 +14,7 @@ function mount(slice: Record<string, unknown>) {
     workflow: () => {},
     observer: () => {},
   };
-  plugin.register(registry as never, { config: slice, paths: { state: os.tmpdir() } } as never);
+  plugin.register(registry as never, { config: slice, paths: { state: context.state ?? os.tmpdir() }, readOnly: context.readOnly ?? false } as never);
   return ports;
 }
 
@@ -29,6 +29,17 @@ describe("the slack plugin", () => {
     process.env.AMY_TEST_SLACK_TOKEN = "xoxb-test";
 
     expect([...mount(SLICE).keys()]).toEqual(["conversation"]);
+  });
+
+  it("does not create Slack state while an inspection mounts it", () => {
+    process.env.AMY_TEST_SLACK_TOKEN = "xoxb-test";
+    const state = fs.mkdtempSync(path.join(os.tmpdir(), "amy-slack-inspection-"));
+    try {
+      mount(SLICE, { state, readOnly: true });
+      expect(fs.existsSync(path.join(state, "slack"))).toBe(false);
+    } finally {
+      fs.rmSync(state, { recursive: true, force: true });
+    }
   });
 
   it("refuses a token written inline in the config", () => {

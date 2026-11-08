@@ -27,6 +27,8 @@ export interface ThreadMapOptions {
   leaseMs?: number;
   /** Told a root a newer one replaced, in another channel, so its files can go. */
   onDisplaced?: (ts: string) => void;
+  /** Inspection reads an existing map without creating or tightening directories. */
+  readOnly?: boolean;
 }
 
 /**
@@ -76,8 +78,10 @@ export class ThreadMap {
     this.leaseMs = options.leaseMs ?? 60_000;
     this.onDisplaced = options.onDisplaced ?? (() => {});
     // What threads a machine's work lives in is nobody else's to read.
-    privateDirectory(directory);
-    privateDirectory(this.root);
+    if (!options.readOnly) {
+      privateDirectory(directory);
+      privateDirectory(this.root);
+    }
   }
 
   /**

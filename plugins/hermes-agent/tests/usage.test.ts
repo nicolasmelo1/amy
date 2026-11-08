@@ -144,7 +144,7 @@ describe("Ollama Cloud account usage", () => {
         startsAt: "2026-09-15T09:30:00Z", resetsAt: "2026-10-15T09:30:00Z",
       }],
     });
-    expect(runner.argvFor("curl")).toEqual(["--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"]);
+    expect(runner.argvFor("curl")).toEqual(["--disable", "--fail", "--silent", "--show-error", "--config", "-", "https://ollama.com/api/balance"]);
     expect(runner.callsTo("curl")[0]?.options).toMatchObject({ stdin: expect.stringContaining("cloud-secret"), timeoutMs: 12_000 });
   });
 

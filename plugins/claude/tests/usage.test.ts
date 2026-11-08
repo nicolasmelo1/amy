@@ -30,7 +30,7 @@ describe("Claude account usage", () => {
         { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-12T12:00:00.000Z" },
       ],
     });
-    expect(runner.argvFor("curl")).toEqual(["--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"]);
+    expect(runner.argvFor("curl")).toEqual(["--disable", "--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"]);
     expect(runner.callsTo("curl")[0]?.options).toMatchObject({ stdin: expect.stringContaining("secret-token"), timeoutMs: 5000 });
     expect(runner.callsTo("curl")[0]?.options?.stdin).toContain('header = "anthropic-beta: oauth-2025-04-20"');
   });

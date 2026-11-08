@@ -42,7 +42,7 @@ export class ClaudeUsageReader implements UsageReader {
     try {
       const result = await this.runner.run(
         "curl",
-        ["--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"],
+        ["--disable", "--fail", "--silent", "--show-error", "--config", "-", "https://api.anthropic.com/api/oauth/usage"],
         {
           // A curl config on stdin keeps the bearer token out of argv and process listings.
           // The endpoint refuses an OAuth bearer without the beta that enables it.

@@ -33,6 +33,8 @@ touches:
   - plugins/file-notes/tests/**
   - plugins/file-tasks/src/**
   - plugins/file-tasks/tests/**
+  - plugins/slack/src/**
+  - plugins/slack/tests/plugin.test.ts
   - packages/cli/src/{assemble,index,workflow}.ts
   - packages/cli/src/budget.ts
   - packages/cli/src/status-page.tsx
@@ -40,7 +42,7 @@ touches:
   - packages/cli/package.json
   - packages/core/src/{mount,plugin}.ts
   - package-lock.json
-  - registry/{agent-kit,cli,core,plugin-claude,plugin-codex,plugin-file-brief-store,plugin-file-log,plugin-file-notes,plugin-file-queue,plugin-file-store,plugin-file-tasks,plugin-hermes-agent,plugin-telegram}.json
+  - registry/{agent-kit,cli,core,plugin-claude,plugin-codex,plugin-file-brief-store,plugin-file-log,plugin-file-notes,plugin-file-queue,plugin-file-store,plugin-file-tasks,plugin-hermes-agent,plugin-slack,plugin-telegram}.json
   - scripts/write-install-manifest.ts
   - .software-factory/policy.yaml
   - .software-factory/evidence/harness-usage-scenario.sh
