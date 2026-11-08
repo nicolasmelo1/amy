@@ -2844,10 +2844,16 @@ program
   .command("contract")
   .description("This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document")
   .option("--check", "say whether the contract builds, and refuse one that does not")
-  .action((options: { check?: boolean }) => {
+  .action(async (options: { check?: boolean }) => {
+    // Read again, inside this command's own refusal: the startup read falls
+    // back to no plugins at all so `--help` survives a broken config, and a
+    // contract built from that fallback would certify an install it never read.
     let document: Record<string, unknown>;
     try {
-      document = installContract(contributions);
+      const config = loadConfig(home);
+      const gathered = await gatherBuilt(config, Object.values(profiles(config, home)));
+      if (gathered.problems.length > 0) throw new Error(gathered.problems.join("; "));
+      document = installContract(gathered.contributions);
     } catch (error) {
       console.error(`the contract does not build: ${error instanceof Error ? error.message : String(error)}`);
       process.exitCode = 1;
