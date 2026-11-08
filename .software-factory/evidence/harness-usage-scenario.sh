@@ -87,6 +87,22 @@ if (available?.result?.windows?.[0]?.usedPercent !== 12 || rejecting?.result?.un
 }
 NODE
 
+# The built budget lists both subscriptions beside, never inside, Amy's own
+# totals: the provider's 12% leaves every rolling window at zero runs.
+AMY_HOME="$world" node packages/cli/dist/index.js budget > "$world/budget.txt"
+node - "$world/budget.txt" <<'NODE'
+const fs = require("node:fs");
+const text = fs.readFileSync(process.argv[2], "utf8");
+const [ledger, usage = ""] = text.split("subscription usage:");
+const totals = ledger.split("\n").filter((line) => / run\(s\) /.test(line));
+if (totals.length === 0 || !totals.every((line) => /\s0 run\(s\) /.test(line)) || /12%|Available|Rejecting/.test(ledger)) {
+  throw new Error(`built budget mixed provider windows into Amy's totals:\n${text}`);
+}
+if (!/Available.*Session: 12%/.test(usage) || !/Rejecting: unavailable/.test(usage)) {
+  throw new Error(`built budget did not list both subscriptions beside the ledger:\n${text}`);
+}
+NODE
+
 node - "$report" <<'NODE'
 const fs = require("node:fs");
 const report = process.argv[2];
