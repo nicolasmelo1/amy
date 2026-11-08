@@ -86,6 +86,7 @@ deviations:
   - "registry/cli.json, registry/core.json, registry/plugin-agent-relay.json, registry/plugin-file-worktree.json: generated registry items"
   - "registry/workflow-errand.json, registry/workflow-note-to-plan.json, registry/workflow-ticket-to-qa.json: generated registry items"
   - "plugins/file-worktree/tests/plugin.test.ts: `worktree.remove-tree` answers only the safety refusal as declared, and lets anything else propagate as internal (S11)"
+  - "packages/workflow-ticket-to-qa/tests/plugin.test.ts: `ticket-to-qa.confirm-roster` answers only a roster it cannot read as declared, and lets a failed write propagate as internal (S11)"
   - ".changeset/a-plugin-brings-operations-not-commands.md: the release note"
   - "plans/next-steps.md, plans/grooming-reads-the-sections-its-workflow-declares.md: the delivered row leaves the board, and the plan citing this one cites where it lives now"
 exit: "a plugin written outside this repository declares one operation, and after amy add it is a command in amy --help, an entry in amy contract, and prints the same output as JSON and as a table"

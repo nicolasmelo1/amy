@@ -127,12 +127,12 @@ const confirmRosterOperation = defineOperation({
   }],
   async handler(_input, context) {
     const { state, home } = scopeOf<Settings>(context, "ticket-to-qa.confirm-roster");
-    let confirmed: Roster;
-    try {
-      confirmed = confirmRoster(state, new Date(), home);
-    } catch (error) {
-      return fail("ticket-to-qa.no_roster", error instanceof Error ? error.message : String(error));
-    }
+    // Only a roster that cannot be read is the declared error; a write that
+    // fails after it was read — a full disk, a read-only directory — is not,
+    // and propagates as internal.
+    const read = readRoster(state, home);
+    if ("error" in read) return read;
+    const confirmed = confirmRoster(state, new Date(), home);
     return { confirmedOn: confirmed.confirmedOn, ...rosterOutput(confirmed) };
   },
 });

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "plugin-telegram",
-  "implementation_sha256": "408862888a833e264f434f49f1bf4245c73e865bfb45a0354498d3a15662af20",
+  "implementation_sha256": "aa0e0c1b4d177428ae455e2e96c0449b197ee795f324e329894fd37e58a74719",
   "runs": [
     {
       "scenario": "plugin-telegram",

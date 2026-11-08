@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "plugin-github",
-  "implementation_sha256": "1cfdfff0491d9c061c5c80f046d0df391a161302cd5f19710d414dc115421235",
+  "implementation_sha256": "1cdc6653c66a3623eff91a4ddf31185fe9ac312cbbc5fe7493b4ad96b596dc43",
   "runs": [
     {
       "scenario": "plugin-github",

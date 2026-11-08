@@ -2,7 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { ActionHandler, Event, HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, deferred, dispatchesTo, mount, mountedActions } from "@amykit/core";
+import { ActionHandler, Event, HostServices, Plugin, WORKFLOW_RUNTIME, WorkflowRuntime, defineContract, deferred, dispatchesTo, invoke, mount, mountedActions } from "@amykit/core";
+import type { DeclaredOperation } from "@amykit/core";
 import { fakeAgent, fakeGate, fakeHost, fakeTracker, ticket, fakeWorkspace } from "@amykit/test-fixtures";
 import { plugin } from "./drawn.js";
 
@@ -227,3 +228,29 @@ function rosterDirectory(): string {
   );
   return directory;
 }
+
+describe("confirming the roster, as an operation", () => {
+  const confirm = (state: string) => {
+    const operation = (plugin.operations ?? []).find((one) => one.id === "ticket-to-qa.confirm-roster") as DeclaredOperation;
+    return invoke(defineContract([operation]), operation.id, {}, { port: () => undefined, plugin: { state, home: state, settings: {} } });
+  };
+
+  it("answers a roster that is not there as the declared error", async () => {
+    const state = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-none-"));
+    expect(await confirm(state)).toMatchObject({ kind: "error", error: { code: "ticket-to-qa.no_roster" } });
+    fs.rmSync(state, { recursive: true, force: true });
+  });
+
+  it("lets a write that fails after the roster was read propagate as internal", async () => {
+    const state = fs.mkdtempSync(path.join(os.tmpdir(), "amy-roster-readonly-"));
+    const file = path.join(state, "roster.yaml");
+    fs.writeFileSync(file, "confirmedOn: 2026-01-01\nreviewers:\n  - { tracker: ada@example.test, host: ada, available: true }\nqa: { tracker: grace@example.test, host: grace, available: true }\n");
+    fs.chmodSync(file, 0o444);
+    try {
+      expect(await confirm(state)).toMatchObject({ kind: "internal", error: { code: "amy.internal" } });
+    } finally {
+      fs.chmodSync(file, 0o644);
+      fs.rmSync(state, { recursive: true, force: true });
+    }
+  });
+});
