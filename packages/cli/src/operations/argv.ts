@@ -100,7 +100,15 @@ export function declareInput(command: Command, operation: Operation): void {
     }
     const option = new Option(`${flag} ${placeholderOf(field.schema)}`, helpOf(field));
     // An array repeats: every value typed is kept, in order.
-    if (typeOf(field.schema) === "array") option.argParser((value: string, previous: unknown) => [...(Array.isArray(previous) ? previous : []), value]);
+    // Appended in place: copying the list on every value would make a
+    // thousand repetitions cost a million copies before any validation.
+    if (typeOf(field.schema) === "array") {
+      option.argParser((value: string, previous: unknown) => {
+        const values = Array.isArray(previous) ? (previous as string[]) : [];
+        values.push(value);
+        return values;
+      });
+    }
     command.addOption(option);
   }
 }

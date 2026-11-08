@@ -156,6 +156,14 @@ describe("an operation's input, from argv", () => {
     const answered = (await echoing(tree, ["--nodes", "a"])) as { nodes: unknown[] };
     expect(Array.isArray(answered.nodes)).toBe(true);
   });
+
+  it("keeps every repeated value of an array flag, in order, however many there are", async () => {
+    const schema = { type: "object", properties: { tag: { type: "array", items: { type: "string" }, description: "tags" } } };
+    const typed = Array.from({ length: 20_000 }, (_, n) => ["--tag", `t${n}`]).flat();
+    const answered = (await echoing(schema, typed)) as { tag: string[] };
+    expect(answered.tag).toHaveLength(20_000);
+    expect(answered.tag[19_999]).toBe("t19999");
+  });
 });
 
 /** Runs an operation that answers its input, declared over a hand-written input schema. */
