@@ -1386,7 +1386,9 @@ function worktreeChecks(first: World): Check[] {
     ],
     [
       "worktree.a_crash_or_dirty_tree_never_deletes_a_worktree",
-      first.dirtyPrune.code === 0 && first.dirtyStillThere && first.dirtyPrune.out.includes("nothing to prune"),
+      // The prune's output is drawn from its schema: nothing removed is an
+      // empty `removed`, which the command line draws as none.
+      first.dirtyPrune.code === 0 && first.dirtyStillThere && /removed\s+\(none\)/.test(first.dirtyPrune.out),
     ],
     [
       "worktree.a_terminal_clean_tree_is_prunable_after_retention",
@@ -1506,7 +1508,7 @@ function extraChecks(first: World): Check[] {
  * profile's own file.
  */
 function rosterChecks(first: World): Check[] {
-  const stamped = first.confirm.out.match(/confirmed for (\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+  const stamped = first.confirm.out.match(/confirmed for\s+(\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
   const hosts = (first.rosterFile ?? "")
     .split("\n")
     .filter((line) => line.trim().startsWith("host: "))

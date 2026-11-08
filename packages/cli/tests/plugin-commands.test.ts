@@ -1,178 +1,191 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Command } from "commander";
 import { describe, expect, it } from "vitest";
-import type { Check, ConfigSchema, Plugin } from "@amykit/core";
-import { DEFAULT_CONFIG } from "../src/config.js";
-import type { LoadResult } from "../src/loader.js";
-import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, register, runSetup, writeFiles } from "../src/plugin-commands.js";
+import { z } from "zod";
+import { defineOperation } from "@amykit/core";
+import type { OperationSchema, Plugin } from "@amykit/core";
+import { BUILT_IN_COMMANDS, checks, gather, migrateRootFiles, runSetup, writeFiles } from "../src/plugin-commands.js";
+import { register } from "../src/operations/commands.js";
+import { installContract } from "../src/operations/contract.js";
 import type { Profile } from "../src/profiles.js";
+import { CONFIG, WORK, demo, environment, greet, loading, program, spoken } from "./operations/support.js";
 
-/**
- * A plugin this repository has never heard of, with a command, a check and a
- * file: the shape the host has to carry without knowing what any of them mean.
- */
-const DEMO_SCHEMA = {
-  greeting: { type: "string", description: "what the command says", default: "hello" },
-} satisfies ConfigSchema;
-
-function demo(overrides: Partial<Plugin> = {}): Plugin {
-  return {
-    name: "@acme/plugin-demo",
-    configSchema: DEMO_SCHEMA,
-    register() {},
-    commands: [
-      {
-        name: "demo",
-        description: "Say what this plugin was configured to say",
-        args: [{ name: "who", description: "who to greet", optional: true }],
-        run({ settings, args, out }) {
-          out.line(`${String(settings.greeting)} ${args[0] ?? "nobody"}`);
-        },
-      },
-    ],
-    checks: [
-      {
-        name: "demo check",
-        run(): Check {
-          return { label: "demo check", ok: false, detail: "everything is on fire" };
-        },
-      },
-    ],
-    files: [{ path: "demo.txt", content: () => "written once\n" }],
-    ...overrides,
-  };
-}
-
-const WORK: Profile = {
-  name: "work",
-  workflow: "@acme/workflow-unheard-of",
-  plugins: ["@acme/plugin-demo"],
-  takesNotes: false,
-  takesTasks: false,
-  settings: {},
-};
-
-const CONFIG = {
-  ...DEFAULT_CONFIG,
-  workflows: { work: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } },
-  plugins: { "@acme/plugin-demo": { greeting: "hello" } },
-};
-
-/** What the loader would answer for a world where these modules import. */
-function loading(...plugins: readonly Plugin[]) {
-  return async (specs: readonly string[]): Promise<LoadResult> => {
-    const bySpec = new Map<string, Plugin>();
-    for (const spec of specs) {
-      const found = plugins.find((plugin) => plugin.name === spec);
-      if (found) bySpec.set(spec, found);
-    }
-    return { plugins: [...bySpec.values()], problems: [], bySpec };
-  };
-}
-
-/** A program whose output is captured rather than printed. */
-function capturing(): { program: Command; said: string[] } {
-  const said: string[] = [];
-  const program = new Command().name("amy").exitOverride();
-  program.configureOutput({
-    writeOut: (text) => said.push(text),
-    writeErr: (text) => said.push(text),
+/** One operation of another package, spelled however the test needs. */
+function otherOperation(id: string, words: readonly string[], extra: { mount?: boolean; localOnly?: boolean } = {}) {
+  return defineOperation({
+    id,
+    domain: id.split(".")[0]!,
+    summary: "Another package's operation",
+    description: "Answers nothing in particular. Changes nothing.",
+    input: z.object({}),
+    output: z.object({ ok: z.boolean().describe("ok") }),
+    writes: [],
+    http: { method: "get", path: `/${id.replace(".", "/")}` },
+    cli: { words },
+    examples: [{ summary: "always", input: {}, output: { ok: true } }],
+    ...extra,
+    async handler() {
+      return { ok: true };
+    },
   });
-  return { program, said };
 }
 
-function environment(out: { line(text?: string): void; error(text: string): void }, mounted = true) {
-  return {
-    home: "/amy",
-    config: CONFIG,
-    profileFor: () => ({ ok: true as const, profile: WORK }),
-    mount: async () => mounted
-      ? { ok: true as const, ports: new Map() }
-      : { ok: false as const, problems: ["@amykit/plugin-serial-engine: could not be imported"] },
-    out,
-  };
-}
-
-function spoken(): { said: string[]; out: { line(text?: string): void; error(text: string): void } } {
-  const said: string[] = [];
-  return {
-    said,
-    out: { line: (text = "") => said.push(text), error: (text: string) => said.push(`error: ${text}`) },
-  };
-}
-
-describe("a plugin's commands, check and file", () => {
-  it("appears in --help marked with its package, runs, and is gone when the plugin is", async () => {
+describe("a plugin's operations, check and file", () => {
+  it("appears in --help marked with its package and in amy contract, runs, and both are gone when the plugin is", async () => {
     const gathered = await gather(CONFIG, [WORK], loading(demo()));
     expect(gathered.problems).toEqual([]);
 
-    const { program, said } = capturing();
-    const { out } = spoken();
-    register(program, gathered.contributions, environment(out));
-    program.outputHelp();
-
+    const listed = program();
+    register(listed.program, gathered.contributions, environment(spoken().out));
+    listed.program.outputHelp();
     // Help wraps a long description, so the marking is compared as words.
-    const help = said.join("").replace(/\s+/g, " ");
-    expect(help).toContain("demo [who]");
+    const help = listed.help.join("").replace(/\s+/g, " ");
+    expect(help).toContain("demo [options] [who]");
     expect(help).toContain("(from @acme/plugin-demo)");
 
+    const document = installContract(gathered.contributions) as { paths: Record<string, Record<string, { operationId: string }>> };
+    expect(document.paths["/demo/greetings"]?.post?.operationId).toBe("demo.greet");
+
     const ran = spoken();
-    const withCommand = new Command().name("amy").exitOverride().configureOutput({ writeOut: () => {}, writeErr: () => {} });
+    const withCommand = program().program;
     register(withCommand, gathered.contributions, environment(ran.out));
     await withCommand.parseAsync(["node", "amy", "demo", "world"]);
-    expect(ran.said).toEqual(["hello world"]);
+    expect(ran.said[0]).toBe("said  hello world");
+    expect(process.exitCode).toBe(0);
 
-    // The same command line with the plugin gone is the command line a
-    // machine that never mounted it has.
-    const without = new Command().name("amy").exitOverride().configureOutput({ writeOut: () => {}, writeErr: () => {} });
-    register(without, [], environment(ran.out));
+    // The same command line, and the same contract, with the plugin gone are
+    // the ones a machine that never mounted it has.
+    const removed = await gather({ ...CONFIG, workflows: { work: { workflow: WORK.workflow, plugins: [] } } }, [{ ...WORK, plugins: [] }], loading(demo()));
+    const without = program().program;
+    register(without, removed.contributions, environment(ran.out));
     await expect(without.parseAsync(["node", "amy", "demo", "world"])).rejects.toThrow();
+    const after = installContract(removed.contributions) as { paths: Record<string, unknown> };
+    expect(after.paths["/demo/greetings"]).toBeUndefined();
   });
 
-  it("runs while the machine will not mount, and refuses a mount: true command with the reason", async () => {
+  it("refuses a plugin that still declares commands, naming the plugin and the member", async () => {
+    const legacy = { ...demo(), commands: [{ name: "demo", description: "the old way", run: () => {} }] } as unknown as Plugin;
+    const gathered = await gather(CONFIG, [WORK], loading(legacy));
+    expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares `commands`, which amy no longer reads");
+  });
+
+  it("runs an operation without mount while the machine will not mount, and refuses one with mount: true naming why", async () => {
     const plain = spoken();
-    const withoutMachine = await gather(CONFIG, [WORK], loading(demo()));
-    const program = new Command().name("amy").exitOverride().configureOutput({ writeOut: () => {}, writeErr: () => {} });
-    register(program, withoutMachine.contributions, environment(plain.out, false));
-    await program.parseAsync(["node", "amy", "demo", "world"]);
-    expect(plain.said).toEqual(["hello world"]);
+    const gathered = await gather(CONFIG, [WORK], loading(demo({ operations: [greet, otherOperation("demo.needs-machine", ["needs-machine", "list"], { mount: true })] })));
+    const first = program().program;
+    register(first, gathered.contributions, environment(plain.out, false));
+    await first.parseAsync(["node", "amy", "demo", "world"]);
+    expect(plain.said[0]).toBe("said  hello world");
+    expect(process.exitCode).toBe(0);
 
-    const needsMachine = demo({
-      commands: [{
-        name: "needs-machine",
-        description: "Needs the mounted ports",
-        mount: true,
-        subcommands: [{ name: "list", description: "The same need, one word further in", run: () => {} }],
-      }],
-    });
-    const gathered = await gather(CONFIG, [WORK], loading(needsMachine));
     const refused = spoken();
-    const refusedProgram = new Command().name("amy").exitOverride().configureOutput({ writeOut: () => {}, writeErr: () => {} });
-    register(refusedProgram, gathered.contributions, environment(refused.out, false));
-    // A subcommand runs its own action, so it inherits the parent's need: a
-    // command in two words is still one command.
-    await refusedProgram.parseAsync(["node", "amy", "needs-machine", "list"]);
-
-    expect(refused.said.join("\n")).toContain("could not be imported");
-    expect(process.exitCode).toBe(1);
+    const second = program().program;
+    register(second, gathered.contributions, environment(refused.out, false));
+    await second.parseAsync(["node", "amy", "needs-machine", "list"]);
+    expect(refused.errors.join("\n")).toContain("`amy needs-machine list` needs the machine work drives, which did not come up");
+    expect(refused.errors.join("\n")).toContain("could not be imported");
+    expect(process.exitCode).toBe(70);
     process.exitCode = 0;
   });
 
-  it("refuses a name the host owns, and a name another package already declared", async () => {
-    const taken = await gather(CONFIG, [WORK], loading(
-      demo({ commands: [{ name: "doctor", description: "Replaces the host's doctor", run: () => {} }] }),
-    ));
+  it("refuses a name the host owns, and an id or a word another package already declared, naming both", async () => {
+    const taken = await gather(CONFIG, [WORK], loading(demo({ operations: [otherOperation("demo.doctor", ["doctor"])] })));
     expect(taken.problems.join("\n")).toContain("cannot replace a built-in");
 
-    const other = demo({
-      name: "@acme/plugin-other",
-      commands: [{ name: "demo", description: "Same name, another package", run: () => {} }],
-    });
     const both: Profile = { ...WORK, plugins: ["@acme/plugin-demo", "@acme/plugin-other"] };
-    const clash = await gather(CONFIG, [both], loading(demo(), other));
-    expect(clash.problems.join("\n")).toContain("declared by both @acme/plugin-demo and @acme/plugin-other");
+    const sameWord = demo({ name: "@acme/plugin-other", operations: [otherOperation("other.greet", ["demo", "again"])] });
+    const wordClash = await gather(CONFIG, [both], loading(demo(), sameWord));
+    expect(wordClash.problems.join("\n")).toContain("`amy demo` is declared by both @acme/plugin-demo and @acme/plugin-other");
+
+    const sameId = demo({ name: "@acme/plugin-other", operations: [otherOperation("demo.greet", ["other"])] });
+    const idClash = await gather(CONFIG, [both], loading(demo(), sameId));
+    expect(idClash.problems.join("\n")).toContain("the operation `demo.greet` is declared by both @acme/plugin-demo and @acme/plugin-other");
+  });
+
+  it("brings an operation a profile's fork adds to the command line and the contract, run only where it is mounted", async () => {
+    const forked = demo({ operations: [greet, otherOperation("demo.added", ["demo-added"])] });
+    const other: Profile = { ...WORK, name: "forked" };
+    const config = { ...CONFIG, workflows: { ...CONFIG.workflows, forked: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } } };
+    const gathered = await gather(config, [WORK, other], async (specs, profile) => loading(profile === "forked" ? forked : demo())(specs));
+    expect(gathered.problems).toEqual([]);
+
+    const contribution = gathered.contributions[0]!;
+    expect(contribution.operations.map((operation) => operation.id)).toEqual(["demo.greet", "demo.ticks", "demo.added"]);
+    const document = installContract(gathered.contributions) as { paths: Record<string, unknown> };
+    expect(document.paths["/demo/added"]).toBeDefined();
+
+    const heard = spoken();
+    const made = program().program;
+    register(made, gathered.contributions, { ...environment(heard.out), profileFor: () => ({ ok: true as const, profile: WORK }) });
+    await made.parseAsync(["node", "amy", "demo-added"]);
+    expect(heard.errors.join("\n")).toContain("`demo.added` is not declared by the @acme/plugin-demo that work mounts");
+    expect(process.exitCode).toBe(2);
+    process.exitCode = 0;
+  });
+
+  it("refuses a workflow compiled against an older core that still passes commands to defineWorkflow", async () => {
+    const { defineWorkflow } = await import("@amykit/core");
+    const legacy = defineWorkflow({
+      name: "legacy",
+      pluginName: "@acme/plugin-demo",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      record: () => ({}),
+      decide: {},
+      observe: async () => ({}),
+      actions: {},
+      commands: [{ name: "legacy", description: "the old way", run: () => {} }],
+    } as never) as Plugin;
+    const gathered = await gather(CONFIG, [WORK], loading(legacy));
+    expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares `commands`, which amy no longer reads");
+  });
+
+  it("refuses one package declaring an operation id twice under two spellings", async () => {
+    const twice = await gather(CONFIG, [WORK], loading(demo({ operations: [otherOperation("demo.same", ["same-one"]), otherOperation("demo.same", ["same-two"])] })));
+    expect(twice.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.same` twice");
+  });
+
+  it("refuses a profile's fork declaring an id twice, even when the first profile declares it once", async () => {
+    const forked = demo({ operations: [greet, otherOperation("demo.greet", ["demo-again"])] });
+    const other: Profile = { ...WORK, name: "forked" };
+    const config = { ...CONFIG, workflows: { ...CONFIG.workflows, forked: { workflow: WORK.workflow, plugins: ["@acme/plugin-demo"] } } };
+    const gathered = await gather(config, [WORK, other], async (specs, profile) => loading(profile === "forked" ? forked : demo())(specs));
+    expect(gathered.problems.join("\n")).toContain("@acme/plugin-demo declares the operation `demo.greet` twice");
+  });
+
+  it("refuses at load an input the command line cannot spell: a composed object, two fields one flag, or a field taking --json", async () => {
+    const refused = async (input: Record<string, unknown>) =>
+      (await gather(CONFIG, [WORK], loading(demo({ operations: [spelledOver(input)] })))).problems.join("\n");
+
+    expect(await refused({ allOf: [{ type: "object", properties: { count: { type: "number" } } }, { type: "object", properties: { verbose: { type: "boolean" } } }] }))
+      .toContain("`demo.spelled` takes an input composed with allOf, anyOf or oneOf");
+    expect(await refused({ type: "object", properties: { foo_bar: { type: "string" }, fooBar: { type: "string" } } }))
+      .toContain("spells its field `fooBar` as `--foo-bar`, which its field `foo_bar` already takes");
+    expect(await refused({ type: "object", properties: { JSON: { type: "string" } } }))
+      .toContain("spells its field `JSON` as `--json`, which the command line itself already takes");
+    expect(await refused({ type: "array", items: { type: "string" } }))
+      .toContain("`demo.spelled` takes an input that is not an object");
+    expect(await refused({ type: "object", properties: { noCache: { type: "boolean" } } }))
+      .toContain("spells its boolean field `noCache` as `--no-cache`, which the command line reads as a negation");
+    expect(await refused({ $ref: "#/$defs/input", $defs: { input: { type: "object", properties: { json: { type: "boolean" } }, required: ["json"] } } }))
+      .toContain("spells its field `json` as `--json`");
+  });
+
+  it("keeps what the loader could not import, so the contract can refuse an install it did not read whole", async () => {
+    const gathered = await gather(CONFIG, [WORK], async () => ({ plugins: [], problems: ["@acme/plugin-demo: could not be imported"], bySpec: new Map() }));
+    expect(gathered.problems).toEqual([]);
+    expect(gathered.unloaded).toEqual(["@acme/plugin-demo: could not be imported"]);
+  });
+
+  it("keeps a plugin's operation local-only in amy contract unless it says otherwise", async () => {
+    const gathered = await gather(CONFIG, [WORK], loading(demo({
+      operations: [greet, otherOperation("demo.open", ["demo-open"], { localOnly: false })],
+    })));
+    const document = installContract(gathered.contributions) as { paths: Record<string, Record<string, Record<string, unknown>>> };
+    expect(document.paths["/demo/greetings"]?.post?.["x-amy-local-only"]).toBe(true);
+    expect(document.paths["/demo/open"]?.get?.["x-amy-local-only"]).toBe(false);
   });
 
   it("puts the plugin's check in the doctor under its own name, red like any other", async () => {
@@ -292,7 +305,7 @@ describe("a plugin's commands, check and file", () => {
           spec: "@acme/plugin-demo",
           plugin: demo(),
           profiles: [WORK],
-          commands: [],
+          operations: [],
           checks: [],
           files: [{ path: "team.yaml", content: () => "the team's own\n" }],
           setup: [],
@@ -302,7 +315,7 @@ describe("a plugin's commands, check and file", () => {
           spec: "@acme/plugin-second",
           plugin: demo({ name: "@acme/plugin-second" }),
           profiles: [second],
-          commands: [],
+          operations: [],
           checks: [],
           files: [{ path: "./team.yaml", content: () => "the team's own\n" }],
           setup: [],
@@ -354,7 +367,7 @@ describe("a plugin's commands, check and file", () => {
           spec: "@acme/plugin-credentials",
           plugin: demo({ name: "@acme/plugin-credentials" }),
           profiles: [WORK],
-          commands: [],
+          operations: [],
           checks: [],
           files: [{ path: ".env", content: () => "an example's placeholders\n" }],
           setup: [],
@@ -385,15 +398,41 @@ describe("the host carries the command line, not the commands", () => {
     }
   });
 
-  it("gets btw, note, worktrees and models from the packages that own them", async () => {
+  it("gets btw, note, roster, worktrees and models from the packages that own them, as operations", async () => {
     const { plugin: errand } = await import("@amykit/workflow-errand");
     const { plugin: plans } = await import("@amykit/workflow-note-to-plan");
+    const { plugin: tickets } = await import("@amykit/workflow-ticket-to-qa");
     const { plugin: worktrees } = await import("@amykit/plugin-file-worktree");
     const { plugin: relay } = await import("@amykit/plugin-agent-relay");
+    const words = (plugin: Plugin) => (plugin.operations ?? []).map((operation) => (operation as { cli?: { words: string[] } }).cli?.words.join(" "));
 
-    expect(errand.commands?.map((command) => command.name)).toContain("btw");
-    expect(plans.commands?.map((command) => command.name)).toContain("note");
-    expect(worktrees.commands?.map((command) => command.name)).toContain("worktrees");
-    expect(relay.commands?.map((command) => command.name)).toContain("models");
+    expect(words(errand)).toEqual(["btw"]);
+    expect(words(plans)).toEqual(["note"]);
+    expect(words(tickets)).toEqual(["roster show", "roster confirm"]);
+    expect(words(worktrees)).toEqual(["worktrees list", "worktrees remove", "worktrees prune"]);
+    expect(words(relay)).toEqual(["models show", "models refresh"]);
+    for (const plugin of [errand, plans, tickets, worktrees, relay]) expect((plugin as { commands?: unknown }).commands).toBeUndefined();
   });
 });
+
+/** An operation over a hand-written input schema, so its shape is exactly the one under test. */
+function spelledOver(input: Record<string, unknown>) {
+  const schema = {
+    "~standard": { version: 1, vendor: "test", validate: (value: unknown) => ({ value }), jsonSchema: { input: () => input, output: () => ({ type: "object" }) } },
+  } as unknown as OperationSchema;
+  return defineOperation({
+    id: "demo.spelled",
+    domain: "demo",
+    summary: "Spelled over a schema",
+    description: "Answers its input. Changes nothing.",
+    input: schema,
+    output: schema,
+    writes: [],
+    http: { method: "post", path: "/demo/spelled" },
+    cli: { words: ["spelled"] },
+    examples: [{ summary: "anything", input: {}, output: {} }],
+    async handler(given) {
+      return given;
+    },
+  });
+}

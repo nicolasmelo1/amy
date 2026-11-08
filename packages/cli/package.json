@@ -47,6 +47,7 @@
     "@amykit/plugin-file-queue": "^0.6.0",
     "@amykit/plugin-file-store": "^0.6.0",
     "@amykit/plugin-file-tasks": "^0.6.0",
+    "@amykit/services": "^0.6.0",
     "@amykit/ui": "^0.6.0",
     "commander": "^14.0.0",
     "yaml": "^2.9.0"

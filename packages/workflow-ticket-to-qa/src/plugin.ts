@@ -11,14 +11,17 @@ import {
   HarnessReply,
   Notifier,
   PluginCheck,
-  PluginCommand,
   Tracker,
   Worktree,
   call,
+  defineOperation,
   defineWorkflow,
+  fail,
   optional,
   port,
+  scopeOf,
 } from "@amykit/core";
+import { z } from "zod";
 import { after, before, decide } from "./machine.js";
 import { DEFAULT_POLICY, Policy } from "./observation.js";
 import { TicketRecord } from "./record.js";
@@ -28,47 +31,111 @@ import { Finding, gateLane, selfReviewLane } from "./lanes.js";
 
 type Settings = ConfigOf<typeof configSchema>;
 
+/** One person on the roster, as the roster operations answer it. */
+const member = z.object({
+  host: z.string().describe("login"),
+  tracker: z.string().describe("tracker"),
+  available: z.enum(["in", "out"]).describe("today"),
+});
+
+const roster = {
+  reviewers: z.array(member).describe("reviewers"),
+  qa: member.describe("qa"),
+};
+
+/** The roster as an operation answers it: who, and whether they are in. */
+function rosterOutput(read: Roster) {
+  const one = (person: Roster["qa"]) => ({ host: person.host, tracker: person.tracker, available: person.available ? "in" as const : "out" as const });
+  return { reviewers: read.reviewers.map(one), qa: one(read.qa) };
+}
+
+const NO_ROSTER = { "ticket-to-qa.no_roster": { description: "the profile has no roster file, or one missing confirmedOn, reviewers or qa" } };
+
+/** The roster file, or the declared error naming why it cannot be read. */
+function readRoster(state: string, home: string): Roster | ReturnType<typeof fail> {
+  try {
+    return loadRoster(state, home);
+  } catch (error) {
+    return fail("ticket-to-qa.no_roster", error instanceof Error ? error.message : String(error));
+  }
+}
+
 /**
- * Who is reviewing, as this workflow's own command.
+ * Who is reviewing, as this workflow's own operations: `amy roster` and
+ * `amy roster confirm`.
  *
  * It used to be the host's, on every install, for the one workflow that
  * assigns anybody. Here it is a file beside the profile's records: two teams
  * running two ticket-to-qa profiles do not share reviewers, and a machine
  * that never assigns one has no roster to keep.
  */
-const rosterCommand: PluginCommand<Settings> = {
-  name: "roster",
-  description: "Who is reviewing today",
-  subcommands: [
-    {
-      name: "confirm",
-      description: "Stamp the roster with today's date",
-      run({ state, home, out }) {
-        const roster = confirmRoster(state, new Date(), home);
-        out.line(`confirmed for ${roster.confirmedOn}`);
-        for (const reviewer of roster.reviewers) {
-          out.line(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}`);
-        }
-        out.line(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}`);
-      },
+const showRoster = defineOperation({
+  id: "ticket-to-qa.show-roster",
+  domain: "ticket-to-qa",
+  summary: "Print the roster and whether it is current",
+  description: "Reads this profile's roster file and says who is in and whether it was confirmed today. Changes nothing.",
+  input: z.object({}),
+  output: z.object({
+    confirmedOn: z.string().describe("confirmed on"),
+    current: z.enum(["current", "stale"]).describe("today"),
+    ...roster,
+  }),
+  errors: NO_ROSTER,
+  writes: [],
+  http: { method: "get", path: "/ticket-to-qa/roster" },
+  cli: { words: ["roster", "show"], default: true },
+  examples: [{
+    summary: "a roster confirmed today",
+    input: {},
+    output: {
+      confirmedOn: "2026-11-07",
+      current: "current",
+      reviewers: [{ host: "ada", tracker: "ada@example.test", available: "in" }],
+      qa: { host: "grace", tracker: "grace@example.test", available: "in" },
     },
-    {
-      name: "show",
-      description: "Print the roster and whether it is current",
-      default: true,
-      run({ state, home, out }) {
-        const roster = loadRoster(state, home);
-        const now = new Date();
-        const current = isConfirmedFor(roster, now);
-        out.line(`confirmed on ${roster.confirmedOn}${current ? " (current)" : " (stale)"}`);
-        for (const reviewer of roster.reviewers) {
-          out.line(`  ${reviewer.available ? "in " : "out"} ${reviewer.host}  ${reviewer.tracker}`);
-        }
-        out.line(`  qa  ${roster.qa.available ? "in " : "out"} ${roster.qa.host}  ${roster.qa.tracker}`);
-      },
+  }],
+  async handler(_input, context) {
+    const { state, home } = scopeOf<Settings>(context, "ticket-to-qa.show-roster");
+    const read = readRoster(state, home);
+    if ("error" in read) return read;
+    return { confirmedOn: read.confirmedOn, current: isConfirmedFor(read, new Date()) ? "current" as const : "stale" as const, ...rosterOutput(read) };
+  },
+});
+
+const confirmRosterOperation = defineOperation({
+  id: "ticket-to-qa.confirm-roster",
+  domain: "ticket-to-qa",
+  summary: "Stamp the roster with today's date",
+  description: "Writes today's date into this profile's roster file, so the machine assigns from it again today. Changes nobody on it.",
+  input: z.object({}),
+  output: z.object({
+    confirmedOn: z.string().describe("confirmed for"),
+    ...roster,
+  }),
+  errors: NO_ROSTER,
+  writes: ["roster"],
+  http: { method: "post", path: "/ticket-to-qa/roster/confirmation" },
+  cli: { words: ["roster", "confirm"] },
+  examples: [{
+    summary: "confirming today's roster",
+    input: {},
+    output: {
+      confirmedOn: "2026-11-07",
+      reviewers: [{ host: "ada", tracker: "ada@example.test", available: "in" }],
+      qa: { host: "grace", tracker: "grace@example.test", available: "in" },
     },
-  ],
-};
+  }],
+  async handler(_input, context) {
+    const { state, home } = scopeOf<Settings>(context, "ticket-to-qa.confirm-roster");
+    // Only a roster that cannot be read is the declared error; a write that
+    // fails after it was read — a full disk, a read-only directory — is not,
+    // and propagates as internal.
+    const read = readRoster(state, home);
+    if ("error" in read) return read;
+    const confirmed = confirmRoster(state, new Date(), home);
+    return { confirmedOn: confirmed.confirmedOn, ...rosterOutput(confirmed) };
+  },
+});
 
 /** A roster nobody confirmed today is a review nobody would answer. */
 const rosterCheck: PluginCheck<Settings> = {
@@ -214,7 +281,7 @@ export const plugin = defineWorkflow({
   before,
   decide,
   after,
-  commands: [rosterCommand],
+  operations: [showRoster, confirmRosterOperation],
   checks: [rosterCheck],
   files: [{ path: ROSTER_FILE, content: EXAMPLE_ROSTER }],
   record: () => ({ judged: [] }),

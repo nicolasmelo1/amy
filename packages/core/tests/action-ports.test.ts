@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
+  Operated,
+  defineOperation,
+  fail,
+  scopeOf,
   ActionHandler,
   Announcement,
   ConfigSchema,
@@ -61,6 +66,50 @@ const diagram = `stateDiagram-v2
 `;
 
 const seen: string[] = [];
+const operated: Operated[] = [];
+
+/** Another plugin's operation: doubles a number, refuses a negative one, and reads its own settings and a port. */
+const double = defineOperation({
+  id: "numbers.double",
+  domain: "numbers",
+  summary: "Doubles a number",
+  description: "Answers the number doubled, with the label its settings carry. Changes nothing.",
+  input: z.object({ n: z.number().describe("the number") }),
+  output: z.object({ doubled: z.number().describe("doubled"), label: z.string().describe("label"), state: z.string().describe("state"), agent: z.string().describe("agent") }),
+  errors: { "numbers.negative": { description: "the number was below zero" } },
+  writes: [],
+  http: { method: "post", path: "/numbers/double" },
+  examples: [{ summary: "two", input: { n: 2 }, output: { doubled: 4, label: "twice", state: "/state/work", agent: "fixture" } }],
+  async handler({ n }, context) {
+    if (n < 0) return fail("numbers.negative", `${n} is below zero`);
+    const { settings, state } = scopeOf<{ label: string }>(context, "numbers.double");
+    return { doubled: n * 2, label: settings.label, state, agent: (context.port("agent") as Harness).name };
+  },
+});
+
+/** Another plugin's operation that asks the agent itself. */
+const consult = defineOperation({
+  id: "numbers.consult",
+  domain: "numbers",
+  summary: "Asks the agent",
+  description: "Answers what the agent replied. Changes nothing.",
+  input: z.object({}),
+  output: z.object({ text: z.string().describe("reply") }),
+  writes: [],
+  http: { method: "post", path: "/numbers/consult" },
+  examples: [{ summary: "a reply", input: {}, output: { text: "done" } }],
+  async handler(_input, context) {
+    const reply = await (context.port("agent") as Harness).ask("think", "/work");
+    return { text: reply.text };
+  },
+});
+
+const numbers: Plugin = {
+  name: "@acme/plugin-numbers",
+  configSchema: { label: { type: "string", description: "what it calls a doubling", default: "twice" } },
+  operations: [double, consult],
+  register() {},
+};
 
 /** One workflow whose actions only call what they were handed. */
 const declared = withDiagram(defineWorkflow({
@@ -78,10 +127,14 @@ const declared = withDiagram(defineWorkflow({
       await ports.notifier.announce({ text: "hello", workId: work.record.id, state: work.record.state });
     },
     look: async ({ ports }) => void seen.push(`${ports.agent.name}: ${(ports.agent as FixtureHarness).label}`),
+    operate: async ({ operate }, _work, effect) => {
+      const { id, input } = effect as unknown as { id: string; input: unknown };
+      operated.push(await operate(id, input));
+    },
   },
 }), diagram);
 
-async function runtimeWith(agent: Harness, notifier: Notifier, log: EventLog): Promise<WorkflowRuntime> {
+async function runtimeWith(agent: Harness, notifier: Notifier, log: EventLog, others: readonly Plugin[] = []): Promise<WorkflowRuntime> {
   const ports: Plugin = {
     name: "ports",
     register: (registry) => {
@@ -92,10 +145,10 @@ async function runtimeWith(agent: Harness, notifier: Notifier, log: EventLog): P
   const host: HostServices = {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => NOW,
-    paths: { state:  "/state" },
+    paths: { state:  "/state", profile: "/state/work" },
     log,
   };
-  const outcome = await mount([declared, ports], {}, host);
+  const outcome = await mount([declared, ports, ...others], {}, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   return outcome.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("attended") as WorkflowRuntime;
 }
@@ -168,5 +221,59 @@ describe("the ports an action is handed", () => {
     await handler(runtime, "look")({ type: "look" }, work(record));
 
     expect(seen).toEqual(["fixture: a fixture"]);
+  });
+});
+
+describe("an action calling another plugin's operation", () => {
+  const ask = (runtime: WorkflowRuntime, id: string, input: unknown) =>
+    handler(runtime, "operate")({ type: "operate", id, input } as never, work(record));
+
+  it("gets the output, validated, with the operation run in its own plugin's scope and the mount's ports", async () => {
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged(), [numbers]);
+    operated.length = 0;
+
+    await ask(runtime, "numbers.double", { n: 2 });
+
+    expect(operated).toEqual([{ ok: true, output: { doubled: 4, label: "twice", state: "/state/work", agent: "fixture" } }]);
+  });
+
+  it("gets the declared error, an input the schema refuses, or an id nothing mounted offers, each naming the id", async () => {
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged(), [numbers]);
+    operated.length = 0;
+
+    await ask(runtime, "numbers.double", { n: -1 });
+    await ask(runtime, "numbers.double", { n: "two" });
+    await ask(runtime, "numbers.triple", { n: 2 });
+
+    expect(operated[0]).toEqual({ ok: false, error: { code: "numbers.negative", message: "-1 is below zero" } });
+    expect(operated[1]).toMatchObject({ ok: false, error: { code: "amy.input" } });
+    expect((operated[1] as { error: { message: string } }).error.message).toContain("`numbers.double` refused its input");
+    expect(operated[2]).toEqual({ ok: false, error: { code: "amy.unknown_operation", message: "no plugin this profile mounts offers the operation `numbers.triple`" } });
+  });
+
+  it("reaches only what the profile mounted: the same id, with the plugin left out, is not offered", async () => {
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged());
+    operated.length = 0;
+
+    await ask(runtime, "numbers.double", { n: 2 });
+
+    expect(operated).toEqual([{ ok: false, error: { code: "amy.unknown_operation", message: "no plugin this profile mounts offers the operation `numbers.double`" } }]);
+  });
+
+  it("refuses at boot two mounted plugins declaring one operation id, naming both", async () => {
+    const again: Plugin = { ...numbers, name: "@acme/plugin-more-numbers" };
+    await expect(runtimeWith(new FixtureHarness(async () => REPLY), quiet, logged(), [numbers, again]))
+      .rejects.toThrow("the operation `numbers.double` is declared by both @acme/plugin-numbers and @acme/plugin-more-numbers");
+  });
+
+  it("bills an agent run an operation makes to the work that called it, so the budget sees it", async () => {
+    const log = logged();
+    const runtime = await runtimeWith(new FixtureHarness(async () => REPLY), quiet, log, [numbers]);
+    operated.length = 0;
+
+    await ask(runtime, "numbers.consult", {});
+
+    expect(operated).toEqual([{ ok: true, output: { text: "done" } }]);
+    expect(log.lines.map((line) => [line.kind, line.workId, line.state])).toEqual([["agent.run", "W-1", "WORKING"]]);
   });
 });

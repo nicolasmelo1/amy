@@ -5,12 +5,8 @@ export type { ActionSpec, PortKind } from "./actions.js";
 export type {
   Check,
   CheckContext,
-  CommandArgument,
-  CommandContext,
-  CommandFlag,
   CommandOutput,
   PluginCheck,
-  PluginCommand,
   PluginFile,
   PluginSetup,
   SetupContext,
@@ -49,7 +45,7 @@ export { Builds } from "./builds.js";
 export type { Deferred } from "./deferred.js";
 
 export { act, advance, declaredCallee, declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, policyFor, port, settled, wait, withDiagram, withDiagramBeside, workflowActions } from "./define-workflow.js";
-export type { ActionDuties } from "./action-ports.js";
+export type { ActionDuties, Operated } from "./action-ports.js";
 export { CALLED, LANED, LEASE_WAIT, activeCall, call, callPath, callStanding, isCall, laneMoved, laneStanding } from "./calls.js";
 export { FileLeases, LeaseHeld } from "./leases.js";
 export type { BranchLeases } from "./leases.js";
@@ -177,7 +173,7 @@ export type { Checkouts } from "./checkouts.js";
 export { WORKSPACE_PORT } from "./ports/Workspace.js";
 export type { Workspace } from "./ports/Workspace.js";
 export type { RepoLayout } from "./git.js";
-export { contractDocument, defineContract, defineOperation, fail, invoke, isStream } from "./operation.js";
+export { OPERATIONS_COLLECTION, contractDocument, defineContract, defineOperation, fail, invoke, isStream, scopeOf } from "./operation.js";
 export type {
   CliBinding,
   Contract,
@@ -192,6 +188,8 @@ export type {
   Operation,
   OperationContext,
   OperationExample,
+  OperationScope,
+  MountedOperation,
   StreamEvent,
   StreamItem,
   StreamOperation,

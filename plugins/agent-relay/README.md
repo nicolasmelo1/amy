@@ -50,7 +50,6 @@ silently never applied.
 
 | Command | What it does |
 | :-- | :-- |
-| `amy models` | What each model is believed to cost |
 | `amy models show` | The price table in force |
 | `amy models refresh` | Take the base rates from models.dev, keeping what it does not carry |
 

@@ -39,6 +39,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy budget`](#amy-budget) | What the agents have spent, and how close that is to the ceiling |
 | [`amy config`](#amy-config) | What this machine would read, if it mounted |
 | [`amy config explain [plugin]`](#amy-config-explain [plugin]) | Every setting the machine and its mounted plugins carry, with its type, default and why |
+| [`amy contract`](#amy-contract) | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
 | [`amy init`](#amy-init) | Write the config and the files the mounted plugins bring, and install what they need |
 | [`amy look`](#amy-look) | Look at one piece of work now, rather than when it was next due |
@@ -125,6 +126,18 @@ Every setting the machine and its mounted plugins carry, with its type, default 
 ```sh
 amy config explain [plugin]
 ```
+
+### `amy contract`
+
+This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document
+
+```sh
+amy contract [options]
+```
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--check` |  | say whether the contract builds, and refuse one that does not |
 
 ### `amy doctor`
 

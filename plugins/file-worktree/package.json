@@ -28,6 +28,7 @@
     "dist"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.6.0",
+    "zod": "^4.6.7"
   }
 }

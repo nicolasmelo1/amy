@@ -1,6 +1,7 @@
 import { ActionSpec, PortKind } from "./actions.js";
 import { Checkouts } from "./checkouts.js";
-import { PluginCheck, PluginCommand, PluginFile, PluginSetup } from "./commands.js";
+import { PluginCheck, PluginFile, PluginSetup } from "./commands.js";
+import { DeclaredOperation } from "./operation.js";
 import { CommandRunner } from "./ports/CommandRunner.js";
 import { EventLog } from "./ports/EventLog.js";
 import { ConfigOf, ConfigSchema } from "./config-schema.js";
@@ -238,13 +239,16 @@ export interface Plugin {
    */
   readonly environment?: readonly string[];
   /**
-   * The commands this plugin brings to the command line.
+   * The operations this plugin brings to every door: each one a command when
+   * it names its `cli` words, an entry in the contract, and something an
+   * action may call by id.
    *
-   * Read after the module is imported and before anything is mounted, so a
-   * command works on the machine that will not boot. The host owns the entry
-   * point and the parser; what each command means is this plugin's.
+   * Read after the module is imported and before anything is mounted, so an
+   * operation that does not declare `mount: true` answers on the machine that
+   * will not boot. One declaration, so installing the plugin adds the route,
+   * the command and the method at once, and removing it takes all three.
    */
-  readonly commands?: readonly PluginCommand[];
+  readonly operations?: readonly DeclaredOperation[];
   /** The checks `amy doctor` runs after its own, under this plugin's name. */
   readonly checks?: readonly PluginCheck[];
   /** The files `amy init` and `amy add` write into the profile's state, once. */
@@ -276,7 +280,7 @@ export function definePlugin<const S extends ConfigSchema>(plugin: {
   readonly name: string;
   readonly configSchema: S;
   readonly environment?: readonly string[];
-  readonly commands?: readonly PluginCommand<ConfigOf<S>>[];
+  readonly operations?: readonly DeclaredOperation[];
   readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
   readonly files?: readonly PluginFile<ConfigOf<S>>[];
   readonly setup?: readonly PluginSetup<ConfigOf<S>>[];

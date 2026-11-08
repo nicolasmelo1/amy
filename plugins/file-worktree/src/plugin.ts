@@ -1,7 +1,8 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { WORKSPACE_PORT, ConfigOf, PluginCommand, PluginContext, Worktree, Workspace, baseBranchesOf, definePlugin } from "@amykit/core";
+import { WORKSPACE_PORT, ConfigOf, OperationContext, PluginContext, Worktree, Workspace, baseBranchesOf, defineOperation, definePlugin, fail } from "@amykit/core";
+import { z } from "zod";
 import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
@@ -61,8 +62,6 @@ function rootRecordId(workId: string): string {
   return workId.split("/", 1)[0] ?? workId;
 }
 
-type Settings = ConfigOf<typeof configSchema>;
-
 /**
  * The workplace this slice carries, expanded the way the machine expanded it.
  *
@@ -80,98 +79,130 @@ function workspaceFor(ctx: TypedContext): Workspace {
   };
 }
 
-/** The port this plugin mounted, or the refusal that says why there is none. */
-function managed(ports: ReadonlyMap<string, object> | undefined): Worktree | undefined {
-  return ports?.get("worktree") as Worktree | undefined;
+/** The port this plugin mounted; the operations below all declare `mount: true`. */
+function managed(context: OperationContext): Worktree {
+  return context.port("worktree") as Worktree;
 }
 
+const tree = z.object({
+  workId: z.string().describe("work"),
+  workflow: z.string().describe("workflow"),
+  repo: z.string().describe("repo"),
+  branch: z.string().describe("branch"),
+  state: z.enum(["in-flight", "terminal", "orphaned"]).describe("state"),
+  tree: z.enum(["clean", "dirty"]).describe("tree"),
+  retention: z.enum(["held", "past retention"]).describe("retention"),
+  path: z.string().describe("path"),
+});
+
 /**
- * The trees, as this plugin's own command.
+ * The trees, as this plugin's own operations: `amy worktrees`, `amy
+ * worktrees remove` and `amy worktrees prune`.
  *
  * `mount: true`, because what a tree is worth removing depends on the
  * workflow's terminal states — a fact only the mounted manager holds. On a
- * machine that will not assemble it is refused by name rather than answering
- * with every tree reading as in flight.
+ * machine that will not assemble each is refused by name rather than
+ * answering with every tree reading as in flight.
  */
-const worktrees: PluginCommand<Settings> = {
-  name: "worktrees",
-  description: "Inspect and tidy the isolated checkouts work runs in",
+const listTrees = defineOperation({
+  id: "worktree.list-trees",
+  domain: "worktree",
+  summary: "Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention",
+  description:
+    "Lists every tree the mounted manager holds, with the state of the work it belongs to. An orphaned tree names work the store no longer holds; " +
+    "`amy worktrees remove <workId> --force` recovers it. Changes nothing.",
+  input: z.object({}),
+  output: z.array(tree).describe("worktrees"),
+  writes: [],
   mount: true,
-  subcommands: [
-    {
-      name: "list",
-      description: "Name every worktree: state, workflow, work id, repo, branch, cleanliness, retention",
-      default: true,
-      async run({ ports, out }) {
-        const manager = managed(ports);
-        if (!manager) return out.error("nothing mounted the worktree port");
+  http: { method: "get", path: "/worktrees" },
+  cli: { words: ["worktrees", "list"], default: true },
+  examples: [{
+    summary: "one finished, clean tree",
+    input: {},
+    output: [{
+      workId: "tickets/ACME-1",
+      workflow: "tickets",
+      repo: "acme/api",
+      branch: "acme-1-fix",
+      state: "terminal",
+      tree: "clean",
+      retention: "past retention",
+      path: "/home/amy/worktrees/tickets/ACME-1/api",
+    }],
+  }],
+  async handler(_input, context) {
+    const states = await managed(context).states();
+    return states.map((state) => ({
+      workId: state.workId,
+      workflow: state.workflow,
+      repo: state.repo,
+      branch: state.branch || "(detached)",
+      state: state.state,
+      tree: state.clean ? "clean" as const : "dirty" as const,
+      retention: state.retentionEligible ? "past retention" as const : "held" as const,
+      path: state.path,
+    }));
+  },
+});
 
-        const states = await manager.states();
-        if (states.length === 0) {
-          out.line("no worktrees");
-          return;
-        }
+const removeTree = defineOperation({
+  id: "worktree.remove-tree",
+  domain: "worktree",
+  summary: "Remove one worktree, refusing an in-flight or dirty one unless --force",
+  description: "Removes every tree the named work holds. An in-flight or dirty tree is refused unless `force` says otherwise; nothing else is touched.",
+  input: z.object({
+    workId: z.string().describe("the work whose tree is to go"),
+    force: z.boolean().default(false).describe("remove it even though the refusal applies"),
+  }),
+  output: z.object({ removed: z.number().int().describe("removed") }),
+  errors: {
+    "worktree.not_found": { description: "no tree belongs to the work named" },
+    "worktree.refused": { description: "the tree is in flight or dirty, and force was not given" },
+  },
+  writes: ["worktree"],
+  mount: true,
+  http: { method: "delete", path: "/worktrees/{workId}" },
+  cli: { words: ["worktrees", "remove"], positional: ["workId"] },
+  examples: [{ summary: "a finished tree", input: { workId: "tickets/ACME-1" }, output: { removed: 1 } }],
+  async handler({ workId, force }, context) {
+    const manager = managed(context);
+    const found = (await manager.states()).filter((state) => state.workId === workId);
+    if (found.length === 0) return fail("worktree.not_found", `no worktree for ${workId}`);
 
-        const orphaned = states.filter((state) => state.state === "orphaned").length;
-        for (const state of states) {
-          const clean = state.clean ? "clean" : "dirty";
-          const retention = state.retentionEligible ? "past retention" : "held";
-          out.line(
-            `${state.workId}  ${state.workflow}  ${state.repo}  ${state.branch || "(detached)"}  ` +
-              `${state.state}  ${clean}  ${retention}`,
-          );
-          out.line(`  ${state.path}`);
-        }
+    // The safety refusal is read from the trees' own states, so it is the one
+    // failure answered as declared; anything `release` throws past it — a
+    // broken checkout, a git that failed — is not a refusal, and propagates.
+    const refusals = force ? [] : found.filter((state) => state.state === "in-flight" || !state.clean);
+    if (refusals.length > 0) {
+      const why = refusals.map((state) => `${state.path} is ${state.state === "in-flight" ? "still in flight" : "dirty"}`).join("; ");
+      return fail("worktree.refused", `refusing to remove the tree(s) for ${workId}: ${why} (use --force to remove them anyway)`);
+    }
 
-        if (orphaned > 0) {
-          out.line(`\n${orphaned} tree(s) name work the store no longer holds.`);
-          out.line("Recover with `amy worktrees remove <workId> --force`, or prune them by hand.");
-        }
-      },
-    },
-    {
-      name: "remove",
-      description: "Remove one worktree, refusing an in-flight or dirty one unless --force",
-      args: [{ name: "workId", description: "the work whose tree is to go" }],
-      flags: [{ flags: "--force", description: "remove it even though the refusal above applies" }],
-      async run({ ports, args, options, out }) {
-        const manager = managed(ports);
-        if (!manager) return out.error("nothing mounted the worktree port");
+    let removed = 0;
+    for (const state of found) {
+      if (await manager.release(workId, state.repo, { force })) removed += 1;
+    }
+    return { removed };
+  },
+});
 
-        const workId = args[0] ?? "";
-        const found = (await manager.states()).filter((state) => state.workId === workId);
-        if (found.length === 0) {
-          out.error(`no worktree for ${workId}`);
-          process.exitCode = 1;
-          return;
-        }
-
-        let removed = 0;
-        for (const state of found) {
-          try {
-            if (await manager.release(workId, state.repo, { force: options.force === true })) removed += 1;
-          } catch (error) {
-            out.error(error instanceof Error ? error.message : String(error));
-            process.exitCode = 1;
-          }
-        }
-
-        if (removed > 0) out.line(`removed ${removed} tree(s) for ${workId}`);
-      },
-    },
-    {
-      name: "prune",
-      description: "Remove every terminal, clean tree past its retention, and nothing else",
-      async run({ ports, out }) {
-        const manager = managed(ports);
-        if (!manager) return out.error("nothing mounted the worktree port");
-
-        const removed = await manager.prune(new Date());
-        out.line(removed.length ? `removed ${removed.join(", ")}` : "nothing to prune");
-      },
-    },
-  ],
-};
+const pruneTrees = defineOperation({
+  id: "worktree.prune-trees",
+  domain: "worktree",
+  summary: "Remove every terminal, clean tree past its retention, and nothing else",
+  description: "Removes the trees an automatic prune may remove: terminal, clean and past retention. A dirty, in-flight or orphaned tree is left where it is.",
+  input: z.object({}),
+  output: z.object({ removed: z.array(z.string()).describe("removed") }),
+  writes: ["worktree"],
+  mount: true,
+  http: { method: "post", path: "/worktrees/prune" },
+  cli: { words: ["worktrees", "prune"] },
+  examples: [{ summary: "nothing past retention", input: {}, output: { removed: [] } }],
+  async handler(_input, context) {
+    return { removed: await managed(context).prune(new Date()) };
+  },
+});
 
 /**
  * The workplace, mounted.
@@ -184,7 +215,7 @@ const worktrees: PluginCommand<Settings> = {
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-file-worktree",
   configSchema,
-  commands: [worktrees],
+  operations: [listTrees, removeTree, pruneTrees],
   register(registry, ctx) {
     registry.port(WORKSPACE_PORT, workspaceFor(ctx));
     registry.port("worktree", new WorktreeManager(ctx.runner, settingsFor(ctx)));
