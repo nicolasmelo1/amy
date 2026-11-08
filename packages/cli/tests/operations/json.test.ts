@@ -1,5 +1,7 @@
 import { registerSchema, unregisterSchema, validate } from "@hyperjump/json-schema/draft-2020-12";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
+import { defineOperation } from "@amykit/core";
 import { gather } from "../../src/plugin-commands.js";
 import { register } from "../../src/operations/commands.js";
 import { installContract } from "../../src/operations/contract.js";
@@ -59,5 +61,30 @@ describe("an operation with --json", () => {
     expect(ran.code).toBe(1);
     expect(ran.said.map((line) => JSON.parse(line))).toEqual([{ event: "tick", data: { n: 1 } }]);
     expect(JSON.parse(ran.errors[0]!)).toEqual({ code: "demo.broke", message: "broke at 2" });
+  });
+
+  it("answers an output it cannot print as the internal envelope, exit 70, under --json", async () => {
+    const big = defineOperation({
+      id: "demo.big",
+      domain: "demo",
+      summary: "Answers a number JSON cannot hold",
+      description: "Answers a BigInt under an unknown field. Changes nothing.",
+      input: z.object({}),
+      output: z.object({ value: z.unknown().describe("value") }),
+      writes: [],
+      http: { method: "get", path: "/demo/big" },
+      cli: { words: ["big"] },
+      examples: [{ summary: "one", input: {}, output: { value: 1 } }],
+      async handler() {
+        return { value: 10n };
+      },
+    });
+    const gathered = await gather(CONFIG, [WORK], loading(demo({ operations: [big] })));
+    const heard = spoken();
+    const made = program().program;
+    register(made, gathered.contributions, environment(heard.out));
+    await made.parseAsync(["node", "amy", "big", "--json"]);
+    expect(process.exitCode).toBe(70);
+    expect(JSON.parse(heard.errors[0]!)).toMatchObject({ code: "amy.internal" });
   });
 });

@@ -32,7 +32,15 @@ export interface Manner {
  */
 export async function answer(operation: Operation, input: unknown, context: OperationContext, manner: Manner, out: Speaker): Promise<number> {
   const ran = await invoke(defineContract([operation]), operation.id, input, context);
-  return speak(operation, ran, manner, out);
+  try {
+    return await speak(operation, ran, manner, out);
+  } catch (error) {
+    // An output its schema accepts can still be one nothing can print — a
+    // BigInt under `unknown` has no JSON — and that is the operation's
+    // internal error, said the way it was asked for, not a crash of the door.
+    const message = `\`${operation.id}\` answered something that cannot be printed: ${error instanceof Error ? error.message : String(error)}`;
+    return refuse({ code: "amy.internal", message }, EXIT.internal, manner, out);
+  }
 }
 
 async function speak(operation: Operation, ran: Invocation, manner: Manner, out: Speaker): Promise<number> {
