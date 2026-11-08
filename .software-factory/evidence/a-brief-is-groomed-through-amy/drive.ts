@@ -60,8 +60,8 @@ record(
 );
 
 // 3. The session, replayed: every command it ran is amy's brief command,
-// every write goes through `amy brief write`, and each write after a check
-// answers the section that check named next.
+// every write goes through `amy brief write`, and every write answers the
+// section a still-refusing check just named next.
 const allowed = new Set(["sections", "check", "write", "show"]);
 let onlyBrief = true;
 let followed = true;
@@ -72,7 +72,9 @@ for (const step of transcript.steps) {
   if (step.argv[1] === "check" && step.argv.includes("--json")) lastCheck = JSON.parse(result.stdout) as Checked;
   if (step.argv[1] === "write") {
     if (result.status !== 0) followed = false;
-    if (lastCheck && !lastCheck.ok && lastCheck.next?.section !== step.argv[3]) followed = false;
+    // Every write answers a check: one read as JSON since the last write,
+    // still refusing, whose `next` names exactly this section.
+    if (!lastCheck || lastCheck.ok || lastCheck.next?.section !== step.argv[3]) followed = false;
     lastCheck = undefined;
   }
 }
