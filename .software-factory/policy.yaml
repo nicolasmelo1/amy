@@ -120,15 +120,12 @@ gates:
   # combine it with Amy's own rolling ledger.
   harness-usage:
     activation:
-      - "packages/agent-kit/src/usage.ts"
-      - "plugins/claude/src/usage.ts"
-      - "plugins/claude/src/plugin.ts"
-      - "plugins/codex/src/CodexHarness.ts"
-      - "plugins/codex/src/usage.ts"
-      - "plugins/codex/src/plugin.ts"
-      - "plugins/hermes-agent/src/usage.ts"
-      - "plugins/hermes-agent/src/plugin.ts"
-      - "plugins/hermes-agent/src/config.ts"
+      # The scenario imports each plugin's and agent-kit's built dist/index.js,
+      # so any source behind those barrels can change what it proves.
+      - "packages/agent-kit/src/**"
+      - "plugins/claude/src/**"
+      - "plugins/codex/src/**"
+      - "plugins/hermes-agent/src/**"
       - "packages/cli/src/index.ts"
       - "packages/cli/src/status-page.tsx"
       - "packages/cli/src/budget.ts"

@@ -4,7 +4,7 @@
     ".allowed-root-files": "e783727b84aead52027293662d8f34c556de1b311a142481d872e7075afabb4b",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
     ".github/workflows/software-factory.yml": "b811ea08761e6c63f563ee10bb078fe4804f2188153ce02902bf8f7743d90c54",
-    ".software-factory/policy.yaml": "d16f96a5cb7ad35a8ea9f688640d403c91e14fb3e77ceb6ae63fd99ee5b1a126",
+    ".software-factory/policy.yaml": "e508c953fb0eb2afb65525f4fa75013802de8148ba7210e0679ff855504e90d2",
     ".software-factory/ratchet.yaml": "0651675579468787302ac0cc38d8ead6bdb3555a731819a80b0ef63a2fa86c0f",
     ".software-factory/rules/a-delivered-plan-keeps-no-promise.yaml": "79df6d01907a534d2d2c5a2e196ef1b6d4c2cc6f5d2150491e3e703d1600b0d4",
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",

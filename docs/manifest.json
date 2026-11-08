@@ -9513,15 +9513,10 @@
       {
         "name": "harness-usage",
         "activation": [
-          "packages/agent-kit/src/usage.ts",
-          "plugins/claude/src/usage.ts",
-          "plugins/claude/src/plugin.ts",
-          "plugins/codex/src/CodexHarness.ts",
-          "plugins/codex/src/usage.ts",
-          "plugins/codex/src/plugin.ts",
-          "plugins/hermes-agent/src/usage.ts",
-          "plugins/hermes-agent/src/plugin.ts",
-          "plugins/hermes-agent/src/config.ts",
+          "packages/agent-kit/src/**",
+          "plugins/claude/src/**",
+          "plugins/codex/src/**",
+          "plugins/hermes-agent/src/**",
           "packages/cli/src/index.ts",
           "packages/cli/src/status-page.tsx",
           "packages/cli/src/budget.ts"
