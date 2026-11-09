@@ -58,15 +58,17 @@ describe("Slack structured asks", () => {
       { method: "chat.postMessage", json: { ts: "1.2" } },
       { method: "chat.postMessage", json: { ts: "1.3" } },
       { method: "reactions.add", body: { name: "white_check_mark" }, json: { ok: false, error: "no_reaction" } },
-      { method: "chat.postMessage", json: { ts: "1.4" } },
     ]);
     await slack(http).post({ id: THREAD }, { text: "", ask: choices });
     await slack(http).post({ id: THREAD }, { text: "", ask: over });
-    await slack(http).post({ id: THREAD }, { text: "", ask: ASK });
+    // A refused reaction leaves the ask standing as posted, its answers on it.
+    await expect(slack(http).post({ id: THREAD }, { text: "", ask: ASK })).resolves.toBe("1.3");
     const posts = http.args("chat.postMessage");
+    expect(posts).toHaveLength(3);
     expect(posts[1]!.text).toMatch(/1\. 0[\s\S]*11\. 10/);
     expect(posts[1]!.metadata).toContain("amy_ask_fallback");
-    expect(posts[3]!.text).toContain("1. approve\n2. reject");
+    expect(posts[2]!.text).toContain("✅ approve\n❌ reject");
+    expect(posts[2]!.metadata).toContain("amy_ask");
     expect(http.args("reactions.add").map((call) => call.name)).toEqual(["one", "two", "white_check_mark", "white_check_mark"]);
   });
 

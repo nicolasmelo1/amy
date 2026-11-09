@@ -172,16 +172,16 @@ export class SlackConversation implements Conversation {
       metadata: askMetadata(ASK_EVENT, ask),
     });
     const ts = String(body.ts);
+    this.rememberAskedFrom(thread.id, ts);
     try {
-      this.rememberAskedFrom(thread.id, ts);
       for (const name of reactionsFor(ask)) {
         await this.api.call("reactions.add", { channel: this.options.channel, timestamp: ts, name });
       }
-      return ts;
     } catch {
-      // Typed replies remain available when Slack will not accept controls.
-      return this.postAskFallback(thread.id, message.text, ask);
+      // The ask stands as posted, its answers listed on it: the operator
+      // reacts by hand, which is read as any reaction is, or types.
     }
+    return ts;
   }
 
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
