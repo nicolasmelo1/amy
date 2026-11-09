@@ -15,14 +15,8 @@ describe("a commit the machine made and could not push", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    // A hook running this suite exports GIT_INDEX_FILE and friends; these
-    // repositories must use their own.
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
-
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-branch-"));
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
@@ -33,7 +27,6 @@ describe("a commit the machine made and could not push", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -111,12 +104,8 @@ describe("a commit is not a push", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
-
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-push-"));
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
@@ -129,7 +118,6 @@ describe("a commit is not a push", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -241,12 +229,8 @@ describe("how many commits a branch holds beyond its base", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
-
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-ahead-"));
     bare = path.join(root, "widgets.git");
     checkout = path.join(root, "checkouts", "widgets");
@@ -259,7 +243,6 @@ describe("how many commits a branch holds beyond its base", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
