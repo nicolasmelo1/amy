@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "files": {
-    ".allowed-root-files": "b6bb10314d096d4da7a27972417880f68311e73da30439b59c0fc36cbeaf3a11",
+    ".allowed-root-files": "3c024db409617cf619369c7e37fe503c92ce2b0cab9198100d473ee667a9fbde",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
     ".github/workflows/software-factory.yml": "b811ea08761e6c63f563ee10bb078fe4804f2188153ce02902bf8f7743d90c54",
     ".software-factory/policy.yaml": "eabd7d485bb8a04d196be1352a7b1bf80d9403c7a255e9d2301ab875e3eff574",

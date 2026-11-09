@@ -19,5 +19,5 @@ dist
 # upstream for the same reason it is kept out of the history here.
 .software-factory/escapes/
 
-# Claude Code worktrees are local; the skills beside them are versioned.
-.claude/worktrees/
+# Claude Code's project directory is local to whoever runs it.
+.claude/
