@@ -98,7 +98,8 @@ crosses:
   - { mechanism: workflow-tooling, answer: works, proof: "A8, the testkit world's conversation answers an ask as scripted" }
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
-  - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see; or a power loss before the disk flushed the directory that records the answer" }
+  - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see" }
+  - { holds: "an accepted answer is kept on disk and replayed after a restart", not_against: "a power loss before the disk flushed it, or a Telegram reader paused past the bot lock's lease that another process took over" }
   - { holds: "an ask is shown as a form only with 2 to 10 distinct, non-empty answers that fit a button; every other ask is a plain question", not_against: "two answers that differ only in a way the person cannot see, such as trailing spaces or look-alike characters" }
   - { holds: "only a keycap within range, ✅ or ❌ on an approval, or ✅ on choices, is a mark; once accepted, an answer survives its mark being removed", not_against: "a mark removed before any look read it, which polling cannot see" }
   - { holds: "a form never stops the typed reply: the person can always answer in words, and it reads as it reads today", not_against: "a workflow whose own code ignores text replies to a question it asked as a form" }

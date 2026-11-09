@@ -173,6 +173,7 @@ export class SlackConversation implements Conversation {
     });
     const ts = String(body.ts);
     try {
+      this.rememberAskedFrom(thread.id, ts);
       for (const name of reactionsFor(ask)) {
         await this.api.call("reactions.add", { channel: this.options.channel, timestamp: ts, name });
       }
@@ -189,15 +190,23 @@ export class SlackConversation implements Conversation {
     this.threads.used(thread.id);
     this.pruneNowAndThen();
     const bot = await this.botUserId();
-    const recent = await this.threadMessages(thread.id, after);
     // A later copy of the same ask must see the earlier decision. Slack has
     // no reaction timestamp, so recover the thread's ask messages instead
-    // of retaining an accepted answer in process memory.
+    // of retaining an accepted answer in process memory. Where amy recorded
+    // the first ask it posted here, one read from there holds both the asks
+    // and what is recent: conversations.replies may be limited to one call
+    // a minute, so a look makes one.
+    const askedFrom = this.askedFrom(thread.id);
+    const read = await this.threadMessages(thread.id, askedFrom === undefined ? after : Math.min(after, askedFrom));
+    const recent = askedFrom === undefined ? read : read.filter((message) => message.ts !== undefined && tsToMicros(message.ts) > after);
     // Metadata is anybody's to attach: an ask, or the notice amy took one,
     // is read only from a message this bot wrote, so another app cannot
     // turn the operator's reaction into an answer to amy's question.
     const amys = (messages: SlackMessage[]) => messages.filter((message) => message.metadata === undefined || message.user === bot);
-    const messages = recent.some((message) => message.user === bot && readAsk(message) !== undefined) ? amys(await this.threadMessages(thread.id, 0)) : amys(recent);
+    // With no record (an ask from before amy kept one), a recent ask still
+    // sends the look back for the whole thread, as it always did.
+    const unrecorded = askedFrom === undefined && recent.some((message) => message.user === bot && readAsk(message) !== undefined);
+    const messages = amys(unrecorded ? await this.threadMessages(thread.id, 0) : read);
     const answers = await this.askedReplies(thread.id, after, messages);
 
     for (const message of recent) {
@@ -399,6 +408,26 @@ export class SlackConversation implements Conversation {
       fs.rmSync(staged, { force: true });
     }
     return this.rememberedAnswer(threadTs, askId) ?? { chosen, messageTs };
+  }
+
+  /** The first ask amy posted in this thread, as microseconds, if it kept one. */
+  private askedFrom(threadTs: string): number | undefined {
+    try {
+      const ts = fs.readFileSync(path.join(this.answerDirectory(threadTs), "asked-from"), "utf-8").trim();
+      const micros = tsToMicros(ts);
+      return Number.isNaN(micros) ? undefined : micros;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
+
+  /** Keeps the earliest ask's ts; a later ask leaves it where it is. */
+  private rememberAskedFrom(threadTs: string, ts: string): void {
+    const earlier = this.askedFrom(threadTs);
+    if (earlier !== undefined && earlier <= tsToMicros(ts)) return;
+    fs.mkdirSync(this.answerDirectory(threadTs), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(path.join(this.answerDirectory(threadTs), "asked-from"), ts, { mode: 0o600 });
   }
 
   private answerFile(threadTs: string, askId: string): string {

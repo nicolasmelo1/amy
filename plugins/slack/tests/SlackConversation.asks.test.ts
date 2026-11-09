@@ -187,6 +187,43 @@ describe("Slack structured asks", () => {
     expect(http.args("chat.postMessage")).toEqual([]);
   });
 
+  it("reads the thread once a look, from the first ask it posted, and still replays the answer", async () => {
+    const ask = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
+    const http = new Http([
+      { method: "chat.postMessage", json: { ts: "1790000100.000100" } },
+      { method: "reactions.add", json: {} }, { method: "reactions.add", json: {} },
+      auth(), messages([ask]),
+      messages([ask]),
+    ]);
+    const amy = slack(http);
+    await amy.post({ id: THREAD }, { text: "", ask: ASK });
+
+    // Two looks, each with the ask in its window: one read each, never the
+    // whole thread from its start.
+    for (let look = 0; look < 2; look += 1) {
+      await expect(amy.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toMatchObject([{ answer: { ask: "ship", chosen: ["approve"] } }]);
+    }
+    const reads = http.args("conversations.replies");
+    expect(reads).toHaveLength(2);
+    expect(reads.map((read) => Number(read.oldest))).not.toContain(0);
+  });
+
+  it("recovers an ask older than the look's window in the same single read, starting at that ask", async () => {
+    const ask = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
+    const later = askMessage("1790090000.000100", ASK);
+    const http = new Http([
+      { method: "chat.postMessage", json: { ts: "1790000100.000100" } },
+      { method: "reactions.add", json: {} }, { method: "reactions.add", json: {} },
+      auth(), messages([ask, later]),
+    ]);
+    const amy = slack(http);
+    await amy.post({ id: THREAD }, { text: "", ask: ASK });
+
+    await amy.replies({ id: THREAD }, "2026-09-22T12:00:00.000Z");
+
+    expect(http.args("conversations.replies")).toEqual([expect.objectContaining({ oldest: "1790000100.000100" })]);
+  });
+
   it("records a notice during the poll so duplicate asks cannot post it twice", async () => {
     const duplicate = askMessage("1790000101.000100", ASK, [reaction("white_check_mark", [OPERATOR]), reaction("x", [OPERATOR])]);
     const http = new Http([auth(), messages([duplicate, duplicate]), messages([duplicate, duplicate]), { method: "chat.postMessage", json: { ts: "1790000102.000100" } }]);
