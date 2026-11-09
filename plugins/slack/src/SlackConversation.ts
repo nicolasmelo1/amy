@@ -313,14 +313,20 @@ export class SlackConversation implements Conversation {
     const replies: Reply[] = [];
     for (const entry of asks.sort((a, b) => tsToMicros(a.message.ts!) - tsToMicros(b.message.ts!))) {
       const remembered = this.rememberedAnswer(threadTs, entry.ask.id);
-      const verdict = remembered ? { chosen: remembered.chosen, ambiguous: false, observed: [] } : await this.answerOf(entry.message, entry.ask);
+      // Re-read an accepted ask too: its decision is immutable, but a later
+      // complete, different mark still deserves the once-only acknowledgement.
+      const verdict = await this.answerOf(entry.message, entry.ask);
       if (verdict.ambiguous) {
         await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
         continue;
       }
-      if (!verdict.chosen) continue;
-      const accepted = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen, entry.message.ts!);
+      if (!verdict.chosen && !remembered) continue;
+      const accepted = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen!, entry.message.ts!);
       const chosen = accepted.chosen;
+      if (remembered && verdict.chosen && !sameAnswers(chosen, verdict.chosen)) {
+        await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
+        continue;
+      }
       if (taken.has(entry.ask.id)) {
         await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
         continue;
@@ -376,7 +382,7 @@ export class SlackConversation implements Conversation {
   }
 
   private async answerOf(message: SlackMessage, ask: Ask): Promise<{ chosen?: string[]; ambiguous: boolean; observed: string[] }> {
-    const names = ask.form === "approval" ? [...APPROVAL_REACTIONS] : [...KEYCAPS.slice(0, ask.answers.length), SUBMIT_REACTION];
+    const names = reactionsFor(ask);
     const reactions = await this.completeReactions(message, names);
     if (names.some((name) => this.marked(reactions, name) === UNKNOWN)) throw new Error(`Slack did not identify every reaction on ask ${ask.id}`);
     const marked = names.filter((name) => this.marked(reactions, name) === true);
@@ -655,6 +661,10 @@ function validAsk(ask: Ask): boolean {
 
 function reactionsFor(ask: Ask): readonly string[] {
   return ask.form === "approval" ? APPROVAL_REACTIONS : ask.form === "choice" ? KEYCAPS.slice(0, ask.answers.length) : [...KEYCAPS.slice(0, ask.answers.length), SUBMIT_REACTION];
+}
+
+function sameAnswers(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((answer, index) => answer === right[index]);
 }
 
 function renderAsk(text: string, ask: Ask, fallback: boolean): string {

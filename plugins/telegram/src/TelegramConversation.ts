@@ -352,7 +352,14 @@ export class TelegramConversation implements Conversation {
     // the first polling profile discard another operator's press.
     const ownsChat = context?.message.chat.id === callback.from.id;
     const text = context && ownsChat ? await this.applyCallback(context, callback.data, callback.id) : "this question is no longer open";
-    await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
+    try {
+      await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
+    } catch (error) {
+      // Telegram expires callback acknowledgements quickly. The answer above
+      // is already durable, so retrying an expired acknowledgement must not
+      // pin the shared update offset forever.
+      if (!(error instanceof BotApiRefusal && error.method === "answerCallbackQuery" && error.code === 400)) throw error;
+    }
   }
 
   private callbackContext(callback: TelegramCallbackQuery): { message: TelegramMessage; topic: number; directory: string } | undefined {

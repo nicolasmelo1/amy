@@ -106,6 +106,20 @@ describe("Slack structured asks", () => {
     expect(posted[0]!.text).toContain("conflicting answers for one: one, two");
   });
 
+  it("ignores an unrelated incomplete submit reaction on a single choice", async () => {
+    const ask = { id: "currency", prompt: "Pick", form: "choice" as const, answers: ["BRL", "USD"] };
+    const http = new Http([
+      auth(),
+      messages([askMessage("1790000100.000100", ask, [reaction("two", [OPERATOR]), reaction("white_check_mark", ["U0OUT"], 2)])]),
+      messages([askMessage("1790000100.000100", ask, [reaction("two", [OPERATOR]), reaction("white_check_mark", ["U0OUT"], 2)])]),
+    ]);
+
+    await expect(slack(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toMatchObject([
+      { answer: { ask: "currency", chosen: ["USD"] } },
+    ]);
+    expect(http.args("reactions.get")).toEqual([]);
+  });
+
   it("persists the first complete answer through a reaction change and restart", async () => {
     const approved = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
     const changed = askMessage("1790000100.000100", ASK);

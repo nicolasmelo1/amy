@@ -470,11 +470,14 @@ async function answersFor(
 
   const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
   const said = await saidSince(scope, current.id, ticket, since);
-  const escalationAnswered = awaitingOwner && (said ? decided(said, scope.policy) : await tracker.hasReplyAfter(ticket.id, since));
+  // A button carries the question it answered. A press from an earlier wait
+  // is evidence for that earlier question, never an escalation decision.
+  const relevant = said?.filter((reply) => !reply.answer || (awaitingAnswer && current.triage!.askedQuestions.includes(reply.answer.ask)));
+  const escalationAnswered = awaitingOwner && (relevant ? decided(relevant, scope.policy) : await tracker.hasReplyAfter(ticket.id, since));
   // The ticket's comments are read once there is an answer in them, not on
   // every poll of a wait: the owner's words are what the resumed step acts on.
   return {
-    conversation: said ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
+    conversation: relevant ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
     escalationAnswered,
   };
 }

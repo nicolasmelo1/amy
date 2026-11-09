@@ -51,6 +51,24 @@ describe("Telegram structured asks", () => {
     expect((await amy.replies(thread, since)).map((reply) => reply.answer)).toEqual([{ ask: "currency", chosen: ["USD"] }, { ask: "colours", chosen: ["red", "blue"] }]);
   });
 
+  it("confirms an expired callback after saving its answer", async () => {
+    const telegram = botApiStandIn();
+    const api = new BotApi(TOKEN, {
+      transport: async (request) => request.url.endsWith("/answerCallbackQuery")
+        ? { status: 400, body: new TextEncoder().encode(JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: query is too old" })) }
+        : telegram.transport(request),
+      sleep: async () => {},
+    });
+    const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory: fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-asks-")) });
+    const thread = await amy.open("BILL-7", "Total");
+    const since = new Date().toISOString();
+    await amy.post(thread, { text: "", ask: { id: "ship", prompt: "Ship?", form: "approval", answers: ["approve", "reject"] } });
+    telegram.press(callback(telegram, 0), { topic: Number(thread.id) });
+
+    await expect(amy.replies(thread, since)).resolves.toMatchObject([{ answer: { ask: "ship", chosen: ["approve"] } }]);
+    expect(telegram.pending()).toBe(0);
+  });
+
   it("ignores a non-operator press, acknowledges stale asks, and replays an accepted durable answer after restart", async () => {
     const telegram = botApiStandIn();
     const { amy, directory } = conversation(telegram);
