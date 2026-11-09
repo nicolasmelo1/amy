@@ -221,6 +221,9 @@ not exist, so the plan says which property it will be, the way it already
 says `deferred:test:PATH`: `proof: "deferred:property:PATH#FALSIFIER"`, and
 delivery drops the `deferred:`.
 
+Before work on a plan starts, `sf ready plans/<plan>.md` says whether it still
+matches the code; a plan that does not is fixed first, not worked around.
+
 Once a plan's own file is in the change, it is in flight, and every file the
 change edits has to be in its `touches`, under `deviations`, or one of the
 files every change carries (the changeset, the changelog, `docs/manifest.json`).
