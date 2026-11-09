@@ -235,7 +235,7 @@ asked.
 The StateMachine primitive takes an optional `diagram`, the conformance
 world's work profile is drawn from one and its personal profile is not, and
 the golden is relocked. The window's Workflows canvas, which says a workflow
-has no diagram, arrives with [amy has a window](../../plans/amy-has-a-window.md);
+has no diagram, arrives with [the workflows are seen everywhere](../../plans/the-workflows-are-seen-everywhere.md);
 there is no window yet to say it in. The boot check of one decision per drawn
 state arrives with [a workflow is three pieces](a-workflow-is-three-pieces.md),
 as this plan said it would; until then `amy workflow check` finds every stub

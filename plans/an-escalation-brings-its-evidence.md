@@ -23,7 +23,7 @@ sources:
   - { id: S20, kind: decision, ref: "packages/workflow-ticket-to-qa/src/discussion.ts", said: "discuss's context includes the waiting move's evidence and the runs its history entry names (all since entering the escalated-from state, e.g. IMPLEMENTING, CHECKED), read first, its own earlier turns after" }
   - { id: S21, kind: reference, ref: "docs/design/waiting-is-not-trying.md", said: "amy show prints attempts and looks per state as separate counts" }
   - { id: S22, kind: reference, ref: "plans/an-escalation-can-be-withdrawn.md", said: "amy withdraw is one of the ways the person acts after asking" }
-  - { id: S23, kind: reference, ref: "plans/amy-has-a-window.md", said: "the window draws this once amy has a window lands; this row only gives it something to draw" }
+  - { id: S23, kind: reference, ref: "plans/a-record-is-seen-everywhere.md", said: "the window draws this once a record is seen everywhere lands; this row only gives it something to draw" }
   - { id: S24, kind: friction, said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and 524 triage runs were abandoned in about 2 ms; nothing showed either" }
   - { id: S25, kind: reference, ref: "https://www.deepseek.com/en/harness/", said: "a run's trajectory shows its duration, turn and tool-call counts, its input, model and tools, each turn's messages, and each tool call's payload, result, schema and timing" }
   - { id: S26, kind: reference, ref: "https://code.claude.com/docs/en/headless", said: "--output-format json returns the result, cost and usage; stream-json with --verbose emits every message with its tool_use and tool_result, api_retry and permission_denied events, and a system/init naming the model and tools" }
@@ -99,7 +99,7 @@ guarantee:
   - { holds: "keeping a run's trace never changes what the run answered", not_against: "a stream that ends before its result, recorded as the outcome it reached with the trace up to there" }
   - { holds: "a vendor event the plugin does not know never fails a run", not_against: "what that event said: a dropped line is not in the trace" }
 cut:
-  - "a viewer: not this row; the window draws this once amy has a window lands"
+  - "a viewer: not this row; the window draws this once a-record-is-seen-everywhere lands"
   - "changing when work escalates: refused; the ceilings stay where they are, only what an escalation says changes"
   - "the core wording evidence: refused; it stores evidence and words none of it (S9)"
 exit: "red-gate escalation names its findings and amy show; amy show <id> prints the trail, no path; amy ask <id> --run <last run> answers from the stopped session; the work thread gets the same findings; nothing moves until its owner decides"
