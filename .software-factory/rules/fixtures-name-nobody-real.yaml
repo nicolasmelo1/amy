@@ -30,6 +30,8 @@ defaults:
   scope:
     - "packages/**/src/**"
     - "packages/**/tests/**"
+    - "examples/**/src/**"
+    - "examples/**/tests/**"
     - "plugins/**/src/**"
     - "plugins/**/tests/**"
     - "plans/**/*.md"

@@ -132,13 +132,13 @@ describe("a delivered plan", () => {
 
 describe("the plans a change advances", () => {
   const gates = [
-    { name: "errand", plan: "docs/design/the-errand.md", activation: ["packages/workflow-errand/src/**"] },
+    { name: "errand", plan: "docs/design/the-errand.md", activation: ["examples/workflow-errand/src/**"] },
     { name: "core", plan: "docs/design/the-core.md", activation: ["packages/core/src/**"] },
   ];
 
   it("names the plan of every gate whose paths the change touched, and every plan it edited", () => {
     expect(plansAdvancedBy(
-      ["packages/workflow-errand/src/actions.ts", "plans/a-new-one.md", "plans/next-steps.md", "README.md"],
+      ["examples/workflow-errand/src/actions.ts", "plans/a-new-one.md", "plans/next-steps.md", "README.md"],
       gates,
     )).toEqual([
       { plan: "docs/design/the-errand.md", via: ["errand"] },

@@ -121,6 +121,11 @@ Two things are errors rather than warnings:
 generated from the package itself and carry a banner saying so. Twenty
 hand-written READMEs is twenty things that quietly stop being true.
 
+**An example keeps its introduction as prose.** `examples/*/README.md` opens
+with what the workflow is for, written for somebody who has never seen amy,
+and the generator owns only the `reference` block below it: the states, the
+settings and what the package brings.
+
 **The root `README.md` keeps its pitch as prose.** Its command table, factory
 counts and Node requirement are generated blocks: the front door may persuade,
 but it must not hand-copy a fact the code already knows.

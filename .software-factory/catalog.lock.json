@@ -60,7 +60,7 @@
     },
     "L0.A_VIEW_DRAWS_NOTHING": {
       "severity": "high",
-      "scope": 4,
+      "scope": 6,
       "exclude": 0,
       "forbidden": 3,
       "narrowed_patterns": 0,
@@ -575,7 +575,7 @@
     },
     "L6.FIXTURES_NAME_NOBODY_REAL": {
       "severity": "high",
-      "scope": 7,
+      "scope": 9,
       "exclude": 0,
       "forbidden": 1,
       "narrowed_patterns": 0,

@@ -115,7 +115,9 @@ Everything else follows from it:
 
 ```text
 packages/core            contracts, the action catalogue, the registry
-packages/workflow-*      what happens next, and how. Depends only on core
+packages/workflow-testkit  the conformance kit `amy workflow check` drives
+examples/workflow-*      the workflows amy ships: what happens next, and how.
+                         Examples of what can be built, never needed to run
 plugins/*                adapters. Depend on core, and on a workflow only for
                          the types that workflow declares
 packages/cli             the command. Nothing depends on it

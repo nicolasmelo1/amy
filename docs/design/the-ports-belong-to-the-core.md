@@ -51,7 +51,7 @@ without the core learning what a workflow's policy means.
 - [x] No plugin imports from a workflow package
       (proof: test:packages/core/tests/ports.test.ts)
 - [x] `workflow-ticket-to-qa` still exports them, from the core
-      (proof: test:packages/workflow-ticket-to-qa/tests/index.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/index.test.ts)
 - [x] The install scenario still drives a ticket with the plugins resolving one
       copy of the core (proof: test:.software-factory/evidence/installed-plugins-scenario.sh)
 

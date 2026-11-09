@@ -12,8 +12,8 @@ interface Policy {
 }
 
 const policy = YAML.parse(read(".software-factory/policy.yaml")) as Policy;
-const drawn = fs.readdirSync(path.join(repo, "packages"))
-  .filter((name) => name.startsWith("workflow-") && fs.existsSync(path.join(repo, "packages", name, "workflow.mmd")));
+const drawn = fs.readdirSync(path.join(repo, "examples"))
+  .filter((name) => name.startsWith("workflow-") && fs.existsSync(path.join(repo, "examples", name, "workflow.mmd")));
 
 /**
  * A changed diagram is a changed workflow. `L3.GATE_HAS_FRESH_EVIDENCE`
@@ -27,10 +27,10 @@ describe("a shipped workflow's diagram activates the gates its code does", () =>
   });
 
   it.each(drawn)("lists %s's workflow.mmd beside its source in every gate that drives it", (name) => {
-    const driving = Object.entries(policy.gates).filter(([, gate]) => gate.activation.includes(`packages/${name}/src/**`));
+    const driving = Object.entries(policy.gates).filter(([, gate]) => gate.activation.includes(`examples/${name}/src/**`));
 
     for (const [gate, { activation }] of driving) {
-      expect(activation, gate).toContain(`packages/${name}/workflow.mmd`);
+      expect(activation, gate).toContain(`examples/${name}/workflow.mmd`);
     }
   });
 
@@ -41,7 +41,7 @@ describe("a shipped workflow's diagram activates the gates its code does", () =>
 
   it("ships each diagram in its package, where the host looks for it", () => {
     for (const name of drawn) {
-      const manifest = JSON.parse(read(`packages/${name}/package.json`)) as { files: string[] };
+      const manifest = JSON.parse(read(`examples/${name}/package.json`)) as { files: string[] };
       expect(manifest.files, name).toContain("workflow.mmd");
     }
   });

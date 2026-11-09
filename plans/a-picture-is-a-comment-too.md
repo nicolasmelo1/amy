@@ -19,8 +19,8 @@ touches:
   - plugins/linear/tests/LinearTracker.test.ts
   - plugins/github/src/GitHubCodeHost.ts
   - plugins/github/tests/GitHubCodeHost.test.ts
-  - packages/workflow-ticket-to-qa/src/agent-steps.ts
-  - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/src/agent-steps.ts
+  - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - packages/test-fixtures/src/fakes.ts
   - .software-factory/policy.yaml
 criteria:
@@ -28,7 +28,7 @@ criteria:
   - { id: A2, statement: "a Linear description or comment attachment reaches the prompt", proof: "test:plugins/linear/tests/LinearTracker.test.ts", sources: [S2, S7, S9] }
   - { id: A3, statement: "a GitHub comment image reaches the thread prompt as a URL", proof: "test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S2, S8, S9] }
   - { id: A4, statement: "an agent handed a comment with an image works the evidence, not the escalation", proof: "assertion:picture.a_thread_with_circled_evidence_is_worked_not_escalated", sources: [S1, S3, S11] }
-  - { id: A5, statement: "a conversation with no attachments renders exactly as before the field existed", proof: "test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S5] }
+  - { id: A5, statement: "a conversation with no attachments renders exactly as before the field existed", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S5] }
   - { id: A6, statement: "an attachment the harness cannot open fails the run honestly", proof: "assertion:picture.an_attachment_url_the_harness_cannot_open_is_reported_not_swallowed", sources: [S10, S12] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the adapters and ports only read more fields; no write to the tracker or code host is added" }

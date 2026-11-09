@@ -38,7 +38,7 @@ try {
   const added = run(author, "rev-parse", "HEAD");
   const staleBefore = run(checkout, "rev-parse", "refs/remotes/origin/main");
   const { GitBaseSource }: typeof import("@amykit/core") = await import(pathToFileURL(path.join(repo, "packages/core/dist/index.js")).href);
-  const { groomFeature }: typeof import("@amykit/workflow-feature-grooming") = await import(pathToFileURL(path.join(repo, "packages/workflow-feature-grooming/dist/index.js")).href);
+  const { groomFeature }: typeof import("@amykit/workflow-feature-grooming") = await import(pathToFileURL(path.join(repo, "examples/workflow-feature-grooming/dist/index.js")).href);
   const source = new GitBaseSource({ run: async (command, args, options) => { try { return { ok: true, exitCode: 0, stdout: execFileSync(command, args, { cwd: options?.cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(), stderr: "" }; } catch (error) { const failed = error as { status?: number | null; stdout?: string; stderr?: string }; return { ok: false, exitCode: failed.status ?? 1, stdout: String(failed.stdout ?? "").trim(), stderr: String(failed.stderr ?? error).trim() }; } } }, { workspaceRoot: root, checkouts: { "acme/widgets": checkout }, defaultBranch: "main" });
   const pinned = await source.snapshot("acme/widgets");
   const seen = (await pinned.read("schema.sql")) ?? "";

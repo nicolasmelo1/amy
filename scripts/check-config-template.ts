@@ -30,14 +30,14 @@ const { EXAMPLE_CONFIG, machineSchema } = await built<typeof import("../packages
   "packages/cli/dist/config.js",
 );
 const { checkConfigTemplate } = await built<ConfigTemplate>("packages/cli/dist/config-template.js");
-const ticket = await built<typeof import("../packages/workflow-ticket-to-qa/src/index.js")>(
-  "packages/workflow-ticket-to-qa/dist/index.js",
+const ticket = await built<typeof import("../examples/workflow-ticket-to-qa/src/index.js")>(
+  "examples/workflow-ticket-to-qa/dist/index.js",
 );
-const plans = await built<typeof import("../packages/workflow-note-to-plan/src/index.js")>(
-  "packages/workflow-note-to-plan/dist/index.js",
+const plans = await built<typeof import("../examples/workflow-note-to-plan/src/index.js")>(
+  "examples/workflow-note-to-plan/dist/index.js",
 );
-const errands = await built<typeof import("../packages/workflow-errand/src/index.js")>(
-  "packages/workflow-errand/dist/index.js",
+const errands = await built<typeof import("../examples/workflow-errand/src/index.js")>(
+  "examples/workflow-errand/dist/index.js",
 );
 
 const document = yaml.parseDocument(EXAMPLE_CONFIG);

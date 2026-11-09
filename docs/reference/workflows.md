@@ -59,7 +59,7 @@ Something said in passing becomes work: capture it, do it, say what happened.
 |  |  |
 | :-- | :-- |
 | Profile name | `errand` |
-| Source | `packages/workflow-errand` |
+| Source | `examples/workflow-errand` |
 | Starts in | `QUEUED` |
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `QUEUED` |
@@ -80,7 +80,7 @@ Feature grooming against read-only base-branch source snapshots.
 |  |  |
 | :-- | :-- |
 | Profile name | `feature-grooming` |
-| Source | `packages/workflow-feature-grooming` |
+| Source | `examples/workflow-feature-grooming` |
 | Starts in | `GROOMING` |
 | Terminal | `BRIEFED` |
 | Waits in | `GROOMING` |
@@ -98,7 +98,7 @@ The note-to-plan workflow: friction becomes a plan in the repository it is about
 |  |  |
 | :-- | :-- |
 | Profile name | `note-to-plan` |
-| Source | `packages/workflow-note-to-plan` |
+| Source | `examples/workflow-note-to-plan` |
 | Starts in | `NOTED` |
 | Terminal | `DONE`, `DECLINED` |
 | Waits in | `NOTED` |
@@ -120,7 +120,7 @@ A workflow other workflows call: open a pull request for a branch, through which
 |  |  |
 | :-- | :-- |
 | Profile name | `pull-request` |
-| Source | `packages/workflow-pull-request` |
+| Source | `examples/workflow-pull-request` |
 | Starts in | `OPENING` |
 | Terminal | `OPENED`, `REFUSED` |
 | Waits in | _nowhere_ |
@@ -139,7 +139,7 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 |  |  |
 | :-- | :-- |
 | Profile name | `ticket-to-qa` |
-| Source | `packages/workflow-ticket-to-qa` |
+| Source | `examples/workflow-ticket-to-qa` |
 | Starts in | `DISCOVERED` |
 | Terminal | `DONE` |
 | Waits in | `CLARIFYING`, `COPILOT_WAIT`, `HUMAN_REVIEW`, `ESCALATED` |

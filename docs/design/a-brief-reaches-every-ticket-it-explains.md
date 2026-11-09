@@ -130,7 +130,7 @@ mount tests prove the declaration/action mismatch without a tracker adapter
       (proof: test:packages/core/tests/mount.test.ts)
 - [x] A ticket with no brief is asked the same questions in the same words as
       before, and self-review runs without one
-      (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/briefs.test.ts)
 
 **Exit condition:** a grooming workflow can keep one revisable, policy-shaped
 brief for a feature; every ticket step that needs it reads its current

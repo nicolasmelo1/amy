@@ -17,7 +17,7 @@ touches:
   - packages/core/tests/define-workflow.test.ts
   - packages/workflow-testkit/src/**
   - packages/workflow-testkit/tests/steps.test.ts
-  - packages/workflow-errand/src/decide.ts
+  - examples/workflow-errand/src/decide.ts
   - docs/concepts/workflows.md
   - docs/build/write-a-workflow.md
 untouched:
@@ -29,7 +29,7 @@ criteria:
   - { id: A3, statement: "an action that returns an outcome its step did not declare fails the action naming the outcome and the ones declared, and the record does not move", proof: "deferred:test:packages/core/tests/steps.test.ts", sources: [S1] }
   - { id: A4, statement: "a terminal state with no `decide` key settles naming the state; one with a key settles as its key says", proof: "deferred:test:packages/core/tests/define-workflow.test.ts", sources: [S2, S5] }
   - { id: A5, statement: "the testkit walks every outcome edge of a step state from the diagram and the declaration alone", proof: "deferred:test:packages/workflow-testkit/tests/steps.test.ts", sources: [S1] }
-  - { id: A6, statement: "the errand workflow writes no decision for `DONE` or `DECLINED` and its walkthrough is unchanged", proof: "deferred:test:packages/workflow-errand/tests/walkthrough.test.ts", sources: [S2, S3] }
+  - { id: A6, statement: "the errand workflow writes no decision for `DONE` or `DECLINED` and its walkthrough is unchanged", proof: "deferred:test:examples/workflow-errand/tests/walkthrough.test.ts", sources: [S2, S3] }
 crosses:
   - { mechanism: diagram, answer: works, proof: "deferred:test:packages/core/tests/steps.test.ts" }
   - { mechanism: calls, answer: works, proof: "deferred:test:packages/core/tests/steps.test.ts; a step state inside a called workflow moves the callee, and a step and a call on one state is refused at mount" }

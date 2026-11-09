@@ -16,11 +16,11 @@ touches:
   - plugins/github/src/GitHubCodeHost.ts
   - plugins/github/tests/GitHubCodeHost.test.ts
   - packages/test-fixtures/src/fakes.ts
-  - packages/workflow-ticket-to-qa/tests/plugin.test.ts
+  - examples/workflow-ticket-to-qa/tests/plugin.test.ts
   - .software-factory/policy.yaml
 criteria:
   - { id: A1, statement: "replyToReviewThread writes a reply inside a thread by its id in one call", proof: "test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S1, S5, S6] }
-  - { id: A2, statement: "the core dispatches reply-review-thread to the code-host port", proof: "test:packages/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2, S4, S7, S8] }
+  - { id: A2, statement: "the core dispatches reply-review-thread to the code-host port", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2, S4, S7, S8] }
   - { id: A3, statement: "a reply appears in the thread's conversation on the next observation", proof: "assertion:thread.a_reply_reaches_the_thread_conversation_on_the_next_look", sources: [S3, S9] }
   - { id: A4, statement: "a mount without the code-host port refuses a workflow using the action, by name, at boot", proof: "test:packages/core/tests/mount.test.ts", sources: [S7] }
 crosses:

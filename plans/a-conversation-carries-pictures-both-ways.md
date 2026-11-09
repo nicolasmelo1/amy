@@ -27,7 +27,7 @@ touches:
   - packages/agent-kit/src/index.ts
   - packages/test-fixtures/src/contracts/slack.ts
   - packages/agent-kit/tests/attachments.test.ts
-  - packages/workflow-ticket-to-qa/src/actions.ts
+  - examples/workflow-ticket-to-qa/src/actions.ts
   - docs/concepts/ports.md
 criteria:
   - { id: A1, statement: "post with a PNG and an MP4 on Slack uploads both into the work's thread under its parent message, and the doctor check names files:write when the token lacks it", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S1, S2, S3, S6, S11] }

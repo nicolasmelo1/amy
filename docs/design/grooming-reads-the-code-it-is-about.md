@@ -79,7 +79,7 @@ workflow, which owns policy. The core parses no section.
 - [x] A grooming step is handed no checkout path, branch, worktree or runner, only the id of the commit it reads at;
       its source port can only read base-branch Git objects and cannot create a
       branch, commit or worktree
-      (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
+      (proof: test:examples/workflow-feature-grooming/tests/groom.test.ts)
 - [x] A second grooming run over the same feature rewrites the brief, bumps the
       revision, keeps every question already logged, and retires the work the
       first run produced that it no longer wants

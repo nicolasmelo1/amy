@@ -9,10 +9,7 @@
   ],
   "references": [
     {
-      "path": "../core"
-    },
-    {
-      "path": "../agent-kit"
+      "path": "../../packages/core"
     }
   ]
 }

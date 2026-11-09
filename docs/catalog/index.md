@@ -16,11 +16,6 @@ else is found by two conventions rather than by a list somebody curates.
 
 | Package | Kind | What it is |  |
 | :-- | :-- | :-- | :-- |
-| `@amykit/workflow-errand` | workflow | Something said in passing becomes work: capture it, do it, say what happened. | [npm](https://www.npmjs.com/package/@amykit/workflow-errand) |
-| `@amykit/workflow-feature-grooming` | workflow | Feature grooming against read-only base-branch source snapshots. | [npm](https://www.npmjs.com/package/@amykit/workflow-feature-grooming) |
-| `@amykit/workflow-note-to-plan` | workflow | The note-to-plan workflow: friction becomes a plan in the repository it is about. | [npm](https://www.npmjs.com/package/@amykit/workflow-note-to-plan) |
-| `@amykit/workflow-pull-request` | workflow | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. | [npm](https://www.npmjs.com/package/@amykit/workflow-pull-request) |
-| `@amykit/workflow-ticket-to-qa` | workflow | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). | [npm](https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa) |
 | `@amykit/plugin-agent-browser` | plugin | Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-browser) |
 | `@amykit/plugin-agent-desktop` | plugin | Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-desktop) |
 | `@amykit/plugin-agent-relay` | plugin | One agent made of several: swaps harness on a quota, escalates model on a failure. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-relay) |
@@ -48,6 +43,11 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-slack` | plugin | A Slack thread per piece of work, over the Web API, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-slack) |
 | `@amykit/plugin-telegram` | plugin | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-telegram) |
 | `@amykit/plugin-terminal` | plugin | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. | [npm](https://www.npmjs.com/package/@amykit/plugin-terminal) |
+| `@amykit/workflow-errand` | workflow | Something said in passing becomes work: capture it, do it, say what happened. | [npm](https://www.npmjs.com/package/@amykit/workflow-errand) |
+| `@amykit/workflow-feature-grooming` | workflow | Feature grooming against read-only base-branch source snapshots. | [npm](https://www.npmjs.com/package/@amykit/workflow-feature-grooming) |
+| `@amykit/workflow-note-to-plan` | workflow | The note-to-plan workflow: friction becomes a plan in the repository it is about. | [npm](https://www.npmjs.com/package/@amykit/workflow-note-to-plan) |
+| `@amykit/workflow-pull-request` | workflow | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. | [npm](https://www.npmjs.com/package/@amykit/workflow-pull-request) |
+| `@amykit/workflow-ticket-to-qa` | workflow | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). | [npm](https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa) |
 
 <!-- amy:end catalog-shipped -->
 

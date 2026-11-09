@@ -13,8 +13,8 @@ touches:
   - packages/agent-kit/src/deciders.ts
   - packages/agent-kit/tests/deciders.test.ts
   - packages/agent-kit/tests/deciders.property.test.ts
-  - packages/workflow-ticket-to-qa/src/discussion.ts
-  - packages/workflow-ticket-to-qa/src/runtime.ts
+  - examples/workflow-ticket-to-qa/src/discussion.ts
+  - examples/workflow-ticket-to-qa/src/runtime.ts
   - packages/cli/src/decide.ts
   - packages/cli/src/index.ts
   - packages/cli/src/doctor.ts

@@ -91,9 +91,9 @@ The opinion this enforces is written down in [MAD and BEP](../concepts/mad-and-b
 - [x] Errand, note-to-plan and ticket-to-qa carry no runtime factory, walk
       their scenarios unchanged, and ticket-to-qa writes one `agent.run` per
       agent reply
-      (proof: test:packages/workflow-ticket-to-qa/tests/runtime.test.ts)
-      (proof: test:packages/workflow-errand/tests/run-errand.test.ts)
-      (proof: test:packages/workflow-note-to-plan/tests/runtime.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/runtime.test.ts)
+      (proof: test:examples/workflow-errand/tests/run-errand.test.ts)
+      (proof: test:examples/workflow-note-to-plan/tests/runtime.test.ts)
 
 **Exit condition:** no workflow amy mounts says its states anywhere but its
 diagram, every drawn state has a decision checked at boot, and no shipped

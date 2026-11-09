@@ -247,7 +247,7 @@ the natural next step, and not in this plan.
 - [x] `@amykit/workflow-pull-request` runs unchanged against a second
       `CodeHost` adapter that is not GitHub, and refuses one missing a
       capability it declares
-      (proof: test:packages/workflow-pull-request/tests/hosts.test.ts)
+      (proof: test:examples/workflow-pull-request/tests/hosts.test.ts)
 - [x] A caller that enters the same call state twice gets two callee records,
       `#1` and `#2`, each with its own history and output, and a restart
       during `#2` resumes `#2` rather than starting `#3`

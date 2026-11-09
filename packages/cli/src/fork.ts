@@ -136,6 +136,52 @@ export interface Fetched {
  * reached, the tag is not there, or the directory is not a package.
  */
 export async function fetchSource(runner: CommandRunner, at: SourceAt, asked: string): Promise<Fetched> {
+  return fetchRepository(runner, at, asked, (root) => {
+    const directory = path.join(root, at.directory);
+    if (!fs.existsSync(path.join(directory, "package.json"))) {
+      throw new Error(`${at.directory || "the root"} of ${at.url} at ${at.ref || "HEAD"} is not a package: it has no package.json (asked: ${asked})`);
+    }
+    return directory;
+  });
+}
+
+/**
+ * Fetches the package named `name` at a ref, wherever that release keeps it.
+ *
+ * A package can move inside its repository between two releases, the way
+ * amy's shipped workflows moved from packages/ to examples/; the directory a
+ * fork recorded is where its base was, not where the next release is. So the
+ * release is looked for where `at.directory` says first, and otherwise in the
+ * package.json, a few directories deep, that carries its name at that tag.
+ */
+async function fetchRelease(runner: CommandRunner, at: SourceAt, name: string, asked: string): Promise<Fetched & { readonly at: string }> {
+  let found = "";
+  const fetched = await fetchRepository(runner, at, asked, (root) => {
+    const where = packageNamed(root, name, at.directory);
+    if (where === undefined) throw new Error(`no package named ${name} in ${at.url} at ${at.ref || "HEAD"} (asked: ${asked})`);
+    found = where;
+    return path.join(root, where);
+  });
+  return { ...fetched, at: found };
+}
+
+/** Where, relative to `root`, the package named `name` is: `preferred` when it is there, else the first found. */
+function packageNamed(root: string, name: string, preferred: string): string | undefined {
+  if (readManifest(path.join(root, preferred))?.name === name) return preferred;
+  const visit = (relative: string, depth: number): string | undefined => {
+    if (readManifest(path.join(root, relative))?.name === name) return relative;
+    if (depth === 0) return undefined;
+    for (const entry of entriesOf(path.join(root, relative)).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory() || entry.name.startsWith(".") || NOT_SOURCE.has(entry.name)) continue;
+      const found = visit(relative ? `${relative}/${entry.name}` : entry.name, depth - 1);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  return visit("", 3);
+}
+
+async function fetchRepository(runner: CommandRunner, at: SourceAt, asked: string, locate: (root: string) => string): Promise<Fetched> {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "amy-fork-"));
   const dispose = () => fs.rmSync(scratch, { recursive: true, force: true });
   try {
@@ -153,11 +199,7 @@ export async function fetchSource(runner: CommandRunner, at: SourceAt, asked: st
     await git(["fetch", "-q", "--depth", "1", at.url, at.ref || "HEAD"], "fetching");
     await git(["-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD"], "checking out");
     const commit = await git(["rev-parse", "HEAD"], "reading the commit of");
-    const directory = path.join(scratch, at.directory);
-    if (!fs.existsSync(path.join(directory, "package.json"))) {
-      throw new Error(`${at.directory || "the root"} of ${at.url} at ${at.ref || "HEAD"} is not a package: it has no package.json (asked: ${asked})`);
-    }
-    return { directory, root: scratch, commit, dispose };
+    return { directory: locate(scratch), root: scratch, commit, dispose };
   } catch (error) {
     dispose();
     throw error;
@@ -750,8 +792,16 @@ export async function mergeForks(runner: CommandRunner, targets: readonly ForkTa
     const nextRef = `${base.package}@${target.version}`;
     const before = await fetchSource(runner, { url: base.url, directory: base.directory, ref: base.ref || base.commit }, base.package);
     try {
-      const after = await fetchSource(runner, { url: base.url, directory: base.directory, ref: nextRef }, nextRef);
+      // The base is read where it was; the next release, wherever it now is.
+      const after = await fetchRelease(runner, { url: base.url, directory: base.directory, ref: nextRef }, base.package, nextRef);
       try {
+        // A fork's first edits are the standalone rewrite takeFork made: the
+        // tsconfig flattened, its references dropped. Made on both releases
+        // too, so the merge compares like with like and only what a person
+        // changed is theirs: otherwise a release that moved its references
+        // conflicts with a fork nobody touched.
+        standalone(before.directory, before.root, before.directory);
+        standalone(after.directory, after.root, after.directory);
         const merged = mergeTrees(readTree(before.directory), readTree(target.fork), readTree(after.directory), {
           ours: `fork ${target.fork}`,
           base: `${base.package}@${base.version}`,
@@ -763,7 +813,7 @@ export async function mergeForks(runner: CommandRunner, targets: readonly ForkTa
           from: base.version,
           to: target.version,
           merged,
-          record: { base: { ...base, version: target.version, commit: after.commit, ref: nextRef } },
+          record: { base: { ...base, version: target.version, commit: after.commit, ref: nextRef, directory: after.at } },
         });
       } finally {
         after.dispose();

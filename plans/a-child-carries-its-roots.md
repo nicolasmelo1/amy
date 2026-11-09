@@ -20,9 +20,9 @@ touches:
   - plugins/linear/src/config.ts
   - plugins/linear/tests/LinearTracker.test.ts
   - packages/core/src/ports/Harness.ts
-  - packages/workflow-ticket-to-qa/src/ticket.ts
+  - examples/workflow-ticket-to-qa/src/ticket.ts
   - packages/core/src/ports/Ticketing.ts
-  - packages/workflow-ticket-to-qa/src/agent-steps.ts
+  - examples/workflow-ticket-to-qa/src/agent-steps.ts
   - packages/agent-kit/src/HarnessRelay.ts
   - plugins/agent-relay/src/plugin.ts
   - .software-factory/evidence/ticket-to-qa-scenario.sh

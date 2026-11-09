@@ -21,7 +21,7 @@ touches:
   - plugins/decider-harness/**
   - packages/agent-kit/src/deciders.ts
   - packages/agent-kit/tests/deciders.test.ts
-  - packages/workflow-ticket-to-qa/src/discussion.ts
+  - examples/workflow-ticket-to-qa/src/discussion.ts
   - packages/core/src/budget.ts
   - packages/cli/src/config.ts
 criteria:

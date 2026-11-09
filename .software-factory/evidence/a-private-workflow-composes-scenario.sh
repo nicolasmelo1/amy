@@ -28,7 +28,7 @@ for argument in "$@"; do
 done
 
 for built in packages/core/dist/index.js plugins/github/dist/index.js plugins/file-queue/dist/index.js \
-  plugins/serial-engine/dist/index.js packages/workflow-ticket-to-qa/dist/index.js; do
+  plugins/serial-engine/dist/index.js examples/workflow-ticket-to-qa/dist/index.js; do
   test -f "$repo/$built" || { echo "build it first: npm run build" >&2; exit 1; }
 done
 

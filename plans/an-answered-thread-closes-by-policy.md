@@ -16,10 +16,10 @@ sources:
   - { id: S14, kind: decision, said: "assertions read the forge's raw thread state and mutation log; a plan or record saying resolved is no proof the remote conversation closed" }
   - { id: S15, kind: decision, said: "changed-policy case: judge under leave-open, remount with close, exactly one mutation on the next eligible look; the inverse proves no already-closed thread reopens" }
 touches:
-  - packages/workflow-ticket-to-qa/src/machine.ts
-  - packages/workflow-ticket-to-qa/src/observation.ts
-  - packages/workflow-ticket-to-qa/src/plugin.ts
-  - packages/workflow-ticket-to-qa/tests/machine.test.ts
+  - examples/workflow-ticket-to-qa/src/machine.ts
+  - examples/workflow-ticket-to-qa/src/observation.ts
+  - examples/workflow-ticket-to-qa/src/plugin.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
   - .software-factory/evidence/ticket-to-qa-scenario.sh
   - .software-factory/policy.yaml
 untouched:
@@ -34,7 +34,7 @@ criteria:
   - { id: A5, statement: "a disagreement, deferral, wont-fix, missing verdict or incomplete run never closes a thread under either policy", proof: "assertion:resolution.a_non_answer_never_closes_under_any_policy", sources: [S6] }
   - { id: A6, statement: "editing the policy and remounting changes the next decision without a record migration and never reopens already-settled remote history", proof: "assertion:resolution.changing_policy_changes_the_next_move_not_the_record", sources: [S10, S11, S15] }
   - { id: A7, statement: "unknown keys and values in answeredThreadResolution are refused at boot with the full config path, before any code-host mutation", proof: "assertion:resolution.invalid_policy_is_refused_before_the_first_mutation", sources: [S8, S9] }
-  - { id: A8, statement: "the machine has one exhaustive eligibility rule for both reviewer classes, with no hard-coded automated or human exception beside it", proof: "test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S12] }
+  - { id: A8, statement: "the machine has one exhaustive eligibility rule for both reviewer classes, with no hard-coded automated or human exception beside it", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S12] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A6 — the record shape does not change; policy is read on each look" }
 guarantee:

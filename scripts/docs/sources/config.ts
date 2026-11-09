@@ -3,7 +3,7 @@ import { read } from "../lib/repo.js";
 import type { ConfigFacts, ConfigField } from "../lib/facts.js";
 
 const FILE = "packages/cli/src/config.ts";
-const ROSTER = "packages/workflow-ticket-to-qa/src/roster.ts";
+const ROSTER = "examples/workflow-ticket-to-qa/src/roster.ts";
 
 /**
  * The host's own configuration, from the interface that defines it.

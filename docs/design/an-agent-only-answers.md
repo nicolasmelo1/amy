@@ -105,10 +105,10 @@ member and where it went.
 - [x] The core exports no `pullRequestTitle` and names no vendor in code (proof: test:packages/core/tests/architecture.test.ts)
 - [x] `implementStep` commits only through the commit its caller passed, and reports a run that changed nothing as `unchanged` (proof: test:packages/agent-kit/tests/steps.test.ts)
 - [x] `judgeStep` parses the answer the caller describes, and a run that did not complete yields the caller's fallback with the run's account (proof: test:packages/agent-kit/tests/steps.test.ts)
-- [x] ticket-to-qa reaches and leaves every one of its states on an agent that has only `ask`, with triage, implement and review verdicts unchanged (proof: test:packages/workflow-ticket-to-qa/tests/conformance.test.ts)
+- [x] ticket-to-qa reaches and leaves every one of its states on an agent that has only `ask`, with triage, implement and review verdicts unchanged (proof: test:examples/workflow-ticket-to-qa/tests/conformance.test.ts)
 - [x] The agent port `agent-relay` mounts is `ask` over the skill and harness ladders, and a skill named for `implement` still answers that step (proof: test:plugins/agent-relay/tests/plugin.test.ts)
 - [x] `agent.reviewerHints` in `config.yaml` reaches ticket-to-qa's review prompt and no harness plugin (proof: test:packages/cli/tests/slices.test.ts)
-- [x] A ticket without a tracker-derived branch is refused by ticket-to-qa naming the field, before any branch is prepared (proof: test:packages/workflow-ticket-to-qa/tests/branch.test.ts)
+- [x] A ticket without a tracker-derived branch is refused by ticket-to-qa naming the field, before any branch is prepared (proof: test:examples/workflow-ticket-to-qa/tests/branch.test.ts)
 
 **Exit condition:** the ratchet holds no entry for any of the eight rules
 above, `sf verify` shows each of them firing on its fixture, and ticket-to-qa's

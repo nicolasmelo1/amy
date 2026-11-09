@@ -171,7 +171,7 @@ exists.
 - [x] A workflow reading the transition folds a resume point correctly across an
       escalation raised from every state that can raise one
       (proof: assertion:escalating.remembers_the_state_it_interrupted, and
-      test:packages/workflow-ticket-to-qa/tests/escalating.test.ts for all five)
+      test:examples/workflow-ticket-to-qa/tests/escalating.test.ts for all five)
 - [x] Both shipped workflows drive a ticket end to end on the new shape, and
       neither folds anything from `record.state`
       (proof: test:.software-factory/evidence/ticket-to-qa-scenario.sh)
