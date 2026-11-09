@@ -193,7 +193,11 @@ export class SlackConversation implements Conversation {
     // A later copy of the same ask must see the earlier decision. Slack has
     // no reaction timestamp, so recover the thread's ask messages instead
     // of retaining an accepted answer in process memory.
-    const messages = recent.some((message) => readAsk(message) !== undefined) ? await this.threadMessages(thread.id, 0) : recent;
+    // Metadata is anybody's to attach: an ask, or the notice amy took one,
+    // is read only from a message this bot wrote, so another app cannot
+    // turn the operator's reaction into an answer to amy's question.
+    const amys = (messages: SlackMessage[]) => messages.filter((message) => message.metadata === undefined || message.user === bot);
+    const messages = recent.some((message) => message.user === bot && readAsk(message) !== undefined) ? amys(await this.threadMessages(thread.id, 0)) : amys(recent);
     const answers = await this.askedReplies(thread.id, after, messages);
 
     for (const message of recent) {

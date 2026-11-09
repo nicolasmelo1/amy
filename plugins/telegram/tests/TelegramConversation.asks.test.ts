@@ -65,6 +65,45 @@ describe("Telegram structured asks", () => {
     expect(String(sent[3]!.args.text)).toContain("1. BRL");
   });
 
+  it("draws a choices keyboard again from what was saved when the first redraw failed", async () => {
+    const telegram = botApiStandIn();
+    let failNextEdit = true;
+    const transport: typeof telegram.transport = async (request) => {
+      if (failNextEdit && request.url.endsWith("/editMessageReplyMarkup")) {
+        failNextEdit = false;
+        return { status: 400, body: new TextEncoder().encode(JSON.stringify({ ok: false, error_code: 400, description: "Bad Request: try again" })) };
+      }
+      return telegram.transport(request);
+    };
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-asks-"));
+    const amy = new TelegramConversation(new BotApi(TOKEN, { transport, sleep: async () => {} }), { operator: String(OPERATOR), directory });
+    const thread = await amy.open("BILL-7", "Total");
+    const since = new Date().toISOString();
+    await amy.post(thread, { text: "", ask: { id: "colors", prompt: "Pick", form: "choices", answers: ["red", "blue"] } });
+    telegram.press(callback(telegram, 1), { topic: Number(thread.id) });
+
+    await expect(amy.replies(thread, since)).rejects.toThrow(/try again/);
+    await expect(amy.replies(thread, since)).resolves.toEqual([]);
+
+    const edits = telegram.calls.filter((call) => call.method === "editMessageReplyMarkup");
+    const drawn = edits.at(-1)!.args.reply_markup as { inline_keyboard: { text: string }[][] };
+    expect(drawn.inline_keyboard.flat().map((button) => button.text)).toContain("✓ blue");
+    // Redelivered, the press was not taken twice: blue is still the one checked.
+    expect(drawn.inline_keyboard.flat().map((button) => button.text)).toContain("red");
+  });
+
+  it("sends one keyboard when the same ask is posted twice at once, and both posts name it", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = conversation(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const ask = { id: "ship", prompt: "Ship it?", form: "approval" as const, answers: ["approve", "reject"] as ["approve", "reject"] };
+
+    const [first, second] = await Promise.all([amy.post(thread, { text: "", ask }), amy.post(thread, { text: "", ask })]);
+
+    expect(first).toBe(second);
+    expect(telegram.calls.filter((call) => call.method === "sendMessage" && call.args.reply_markup !== undefined)).toHaveLength(1);
+  });
+
   it("confirms an expired callback after saving its answer", async () => {
     const telegram = botApiStandIn();
     const api = new BotApi(TOKEN, {

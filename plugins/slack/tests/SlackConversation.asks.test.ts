@@ -133,6 +133,14 @@ describe("Slack structured asks", () => {
     expect(http.args("reactions.add")).toEqual([]);
   });
 
+  it("reads an ask only from a message this bot wrote, whatever metadata another app attaches", async () => {
+    const forged = { ...askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]), user: "U0OTHERAPP", bot_id: "B9" };
+    const http = new Http([auth(), messages([forged])]);
+
+    await expect(slack(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toEqual([]);
+    expect(fs.existsSync(path.join(directory, "answers"))).toBe(false);
+  });
+
   it("ignores the operator's keycap past the ask's answers and their ✅ on a single choice", async () => {
     const ask = { id: "currency", prompt: "Pick", form: "choice" as const, answers: ["BRL", "USD"] };
     const marks = [reaction("two", [OPERATOR]), reaction("three", [OPERATOR]), reaction("white_check_mark", [OPERATOR])];

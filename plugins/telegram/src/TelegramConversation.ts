@@ -215,10 +215,16 @@ export class TelegramConversation implements Conversation {
 
   private async postAsk(topic: number, text: string, ask: Ask): Promise<string> {
     const usable = validAsk(ask);
-    const recorded = usable ? readJson<FiledAsk>(this.askFile(topic, ask.id)) : undefined;
-    if (recorded) return String(recorded.messageId);
     const body = [text === ask.prompt ? "" : text, ask.prompt, usable ? "" : numberedAnswers(ask)].filter(Boolean).join("\n");
-    return this.sendParts(topic, body, usable ? ask : undefined);
+    if (!usable) return this.sendParts(topic, body);
+    // Under the bot's shared lock, as a poll reads callbacks: a keyboard is
+    // never visible to another process before its ask is recorded, and a
+    // second post of the same ask finds the first one and sends nothing.
+    return this.held(async () => {
+      const recorded = readJson<FiledAsk>(this.askFile(topic, ask.id));
+      if (recorded) return String(recorded.messageId);
+      return this.sendParts(topic, body, ask);
+    });
   }
 
   private async sendParts(topic: number, text: string, ask?: Ask): Promise<string> {
@@ -375,7 +381,10 @@ export class TelegramConversation implements Conversation {
     const parsed = data ? parseCallback(data) : undefined;
     const state = parsed ? this.askByKey(context.directory, context.topic, parsed.key) : undefined;
     if (!parsed || !state || state.messageId !== context.message.message_id) return "this question is no longer open";
-    if (state.callbacks?.includes(callbackId)) return undefined;
+    // Telegram delivers a callback again until it is confirmed. Its choice
+    // is already saved; what may not be is the keyboard, if showing it
+    // failed the first time, so draw it again from what was saved.
+    if (state.callbacks?.includes(callbackId)) return this.redrawKeyboard(context.message, state, parsed.key);
     if (state.accepted) return this.acknowledgeAccepted(context, state, callbackId);
     if (parsed.send) return this.sendChoices(context, state, callbackId);
     if (parsed.index === undefined || parsed.index < 0 || parsed.index >= state.ask.answers.length) return "this question is no longer open";
@@ -414,6 +423,17 @@ export class TelegramConversation implements Conversation {
     }
     this.writeAsk(context.directory, context.topic, state);
     return "this question is no longer open";
+  }
+
+  private async redrawKeyboard(message: TelegramMessage, state: FiledAsk, key: string): Promise<undefined> {
+    const markup = state.accepted ? { inline_keyboard: [] } : keyboardFor(state.ask, key, state.selected);
+    try {
+      await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: markup });
+    } catch (error) {
+      // Already showing what was saved: the first edit landed after all.
+      if (!(error instanceof BotApiRefusal && /message is not modified/i.test(error.description))) throw error;
+    }
+    return undefined;
   }
 
   private async closeKeyboard(message: TelegramMessage): Promise<void> {

@@ -355,8 +355,9 @@ qa:
 export type EngineChoice = "serial" | "concurrent";
 
 /**
- * The plugins a profile mounts when it names the concurrent engine: the same
- * list the serial one is recommended with, the engine swapped.
+ * The plugins the serial world mounts. No Hermes: no ladder here names it,
+ * and its doctor check asks a real `hermes` binary for its profile, which a
+ * developer's machine may have and CI does not.
  */
 const SLACK_PLUGINS = [
   "@amykit/plugin-file-queue",
@@ -370,7 +371,6 @@ const SLACK_PLUGINS = [
   "@amykit/plugin-file-worktree",
   "@amykit/plugin-claude",
   "@amykit/plugin-codex",
-  "@amykit/plugin-hermes-agent",
   "@amykit/plugin-agent-relay",
   "@amykit/plugin-notify-fanout",
   "@amykit/plugin-notify-inbox",

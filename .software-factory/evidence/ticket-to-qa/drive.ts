@@ -20,6 +20,7 @@ import {
   BRANCH,
   BRIEF,
   BRIEF_UUID,
+  SLACK_BOT,
   SLACK_OPERATOR,
   OTHER_REPO,
   PAST_IMPLEMENTATION,
@@ -140,6 +141,7 @@ interface GateRun {
 
 interface SlackMessage {
   ts: string;
+  user?: string;
   text: string;
   metadata?: { event_type?: string; event_payload?: { ask?: { prompt?: string; answers?: string[] } } };
   reactions?: { name: string; users: string[]; count: number }[];
@@ -215,9 +217,11 @@ function amy(root: string, args: string[]): Said {
     },
   });
 
+  // A run that never exited says why: killed by a signal, or never started.
+  const why = result.error ? `\n(${result.error.message})` : result.signal ? `\n(killed by ${result.signal})` : "";
   return {
     code: result.status,
-    out: `${result.stdout ?? ""}${result.stderr ?? ""}`.trim(),
+    out: `${result.stdout ?? ""}${result.stderr ?? ""}${why}`.trim(),
   };
 }
 
@@ -1300,7 +1304,9 @@ function reviewChecks(first: World): Check[] {
     [
       "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
       Boolean(ceilingHold?.said.includes("open review(s)")) &&
-        first.slack.messages.some((message) => message.metadata?.event_type === "amy_ask") &&
+        // The operator is told, in the work's thread, that nobody was assigned.
+        first.slack.messages.some((message) => message.user === SLACK_BOT &&
+          message.text.includes(`${TICKET} has a pull request open and nobody assigned`)) &&
         first.moves.some((move) => move.state === "REVIEWER_ASSIGNED"),
     ],
     [
