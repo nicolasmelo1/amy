@@ -303,6 +303,11 @@
           "description": ""
         },
         {
+          "title": "A question carries its answers",
+          "path": "/design/a-question-carries-its-answers",
+          "description": ""
+        },
+        {
           "title": "A question is not an answer",
           "path": "/design/a-question-is-not-an-answer",
           "description": ""
@@ -2356,6 +2361,17 @@
           "slug": "acceptance"
         }
       ]
+    },
+    {
+      "path": "/design/a-question-carries-its-answers",
+      "file": "docs/design/a-question-carries-its-answers.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-question-carries-its-answers.md",
+      "title": "A question carries its answers",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-question-is-not-an-answer",

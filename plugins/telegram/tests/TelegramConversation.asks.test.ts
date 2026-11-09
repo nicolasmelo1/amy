@@ -51,6 +51,20 @@ describe("Telegram structured asks", () => {
     expect((await amy.replies(thread, since)).map((reply) => reply.answer)).toEqual([{ ask: "currency", chosen: ["USD"] }, { ask: "colours", chosen: ["red", "blue"] }]);
   });
 
+  it("sends an ask it cannot put on a keyboard as a plain numbered question: too few, repeated, empty or over-long answers", async () => {
+    const telegram = botApiStandIn();
+    const { amy } = conversation(telegram);
+    const thread = await amy.open("BILL-7", "Total");
+    const malformed = [["BRL"], ["BRL", "BRL"], ["BRL", ""], ["BRL", "x".repeat(65)]];
+    for (const [index, answers] of malformed.entries()) {
+      await amy.post(thread, { text: "", ask: { id: `bad-${index}`, prompt: "Which currency?", form: "choice", answers } });
+    }
+    const sent = telegram.calls.filter((call) => call.method === "sendMessage" && String(call.args.text).includes("Which currency?"));
+    expect(sent).toHaveLength(malformed.length);
+    for (const call of sent) expect(call.args.reply_markup).toBeUndefined();
+    expect(String(sent[3]!.args.text)).toContain("1. BRL");
+  });
+
   it("confirms an expired callback after saving its answer", async () => {
     const telegram = botApiStandIn();
     const api = new BotApi(TOKEN, {

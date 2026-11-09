@@ -120,6 +120,30 @@ describe("Slack structured asks", () => {
     expect(http.args("reactions.get")).toEqual([]);
   });
 
+  it("posts an ask it cannot mark as a plain numbered question: too few, repeated, empty or over-long answers", async () => {
+    const malformed = [["BRL"], ["BRL", "BRL"], ["BRL", ""], ["BRL", "x".repeat(65)]];
+    const http = new Http(malformed.map((_, index) => ({ method: "chat.postMessage", json: { ts: `1.${index + 1}` } })));
+    for (const [index, answers] of malformed.entries()) {
+      await slack(http).post({ id: THREAD }, { text: "", ask: { id: `bad-${index}`, prompt: "Which currency?", form: "choice", answers } });
+    }
+    const posts = http.args("chat.postMessage");
+    expect(posts).toHaveLength(malformed.length);
+    for (const post of posts) expect(post.metadata).toContain("amy_ask_fallback");
+    expect(posts[3]!.text).toContain("1. BRL");
+    expect(http.args("reactions.add")).toEqual([]);
+  });
+
+  it("ignores the operator's keycap past the ask's answers and their ✅ on a single choice", async () => {
+    const ask = { id: "currency", prompt: "Pick", form: "choice" as const, answers: ["BRL", "USD"] };
+    const marks = [reaction("two", [OPERATOR]), reaction("three", [OPERATOR]), reaction("white_check_mark", [OPERATOR])];
+    const http = new Http([auth(), messages([askMessage("1790000100.000100", ask, marks)]), messages([askMessage("1790000100.000100", ask, marks)])]);
+
+    await expect(slack(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toMatchObject([
+      { answer: { ask: "currency", chosen: ["USD"] } },
+    ]);
+    expect(http.args("chat.postMessage")).toEqual([]);
+  });
+
   it("replays the first answer after a changed or conflicting reaction, once acknowledging it", async () => {
     const approved = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
     const rejected = askMessage("1790000100.000100", ASK, [reaction("x", [OPERATOR])]);
