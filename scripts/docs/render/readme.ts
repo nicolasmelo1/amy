@@ -37,11 +37,16 @@ const REFERENCE_CLOSE = "<!-- amy:end reference -->";
  *
  * Everything above the `reference` block belongs to whoever wrote it and is
  * kept as it is; the block is rewritten from the package, so a setting the
- * workflow gains still reaches its README. One with no block is refused rather
- * than written over, because overwriting it would throw the prose away.
+ * workflow gains still reaches its README. One with no block, or with a block
+ * that never closes, is refused rather than written over, because overwriting
+ * it would throw the prose away.
  */
 function exampleReadme(file: string, entry: MountedFact): string {
-  const before = readIfPresent(file) ?? "";
+  return spliceReference(readIfPresent(file) ?? "", file, reference(entry));
+}
+
+/** Puts `generated` between an example README's reference markers, keeping everything outside them. */
+export function spliceReference(before: string, file: string, generated: string): string {
   const start = before.indexOf(REFERENCE_OPEN);
   if (start === -1) {
     throw new Error(
@@ -50,9 +55,13 @@ function exampleReadme(file: string, entry: MountedFact): string {
   }
 
   const end = before.indexOf(REFERENCE_CLOSE, start);
-  const after = end === -1 ? "" : before.slice(end + REFERENCE_CLOSE.length);
+  if (end === -1) {
+    throw new Error(
+      `${file} opens \`${REFERENCE_OPEN}\` and never closes it with \`${REFERENCE_CLOSE}\`, so writing it would lose everything after the marker`,
+    );
+  }
 
-  return `${before.slice(0, start)}${REFERENCE_OPEN}\n\n${reference(entry)}\n\n${REFERENCE_CLOSE}${after}`;
+  return `${before.slice(0, start)}${REFERENCE_OPEN}\n\n${generated}\n\n${REFERENCE_CLOSE}${before.slice(end + REFERENCE_CLOSE.length)}`;
 }
 
 function readmeFor(entry: MountedFact): string {
