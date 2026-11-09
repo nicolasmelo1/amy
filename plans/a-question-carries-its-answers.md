@@ -61,6 +61,8 @@ touches:
   - packages/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
   - packages/workflow-ticket-to-qa/tests/asks.property.test.ts
+  - plugins/slack/tests/asks.property.test.ts
+  - plugins/telegram/tests/asks.property.test.ts
   - packages/workflow-testkit/src/world.ts
   - docs/concepts/ports.md
   - registry/core.json
@@ -76,13 +78,14 @@ criteria:
   - { id: A3, statement: "a choices ask in Slack returns the keycaps the operator put on it only once they add ✅, and a reaction by anybody else is never an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S12] }
   - { id: A4, statement: "a choice ask with eleven answers in Slack without Socket Mode is posted as a numbered list with no reactions", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S8, S13] }
   - { id: A5, statement: "an approval, a choice and a choices ask in Telegram are inline keyboards; each press is acknowledged, a choices press toggles its ✓, and Send returns the chosen answers once", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.asks.test.ts", sources: [S15, S16] }
-  - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22] }
+  - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "deferred:property:plugins/slack/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22] }
   - { id: A7, statement: "an answer reads as a decision under answer and under discuss, and an unmarked typed reply to the same ask reads as it does today", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7] }
   - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S8] }
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
   - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21], done: true }
-  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike, a mark removed after the answer was accepted included", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28] }
+  - { id: A13, statement: "for any approval answered once in Slack, replies from the same since returns that answer on every look, across restarts, whatever marks are changed, removed or added after", proof: "deferred:property:plugins/slack/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28] }
+  - { id: A17, statement: "for any ask answered once in Telegram, replies from the same since returns that answer on every look, across restarts, whatever is pressed after", proof: "deferred:property:plugins/telegram/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25] }
   - { id: A14, statement: "an ask whose answers are fewer than 2, more than 10, repeated, empty or longer than the medium's button label is posted as a plain question with no marks or keyboard", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S26] }
   - { id: A15, statement: "in Slack a keycap outside the ask's range, and ✅ on a single choice, are ignored: neither answers nor competes with an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S27] }
   - { id: A16, statement: "in Slack, a reaction removed after a look accepted its answer leaves that answer returned, after an adapter restart too", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S28] }
@@ -91,7 +94,7 @@ crosses:
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:A10" }
   - { mechanism: record-migration, answer: works, proof: "deferred:A9, a record saved with questions as strings plans as today" }
-  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A13; a look retried after a failure or a budget park reads the accepted answer again" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A13, A17; a look retried after a failure or a budget park reads the accepted answer again" }
   - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8, the testkit world's conversation answers an ask as scripted" }
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }

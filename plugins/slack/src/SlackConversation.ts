@@ -348,7 +348,7 @@ export class SlackConversation implements Conversation {
   }
 
   /** The first complete answer is immutable once seen, even if its reaction changes later. */
-  private rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string } | undefined {
+  protected rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string } | undefined {
     try {
       const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown; messageTs?: unknown };
       return Array.isArray(state.chosen) && state.chosen.every((chosen) => typeof chosen === "string") && typeof state.messageTs === "string" ? { chosen: state.chosen, messageTs: state.messageTs } : undefined;

@@ -5,8 +5,12 @@ import { readAs } from "../src/discussion.js";
 import { Policy } from "../src/observation.js";
 import { observation, policy, record } from "@amykit/test-fixtures";
 
-const FIRST_FALSIFIER = "a_later_answer_replaces_the_first";
-const REPLAY_FALSIFIER = "a_replay_loses_the_answer";
+const POLICY_FALSIFIER = "an_answer_reads_as_policy_says";
+
+/** The mutation the policy property must reject: a reader that ignores the answer a reply carries. */
+const read: typeof readAs = process.env.SF_FALSIFIER === POLICY_FALSIFIER
+  ? (said, policy) => readAs({ ...said, answer: undefined }, policy)
+  : readAs;
 
 const ASK = "Which currency?";
 const asked = {
@@ -15,10 +19,6 @@ const asked = {
   askedQuestions: [ASK],
   at: "2026-09-03T10:00:00.000Z",
 };
-
-function falsifier(): string | undefined {
-  return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.SF_FALSIFIER;
-}
 
 function selected(sequence: readonly string[]) {
   const decision = plan(record("CLARIFYING", { triage: asked }), observation({
@@ -37,30 +37,28 @@ function selected(sequence: readonly string[]) {
 }
 
 describe("closed-answer workflow policy", () => {
-  it("a_later_answer_replaces_the_first", () => {
-    fc.assert(fc.property(
-      fc.uniqueArray(fc.constantFrom("BRL", "USD", "EUR"), { minLength: 2, maxLength: 3 }),
-      (answers) => {
-        const expected = falsifier() === FIRST_FALSIFIER ? answers.at(-1)! : answers[0]!;
-        expect(selected(answers)).toContain(`ada answered: ${ASK}: ${expected}`);
-      },
-    ), { numRuns: 200 });
+  // Which answer an adapter hands over is proven against Slack and Telegram
+  // (plugins/*/tests/asks.property.test.ts). Here, only how the planner
+  // reads what it is handed.
+  it("plans the first of several answers to one question", () => {
+    for (const answers of [["BRL", "USD"], ["USD", "EUR", "BRL"]]) {
+      expect(selected(answers)).toContain(`ada answered: ${ASK}: ${answers[0]}`);
+    }
   });
 
-  it("a_replay_loses_the_answer", () => {
-    fc.assert(fc.property(fc.constantFrom("BRL", "USD", "EUR"), (choice) => {
+  it("plans a replayed answer the same way twice", () => {
+    for (const choice of ["BRL", "USD", "EUR"]) {
       const replayed = selected([choice]);
-      const expected = falsifier() === REPLAY_FALSIFIER ? [] : replayed;
-      expect(selected([choice])).toEqual(expected);
+      expect(selected([choice])).toEqual(replayed);
       expect(replayed).toContain(`ada answered: ${ASK}: ${choice}`);
-    }), { numRuns: 200 });
+    }
   });
 
   it("an_answer_reads_as_policy_says", () => {
     fc.assert(fc.property(fc.constantFrom("answer", "discuss") as fc.Arbitrary<Policy["conversation"]>, (conversation) => {
       const policy = { conversation } as Policy;
-      expect(readAs({ author: "ada", body: "", at: "now", fromAmy: false, answer: { ask: "currency", chosen: ["BRL"] } }, policy)).toBe("decision");
-      expect(readAs({ author: "ada", body: "typed", at: "now", fromAmy: false }, policy)).toBe(
+      expect(read({ author: "ada", body: "", at: "now", fromAmy: false, answer: { ask: "currency", chosen: ["BRL"] } }, policy)).toBe("decision");
+      expect(read({ author: "ada", body: "typed", at: "now", fromAmy: false }, policy)).toBe(
         conversation === "answer" ? "decision" : "discussion",
       );
     }), { numRuns: 200 });

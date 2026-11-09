@@ -105,7 +105,7 @@ interface TelegramUpdate {
 }
 
 /** A posted structured ask and its durable selection/acceptance state. */
-interface FiledAsk {
+export interface FiledAsk {
   ask: Ask;
   messageId: number;
   at: string;
@@ -432,7 +432,7 @@ export class TelegramConversation implements Conversation {
     writeJson(path.join(directory, "asks", String(topic), `${askKey(state.ask.id)}.json`), state);
   }
 
-  private askedUnder(topic: number): FiledAsk[] {
+  protected askedUnder(topic: number): FiledAsk[] {
     const directory = path.join(this.options.directory, "asks", String(topic));
     try {
       return fs.readdirSync(directory).filter((name) => name.endsWith(".json")).flatMap((name) => {
