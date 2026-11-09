@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -51,11 +52,17 @@ export type Claimed =
   | { readonly held: true }
   | { readonly held: false; readonly holders: readonly string[]; readonly ahead: number };
 
-const LOCK_STALE_MS = 10_000;
-const LOCK_TRIES = 2_000;
+/** How long a lock with no owner written yet may stand before its maker is taken for dead. */
+const UNOWNED_STALE_MS = 10_000;
+/** How long a claim waits for another process's lock before saying it stayed taken. */
+const LOCK_PATIENCE_MS = 10_000;
 
 export class Leases {
-  constructor(private readonly root: string, private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly root: string,
+    private readonly now: () => Date = () => new Date(),
+    private readonly patienceMs: number = LOCK_PATIENCE_MS,
+  ) {}
 
   /**
    * Takes a seat, or joins the queue for one. A holder claiming again
@@ -183,7 +190,7 @@ export class Leases {
   private locked<T>(resource: string, change: (ledger: Ledger, now: number) => T): T {
     fs.mkdirSync(this.root, { recursive: true });
     const lock = `${this.file(resource)}.lock`;
-    acquire(lock);
+    const stamp = acquire(lock, this.patienceMs);
     try {
       const ledger = this.read(resource);
       const now = this.now().getTime();
@@ -194,7 +201,7 @@ export class Leases {
       fs.renameSync(temporary, this.file(resource));
       return answer;
     } finally {
-      fs.rmSync(lock, { recursive: true, force: true });
+      release(lock, stamp);
     }
   }
 }
@@ -212,22 +219,91 @@ function queue(ledger: Ledger): string[] {
     .map(([holder]) => holder);
 }
 
-function acquire(lock: string): void {
-  for (let attempt = 0; attempt < LOCK_TRIES; attempt += 1) {
+/** Who holds a lock: the process, and a stamp no other acquisition shares. */
+interface Owner {
+  readonly pid: number;
+  readonly stamp: string;
+}
+
+const OWNER = "owner.json";
+
+/**
+ * Takes the lock: a directory only one process can make, naming its owner
+ * inside. A lock whose owner died is reclaimed — never by age alone, since a
+ * slow owner is still an owner — and only under the recovery lock, after
+ * reading again that it is still that dead owner's: two processes finding
+ * the same dead lock can then never remove the lock one of them just took.
+ */
+function acquire(lock: string, patienceMs: number): string {
+  const stamp = `${process.pid}-${randomUUID()}`;
+  for (const until = Date.now() + patienceMs; Date.now() < until;) {
     try {
       fs.mkdirSync(lock);
-      return;
+      fs.writeFileSync(path.join(lock, OWNER), JSON.stringify({ pid: process.pid, stamp } satisfies Owner));
+      return stamp;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      // A daemon killed while holding the lock leaves it behind; past this
-      // age nobody is still writing under it.
-      try {
-        if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) fs.rmSync(lock, { recursive: true, force: true });
-      } catch {
-        // Gone between the two calls: the next attempt takes it.
-      }
+      const dead = deadOwner(lock);
+      if (dead !== undefined) recover(lock, dead);
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
     }
   }
   throw new Error(`the lease lock ${lock} stayed taken; remove it if no amy is running`);
+}
+
+/** Lets go of the lock, only when it is still this acquisition's. */
+function release(lock: string, stamp: string): void {
+  if (ownerOf(lock)?.stamp === stamp) fs.rmSync(lock, { recursive: true, force: true });
+}
+
+function ownerOf(lock: string): Owner | undefined {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(lock, OWNER), "utf-8")) as Owner;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The stamp of a lock whose owner is dead, or undefined while it lives. A
+ * lock with no owner written yet is its maker's for a while, then dead: the
+ * maker died between making it and naming itself.
+ */
+function deadOwner(lock: string): string | undefined {
+  const owner = ownerOf(lock);
+  if (owner) return alive(owner.pid) ? undefined : owner.stamp;
+  try {
+    return Date.now() - fs.statSync(lock).mtimeMs > UNOWNED_STALE_MS ? "" : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** Removes a dead owner's lock, under the recovery lock, only if it is still that owner's. */
+function recover(lock: string, dead: string): void {
+  const guard = `${lock}.recovery`;
+  try {
+    fs.mkdirSync(guard);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    // A recoverer that died here leaves the guard; it is its own process's, and
+    // nothing but a recoverer ever takes it.
+    if (deadOwner(guard) !== undefined) fs.rmSync(guard, { recursive: true, force: true });
+    return;
+  }
+  try {
+    fs.writeFileSync(path.join(guard, OWNER), JSON.stringify({ pid: process.pid, stamp: randomUUID() } satisfies Owner));
+    if ((ownerOf(lock)?.stamp ?? "") === dead && deadOwner(lock) === dead) fs.rmSync(lock, { recursive: true, force: true });
+  } finally {
+    fs.rmSync(guard, { recursive: true, force: true });
+  }
 }

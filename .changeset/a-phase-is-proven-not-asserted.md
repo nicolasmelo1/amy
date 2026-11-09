@@ -4,6 +4,7 @@
 "@amykit/plugin-agent-desktop": minor
 "@amykit/plugin-terminal": minor
 "@amykit/workflow-feature-grooming": minor
+"@amykit/cli": minor
 ---
 
 **A phase is proven, not asserted.**
@@ -43,3 +44,8 @@ brief settled. It no longer mounts the `grooming-source` and
 `grooming-tracker` ports, which nothing read; `groomFeature` is unchanged.
 `examples/a-whole-project` walks brief, work and proof with the three shipped
 workflows.
+
+A project whose later phase asks the brief something now waits in `GROOMED`
+after BRIEF until every phase's brief check is green. Before, the brief phase's
+own check was enough to start the work, so a brief with no scenario reached
+WORK and was only caught once it got to PROVE.

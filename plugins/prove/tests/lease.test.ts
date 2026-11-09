@@ -1,6 +1,8 @@
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Leases } from "../src/lease.js";
 import { holderOf, leasesAt } from "../src/plugin.js";
@@ -124,5 +126,56 @@ describe("a resource more than one run holds", () => {
     expect(world.ran.filter((one) => one === "down")).toEqual([]);
     await walk(world, mounted, b.record);
     expect(world.ran.filter((one) => one === "down")).toEqual(["down"]);
+  });
+});
+
+describe("a lease lock left by a daemon that died holding it", () => {
+  const source = path.resolve(import.meta.dirname, "..", "src", "lease.ts");
+
+  /** A pid that was alive a moment ago and is not now. */
+  function deadPid(): number {
+    const child = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf-8" });
+    return Number(child.stdout);
+  }
+
+  it("is reclaimed by one process at a time: processes racing on it never hold a seat twice", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lock-race-"));
+    const lock = path.join(root, "account.json.lock");
+    fs.mkdirSync(lock);
+    fs.writeFileSync(path.join(lock, "owner.json"), JSON.stringify({ pid: deadPid(), stamp: "dead" }));
+    const script = path.join(root, "claim.ts");
+    fs.writeFileSync(script, [
+      `import { Leases } from ${JSON.stringify(pathToFileURL(source).href)};`,
+      "const [root, holder, start] = process.argv.slice(2);",
+      "while (Date.now() < Number(start)) {}",
+      "const claimed = new Leases(root).claim({ resource: \"account\", capacity: 1, holder, priority: 0, ttlMs: 60_000 });",
+      "process.stdout.write(claimed.held ? \"held\" : \"waiting\");",
+    ].join("\n"));
+    const start = Date.now() + 1500;
+    const racers = Array.from({ length: 6 }, (_, at) => new Promise<string>((resolve, reject) => {
+      const child = spawn(process.execPath, ["--import", "tsx", script, root, `run-${at}`, String(start)], { cwd: path.resolve(import.meta.dirname, "..", "..", "..") });
+      let out = "";
+      child.stdout.on("data", (chunk: Buffer) => { out += chunk.toString(); });
+      child.on("error", reject);
+      child.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`racer exited ${code}`))));
+    }));
+
+    const answers = await Promise.all(racers);
+
+    expect(answers.filter((one) => one === "held")).toHaveLength(1);
+    expect(new Leases(root).holders("account")).toHaveLength(1);
+    expect(fs.existsSync(lock)).toBe(false);
+  }, 30_000);
+
+  it("is never reclaimed while its owner lives, however long it has stood", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lock-live-"));
+    const lock = path.join(root, "account.json.lock");
+    fs.mkdirSync(lock);
+    fs.writeFileSync(path.join(lock, "owner.json"), JSON.stringify({ pid: process.pid, stamp: "mine" }));
+    const old = new Date(Date.now() - 60_000);
+    fs.utimesSync(lock, old, old);
+
+    expect(() => new Leases(root, () => new Date(), 200).claim({ resource: "account", capacity: 1, holder: "x", priority: 0, ttlMs: 1000 })).toThrow("stayed taken");
+    expect(JSON.parse(fs.readFileSync(path.join(lock, "owner.json"), "utf-8"))).toEqual({ pid: process.pid, stamp: "mine" });
   });
 });

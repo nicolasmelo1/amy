@@ -127,7 +127,7 @@ const child = (record: WorkRecord): WorkRecord => record.calls![record.calling!]
 describe("examples/a-whole-project", () => {
   it("mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow", async () => {
     const machine = await mounted();
-    expect(machine.workflow.states).toEqual(["BRIEF", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
+    expect(machine.workflow.states).toEqual(["BRIEF", "GROOMED", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
     expect([brief.name, work.name, prove.name]).toEqual(["@amykit/workflow-feature-grooming", "@amykit/workflow-ticket-to-qa", "@amykit/plugin-prove"]);
 
     let record = machine.runtime.newRecord(UNIT, new Date("2026-11-08T12:00:00.000Z"));
@@ -138,8 +138,10 @@ describe("examples/a-whole-project", () => {
     expect(child(record).state).toBe("GROOMING");
 
     machine.briefs.set(UNIT, GROOMED);
-    for (let step = 0; step < 6 && record.state === "BRIEF"; step += 1) record = await look(machine, record);
-    walked.push(record.state);
+    for (let step = 0; step < 6 && record.state !== "WORK"; step += 1) {
+      record = await look(machine, record);
+      if (!walked.includes(record.state)) walked.push(record.state);
+    }
     expect(record.state).toBe("WORK");
     expect((record as WorkRecord & { brief?: unknown }).brief).toEqual({ criteria: ["C1"] });
 
@@ -147,7 +149,7 @@ describe("examples/a-whole-project", () => {
     // the ticket has reached it, and the project moves on from where it ends.
     record = { ...record, calls: { ...record.calls, [record.calling!]: { ...child(record), state: "DONE" } } };
     for (let step = 0; step < 4 && record.state === "WORK"; step += 1) record = await look(machine, record);
-    walked.push(record.state);
+    if (!walked.includes(record.state)) walked.push(record.state);
     expect(record.state).toBe("PROVE");
     expect(child(record).input).toEqual({ criteria: ["C1"], priority: 0 });
 
@@ -156,10 +158,24 @@ describe("examples/a-whole-project", () => {
       if (!walked.includes(record.state)) walked.push(record.state);
     }
 
-    expect(walked).toEqual(["BRIEF", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
+    expect(walked).toEqual(["BRIEF", "GROOMED", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
     expect(machine.opened).toEqual(["https://shop.localhost/invoices/1"]);
     expect((record as WorkRecord & { prove?: { criteria?: unknown } }).prove?.criteria).toEqual(["C1"]);
     expect(new ProofStore(path.join(machine.artifacts, "proofs")).standing(UNIT, { codeDigest: null, briefRevision: 4 }).proven).toBe(true);
+  });
+
+  it("does not start the work while the brief names no scenario: it waits in GROOMED until the proving phase's check is green", async () => {
+    const machine = await mounted();
+    machine.briefs.set(UNIT, { ...GROOMED, sections: GROOMED.sections.filter((one) => one.name !== "Scenario") });
+    let record = machine.runtime.newRecord(UNIT, new Date("2026-11-08T12:00:00.000Z"));
+    for (let step = 0; step < 8; step += 1) record = await look(machine, record);
+
+    expect(record.state).toBe("GROOMED");
+    expect(record.calls ?? {}).not.toHaveProperty(`${UNIT}/WORK#1`);
+
+    machine.briefs.set(UNIT, GROOMED);
+    record = await look(machine, record);
+    expect(record.state).toBe("WORK");
   });
 
   it("asks the brief for the proving phase's scenario, and the check is green on the groomed one", async () => {

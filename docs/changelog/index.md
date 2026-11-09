@@ -68,7 +68,7 @@ parent's identifier, and a test holds a child and its feature to one name.
 
 ### **A phase is proven, not asserted.**
 
-`minor` · `@amykit/plugin-agent-browser`, `@amykit/plugin-agent-desktop`, `@amykit/plugin-prove`, `@amykit/plugin-terminal`, `@amykit/workflow-feature-grooming`
+`minor` · `@amykit/cli`, `@amykit/plugin-agent-browser`, `@amykit/plugin-agent-desktop`, `@amykit/plugin-prove`, `@amykit/plugin-terminal`, `@amykit/workflow-feature-grooming`
 
 A project's `prove/` phase used to have nothing to call: passing the tests a
 branch can run was the only evidence that work held, and it isn't evidence.
@@ -105,6 +105,11 @@ brief settled. It no longer mounts the `grooming-source` and
 `grooming-tracker` ports, which nothing read; `groomFeature` is unchanged.
 `examples/a-whole-project` walks brief, work and proof with the three shipped
 workflows.
+
+A project whose later phase asks the brief something now waits in `GROOMED`
+after BRIEF until every phase's brief check is green. Before, the brief phase's
+own check was enough to start the work, so a brief with no scenario reached
+WORK and was only caught once it got to PROVE.
 
 ### A plan is a declaration. The plan a note becomes is asked for as a YAML declaration between `---` fences, its title and a few lines of why, because every plan in the repository is one now and `L4.PLAN_IS_A_LINKED_DECLARATION` refuses prose. Before, the prompt only said to follow the plans already there, which taught the old shape to a draft written against the new rule.
 
