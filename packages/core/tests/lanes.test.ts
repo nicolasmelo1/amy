@@ -18,14 +18,9 @@ describe("lanes hold what they use", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
   let host: HostServices;
 
   beforeEach(() => {
-    // A hook running this suite exports GIT_INDEX_FILE and friends; these
-    // repositories must use their own.
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-"));
     workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
@@ -45,7 +40,6 @@ describe("lanes hold what they use", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -274,12 +268,9 @@ describe("a lane that waits on a branch, on its way out", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
   let host: HostServices;
 
   beforeEach(() => {
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-out-"));
     workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
@@ -299,7 +290,6 @@ describe("a lane that waits on a branch, on its way out", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -327,12 +317,9 @@ describe("lanes that share one checkout", () => {
   let root: string;
   let checkout: string;
   let bare: string;
-  let saved: NodeJS.ProcessEnv;
   let host: HostServices;
 
   beforeEach(() => {
-    saved = { ...process.env };
-    for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete process.env[name];
     root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lanes-shared-"));
     workplace.root = path.join(root, "checkouts");
     bare = path.join(root, "widgets.git");
@@ -352,7 +339,6 @@ describe("lanes that share one checkout", () => {
   });
 
   afterEach(() => {
-    process.env = saved;
     fs.rmSync(root, { recursive: true, force: true });
   });
 
