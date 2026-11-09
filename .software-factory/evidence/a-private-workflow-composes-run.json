@@ -9,7 +9,7 @@
   "observed": {
     "assertions_run": 53,
     "assertions_failed": 0,
-    "node": "v22.22.1"
+    "node": "v22.22.2"
   },
   "assertions": [
     {
@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-compose-8yQRxz/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-compose-X0utV3/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "ad63d049725d321a49a09c70c329863002ad247c",
-        "cut": "ad63d049725d321a49a09c70c329863002ad247c"
+        "tip": "da9e418d33d1fe8e5cdaa2ab6573bd0c643553ae",
+        "cut": "da9e418d33d1fe8e5cdaa2ab6573bd0c643553ae"
       }
     },
     {
@@ -329,7 +329,7 @@
       "status": "passed",
       "detail": {
         "said": [
-          "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n- Which currency should the invoice total be shown in?",
+          "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n1. Should the invoice total use BRL?\n   1. approve\n   2. reject",
           "Open a pull request for BILL-4021 in acme/widgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: Show the currency on the invoice total\". I carry on once I see it.",
           "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n- Which currency should the credit note total be shown in?",
           "Resolve the review thread on invoice.md in acme/widgets: the change answered it. (This file has no trailing newline.)",
@@ -411,11 +411,11 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "8b31d8765d34ac4ff5cf3ef97229deef7170eb91"
+          "head": "fcd5d5af4fe30711d1cea5f36a8a7d4f788b00e3"
         },
         {
           "repo": "acme/gadgets",
-          "head": "74b7f1c7fa66863534051886c9bd50cdba5349c2"
+          "head": "ed6df3751c92b12354802c922d66ed52de575416"
         }
       ]
     },

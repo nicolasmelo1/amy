@@ -652,7 +652,7 @@ function reactionsFor(ask: Ask): readonly string[] {
 
 function renderAsk(text: string, ask: Ask, fallback: boolean): string {
   const answers = ask.answers.map((answer, index) => `${fallback ? `${index + 1}.` : ask.form === "approval" ? (index === 0 ? "✅" : "❌") : `${index + 1}️⃣`} ${answer}`);
-  return [text, ask.prompt, ...answers].filter(Boolean).join("\n");
+  return [text === ask.prompt ? "" : text, ask.prompt, ...answers].filter(Boolean).join("\n");
 }
 
 /**

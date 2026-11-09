@@ -626,6 +626,9 @@ function numberedQuestions(questions: readonly import("./agent-steps.js").Triage
 }
 
 function askFor(question: Exclude<import("./agent-steps.js").TriageQuestion, string>): Ask {
+  if (question.answers[0] === "approve" && question.answers[1] === "reject" && question.answers.length === 2) {
+    return { id: question.prompt, prompt: question.prompt, form: "approval", answers: ["approve", "reject"] };
+  }
   return { id: question.prompt, prompt: question.prompt, form: "choice", answers: question.answers };
 }
 

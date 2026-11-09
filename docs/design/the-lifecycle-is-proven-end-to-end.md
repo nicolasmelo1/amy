@@ -104,17 +104,19 @@ drives, not a field existing somewhere in the middle.
 - [x] The label the tracker supplied reaches the same prompt, beside the
       body — a label is what the team says the ticket *is*
       (proof: assertion:lifecycle.triage.reads_the_label_the_tracker_supplied)
-- [x] A ticket that leaves a question open gets that question asked on the
-      ticket itself
+- [x] A ticket that leaves a question open gets that question posted in its
+      configured conversation
       (proof: assertion:lifecycle.a_blocking_question_is_asked_on_the_ticket)
-- [x] The operator is told where to answer, in a file that outlives the
-      notification
+- [x] The operator is shown the answers available for that question
       (proof: assertion:lifecycle.the_operator_is_told_where_to_answer)
 - [x] Every waiting state makes no move at all until somebody else moves
       (proof: assertion:lifecycle.a_waiting_state_makes_no_move_until_the_world_does)
-- [x] An answer on the ticket, from somebody other than the machine itself,
+- [x] An answer in the conversation, from somebody other than the machine itself,
       releases the work
       (proof: assertion:lifecycle.the_answer_on_the_ticket_releases_the_work)
+- [x] A stand-in Slack ✅ on an ask moves the ticket out of `CLARIFYING`, and
+      triage reads the chosen answer beside the question it answered
+      (proof: assertion:lifecycle.an_ask_is_answered_by_a_press)
 - [x] The answer does its work by being read: the clearing look carries the
       conversation, so the second triage judges the ticket as amended
       (proof: assertion:clarifying.clears_when_the_question_is_answered)

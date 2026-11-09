@@ -233,12 +233,19 @@ describe("asking structured triage questions", () => {
       outcomes: {},
     } as never, {
       type: "ask-question",
-      questions: [{ prompt: "Which currency?", answers: ["BRL", "USD"] }],
+      questions: [
+        { prompt: "Which currency?", answers: ["BRL", "USD"] },
+        { prompt: "Use BRL?", answers: ["approve", "reject"] },
+      ],
     });
 
-    expect(post).toHaveBeenCalledWith(thread, {
+    expect(post).toHaveBeenNthCalledWith(1, thread, {
       text: "Which currency?",
       ask: { id: "Which currency?", prompt: "Which currency?", form: "choice", answers: ["BRL", "USD"] },
+    });
+    expect(post).toHaveBeenNthCalledWith(2, thread, {
+      text: "Use BRL?",
+      ask: { id: "Use BRL?", prompt: "Use BRL?", form: "approval", answers: ["approve", "reject"] },
     });
   });
 

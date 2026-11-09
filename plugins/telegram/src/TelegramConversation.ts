@@ -211,7 +211,9 @@ export class TelegramConversation implements Conversation {
     }
     let sent = "";
     const topic = topicOf(thread);
-    const text = message.ask ? [message.text, message.ask.prompt].filter(Boolean).join("\n") : message.text;
+    const text = message.ask
+      ? [message.text === message.ask.prompt ? "" : message.text, message.ask.prompt].filter(Boolean).join("\n")
+      : message.text;
     const rendered = parts(text);
     for (const [index, part] of rendered.entries()) {
       const result = await this.api.call<{ message_id: number }>("sendMessage", {
@@ -344,37 +346,52 @@ export class TelegramConversation implements Conversation {
       await this.api.call("answerCallbackQuery", { callback_query_id: callback.id });
       return;
     }
+    const context = this.callbackContext(callback);
+    const text = context ? await this.applyCallback(context, callback.data) : "this question is no longer open";
+    await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
+  }
+
+  private callbackContext(callback: TelegramCallbackQuery): { message: TelegramMessage; topic: number; directory: string } | undefined {
     const message = callback.message;
     const topic = message?.message_thread_id;
-    const key = message && topic !== undefined ? `${message.chat.id}-${topic}` : undefined;
-    const owner = key ? readJson<Owner>(path.join(this.shared(), "owners", `${key}.json`)) : undefined;
-    const place = owner && topic !== undefined ? this.inboxOf(owner, topic) : undefined;
-    let text: string | undefined;
-    if (!place || !message || topic === undefined) text = "this question is no longer open";
-    else {
-      const parsed = callback.data ? parseCallback(callback.data) : undefined;
-      const state = parsed ? this.askByKey(place.directory, topic, parsed.key) : undefined;
-      if (!state || state.messageId !== message.message_id || state.accepted) text = "this question is no longer open";
-      else if (parsed?.send) {
-        if (state.ask.form !== "choices") text = "this question is no longer open";
-        else {
-          state.accepted = { at: new Date().toISOString(), chosen: state.selected.map((index) => state.ask.answers[index]!).filter(Boolean) };
-          this.writeAsk(place.directory, topic, state);
-          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
-        }
-      } else if (parsed && parsed.index !== undefined && parsed.index >= 0 && parsed.index < state.ask.answers.length) {
-        if (state.ask.form === "choices") {
-          state.selected = state.selected.includes(parsed.index) ? state.selected.filter((index) => index !== parsed.index) : [...state.selected, parsed.index].sort((a, b) => a - b);
-          this.writeAsk(place.directory, topic, state);
-          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: keyboardFor(state.ask, parsed.key, state.selected) });
-        } else {
-          state.accepted = { at: new Date().toISOString(), chosen: [state.ask.answers[parsed.index]!] };
-          this.writeAsk(place.directory, topic, state);
-          await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
-        }
-      } else text = "this question is no longer open";
+    if (!message || topic === undefined) return undefined;
+    const owner = readJson<Owner>(path.join(this.shared(), "owners", `${message.chat.id}-${topic}.json`));
+    const place = owner ? this.inboxOf(owner, topic) : undefined;
+    return place ? { message, topic, directory: place.directory } : undefined;
+  }
+
+  private async applyCallback(context: { message: TelegramMessage; topic: number; directory: string }, data: string | undefined): Promise<string | undefined> {
+    const parsed = data ? parseCallback(data) : undefined;
+    const state = parsed ? this.askByKey(context.directory, context.topic, parsed.key) : undefined;
+    if (!parsed || !state || state.messageId !== context.message.message_id || state.accepted) return "this question is no longer open";
+    if (parsed.send) return this.sendChoices(context, state);
+    if (parsed.index === undefined || parsed.index < 0 || parsed.index >= state.ask.answers.length) return "this question is no longer open";
+    return this.choose(context, state, parsed.index, parsed.key);
+  }
+
+  private async sendChoices(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk): Promise<string | undefined> {
+    if (state.ask.form !== "choices") return "this question is no longer open";
+    state.accepted = { at: new Date().toISOString(), chosen: state.selected.map((index) => state.ask.answers[index]!).filter(Boolean) };
+    this.writeAsk(context.directory, context.topic, state);
+    await this.closeKeyboard(context.message);
+    return undefined;
+  }
+
+  private async choose(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, index: number, key: string): Promise<string | undefined> {
+    if (state.ask.form !== "choices") {
+      state.accepted = { at: new Date().toISOString(), chosen: [state.ask.answers[index]!] };
+      this.writeAsk(context.directory, context.topic, state);
+      await this.closeKeyboard(context.message);
+      return undefined;
     }
-    await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
+    state.selected = state.selected.includes(index) ? state.selected.filter((selected) => selected !== index) : [...state.selected, index].sort((left, right) => left - right);
+    this.writeAsk(context.directory, context.topic, state);
+    await this.api.call("editMessageReplyMarkup", { chat_id: context.message.chat.id, message_id: context.message.message_id, reply_markup: keyboardFor(state.ask, key, state.selected) });
+    return undefined;
+  }
+
+  private async closeKeyboard(message: TelegramMessage): Promise<void> {
+    await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
   }
 
   private askFile(topic: number, id: string): string {

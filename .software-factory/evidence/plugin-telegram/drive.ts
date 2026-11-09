@@ -102,7 +102,7 @@ extraPlugins:
     .filter((call) => /commentCreate/.test(call.query ?? "") && /currency/i.test(call.variables?.input?.body ?? ""));
   record("telegram.a_question_reaches_its_own_topic",
     Object.keys(asked.topics).length === 2 &&
-      asked.sent.some((message) => message.topic === topicOf(TITLE) && /currency/i.test(message.text)) &&
+      asked.sent.some((message) => message.topic === topicOf(TITLE) && message.text.includes("Should the invoice total use BRL?")) &&
       asked.sent.some((message) => message.topic === topicOf(OTHER_TITLE)) &&
       questionsOnTracker.length === 0,
     { topics: asked.topics, sent: asked.sent, questionsOnTracker: questionsOnTracker.length, states: [stateOf(TICKET), stateOf(OTHER)] });

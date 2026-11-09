@@ -20,6 +20,7 @@ import {
   BRANCH,
   BRIEF,
   BRIEF_UUID,
+  SLACK_OPERATOR,
   OTHER_REPO,
   PAST_IMPLEMENTATION,
   REPO,
@@ -137,6 +138,13 @@ interface GateRun {
   head: string;
 }
 
+interface SlackMessage {
+  ts: string;
+  text: string;
+  metadata?: { event_type?: string; event_payload?: { ask?: { prompt?: string; answers?: string[] } } };
+  reactions?: { name: string; users: string[]; count: number }[];
+}
+
 interface GhCall {
   at: string;
   argv: string[];
@@ -203,6 +211,7 @@ function amy(root: string, args: string[]): Said {
       AMY_E2E_WORLD: path.join(root, "world"),
       AMY_E2E_ORIGINS: path.join(root, "origins"),
       AMY_E2E_TSX: TSX,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${path.join(source, "slack-fetch.mjs")}`.trim(),
     },
   });
 
@@ -290,28 +299,23 @@ function reactions(): Record<string, Reaction> {
 
   return {
     CLARIFYING(root) {
-      const issue = found(issueOf(root, TICKET), TICKET);
-
-      // First held look: the colleague answers the question amy asked on the
-      // ticket. Only once — a second held look must find the answer already
-      // there, which is what puts a genuine wait in front of every later
-      // look and would catch the machine re-asking on the way past.
-      const answered = issue.comments.some(
-        (entry) => entry.userId === "u-owner" && entry.body.includes("BRL"),
-      );
-      if (answered) return null;
-
-      const asked = issue.comments.filter((entry) => entry.userId === "u-amy");
-      if (asked.length === 0) return null;
-
-      comment(root, "u-owner", "In BRL, the same as the rest of the invoice.");
+      // First held look: the configured Slack operator presses the ask amy
+      // posted. The reaction is on the stand-in Slack message, never a
+      // shortcut into the workflow record.
+      const slack = read<{ messages: { metadata?: { event_type?: string }; reactions?: { name: string; users: string[]; count: number }[] }[] }>(path.join(root, "world", "slack.json"));
+      const ask = slack.messages.find((message) => message.metadata?.event_type === "amy_ask");
+      if (!ask || ask.reactions?.some((reaction) => reaction.name === "white_check_mark" && reaction.users.includes(SLACK_OPERATOR))) return null;
+      const reaction = found(ask.reactions?.find((entry) => entry.name === "white_check_mark"), "Slack approval reaction");
+      reaction.users.push(SLACK_OPERATOR);
+      reaction.count = reaction.users.length;
+      write(path.join(root, "world", "slack.json"), slack);
       const briefFile = path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`);
       const brief = read<Brief>(briefFile);
       found(brief.sections[0], "brief section").body = "Keep BRL beside the total; do not round the total.";
       brief.updatedAt = new Date().toISOString();
       brief.revision += 1;
       write(briefFile, brief);
-      return "a colleague answered the question and revised the brief";
+      return "the Slack operator pressed ✅ for BRL and revised the brief";
     },
 
     // The bot posts a review even when it found nothing, so it is asked per
@@ -403,8 +407,13 @@ function reactions(): Record<string, Reaction> {
 
     ESCALATED(root, record) {
       if (repliedAfter(root, "u-owner", found(record.escalation, "escalation").askedAt)) return null;
-      comment(root, "u-owner", "Agreed, leave the rename out of this one. Do the rest.");
-      return "the owner settled the disagreement on the ticket";
+      const slackFile = path.join(root, "world", "slack.json");
+      const slack = read<{ nextTs: number; messages: { ts: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const ts = `${Math.max(slack.nextTs, Math.floor(Date.now() / 1000))}.000100`;
+      slack.nextTs = Number(ts.slice(0, ts.indexOf("."))) + 1;
+      slack.messages.push({ ts, user: SLACK_OPERATOR, text: "Agreed, leave the rename out of this one. Do the rest.", reactions: [] });
+      write(slackFile, slack);
+      return "the owner settled the disagreement in Slack";
     },
   };
 }
@@ -478,6 +487,7 @@ interface Settled {
   ghCalls: GhCall[];
   agentCalls: AgentCall[];
   trackerCalls: TrackerCall[];
+  slack: { messages: SlackMessage[] };
   brief: Brief;
   inbox: string[];
   branches: string[];
@@ -552,7 +562,7 @@ function morning(root: string, endpoint: string, engine: EngineChoice, trail: Lo
   const version = amy(root, ["--version"]);
   const init = amy(root, ["init"]);
 
-  configure(root, endpoint, engine);
+  configure(root, endpoint, engine, true);
   installPlugins(root);
 
   // The files the workflow brings arrive once the config names it: `init`
@@ -646,6 +656,7 @@ function settled(root: string): Settled {
     ghCalls: lines<GhCall>(path.join(root, "world", "gh.log")),
     agentCalls: lines<AgentCall>(path.join(root, "world", "claude.log")),
     trackerCalls: lines<TrackerCall>(path.join(root, "world", "tracker.log")),
+    slack: read<{ messages: SlackMessage[] }>(path.join(root, "world", "slack.json")),
     brief: read<Brief>(path.join(root, "home", ".amy", "briefs", `${BRIEF}.json`)),
     inbox: fs.existsSync(path.join(root, "home", ".amy", "needs-input"))
       ? fs.readdirSync(path.join(root, "home", ".amy", "needs-input"))
@@ -762,7 +773,12 @@ function walkThird(root: string, react: Record<string, Reaction>, moves: Move[])
     const move = third ? react[third.state]?.(root, third) : null;
     if (move && third) moves.push({ at: new Date().toISOString(), state: third.state, move });
     if (third?.state === "CLARIFYING" && !thirdAnswered) {
-      comment(root, "u-owner", "Credit notes are also in BRL.", TICKET_THREE);
+      const slackFile = path.join(root, "world", "slack.json");
+      const slack = read<{ nextTs: number; messages: { ts: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const nextTs = Math.max(slack.nextTs, Math.floor(Date.now() / 1000));
+      slack.nextTs = nextTs + 1;
+      slack.messages.push({ ts: `${nextTs}.000100`, user: SLACK_OPERATOR, text: "Credit notes are also in BRL.", reactions: [] });
+      write(slackFile, slack);
       thirdAnswered = true;
     }
   }
@@ -972,10 +988,6 @@ const ghApiCalls = (world: World, method: string, endpoint: RegExp): GhCall[] =>
 const issueIn = (world: World, identifier: string): Issue | undefined =>
   world.tracker.issues.find((issue) => issue.identifier === identifier);
 
-/** Reads the raw tracker state file, which the reactions need between looks. */
-const issueOf = (root: string, identifier: string): Issue | undefined =>
-  read<TrackerState>(trackerFile(root)).issues.find((issue) => issue.identifier === identifier);
-
 const statusOf = (world: World, identifier: string): string => {
   const issue = found(issueIn(world, identifier), identifier);
   const team = found(world.tracker.teams.find((candidate) => candidate.id === issue.teamId), issue.teamId);
@@ -1090,7 +1102,7 @@ function briefChecks(first: World): Check[] {
     ],
     [
       "brief.question_is_appended_with_its_work_id",
-      briefQuestions.some((question) => question.workId === TICKET && question.question.includes("currency")),
+      briefQuestions.some((question) => question.workId === TICKET && question.question === "Should the invoice total use BRL?"),
     ],
     [
       "brief.a_revision_between_ticks_reaches_self_review",
@@ -1111,8 +1123,9 @@ function briefChecks(first: World): Check[] {
 }
 
 function discoveryChecks(first: World): Check[] {
-  const questionAsked = issueIn(first, TICKET)?.comments.find(
-    (entry) => entry.userId === "u-amy" && entry.body.includes("currency"),
+  const questionAsked = first.slack.messages.find(
+    (message) => message.metadata?.event_type === "amy_ask" &&
+      message.metadata.event_payload?.ask?.prompt === "Should the invoice total use BRL?",
   );
 
   return [
@@ -1146,7 +1159,7 @@ function discoveryChecks(first: World): Check[] {
     ],
     [
       "lifecycle.the_operator_is_told_where_to_answer",
-      first.inbox.some((file) => file.includes(TICKET)),
+      Boolean(questionAsked?.metadata?.event_payload?.ask?.answers?.includes("approve")),
     ],
     [
       "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
@@ -1162,6 +1175,7 @@ function discoveryChecks(first: World): Check[] {
 
 function clarifyingChecks(first: World): Check[] {
   const reReadCall = agentCallsFor(first, "triage").find((call) => call.prompt.includes("answered:"));
+  const ask = first.slack.messages.find((message) => message.metadata?.event_type === "amy_ask");
 
   return [
     // The answer, and that it reached the agent rather than being re-asked.
@@ -1173,22 +1187,32 @@ function clarifyingChecks(first: World): Check[] {
       Boolean(
         reReadCall &&
           transitions(first).includes("CLARIFYING>READY") &&
-          reReadCall.prompt.includes("Ticket Owner answered:") &&
-          reReadCall.prompt.includes("BRL"),
+          reReadCall.prompt.includes("U0OWNER answered:") &&
+          reReadCall.prompt.includes("approve"),
+      ),
+    ],
+    [
+      "lifecycle.an_ask_is_answered_by_a_press",
+      Boolean(
+        ask?.metadata?.event_payload?.ask?.prompt === "Should the invoice total use BRL?" &&
+          ask.metadata.event_payload.ask.answers?.includes("approve") &&
+          ask.reactions?.some((reaction) => reaction.name === "white_check_mark" && reaction.users.includes(SLACK_OPERATOR)) &&
+          transitions(first).includes("CLARIFYING>READY") &&
+          reReadCall?.prompt.includes("Should the invoice total use BRL?") &&
+          reReadCall.prompt.includes("approve"),
       ),
     ],
     [
       "clarifying.does_not_ask_the_same_question_twice",
-      issueIn(first, TICKET)?.comments.filter((entry) => entry.userId === "u-amy").length === 1,
+      first.slack.messages.filter((message) => message.metadata?.event_type === "amy_ask" &&
+        message.metadata.event_payload?.ask?.prompt === "Should the invoice total use BRL?").length === 1,
     ],
     [
       "clarifying.ignores_its_own_comments",
       Boolean(
         reReadCall &&
-          reReadCall.prompt.includes("You asked:") &&
-          !reReadCall.prompt.slice(reReadCall.prompt.indexOf("You asked:")).includes(
-            "answered: You asked:",
-          ),
+          reReadCall.prompt.includes("U0OWNER answered:") &&
+          !reReadCall.prompt.includes("U0AMYBOT"),
       ),
     ],
 
@@ -1274,7 +1298,7 @@ function reviewChecks(first: World): Check[] {
     [
       "lifecycle.nobody_is_assigned_while_every_reviewer_is_at_the_ceiling",
       Boolean(ceilingHold?.said.includes("open review(s)")) &&
-        first.inbox.length >= 2 &&
+        first.slack.messages.some((message) => message.metadata?.event_type === "amy_ask") &&
         first.moves.some((move) => move.state === "REVIEWER_ASSIGNED"),
     ],
     [

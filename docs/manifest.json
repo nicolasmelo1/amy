@@ -1201,6 +1201,11 @@
         },
         {
           "depth": 3,
+          "title": "Questions can carry closed answers through the conversation adapters, and ticket-to-qa records a selected answer beside its question.",
+          "slug": "questions-can-carry-closed-answers-through-the-conversation-adapters-and-ticket-to-qa-records-a-selected-answer-beside-its-question"
+        },
+        {
+          "depth": 3,
           "title": "**Grooming reads the sections its workflow declares.**",
           "slug": "grooming-reads-the-sections-its-workflow-declares"
         },
@@ -6064,7 +6069,7 @@
           },
           {
             "name": "post",
-            "signature": "post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string>",
+            "signature": "post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string>",
             "doc": ""
           },
           {
@@ -10377,6 +10382,7 @@
           "lifecycle.the_operator_is_told_where_to_answer",
           "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
           "lifecycle.the_answer_on_the_ticket_releases_the_work",
+          "lifecycle.an_ask_is_answered_by_a_press",
           "clarifying.clears_when_the_question_is_answered",
           "clarifying.does_not_ask_the_same_question_twice",
           "clarifying.ignores_its_own_comments",
@@ -11732,6 +11738,30 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "closed-answers-reach-ticket-triage",
+        "title": "Questions can carry closed answers through the conversation adapters, and ticket-to-qa records a selected answer beside its question.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-telegram",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "grooming-reads-the-sections-its-workflow-declares",

@@ -31,6 +31,10 @@ sources:
   - { id: S28, kind: decision, said: "an accepted answer is sticky: Slack writes it to its state directory as Telegram writes each press, so a mark removed later does not undo it; S25's recompute stops once an ask is answered. Decided 2026-11-08" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
+  - docs/design/the-lifecycle-is-proven-end-to-end.md
+  - docs/development/the-gate.md
+  - docs/reference/contracts.md
+  - plugins/slack/tests/held-to-the-contract.ts
   - .software-factory/policy.yaml
   - packages/core/src/ports/Conversation.ts
   - packages/core/src/index.ts
@@ -59,6 +63,10 @@ touches:
   - packages/workflow-ticket-to-qa/tests/asks.property.test.ts
   - packages/workflow-testkit/src/world.ts
   - docs/concepts/ports.md
+  - registry/core.json
+  - registry/plugin-slack.json
+  - registry/plugin-telegram.json
+  - registry/workflow-ticket-to-qa.json
   - plans/every-endpoint-is-named-before-it-is-built.md
   - plans/a-conversation-before-the-work.md
   - plans/an-event-is-a-reason-to-look.md
@@ -73,7 +81,7 @@ criteria:
   - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S8] }
   - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
   - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
-  - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
+  - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21], done: true }
   - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike, a mark removed after the answer was accepted included", proof: "deferred:property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28] }
   - { id: A14, statement: "an ask whose answers are fewer than 2, more than 10, repeated, empty or longer than the medium's button label is posted as a plain question with no marks or keyboard", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S26] }
   - { id: A15, statement: "in Slack a keycap outside the ask's range, and ✅ on a single choice, are ignored: neither answers nor competes with an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S27] }

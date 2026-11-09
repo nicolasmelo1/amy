@@ -199,7 +199,7 @@ Declared in `packages/core/src/ports/Conversation.ts`.
 | Method | What it does |
 | :-- | :-- |
 | `open(workId: string, title: string): Promise<ThreadRef>` | Opens the work's remembered thread, creating it only on first use. |
-| `post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string>` |  |
+| `post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string>` |  |
 | `replies(thread: ThreadRef, since: string): Promise<Reply[]>` | Replies after `since`, oldest first. Files are readable local paths. |
 
 ### `EventLog`
