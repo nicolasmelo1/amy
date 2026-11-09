@@ -1,5 +1,5 @@
 ---
-base: 190e48a35f7b7cbf98d6a5597c6fafab6a4ea3d4
+base: 4482c7ece52bd28a54c1aa30ecbd133ba0310ef9
 sources:
   - { id: S1, kind: friction, said: "2026-11-04: amy asked in the work thread, and answering it meant typing out what a button would have said; the reply then had to be read as discussion or decision before anything moved" }
   - { id: S2, kind: decision, said: "a question can carry its answers: approve or reject, pick one, pick several. Wanted in every adapter that implements Conversation and can show it, not only the window; Slack and Telegram first, as early as possible. Decided 2026-11-05" }
