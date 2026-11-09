@@ -9,7 +9,7 @@ sources:
   - { id: S7, kind: decision, said: "editors: code <path> and cursor <path> run on the server's machine, so are offered only on the local socket, like the shell" }
   - { id: S8, kind: decision, said: "Diff is a primitive, so ui-frame already measures it in every renderer. The openers are ui-window's: the world's $EDITOR and code are fake commands recording the directory they started in, then exiting" }
   - { id: S9, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers the workplace domain (listOpeners, runOpener, openShell, writeShell, resizeShell, closeShell) and the view work.diff, flipped to delivered in surface.yaml in the same pull request" }
-  - { id: S10, kind: reference, ref: "plans/a-record-is-seen-everywhere.md", said: "the terminal renderer's half of the terminal opener (suspend for $EDITOR, resume on exit) ships with that plan, not this one" }
+  - { id: S10, kind: decision, said: "the terminal renderer's half of the editor opener ships here, with ui-opener: it suspends, runs $EDITOR or a shell in the record's checkout, and comes back on the same record. Moved 2026-11-09" }
   - { id: S11, kind: decision, said: "each harness is an opener its own plugin contributes: @amykit/plugin-claude opens claude, @amykit/plugin-codex opens codex, in the embedded terminal, in the checkout. Installed means offered; the core names no harness. Decided 2026-11-05" }
   - { id: S12, kind: decision, said: "the canvas has one 'Open in' control: the button opens the person's default, ui.opener in config.yaml; its menu lists every opener mounted and able to run where the window is. Decided 2026-11-05" }
   - { id: S13, kind: decision, said: "the diff opener opens the checkout against its base in the person's own diff tool (git difftool --dir-diff <base>...): code alone opens a clean tree, because amy has committed the work. Decided 2026-11-05" }
@@ -24,6 +24,7 @@ touches:
   - packages/cli/tests/ui-diff.test.ts
   - packages/cli/tests/ui-openers.test.ts
   - plugins/ui-shell/**
+  - plugins/ui-ink/**
   - plugins/claude/src/**
   - plugins/codex/src/**
   - packages/ui-conformance/src/**
@@ -38,6 +39,7 @@ criteria:
   - { id: A7, statement: "with the claude and codex plugins mounted, the Open in menu lists both, and either opens its harness in a terminal of its own in the checkout; with neither mounted, neither is listed", proof: "deferred:assertion:window.a_harness_opener_arrives_with_its_plugin", sources: [S11, S14] }
   - { id: A8, statement: "the Open in button opens ui.opener, and a ui.opener naming an opener nothing mounted is refused at boot by name, with the list of those that are", proof: "deferred:test:packages/cli/tests/ui-openers.test.ts", sources: [S12] }
   - { id: A9, statement: "the diff opener starts the configured diff tool on the checkout against its base, and writes nothing to the checkout", proof: "deferred:test:packages/cli/tests/ui-openers.test.ts", sources: [S13] }
+  - { id: A10, statement: "the editor opener suspends the terminal renderer, starts in the record's checkout, and returns to the same record when the editor exits", proof: "deferred:assertion:window.the_editor_returns_to_the_same_record", sources: [S10] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A3" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "reads the path the Worktree port answers and runs git diff read-only; nothing here takes a lease, moves a branch or commits" }
@@ -46,9 +48,9 @@ crosses:
 guarantee:
   - { holds: "the shell, host editors and harness openers are offered only on the local socket", not_against: "a process running as the same user, which can read the token and start a shell anyway" }
   - { holds: "the Diff tab and the diff opener run read-only and write nothing to the checkout", not_against: "uncommitted changes, which git diff <base>... does not show" }
+  - { holds: "the terminal returns to the same record when $EDITOR exits", not_against: "an $EDITOR returning before the edit ends, such as code without --wait" }
   - { holds: "each opener starts in the record's checkout", not_against: "a person's edits, or a harness they opened, racing the agent's run in the same checkout" }
 cut:
-  - "the terminal renderer's half (suspend the window for $EDITOR, resume on exit): ships with a-record-is-seen-everywhere (S10), the first slice that opens a record in the terminal"
   - "libghostty native (Metal) embedding: refused while the window is a webview; it is for a native app, if one is ever built"
   - "a harness opener for OpenCode or Pi: their own plugins contribute one the same way, when those plugins exist"
 exit: "from one record, a person reads its diff, opens it in their diff tool, and opens Claude Code and then Codex in two terminals from one Open in menu, never typing a path"

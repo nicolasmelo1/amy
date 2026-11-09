@@ -33,6 +33,7 @@ sources:
   - { id: S31, kind: decision, said: "every primitive has a terminal drawing: Diff a coloured unified diff, Timeline a list, StateMachine the workflow's states and labelled edges said in words, drawn from what the server parsed, never from Mermaid text" }
   - { id: S32, kind: decision, said: "a renderer only translates primitives, holding no view, snapshot or rule another renderer does not, so two renderers cannot disagree about what a record says" }
   - { id: S34, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "a UI check passes on structure first, then pixels within a threshold, then an agent; what none of them settles is unsupported, never a pass" }
+  - { id: S37, kind: code, ref: "plugins/terminal/src/plugin.ts", said: "terminal.screen answers text, rows and columns, no image; in a terminal the drawing is the grid. Pixels are the webview's and the desktop app's evidence" }
   - { id: S35, kind: decision, said: "the desktop app is driven by agent-desktop, with agent-browser joining its DevTools port for pixels; the menu bar by agent-desktop reading the menu as an item tree. Decided 2026-11-09" }
   - { id: S36, kind: decision, said: "a changed baseline is an approval: made with --approve, its lock in the same commit. Decided 2026-11-09" }
   - { id: S33, kind: decision, said: "the desktop renderer declares it draws menubar; the terminal and the web page do not, so their absence is a declaration the gate reads, not a disagreement it forgives" }
@@ -60,6 +61,7 @@ criteria:
   - { id: A3, statement: "each scenario reaches its surface only through a driver's operations (terminal.*, browser.*, desktop.*), as the proving plugin's steps call them", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S5, S7, S35] }
   - { id: A4, statement: "an example whose drawing lacks a text, a badge tone or a row its tree has fails on structure naming the example and the surface, whatever its pixels say", proof: "deferred:assertion:design.structure_comes_before_pixels", sources: [S8, S34] }
   - { id: A5, statement: "a drawing whose pixels differ from its approved baseline past the threshold, and that the agent cannot settle, is unsupported and keeps the gate red; nothing an agent says counts as an approval", proof: "deferred:assertion:design.no_agent_approves_a_baseline", sources: [S8, S34] }
+  - { id: A18, statement: "a terminal scenario is proven by its screen's text grid against an approved baseline grid; no pixel baseline is asked of the terminal, because terminal.screen reads text, rows and columns", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S37] }
   - { id: A6, statement: "a baseline changed without --approve, or without its lock in the same commit, fails the gate naming the file", proof: "deferred:assertion:design.a_baseline_is_approved_by_a_person", sources: [S36] }
   - { id: A7, statement: "`npm run design -- terminal Badge` draws every Badge example through the Ink renderer and nothing else; `npm run design -- web` serves one page of every example; `npm run design -- desktop` opens it in the desktop app", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S10, S11, S12] }
   - { id: A8, statement: "on a machine with no display, `npm run design` opens the terminal and web, says by name that the desktop cannot open here, and exits zero", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S13] }
@@ -75,7 +77,7 @@ criteria:
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A2, A4, A13, A15" }
 guarantee:
-  - { holds: "every primitive, in every example, has been proven on every surface that declares it, by structure and against a baseline a person approved", not_against: "a screen built from those primitives, whose arrangement the slices that follow prove" }
+  - { holds: "every primitive, in every example, has been proven on every surface that declares it, by structure and against a baseline a person approved: pixels on web and desktop, the text grid in the terminal", not_against: "a screen built from those primitives, whose arrangement the slices that follow prove" }
   - { holds: "nothing passes because an agent said so: an unsettled drawing is unsupported and the gate stays red", not_against: "a person approving a baseline that is wrong; the approval is theirs" }
   - { holds: "a token is read only in the declared subset of the 2025.10 format, and a theme changes a token's value, never its type", not_against: "a token valid in the full format that amy does not read, which is refused rather than half-read" }
   - { holds: "pixels are compared on the machine and engine that approved the baseline", not_against: "another machine's fonts or another operating system's build, whose baselines nobody approved yet" }

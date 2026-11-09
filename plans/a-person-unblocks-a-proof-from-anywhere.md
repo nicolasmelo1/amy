@@ -9,9 +9,11 @@ sources:
   - { id: S7, kind: decision, said: "the relay is reachable only through the tailnet (tailscale serve, never funnel), with a one-time token bound to the human step, while that step waits. An answer, a passed deadline or a second device closes it. Proposed 2026-11-09" }
   - { id: S8, kind: decision, said: "a secret the person types goes into the streamed page and nowhere else: not the thread, the event log or the agent's prompt. The relay records that input happened, never what was typed. Proposed 2026-11-09" }
   - { id: S9, kind: decision, said: "the person ends the session with a decision, done or cannot, from the page or the thread; a done resumes the step and the proof reads the world again rather than trusting the word. Proposed 2026-11-09" }
+  - { id: S10, kind: code, ref: "plugins/prove/src/plugin.ts", said: "afterAsking marks an answered human step done; the remote session's close and the world's second read have to happen there, before the answer counts" }
 touches:
   - plugins/remote-hand/**
   - plugins/prove/src/decide.ts
+  - plugins/prove/src/plugin.ts
   - plugins/prove/src/steps.ts
   - plugins/prove/src/scenario.ts
   - plugins/prove/tests/human-step.test.ts
@@ -24,7 +26,7 @@ criteria:
   - { id: A2, statement: "the relay refuses a request without the step's token, a second device presenting a used token, and any request after the step was answered or its deadline passed", proof: "deferred:test:plugins/prove/tests/remote-hand.test.ts", sources: [S7] }
   - { id: A3, statement: "the relay listens on localhost only and refuses to start when the tailnet share it was given is a funnel", proof: "deferred:test:plugins/prove/tests/remote-hand.test.ts", sources: [S5, S7] }
   - { id: A4, statement: "keys typed through the page appear in no thread message, event, log line or agent prompt; the event log says that input happened and how long the session lasted", proof: "deferred:test:plugins/prove/tests/remote-hand.test.ts", sources: [S8] }
-  - { id: A5, statement: "done from the page resumes the step, which reads the world again; a world that still differs asks again within the first deadline", proof: "deferred:test:plugins/prove/tests/human-step.test.ts", sources: [S3, S9] }
+  - { id: A5, statement: "done from the page resumes the step, which reads the world again; a world that still differs asks again within the first deadline", proof: "deferred:test:plugins/prove/tests/human-step.test.ts", sources: [S3, S9, S10] }
 crosses:
   - { mechanism: checkouts-and-leases, answer: n/a, why: "the human step already holds its leases while it waits (S3); a remote session is that wait, so no lease changes" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A4" }

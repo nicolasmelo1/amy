@@ -10,7 +10,6 @@ sources:
   - { id: S8, kind: decision, said: "no renderer writes anything the CLI cannot: every intent resolves to a function a command already calls, so none is a second road to the tracker" }
   - { id: S9, kind: decision, said: "choosing a record in the menu bar opens the window on it, so the menu bar is never a road the window is not" }
   - { id: S10, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "deciding is not a menu action: a decision happens in the thread, beside the discussion it settles" }
-  - { id: S11, kind: reference, ref: "plans/the-workplace-opens-where-you-work.md", said: "the terminal half of its opener: the terminal renderer suspends, the person's $EDITOR or a shell runs in the record's checkout, and it comes back on the same record when it exits" }
   - { id: S12, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers view work.log { profile?, workId? } in the panel, flipped to delivered in surface.yaml in the same pull request" }
 touches:
   - plugins/ui-desktop/**
@@ -31,18 +30,17 @@ criteria:
   - { id: A5, statement: "no row's ⋯ offers an action wider than its row: no record row pauses the machine or retires a record", proof: "deferred:test:packages/cli/tests/ui-actions.test.ts", sources: [S5, S6, S7] }
   - { id: A6, statement: "the fake tracker's and forge's call logs hold no write any renderer made", proof: "deferred:assertion:window.the_window_writes_nothing_the_cli_cannot", sources: [S8] }
   - { id: A7, statement: "choosing a record in the menu bar opens the window on it, and its submenu offers its row's ⋯ actions and no decision", proof: "deferred:assertion:window.the_menu_bar_is_no_other_road", sources: [S9, S10] }
-  - { id: A8, statement: "the editor opener suspends the terminal renderer, starts in the record's checkout, and returns to the same record when the editor exits", proof: "deferred:assertion:window.the_editor_returns_to_the_same_record", sources: [S11] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A2, A3" }
   - { mechanism: queue-and-store, answer: works, proof: "deferred:A4" }
   - { mechanism: install-and-update, answer: n/a, why: "a record's row offers poke alone; removing a workflow is the workflows slice's" }
 guarantee:
   - { holds: "an action from any renderer leaves exactly what its command leaves", not_against: "two people acting on one record from two renderers at once; the queue orders them as it orders two commands" }
-  - { holds: "the terminal returns to the same record when $EDITOR exits", not_against: "an $EDITOR returning before the edit ends, such as code without --wait" }
 cut:
   - "retiring one record from the window: waits for work-that-is-over-goes-away (S7)"
   - "deciding from the menu bar: refused; a decision happens in the thread (S10)"
-exit: "one record opened from the app, the terminal and the menu bar shows the same strip and log; poked from the terminal's leader key it moves in the app; its checkout opens in nvim from the terminal and comes back"
+  - "opening a record's checkout in $EDITOR from the terminal: the-workplace-opens-where-you-work, which brings the openers it needs"
+exit: "one record opened from the app, the terminal and the menu bar shows the same strip and log; poked from the terminal's leader key it moves in the app"
 ---
 # A record is seen everywhere
 

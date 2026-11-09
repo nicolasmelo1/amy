@@ -11,6 +11,8 @@ sources:
   - { id: S9, kind: code, ref: "plugins/prove/src/scenario.ts", said: "a scenario's steps reach a driver only through its operations, so the drivers a scenario needs are readable from the scenario before it runs" }
   - { id: S10, kind: decision, said: "a setup installs a missing tool only through a package manager already on the machine: npm for agent-browser and agent-desktop, cargo for terminal-use. It never pipes a script into a shell. Proposed 2026-11-09" }
   - { id: S11, kind: decision, said: "a proof whose scenario needs a driver whose check is red does not start: it asks a person in the work's thread, naming the driver and what the check said, instead of failing on the first step. Proposed 2026-11-09" }
+  - { id: S12, kind: decision, said: "the drivers a proof checks are those its steps and its fixtures' checks and actions name; a scenario with an agent step checks every mounted driver, since the agent picks at runtime. Proposed 2026-11-09" }
+  - { id: S13, kind: code, ref: "plugins/prove/src/plugin.ts", said: "the plugin observes, asks and resumes; decide.ts is pure and gets no health results, and a human answer resumes RUNNING, not a step before leasing" }
 touches:
   - packages/agent-kit/src/tool.ts
   - packages/agent-kit/src/index.ts
@@ -22,6 +24,8 @@ touches:
   - plugins/terminal/src/plugin.ts
   - plugins/terminal/tests/tool.test.ts
   - plugins/prove/src/decide.ts
+  - plugins/prove/src/plugin.ts
+  - plugins/prove/src/fixtures.ts
   - plugins/prove/tests/drivers.test.ts
   - plugins/agent-browser/README.md
   - plugins/agent-desktop/README.md
@@ -33,7 +37,8 @@ criteria:
   - { id: A2, statement: "amy add of the browser plugin on a machine with npm and no agent-browser runs npm install -g agent-browser then agent-browser install, and a second amy add runs neither", proof: "deferred:test:plugins/agent-browser/tests/tool.test.ts", sources: [S3, S4, S7, S10] }
   - { id: A3, statement: "agent-desktop installed but missing the Accessibility permission fails its check naming the permission and where it is granted; the setup does not try to grant it", proof: "deferred:test:plugins/agent-desktop/tests/tool.test.ts", sources: [S5] }
   - { id: A4, statement: "with no tu and no cargo, the terminal plugin's setup installs nothing, prints the cargo and the binary install commands, and its check stays red", proof: "deferred:test:plugins/terminal/tests/tool.test.ts", sources: [S6, S10] }
-  - { id: A5, statement: "a scenario with a browser step and a red browser check is asked of a person before its first step, naming the driver and the check's words; no lease is taken", proof: "deferred:test:plugins/prove/tests/drivers.test.ts", sources: [S9, S11] }
+  - { id: A5, statement: "a scenario with a browser step and a red browser check is asked of a person before its first step, naming the driver and the check's words; no lease is taken", proof: "deferred:test:plugins/prove/tests/drivers.test.ts", sources: [S9, S11, S12] }
+  - { id: A6, statement: "a fixture whose action names a red driver, and an agent-step scenario with any red mounted driver, are both asked before leasing; after the person answers, the checks run again before a lease is taken", proof: "deferred:test:plugins/prove/tests/drivers.test.ts", sources: [S12, S13] }
 crosses:
   - { mechanism: agent-replies, answer: n/a, why: "agent-kit gains a helper that runs a tool's own health command and reads its exit; no agent reply is read" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "a check or setup is no agent run, so no attempt is charged; the proof's ask before its first step is the human step it already has (S11)" }
