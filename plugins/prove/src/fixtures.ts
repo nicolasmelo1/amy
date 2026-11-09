@@ -25,7 +25,12 @@ export async function ensure(name: string, fixture: Fixture, operate: (id: strin
   const acted: string[] = [];
   for (const clause of fixture.ensure) {
     const read = await operate(clause.check.operation, clause.check.input);
-    if (read.ok && meets(read.output, clause.check.expect)) continue;
+    // A read that failed says nothing about the world: acting on it could
+    // change a state that already held, so a person is asked instead.
+    if (!read.ok) {
+      return { holds: false, acted, ask: `the fixture \`${name}\` could not read \`${clause.check.operation}\` (${read.error.code}: ${read.error.message}): make sure it holds, then answer here` };
+    }
+    if (meets(read.output, clause.check.expect)) continue;
     if (!clause.act) {
       return { holds: false, acted, ask: `the fixture \`${name}\` needs \`${clause.check.operation}\` to hold, and nothing configured can make it hold: make it true, then answer here` };
     }

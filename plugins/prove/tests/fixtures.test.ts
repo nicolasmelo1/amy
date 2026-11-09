@@ -57,6 +57,17 @@ describe("a fixture ensures a state", () => {
     expect(record.state).toBe("PROVEN");
   });
 
+  it("asks a person rather than acting when its read fails", async () => {
+    const calls: string[] = [];
+    const ensured = await ensure("a-signed-in-user", fixture, async (id) => {
+      calls.push(id);
+      return { ok: false, error: { code: "users.timeout", message: "the directory did not answer" } };
+    });
+
+    expect(ensured).toEqual({ holds: false, acted: [], ask: expect.stringContaining("could not read `users.get` (users.timeout: the directory did not answer)") });
+    expect(calls).toEqual(["users.get"]);
+  });
+
   it("refuses at mount a fixture that is not one, by name", () => {
     expect(() => readFixtures({ broken: { ensure: [] } })).toThrow(/^the fixture `broken` is not one/);
   });

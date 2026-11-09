@@ -97,6 +97,7 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "a proof writes project artifacts and asks through the conversation; no tracker or code-host write is added" }
 guarantee:
   - { holds: "a proven unit's scenario holds against the real system", not_against: "a well-proven scenario for the wrong feature" }
+  - { holds: "a project's work and proof are handed the criteria its brief phase returned", not_against: "a brief revised while the project waits in GROOMED, after BRIEF returned" }
   - { holds: "no phase reads another phase's records or queue", not_against: "reading the proof record in the shared artifact root" }
   - { holds: "a resource is never held by more runs than its capacity, across every project on the machine", not_against: "a person or a process outside amy changing the resource while a run holds it" }
   - { holds: "a step the scenario marks deterministic starts no harness", not_against: "an operation whose own plugin calls a model inside it" }
@@ -128,6 +129,7 @@ deviations:
   - "an agent step's calls become its replay only once every assertion on the step passed; a failed one's replay is forgotten"
   - "an agent step is a loop of at most twelve turns, each showing the input schemas and every call's answer so far; the agent names one next call, done, or unsupported (S46)"
   - "a wait-until check that answers past its deadline fails, and an answer posted past a human step's deadline does not resume it"
+  - "a fixture whose read fails asks a person rather than acting: a failed read says nothing about what differs"
   - "a run that lost a seat starts its scenario over, and a person's answer about a fixture is read again rather than taken for the state, asked again within the first deadline"
   - "a name in a proof, replay or lease file's path is one segment, dots escaped; an expected mapping equals one with its fields in any order"
   - "plugins/terminal: typed text and keys follow `--`, and a wait's pattern is bound with `=`, so text starting with `-` is never read as an option"
