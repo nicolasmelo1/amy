@@ -1,20 +1,20 @@
 ---
 sources:
-  - { id: S1, kind: reference, ref: "plans/amy-has-a-window.md", said: "it ships a window nobody can extend; a window any plugin can rearrange is unrecognisable after the third install, so the frame is fixed and the places a plugin can put something are named" }
+  - { id: S1, kind: reference, ref: "plans/the-work-is-listed-everywhere.md", said: "the window it ships is one nobody can extend; a window any plugin can rearrange is unrecognisable after the third install, so the frame is fixed and the places a plugin can put something are named" }
   - { id: S2, kind: reference, ref: "docs/concepts/plugins.md", said: "registry.contribute(collection, name, impl) is how a plugin adds to what another reads, and mount() refuses a collision by name; the window is six new collections, not a new plugin model" }
   - { id: S3, kind: decision, said: "ui-nav: a section in nav 1, after the three that ship; the same name refused" }
   - { id: S4, kind: decision, said: "ui-tab: a tab in a record's canvas for the workflows and states it names; a state the workflow lacks is refused by name, read from its diagram, else its declared states; same name refused" }
   - { id: S5, kind: decision, said: "ui-panel: an entry in the right panel's rail, with a home view, a view for the open record, or both; the same name refused" }
   - { id: S6, kind: decision, said: "ui-action: an entry in a row's ⋯; the same name refused" }
   - { id: S7, kind: decision, said: "ui-decoration: a badge on a row in nav 2; several allowed, ordered" }
-  - { id: S8, kind: reference, ref: "plans/amy-lives-in-the-menu-bar.md", said: "ui-menubar: a line in the menu bar, under the work; the same name refused" }
+  - { id: S8, kind: reference, ref: "plans/what-needs-you-is-counted-everywhere.md", said: "ui-menubar: a line in the menu bar, under the work; the same name refused" }
   - { id: S9, kind: decision, said: "each contribution is a view (a view is data) plus the slice of the snapshot it reads, so the host recomputes it only when that slice moves" }
   - { id: S10, kind: reference, ref: "https://developers.google.com/workspace/add-ons/concepts/homepages", said: "Gmail add-ons open beside the mail: a rail of icons picks one; each has a homepage shown whatever is open, and contextual cards for the open thread, dropped on leaving; it never touches the mail" }
   - { id: S11, kind: decision, said: "the rail is a strip at the window's right edge, visible while the panel is closed: one entry per ui-panel after log and thread; choosing an entry opens the panel on it, choosing the open one closes it" }
   - { id: S12, kind: decision, said: "a rail entry names an icon from a closed set and a label; the terminal draws the label's first letter" }
   - { id: S13, kind: decision, said: "home is the view an entry shows with no record open (a notebook, a calendar, the tickets waiting in the tracker); it reads the snapshot and no record" }
   - { id: S14, kind: decision, said: "record is the view for the open record, declared for workflows and states like a ui-tab; an entry without home is hidden from the rail on other records; opening another record swaps the view, keeping the entry chosen" }
-  - { id: S15, kind: decision, said: "an entry declares at least one of the two; log and thread ship as record views, so the window looks as amy-has-a-window draws it until a plugin adds an entry" }
+  - { id: S15, kind: decision, said: "an entry declares at least one of the two; log and thread ship as record views, so the window looks as a-record-is-seen-everywhere draws it until a plugin adds an entry" }
   - { id: S16, kind: decision, said: "frame.yaml gains the rail region (place: right, spans: full-height, holds: [panel-entry]), the panel opening between canvas and rail, and slot panel.rail: { fixed: [log, thread], extended-by: ui-panel } replacing panel" }
   - { id: S17, kind: decision, said: "frame.yaml gains actions panel.next and panel.prev on ]p and [p; a click on an entry is panel.select; an edit to a locked file plus sf lock, in this row's pull request" }
   - { id: S18, kind: decision, said: "a ui-action declares what it writes, as a workflow declares trackerWrites and codeHostWrites; one reaching a mutating port unclaimed is refused at boot naming action and capability: never a second road to a write" }

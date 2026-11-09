@@ -46,7 +46,7 @@ guarantee:
 cut:
   - "a flag per renderer on amy ui (--terminal, --desktop, --phone): refused; a renderer is chosen by name"
   - "shipping any renderer but text with the CLI: refused; an install carrying Electron is a hundred megabytes nobody asked for on a maybe screenless machine"
-  - "the desktop renderer: not needed here; it arrives with plans/amy-has-a-window.md"
+  - "the desktop renderer: not needed here; it arrives with plans/the-window-is-designed-once.md"
 exit: "bare install: amy ui opens text against the local server; an outside packaged renderer fixture set as ui.default opens on amy ui, amy ui text opens text, and the frame's script drives fixture (window surface only), script and frame unedited"
 ---
 # A renderer is chosen by name

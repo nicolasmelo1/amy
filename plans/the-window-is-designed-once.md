@@ -1,0 +1,103 @@
+---
+sources:
+  - { id: S1, kind: decision, said: "menu bar, desktop app and terminal are built together, bit by bit: a system design first, then each component proven alone on every surface it renders on, then the window in slices landing on all three. Decided 2026-11-09" }
+  - { id: S2, kind: decision, said: "so the window does not turn into slop, amy has a design system: each component looked at on its own, on the desktop, in the browser and in the terminal. Decided 2026-11-04" }
+  - { id: S3, kind: reference, ref: "packages/ui/src/vocabulary.ts", symbol: "VOCABULARY", said: "the closed set of primitives every renderer translates, and `catalogue()` lists them with their props; a component of the design system is one of these primitives, so there is no second list to keep" }
+  - { id: S4, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "frame.yaml declares the surfaces a renderer may draw: window holds every primitive, menubar only Text, Badge, List, Link and Button; a renderer declares which it draws, and the gate reads that declaration" }
+  - { id: S5, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "a scenario is data walked through the operations drivers offer: agent-browser for a page, agent-desktop for an app's accessibility tree, terminal-use for a terminal" }
+  - { id: S6, kind: decision, said: "a component is proven, not only reviewed. Each example of each primitive, on each surface that declares it, is one scenario walked by the proving plugin's steps through the drivers' operations. Its proof record is the gate's evidence. Decided 2026-11-09" }
+  - { id: S7, kind: decision, said: "the terminal is driven by terminal-use reading the screen as text, and the web page by agent-browser's snapshot and screenshot. Decided 2026-11-09" }
+  - { id: S8, kind: decision, said: "structure is compared with what the example's tree says must be there: every text, badge tone and row. Pixels are compared with a baseline a person approved for that surface, locked by hash. Decided 2026-11-09" }
+  - { id: S9, kind: decision, said: "no Storybook: amy's own, as simple as it can be to start, made more capable later. Decided 2026-11-04" }
+  - { id: S10, kind: decision, said: "one command at the repository root opens the design system for every platform, or for the ones named: desktop, web, terminal. Decided 2026-11-04" }
+  - { id: S11, kind: decision, said: "`npm run design` opens every platform; `npm run design -- terminal web` only those; `npm run design -- terminal Badge` one primitive" }
+  - { id: S12, kind: decision, said: "the terminal draws each example through the Ink renderer, one after another; web serves one page of every example, drawn by the webview renderer; desktop opens that page in the desktop app" }
+  - { id: S13, kind: decision, said: "a platform this machine cannot open (no display for the desktop app, an operating system with no build yet) says so by name and the others still open; the command never fails silently over one missing platform" }
+  - { id: S14, kind: decision, said: "a word given to the design command that is neither a platform nor a primitive is refused, naming the platforms and the primitives it could have been; nothing opens. Decided 2026-11-08" }
+  - { id: S15, kind: decision, said: "each primitive has a file of examples beside the vocabulary, packages/ui/design/<Primitive>.tsx: named trees (empty, typical, long text, attention, narrow) built from the vocabulary alone, every one of them valid against it" }
+  - { id: S16, kind: reference, ref: "plans/looks-are-configuration.md", said: "a theme is a set of tokens — colours, font, density — and no renderer names a colour of its own" }
+  - { id: S17, kind: reference, ref: "https://w3c.github.io/cg-reports/design-tokens/CG-FINAL-format-20251028/", said: "the Design Tokens Community Group's 2025.10 format is a stable final report: JSON tokens with a name, a $value, a $type and aliases between them" }
+  - { id: S18, kind: decision, said: "the tokens the shipped look uses are one file in that format, packages/ui/tokens.json; a theme plugin overrides tokens by name and adds none the file does not have" }
+  - { id: S19, kind: decision, said: "amy reads color, dimension, fontFamily, fontWeight, number and strokeStyle tokens, and an alias followed one level; a group, a composite $type, an alias to an alias or another $type is refused at load, naming the token. Decided 2026-11-08" }
+  - { id: S20, kind: decision, said: "a theme's override must keep the token's $type; an override whose $type differs from the file's, or whose aliases form a cycle, is refused at load, naming the theme and the token. Decided 2026-11-08" }
+  - { id: S21, kind: decision, said: "the frame stays the core's, one file for every renderer: a plugin changes how a section is seen and how it looks, never where the regions are. Decided 2026-11-04" }
+  - { id: S22, kind: decision, said: "a device too small for the window, a phone, gets a surface of its own in frame.yaml, owned by the core like the window and the menu bar. Decided 2026-11-04" }
+  - { id: S23, kind: decision, said: "a desktop app, not a page: a tab is one among forty, with no menu-bar place or global shortcut, and amy runs all day. macOS first; Windows and Linux are the same app built for them" }
+  - { id: S24, kind: decision, said: "Electron, because the engine the gate measures must be the one that ships: its pinned Chromium on every platform is what the projection reads. Tauri's WebKit/WebView2/WebKitGTK make one green gate say nothing of the others" }
+  - { id: S25, kind: decision, said: "Electron is JavaScript end to end, as amy is; its larger download is paid once, named in the dependency lock, only by whoever installs this renderer" }
+  - { id: S26, kind: decision, said: "the web page and the desktop app share one webview renderer, plugins/ui-webview; plugins/ui-desktop is the Electron shell around it, adding only what a page cannot have: the menu bar item, the global shortcut, staying resident. Decided 2026-11-09" }
+  - { id: S27, kind: reference, ref: "https://pele.run", said: "the webview renderer draws StateMachine, which carries the diagram text, with Pele, Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, SVG string out" }
+  - { id: S28, kind: decision, said: "only pele/core and pele/diagrams/state are registered, about 130 KB minified and 52 KB gzipped, against 712 KB for the full bundle" }
+  - { id: S29, kind: decision, said: "theme tokens become Pele's CSS variables (--pele-bg, --pele-fg, --pele-line, --pele-accent, …): no renderer names a colour, a theme switch recolours without re-rendering, classDef is not read (kept for GitHub, Obsidian). It draws what Obsidian would" }
+  - { id: S30, kind: decision, said: "a person living in a terminal should not leave it to see their work, and with views as data a terminal costs one renderer, not a second window; it draws with Ink, the React renderer for the command line" }
+  - { id: S31, kind: decision, said: "every primitive has a terminal drawing: Diff a coloured unified diff, Timeline a list, StateMachine the workflow's states and labelled edges said in words, drawn from what the server parsed, never from Mermaid text" }
+  - { id: S32, kind: decision, said: "a renderer only translates primitives, holding no view, snapshot or rule another renderer does not, so two renderers cannot disagree about what a record says" }
+  - { id: S34, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "a UI check passes on structure first, then pixels within a threshold, then an agent; what none of them settles is unsupported, never a pass" }
+  - { id: S38, kind: reference, ref: "https://agent-browser.dev/desktop/guides/chromium-and-electron", said: "agent-desktop launch <app> --cdp opens the app with a DevTools port and returns it in data.cdp; agent-browser connect <port> drives that app's web contents" }
+  - { id: S37, kind: code, ref: "plugins/terminal/src/plugin.ts", said: "terminal.screen answers text, rows and columns, no image; in a terminal the drawing is the grid. Pixels are the webview's and the desktop app's evidence" }
+  - { id: S35, kind: decision, said: "the desktop app is driven by agent-desktop, with agent-browser joining its DevTools port for pixels; the menu bar by agent-desktop reading the menu as an item tree. Decided 2026-11-09" }
+  - { id: S36, kind: decision, said: "a changed baseline is an approval: made with --approve, its lock in the same commit. Decided 2026-11-09" }
+  - { id: S33, kind: decision, said: "the desktop renderer declares it draws menubar; the terminal and the web page do not, so their absence is a declaration the gate reads, not a disagreement it forgives" }
+touches:
+  - plugins/agent-browser/src/plugin.ts
+  - plugins/agent-browser/tests/connect.test.ts
+  - plugins/agent-desktop/src/plugin.ts
+  - plugins/agent-desktop/tests/launch.test.ts
+  - packages/ui/tokens.json
+  - packages/ui/design/**
+  - packages/ui/frame.yaml
+  - packages/ui/src/**
+  - packages/ui/tests/design.test.ts
+  - packages/ui/tests/tokens.test.ts
+  - packages/ui-conformance/src/**
+  - plugins/ui-ink/**
+  - plugins/ui-webview/**
+  - plugins/ui-desktop/**
+  - scripts/design.ts
+  - scripts/design-proof.ts
+  - package.json
+  - package-lock.json
+  - docs/development/the-design-system.md
+  - .software-factory/policy.yaml
+  - .software-factory/locks/dependencies.lock.json
+criteria:
+  - { id: A1, statement: "every primitive in the vocabulary has a file of examples, every example is valid against the vocabulary, and a primitive added with none fails the build naming it", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S2, S3, S9, S15] }
+  - { id: A2, statement: "every example of every primitive is a scenario on every surface whose declaration holds that primitive, and the proof covers each pair exactly once: a primitive the menubar subset leaves out has no menubar scenario, and one it holds has", proof: "deferred:assertion:design.every_component_is_proven_where_it_renders", sources: [S1, S4, S6, S33] }
+  - { id: A3, statement: "each scenario reaches its surface only through a driver's operations (terminal.*, browser.*, desktop.*), as the proving plugin's steps call them", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S5, S7, S35] }
+  - { id: A4, statement: "an example whose drawing lacks a text, a badge tone or a row its tree has fails on structure naming the example and the surface, whatever its pixels say", proof: "deferred:assertion:design.structure_comes_before_pixels", sources: [S8, S34] }
+  - { id: A5, statement: "a drawing whose pixels differ from its approved baseline past the threshold, and that the agent cannot settle, is unsupported and keeps the gate red; nothing an agent says counts as an approval", proof: "deferred:assertion:design.no_agent_approves_a_baseline", sources: [S8, S34] }
+  - { id: A18, statement: "a terminal scenario is proven by its screen's text grid against an approved baseline grid; no pixel baseline is asked of the terminal, because terminal.screen reads text, rows and columns", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S37] }
+  - { id: A19, statement: "a desktop scenario launches the packaged app through desktop.launch with cdp, joins its port through browser.connect, and its pixel evidence names that app's target; a session on any other page fails the scenario", proof: "deferred:test:plugins/agent-browser/tests/connect.test.ts", sources: [S35, S38] }
+  - { id: A6, statement: "a baseline changed without --approve, or without its lock in the same commit, fails the gate naming the file", proof: "deferred:assertion:design.a_baseline_is_approved_by_a_person", sources: [S36] }
+  - { id: A7, statement: "`npm run design -- terminal Badge` draws every Badge example through the Ink renderer and nothing else; `npm run design -- web` serves one page of every example; `npm run design -- desktop` opens it in the desktop app", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S10, S11, S12] }
+  - { id: A8, statement: "on a machine with no display, `npm run design` opens the terminal and web, says by name that the desktop cannot open here, and exits zero", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S13] }
+  - { id: A9, statement: "`npm run design -- terminal Bdage` opens nothing and names every platform and primitive", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S11, S14] }
+  - { id: A10, statement: "tokens.json is in the 2025.10 format, and a token a renderer or theme names that the file does not define is refused by name", proof: "deferred:test:packages/ui/tests/tokens.test.ts", sources: [S16, S17, S18] }
+  - { id: A17, statement: "a composite $type, a $type outside the read subset or an alias to an alias is refused at load naming the token", proof: "deferred:test:packages/ui/tests/tokens.test.ts", sources: [S17, S19] }
+  - { id: A11, statement: "a theme override whose $type differs from the file's, or whose aliases form a cycle, is refused at load naming the theme and the token", proof: "deferred:test:packages/ui/tests/tokens.test.ts", sources: [S18, S20] }
+  - { id: A12, statement: "the design command draws nothing outside the frame's surfaces and reads no frame but packages/ui/frame.yaml", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S21, S22] }
+  - { id: A13, statement: "the web page and the desktop app draw every example through the same webview renderer, and their structure agrees on every one", proof: "deferred:assertion:design.web_and_desktop_are_one_renderer", sources: [S23, S24, S25, S26] }
+  - { id: A14, statement: "Pele is a dependency of @amykit/ui-webview and of no other package, only its state diagram is bundled, and the StateMachine examples draw every state and edge their text declares", proof: "deferred:test:plugins/ui-webview/tests/bundle.test.ts", sources: [S27, S28, S29] }
+  - { id: A15, statement: "every primitive has a terminal drawing, a new one without it fails the build, and the terminal StateMachine says every state and labelled edge of its example", proof: "deferred:test:plugins/ui-ink/tests/primitives.test.ts", sources: [S30, S31] }
+  - { id: A16, statement: "no renderer package exports a view, a snapshot or a rule: each one's public surface is the primitive translations alone, so a view written for one draws in the others unchanged", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S32] }
+crosses:
+  - { mechanism: rendering, answer: works, proof: "deferred:A2, A4, A13, A15" }
+guarantee:
+  - { holds: "every primitive, in every example, has been proven on every surface that declares it, by structure and against a baseline a person approved: pixels on web and desktop, the text grid in the terminal", not_against: "a screen built from those primitives, whose arrangement the slices that follow prove" }
+  - { holds: "nothing passes because an agent said so: an unsettled drawing is unsupported and the gate stays red", not_against: "a person approving a baseline that is wrong; the approval is theirs" }
+  - { holds: "a token is read only in the declared subset of the 2025.10 format, and a theme changes a token's value, never its type", not_against: "a token valid in the full format that amy does not read, which is refused rather than half-read" }
+  - { holds: "pixels are compared on the machine and engine that approved the baseline", not_against: "another machine's fonts or another operating system's build, whose baselines nobody approved yet" }
+failures:
+  - { step: "a scenario's driver", when: "terminal-use, agent-browser or agent-desktop is missing or fails to start", goes_to: "that surface's scenarios are unsupported, named, and the gate is red; the other surfaces still run" }
+cut:
+  - "the full 2025.10 format, groups and composite types included: refused until a look needs one (S19)"
+  - "Storybook, or any other catalogue tool: refused; the vocabulary is closed and small, and the examples are data a renderer already draws (S9)"
+  - "a plugin shipping a frame.yaml of its own: refused; the frame is the core's (S21)"
+  - "Tauri: refused, a gate green in one system webview says nothing of the other two (S24)"
+  - "a graph layout in characters (beautiful-mermaid box art): refused; it brings elkjs, 7.7 MB, runs sixty lines for seven states and merges two opposite edges; wanted, it is a plugin's canvas tab"
+  - "a screen of the window: none here; the work list, the record, what needs you and the workflows each come in their own slice, on all three surfaces at once"
+exit: "`npm run design` opens every primitive's examples in the terminal, the browser and the desktop app, and the gate is green only when each example matched its structure and approved baseline on every surface declaring it"
+---
+# The window is designed once
+
+The menu bar, the desktop app and the terminal are one window drawn three ways, so they are built together, a piece at a time. This row builds the three renderers and nothing on them but the primitives: each example of each primitive is walked on every surface that declares it, the way a proving phase walks a scenario, so a component that looks wrong is caught on its own before any screen hides it.
