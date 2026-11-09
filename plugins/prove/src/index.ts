@@ -16,4 +16,4 @@ export type { Ensured } from "./fixtures.js";
 export { SCENARIO_SECTION, checkScenario, readScenario, scenarioText } from "./scenario.js";
 export type { Assertion, Expectation, Fixture, OperationCall, Scenario, Step } from "./scenario.js";
 export { Replays, checkUntil, runAgent, runDeterministic } from "./steps.js";
-export type { Replay, StepPorts } from "./steps.js";
+export type { OfferedOperation, Replay, StepPorts } from "./steps.js";

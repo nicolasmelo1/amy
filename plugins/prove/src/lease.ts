@@ -111,20 +111,6 @@ export class Leases {
   }
 
   /**
-   * Gives a held seat back and waits for it again, where it waited before:
-   * a run that could not take every resource it needs holds none of them,
-   * or two runs each holding what the other waits on would wait forever.
-   */
-  yield(resource: string, holder: string, ttlMs: number): void {
-    this.locked(resource, (ledger, now) => {
-      const seat = ledger.holders[holder];
-      if (!seat) return;
-      delete ledger.holders[holder];
-      ledger.waiting[holder] = { priority: seat.priority, since: seat.since ?? now, expiresAt: now + ttlMs };
-    });
-  }
-
-  /**
    * Whether this holder is the last one on the resource. When it is, it
    * keeps its seat and the resource drains — no seat is given — until its
    * `release`, so taking the resource down never pulls it from under a run

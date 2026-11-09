@@ -40,7 +40,7 @@ describe("each kind of step", () => {
       "  - { id: open, operation: page.open, input: {} }\n  - { id: read, kind: agent, prompt: read the badge }",
       "  - { id: opened, step: open, path: status, equals: ok }\n  - { id: badge, step: read, path: badge, equals: Paid }",
     ));
-    world.harnessReplies = ['Done.\n{"calls":[{"operation":"page.read","input":{"selector":"#badge"}}]}'];
+    world.harnessReplies = ['Reading it.\n{"call":{"operation":"page.read","input":{"selector":"#badge"}}}', '{"done":true}'];
     const mounted = await world.mounted([operationsPlugin("site", { "page.open": () => ({ status: "ok" }), "page.read": () => ({ badge: "Paid" }) })]);
 
     const run = newRun(mounted, "TBO-4/PROVE#1");
@@ -48,7 +48,7 @@ describe("each kind of step", () => {
     expect(world.asked).toEqual([]);
 
     const { record } = await walk(world, mounted, first.record);
-    expect(world.asked).toHaveLength(1);
+    expect(world.asked).toHaveLength(2);
     expect(world.asked[0]).toContain("read the badge");
     expect(record.state).toBe("PROVEN");
   });
@@ -146,7 +146,7 @@ describe("a run is proven only when every step held", () => {
 
     const { record } = await walk(world, mounted, newRun(mounted, "TBO-32/PROVE#1"));
 
-    expect(record.results?.read).toEqual({ status: "unsupported", why: "the agent answered `read` with no calls amy can read" });
+    expect(record.results?.read).toEqual({ status: "unsupported", why: "the agent answered `read` with nothing amy can read" });
   });
 });
 

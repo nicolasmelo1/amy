@@ -10,13 +10,24 @@ import { segment } from "./names.js";
  * agent step ever starts. A deterministic step runs no model; an operation
  * whose own plugin calls one inside it is that plugin's business.
  */
+export interface OfferedOperation {
+  readonly id: string;
+  readonly input: Readonly<Record<string, unknown>>;
+}
+
+/** How many turns an agent step may take before it is unsupported: a model that never says done costs without end. */
+const AGENT_TURNS = 12;
+
+/** How much of one call's output a turn shows the agent: enough to read refs, not a page dump per turn. */
+const SHOWN = 4000;
+
 export interface StepPorts {
   operate(id: string, input: unknown): Promise<Operated>;
   /** Asks the harness; absent where none is mounted, and then an agent step is unsupported. */
   readonly ask?: (prompt: string) => Promise<HarnessReply>;
   readonly replays: Replays;
-  /** The operations the agent may call, by id. */
-  readonly offered: readonly string[];
+  /** The operations the agent may call: each id, with the JSON Schema its input is checked against. */
+  readonly offered: readonly OfferedOperation[];
 }
 
 /** An agent step that passed, kept as the operations it called. */
@@ -100,22 +111,48 @@ export async function runAgent(scenario: string, step: Extract<Step, { kind: "ag
   const kept = ports.replays.get(scenario, step.id);
   const replayed = kept ? await replay(kept, ports) : { ran: [] };
   if (replayed.last && !replayed.broke) return { result: replayed.last, calls: replayed.ran };
-  const unsupported = (why: string): AgentRun => ({ result: { status: "unsupported", why }, calls: [] });
-
   if (!ports.ask) return unsupported(`the step \`${step.id}\` needs an agent, and no harness is mounted`);
-  const reply = await ports.ask(agentPrompt(step, ports.offered, replayed.ran, replayed.broke));
-  if (reply.run.outcome !== "completed") return unsupported(`the agent did not finish \`${step.id}\`: ${reply.run.output || reply.run.outcome}`);
-  const answer = answerIn(reply.text);
-  if (!answer) return unsupported(`the agent answered \`${step.id}\` with no calls amy can read`);
-  if ("unsupported" in answer) return unsupported(answer.unsupported);
-  const ran = [...replayed.ran];
-  let last: StepResult | undefined;
-  for (const one of answer.calls) {
-    last = await call(ports, one);
-    if (last.status !== "done") return { result: last, calls: [] };
-    ran.push(one);
+  return turns(step, ports, ports.ask, replayed);
+}
+
+/**
+ * The agent's turns. Each one shows what every call so far answered, so it
+ * can use a ref one call returned in the next; only the calls that worked
+ * are kept.
+ */
+async function turns(
+  step: Extract<Step, { kind: "agent" }>,
+  ports: StepPorts,
+  ask: (prompt: string) => Promise<HarnessReply>,
+  replayed: { readonly ran: OperationCall[]; readonly last?: StepResult; readonly broke?: { readonly at: OperationCall; readonly why: string } },
+): Promise<AgentRun> {
+  const ran: OperationCall[] = [...replayed.ran];
+  const seen: Turn[] = replayed.broke ? [{ call: replayed.broke.at, answered: { status: "failed", why: replayed.broke.why } }] : [];
+  let last: StepResult | undefined = replayed.broke ? undefined : replayed.last;
+  for (let turn = 0; turn < AGENT_TURNS; turn += 1) {
+    const reply = await ask(agentPrompt(step, ports.offered, replayed.ran, seen));
+    const answer = reply.run.outcome === "completed" ? answerIn(reply.text) : { unsupported: `the agent did not finish \`${step.id}\`: ${reply.run.output || reply.run.outcome}` };
+    if (!answer) return unsupported(`the agent answered \`${step.id}\` with nothing amy can read`);
+    if ("unsupported" in answer) return unsupported(answer.unsupported);
+    if ("done" in answer) return last ? { result: last, calls: ran } : unsupported(`the agent called nothing for \`${step.id}\``);
+    const answered = await call(ports, answer.call);
+    seen.push({ call: answer.call, answered });
+    if (answered.status === "done") {
+      ran.push(answer.call);
+      last = answered;
+    }
   }
-  return last ? { result: last, calls: ran } : unsupported(`the agent called nothing for \`${step.id}\``);
+  return unsupported(`the agent did not settle \`${step.id}\` in ${AGENT_TURNS} turns`);
+}
+
+/** One call an agent made this run, with what it answered. */
+interface Turn {
+  readonly call: OperationCall;
+  readonly answered: StepResult;
+}
+
+function unsupported(why: string): AgentRun {
+  return { result: { status: "unsupported", why }, calls: [] };
 }
 
 /** A kept replay's calls, in order, until one breaks: what ran, the last result, and where it broke. */
@@ -130,19 +167,26 @@ async function replay(kept: Replay, ports: Pick<StepPorts, "operate">): Promise<
   return { ran, ...(last ? { last } : {}) };
 }
 
-function agentPrompt(step: Extract<Step, { kind: "agent" }>, offered: readonly string[], ran: readonly OperationCall[], broke: { readonly at: OperationCall; readonly why: string } | undefined): string {
+function shown(result: StepResult): string {
+  const text = result.status === "done" ? JSON.stringify(result.output) : `${result.status}: ${result.why}`;
+  return text.length > SHOWN ? `${text.slice(0, SHOWN)}… (${text.length - SHOWN} more characters)` : text;
+}
+
+function agentPrompt(step: Extract<Step, { kind: "agent" }>, offered: readonly OfferedOperation[], replayed: readonly OperationCall[], seen: readonly Turn[]): string {
   return [
-    `Prove one step of a scenario by calling operations, never by changing code: ${step.prompt}`,
-    `The operations you may call: ${offered.map((id) => `\`${id}\``).join(", ") || "(none)"}.`,
-    ...(ran.length > 0 ? [`These already ran, in order, and need not run again: ${JSON.stringify(ran)}.`] : []),
-    ...(broke ? [`The kept replay broke at ${JSON.stringify(broke.at)}: ${broke.why}. Continue from there.`] : []),
-    'Answer with one JSON object as the last thing you say: {"calls":[{"operation":"<id>","input":{...}}]} — the calls still to make, in order — or {"unsupported":"<why>"} when this cannot be settled by calling them.',
+    `Prove one step of a scenario by calling operations, one at a time, never by changing code: ${step.prompt}`,
+    `The operations you may call, each with the JSON Schema of its input:\n${offered.map((one) => `- \`${one.id}\`: ${JSON.stringify(one.input)}`).join("\n") || "(none)"}`,
+    ...(replayed.length > 0 ? [`A kept replay already ran these, in order, and they need not run again: ${JSON.stringify(replayed)}.`] : []),
+    ...(seen.length > 0 ? [`What each call so far answered, in order:\n${seen.map((one) => `- ${JSON.stringify(one.call)} → ${shown(one.answered)}`).join("\n")}`] : []),
+    "Answer with one JSON object as the last thing you say: " +
+      '{"call":{"operation":"<id>","input":{...}}} for the next call, {"done":true} once the last call\'s answer is what the step is about, ' +
+      'or {"unsupported":"<why>"} when calling them cannot settle it.',
   ].join("\n\n");
 }
 
-type Answer = { readonly calls: readonly OperationCall[] } | { readonly unsupported: string };
+type Answer = { readonly call: OperationCall } | { readonly done: true } | { readonly unsupported: string };
 
-/** The last JSON object in a reply, read as the calls to make or why it cannot be settled. */
+/** The last JSON object in a reply, read as the next call, done, or why it cannot be settled. */
 function answerIn(text: string): Answer | undefined {
   // `lastIndexOf("{", -1)` searches position zero again, so the scan stops
   // explicitly once it has tried the first character.
@@ -153,13 +197,17 @@ function answerIn(text: string): Answer | undefined {
     } catch {
       continue;
     }
-    if (typeof parsed !== "object" || parsed === null) return undefined;
-    const { calls, unsupported } = parsed as { calls?: unknown; unsupported?: unknown };
-    if (typeof unsupported === "string") return { unsupported };
-    if (!Array.isArray(calls)) return undefined;
-    const read = calls.filter((one): one is OperationCall => typeof one === "object" && one !== null && typeof (one as OperationCall).operation === "string")
-      .map((one) => ({ operation: one.operation, input: typeof one.input === "object" && one.input !== null ? one.input : {} }));
-    return read.length === calls.length ? { calls: read } : undefined;
+    return readAnswer(parsed);
   }
   return undefined;
+}
+
+function readAnswer(parsed: unknown): Answer | undefined {
+  if (typeof parsed !== "object" || parsed === null) return undefined;
+  const { call: next, done, unsupported: why } = parsed as { call?: unknown; done?: unknown; unsupported?: unknown };
+  if (typeof why === "string") return { unsupported: why };
+  if (done === true) return { done: true };
+  if (typeof next !== "object" || next === null || typeof (next as OperationCall).operation !== "string") return undefined;
+  const input = (next as { input?: unknown }).input;
+  return { call: { operation: (next as OperationCall).operation, input: typeof input === "object" && input !== null && !Array.isArray(input) ? input as Record<string, unknown> : {} } };
 }

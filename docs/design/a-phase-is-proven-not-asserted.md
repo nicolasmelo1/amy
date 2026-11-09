@@ -43,6 +43,8 @@ sources:
   - { id: S42, kind: decision, said: "feature-grooming mounts no port of its own: a workflow that registers ports is mounted, never called, and nothing read grooming-source or grooming-tracker; groomFeature stays for a caller that hands it a source and a tracker. Decided 2026-11-08" }
   - { id: S43, kind: decision, said: "a project's walk leaves BRIEF only once every phase's brief check is green, the proving phase's scenario included, not only the brief phase's own. Decided 2026-11-08" }
   - { id: S44, kind: decision, said: "the lease lock is recovered from a daemon that died holding it without ever removing a live replacement's lock, proven by processes racing on one stale lock. Decided 2026-11-08" }
+  - { id: S45, kind: decision, said: "every run claims its resources in one order, by name, stopping at the first seat it is not given. Decided 2026-11-08" }
+  - { id: S46, kind: decision, said: "an agent step is a loop: each turn the agent sees the operations' input schemas and every call's output so far, and answers one next call, done or unsupported; the calls that worked are its replay. Decided 2026-11-08" }
   - { id: S41, kind: decision, said: "feature-grooming becomes a workflow a project's brief/ calls: a defineWorkflow declaring the brief's sections and check, returning the criteria it settled, and still mounting the ports it mounted. Decided 2026-11-08" }
 touches:
   - plugins/prove/**
@@ -72,14 +74,14 @@ criteria:
   - { id: A9, statement: "two briefs, one with a single request and one with two apps, a fixture and a human step, walk the same proving diagram; no diagram is written per task", proof: "test:plugins/prove/tests/scenario.test.ts", sources: [S20, S21], done: true }
   - { id: A10, statement: "a deterministic step runs no harness, an agent step runs one, and a wait-until step passes when its check holds before the deadline and fails naming the check after it", proof: "test:plugins/prove/tests/steps.test.ts", sources: [S22], done: true }
   - { id: A11, statement: "a fixture whose state already holds performs nothing, one that differs acts only on the difference, and one that cannot reach its state asks a person", proof: "test:plugins/prove/tests/fixtures.test.ts", sources: [S23], done: true }
-  - { id: A12, statement: "for any number of runs and any order of claims and releases, a resource is never held by more runs than its capacity, a waiting run spends no attempt, and a released seat goes to the highest priority waiting", proof: "property:plugins/prove/tests/lease.property.test.ts#a_seat_held_twice", sources: [S24, S25, S44], done: true }
+  - { id: A12, statement: "for any number of runs and any order of claims and releases, a resource is never held by more runs than its capacity, a waiting run spends no attempt, and a released seat goes to the highest priority waiting", proof: "property:plugins/prove/tests/lease.property.test.ts#a_seat_held_twice", sources: [S24, S25, S44, S45], done: true }
   - { id: A13, statement: "a lease whose holder stops renewing expires, and the run it belonged to goes back to waiting", proof: "test:plugins/prove/tests/lease.test.ts", sources: [S25], done: true }
   - { id: A14, statement: "a human step keeps its run's leases while it waits, asks in the work's thread, and the notifier names the step and the resources held; an answer resumes it, and its deadline escalates and releases them", proof: "test:plugins/prove/tests/human-step.test.ts", sources: [S26], done: true }
   - { id: A15, statement: "a resource is brought up, checked and taken down only by the commands its config names, through the commands port; one with no check is refused at mount, naming it", proof: "test:plugins/prove/tests/resources.test.ts", sources: [S27, S28], done: true }
   - { id: A16, statement: "the documented web example brings two worktrees' apps up side by side with portless, and no file in the proving plugin names portless", proof: "test:plugins/prove/tests/resources.test.ts", sources: [S27, S29], done: true }
   - { id: A17, statement: "the browser plugin opens, snapshots, acts on refs and diffs through agent-browser, the desktop plugin snapshots and acts through agent-desktop, and the terminal plugin runs a program, sends keys, waits for text and reads the screen through terminal-use", proof: "test:plugins/agent-browser/tests/operations.test.ts", sources: [S30, S32, S35], done: true }
   - { id: A18, statement: "a UI check passes when the accessibility trees match and the pixels differ within the threshold, goes to an agent otherwise, and is unsupported when the agent cannot settle it or the sizes differ", proof: "test:plugins/agent-browser/tests/ui-check.test.ts", sources: [S31, S33], done: true }
-  - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "test:plugins/prove/tests/replay.test.ts", sources: [S34], done: true }
+  - { id: A19, statement: "a passed agent step is replayed by the next run with no harness started, and a replay that breaks runs the agent from the step that broke", proof: "test:plugins/prove/tests/replay.test.ts", sources: [S34, S46], done: true }
   - { id: A20, statement: "examples/a-whole-project mounts as one profile whose record walks BRIEF, WORK, PROVE and DONE, each phase a shipped workflow, its brief carrying a scenario the prove phase walks", proof: "test:examples/a-whole-project/tests/project.test.ts", sources: [S36, S37, S38, S41, S42], done: true }
   - { id: A21, statement: "two runs from different projects needing the same resource never hold it past its capacity, and the one waiting starts when the other releases", proof: "test:plugins/prove/tests/lease.test.ts", sources: [S39, S40], done: true }
 crosses:
@@ -121,9 +123,10 @@ deviations:
   - "a run holding seats never waits past half a seat's life between looks, or the look that renews a seat would come after it ran out"
   - "a resource whose `up` ran and whose check then failed is taken down at the end of the run like one that came up"
   - "a run whose step failed or could not be evaluated is refused, asserted on or not, and the proof records the run's outcome: a refused run is never proven"
-  - "a run holds every resource it needs or none: a seat taken while another is missing is given back, keeping its place in the queue"
+  - "a run claims its resources in name order and stops at the first seat not given, so two runs whose scenarios name them in opposite orders never wait on each other (S45)"
   - "a seat's holder is the run named by its profile, and only a resource's last holder takes it down, no seat given until it is down"
   - "an agent step's calls become its replay only once every assertion on the step passed; a failed one's replay is forgotten"
+  - "an agent step is a loop of at most twelve turns, each showing the input schemas and every call's answer so far; the agent names one next call, done, or unsupported (S46)"
   - "a wait-until check that answers past its deadline fails, and an answer posted past a human step's deadline does not resume it"
   - "a run that lost a seat starts its scenario over, and a person's answer about a fixture is read again rather than taken for the state, asked again within the first deadline"
   - "a name in a proof, replay or lease file's path is one segment, dots escaped; an expected mapping equals one with its fields in any order"

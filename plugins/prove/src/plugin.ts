@@ -11,6 +11,7 @@ import {
   Moved,
   Notifier,
   OPERATIONS_COLLECTION,
+  Operation,
   WorkflowActionScope,
   WorkflowPieceContext,
   defineWorkflow,
@@ -25,7 +26,7 @@ import { proofOperations } from "./operations.js";
 import { PROOFS_DIRECTORY, ProofStore } from "./proof.js";
 import { bringUp, commandsNamed, readResources, takeDown } from "./resources.js";
 import { SCENARIO_SECTION, checkScenario, readScenario, scenarioText } from "./scenario.js";
-import { Replays, checkUntil, runAgent, runDeterministic, untilMissed } from "./steps.js";
+import { OfferedOperation, Replays, checkUntil, runAgent, runDeterministic, untilMissed } from "./steps.js";
 
 export const configSchema = {
   resources: {
@@ -96,6 +97,16 @@ function stores(scope: Scope) {
   };
 }
 
+/** The operations an agent step may call, with their input schemas, as the contract describes them. */
+function offeredTo(scope: Scope): OfferedOperation[] {
+  return [...scope.ctx.contributions(OPERATIONS_COLLECTION).entries()]
+    .map(([id, entry]) => {
+      const operation = (entry as MountedOperation).operation as unknown as Operation;
+      return { id, input: operation.input["~standard"].jsonSchema.input({ target: "draft-2020-12" }) as Record<string, unknown> };
+    })
+    .sort((one, other) => one.id.localeCompare(other.id));
+}
+
 function ownerOf(scope: Scope, id: string): string | undefined {
   return (scope.ctx.contributions(OPERATIONS_COLLECTION).get(id) as MountedOperation | undefined)?.owner;
 }
@@ -132,18 +143,23 @@ const actions = {
     const { leases } = stores(scope);
     const record = work.record;
     const holder = holderOf(scope.ctx.paths, record);
-    const needed = record.scenario?.resources ?? [];
-    const held = needed.filter((resource) => leases.claim({
-      resource,
-      capacity: scope.policy.resources[resource]!.capacity,
-      holder,
-      priority: record.input?.priority ?? 0,
-      ttlMs: scope.policy.leaseTtlMs,
-    }).held);
-    // All or none: a run holding part of what it needs while it waits for the
-    // rest would wait forever on a run holding the other part.
-    if (held.length < needed.length) for (const resource of held) leases.yield(resource, holder, scope.policy.leaseTtlMs);
-    work.outcomes.held = held.length < needed.length ? [] : held;
+    const needed = [...(record.scenario?.resources ?? [])].sort();
+    // In name order, stopping at the first seat not given: every run claims
+    // in one order, so no run holding a later resource waits on an earlier
+    // one, and two runs crossing their scenarios' orders cannot wait forever.
+    const held: string[] = [];
+    for (const resource of needed) {
+      const claimed = leases.claim({
+        resource,
+        capacity: scope.policy.resources[resource]!.capacity,
+        holder,
+        priority: record.input?.priority ?? 0,
+        ttlMs: scope.policy.leaseTtlMs,
+      });
+      if (!claimed.held) break;
+      held.push(resource);
+    }
+    work.outcomes.held = held;
   },
 
   renew: async (scope: ActionScope, work: Work) => renew(scope, work.record),
@@ -170,7 +186,7 @@ const actions = {
       const ran = await runAgent(record.scenario!.name, step, {
         operate,
         replays,
-        offered: [...scope.ctx.contributions(OPERATIONS_COLLECTION).keys()].sort(),
+        offered: offeredTo(scope),
         ...(agent ? { ask: (prompt: string) => agent.ask(prompt, scope.ctx.paths.profile ?? scope.ctx.paths.state, { workId: record.id, step: step.id }) } : {}),
       });
       result = ran.result;

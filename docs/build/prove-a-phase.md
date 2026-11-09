@@ -33,7 +33,7 @@ steps:
   - id: open                    # no kind: deterministic, no model runs
     operation: browser.open
     input: { url: "https://shop.localhost/invoices/1" }
-  - id: badge                   # an agent calls operations; a pass is kept and replayed with no model
+  - id: badge                   # an agent calls operations one turn at a time, seeing each answer; a pass is replayed with no model
     kind: agent
     prompt: read the payment badge on the open page
   - id: look                    # asks a person in the work's thread, holding the leases
