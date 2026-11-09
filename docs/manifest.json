@@ -11994,7 +11994,7 @@
       {
         "id": "the-examples-are-not-the-machine",
         "title": "**The examples are not the machine.**",
-        "body": "The five workflows amy ships moved from `packages/` to `examples/`, under the\nsame names and versions, so an install that names one updates without\nnoticing. `packages/` now holds amy itself and what it needs to run. Each\nexample opens its README with what it is for, written for somebody who has\nnever seen amy, above the reference generated from the package. A fork of a\nversion released after the move is read from `examples/`.",
+        "body": "The five workflows amy ships moved from `packages/` to `examples/`, under the\nsame names and versions, so an install that names one updates without\nnoticing. `packages/` now holds amy itself and what it needs to run. Each\nexample opens its README with what it is for, written for somebody who has\nnever seen amy, above the reference generated from the package. A fork of a\nversion released after the move is read from `examples/`, and a fork taken\nbefore it follows the release to its new directory on `amy update` instead of\nstopping the update.",
         "bumps": [
           {
             "package": "@amykit/cli",

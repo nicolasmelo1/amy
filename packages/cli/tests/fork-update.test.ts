@@ -65,6 +65,37 @@ describe("amy update with a fork", () => {
     expect(JSON.parse(fs.readFileSync(path.join(fork, ".amy-fork.json"), "utf-8"))).toMatchObject({ base: { version: "1.1.0", ref: `${PAGER}@1.1.0` } });
   });
 
+  it("follows a release that moved its package to another directory of the repository", async () => {
+    // amy's shipped workflows moved from packages/ to examples/ between two
+    // releases; a fork taken before the move recorded the old directory.
+    fs.writeFileSync(path.join(fork, "index.js"), fs.readFileSync(path.join(fork, "index.js"), "utf-8").replace('"hello"', '"good morning"'));
+    const moved = Object.fromEntries(Object.entries(release("1.1.0", "hello", "see you")).map(([file, content]) => [`examples/${file}`, content]));
+    upstream.release({ ...moved, "pager/package.json": null, "pager/index.js": null, "pager/NOTES.md": null }, `${PAGER}@1.1.0`);
+
+    const updates = await mergeForks(world, [{ name: PAGER, fork, version: "1.1.0" }]);
+    applyForkUpdates(updates);
+
+    const merged = fs.readFileSync(path.join(fork, "index.js"), "utf-8");
+    expect(updates[0]!.merged.conflicts).toEqual([]);
+    expect(merged).toContain('greeting = "good morning"');
+    expect(merged).toContain('farewell = "see you"');
+    expect(JSON.parse(fs.readFileSync(path.join(fork, ".amy-fork.json"), "utf-8"))).toMatchObject({
+      base: { version: "1.1.0", ref: `${PAGER}@1.1.0`, directory: "examples/pager" },
+    });
+
+    // The next update reads its base from where the last one recorded it.
+    upstream.release({ "examples/pager/NOTES.md": "notes for 1.2.0\n" }, `${PAGER}@1.2.0`);
+    applyForkUpdates(await mergeForks(world, [{ name: PAGER, fork, version: "1.2.0" }]));
+    expect(fs.readFileSync(path.join(fork, "NOTES.md"), "utf-8")).toBe("notes for 1.2.0\n");
+    expect(fs.readFileSync(path.join(fork, "index.js"), "utf-8")).toContain('greeting = "good morning"');
+  });
+
+  it("refuses a release that holds no package of that name, naming it", async () => {
+    upstream.release({ "pager/package.json": null, "pager/index.js": null, "pager/NOTES.md": null }, `${PAGER}@1.1.0`);
+
+    await expect(mergeForks(world, [{ name: PAGER, fork, version: "1.1.0" }])).rejects.toThrow(`no package named ${PAGER}`);
+  });
+
   it("stops the whole update on a line both changed, leaves the fork byte for byte, and writes the marked merge where it says", async () => {
     fs.writeFileSync(path.join(fork, "index.js"), fs.readFileSync(path.join(fork, "index.js"), "utf-8").replace('"hello"', '"good morning"'));
     upstream.release(release("1.1.0", "hi there", "see you"), `${PAGER}@1.1.0`);

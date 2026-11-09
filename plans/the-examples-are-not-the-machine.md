@@ -10,6 +10,8 @@ sources:
   - { id: S8, kind: code, ref: ".software-factory/policy.yaml", said: "twenty-eight gate activation paths name packages/workflow-*, and the workspaces, tsconfig.json and ten plugins' tsconfig references reach the workflows by directory" }
   - { id: S9, kind: decision, said: "the moved packages keep their names, their versions and the fixed release group: an install that names @amykit/workflow-ticket-to-qa does not notice, and only repository.directory follows the move. Decided 2026-11-06" }
   - { id: S10, kind: decision, said: "a published package under packages/ names no package under examples/ in dependencies or peerDependencies; a devDependency for tests, and the private test-fixtures, may. Decided 2026-11-06" }
+  - { id: S13, kind: decision, said: "a fork taken before the move updates across it: the base is read where it was, the next release where it now is, and the record names the new directory. Brought into scope from review on PR #187. Decided 2026-11-09" }
+  - { id: S14, kind: code, ref: "packages/cli/src/fork.ts", said: "mergeForks fetched the next release from the directory the fork recorded, so a release under examples/ was not a package there and amy update stopped before any package moved" }
   - { id: S12, kind: reference, ref: "plans/a-plugin-is-installed-into-a-workflow.md", said: "a fork's source is read from repository.directory at the tag of its version, so a version released before the move is still forked from where it was, and one after from examples/" }
 touches:
   - examples/**
@@ -21,6 +23,8 @@ touches:
   - packages/core/tests/architecture.test.ts
   - packages/core/tests/operation.test.ts
   - packages/cli/src/registry-item.ts
+  - packages/cli/src/fork.ts
+  - packages/cli/tests/fork-update.test.ts
   - packages/cli/tests/diagram-gates.test.ts
   - packages/cli/tests/registry-item.test.ts
   - packages/test-fixtures/src/ticket-to-qa.ts
@@ -58,12 +62,13 @@ touches:
   - .changeset/**
 untouched:
   - "packages/workflow-testkit/**: amy workflow check drives it, so it is the machine (S3)"
-  - "packages/cli/src/** but registry-item.ts: it imports no workflow; its string tables naming the shipped workflows (profiles.ts, slices.ts, config.ts, config-template.ts) stay, moving what a workflow needs into it is another row. registry-item.ts lists the directories a published package lives in, so it learns examples/ or the registry loses the five workflows"
+  - "packages/cli/src/** but registry-item.ts and fork.ts: it imports no workflow; its string tables naming the shipped workflows (profiles.ts, slices.ts, config.ts, config-template.ts) stay, moving what a workflow needs into it is another row. registry-item.ts lists the directories a published package lives in, so it learns examples/ or the registry loses the five workflows; fork.ts follows a release to the directory it moved to (S13)"
 criteria:
   - { id: A1, statement: "examples/ holds the five workflow packages, and packages/ holds none of them and keeps workflow-testkit", proof: "deferred:test:packages/core/tests/architecture.test.ts", sources: [S1, S2, S3] }
   - { id: A2, statement: "no published package under packages/ names a package under examples/ in dependencies or peerDependencies, and adding one turns the test red naming both", proof: "deferred:test:packages/core/tests/architecture.test.ts", sources: [S4, S5, S10] }
   - { id: A3, statement: "each moved package keeps its name, version and release group, and its repository.directory names its directory under examples/", proof: "deferred:test:packages/core/tests/architecture.test.ts", sources: [S9, S12] }
   - { id: A4, statement: "every mechanism and every gate activation that named a moved path names its new one, and a changed file under examples/ activates the gate and reaches the crossing it did before", proof: "deferred:test:scripts/plans/tests/mechanisms.test.ts", sources: [S7, S8] }
+  - { id: A6, statement: "a fork whose base was released under one directory updates to a release under another, keeping the person's edits, and records the new directory; a release with no package of that name is refused naming it", proof: "deferred:test:packages/cli/tests/fork-update.test.ts", sources: [S13, S14] }
   - { id: A5, statement: "the lifecycle gate passes from examples/ with its evidence re-run and re-sealed, not edited", proof: "assertion:brief.parent_is_the_tracker_supplied_shared_id", sources: [S8] }
 crosses:
   - { mechanism: diagram, answer: works, proof: "deferred:A4" }
@@ -72,6 +77,7 @@ crosses:
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit stays in packages/ and drives the moved workflows as packages, by name" }
   - { mechanism: rendering, answer: n/a, why: "a-view-draws-nothing.test.ts only learns to read examples/ beside packages/ and plugins/; no view and no renderer changes" }
 guarantee:
+  - { holds: "a fork of a shipped workflow taken before the move updates across it with amy update", not_against: "a package that moved to a directory more than three levels below the repository's root" }
   - { holds: "an install that names a shipped workflow by package name mounts it before and after the move, unchanged", not_against: "an install that names a workflow by a path into a clone of this repository" }
   - { holds: "every path the gate, the catalog and the plans read that named a moved file names it after the move", not_against: "delivered design notes under docs/design, which describe what shipped where it shipped and keep their text" }
 failures:
