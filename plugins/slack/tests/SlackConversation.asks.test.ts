@@ -224,6 +224,21 @@ describe("Slack structured asks", () => {
     expect(http.args("conversations.replies")).toEqual([expect.objectContaining({ oldest: "1790000100.000100" })]);
   });
 
+  it("replays a saved approval when a later mark's users cannot be listed", async () => {
+    const approved = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
+    const unresolved = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR]), reaction("x", ["U0SOMEONE"], 2)]);
+    await slack(new Http([auth(), messages([approved]), messages([approved])])).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+    const later = new Http([
+      auth(), messages([unresolved]), messages([unresolved]),
+      { method: "reactions.get", json: { message: unresolved } },
+    ]);
+
+    await expect(slack(later).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toMatchObject([
+      { answer: { ask: "ship", chosen: ["approve"] } },
+    ]);
+    expect(later.args("chat.postMessage")).toEqual([]);
+  });
+
   it("records a notice during the poll so duplicate asks cannot post it twice", async () => {
     const duplicate = askMessage("1790000101.000100", ASK, [reaction("white_check_mark", [OPERATOR]), reaction("x", [OPERATOR])]);
     const http = new Http([auth(), messages([duplicate, duplicate]), messages([duplicate, duplicate]), { method: "chat.postMessage", json: { ts: "1790000102.000100" } }]);

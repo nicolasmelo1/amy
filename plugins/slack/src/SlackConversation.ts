@@ -334,7 +334,12 @@ export class SlackConversation implements Conversation {
       const remembered = this.rememberedAnswer(threadTs, entry.ask.id);
       // Re-read an accepted ask too: its decision is immutable, but a later
       // complete, different mark still deserves the once-only acknowledgement.
-      const verdict = await this.answerOf(entry.message, entry.ask);
+      // Marks Slack cannot fully list block a first answer, never a saved
+      // one: the remembered answer is replayed and nothing new is read.
+      const verdict: AnswerVerdict = await this.answerOf(entry.message, entry.ask).catch((error: unknown): AnswerVerdict => {
+        if (remembered) return { ambiguous: false, observed: [] };
+        throw error;
+      });
       const accepted = await this.acceptedAnswer(threadTs, messages, entry, remembered, verdict);
       if (!accepted) continue;
       const chosen = accepted.chosen;
