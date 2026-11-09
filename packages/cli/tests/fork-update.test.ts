@@ -127,3 +127,80 @@ describe("amy update with a fork", () => {
     expect(world.calls.some((call) => call.command === "npm" && call.args[0] === "install" && call.args.includes(path.join(home, "plugins")))).toBe(false);
   });
 });
+
+/**
+ * A workflow forked out of a TypeScript monorepo, the way the shipped ones are:
+ * its tsconfig extends the repository's and references packages beside it.
+ * The fork flattened that tsconfig and dropped the references; the next
+ * release moved the package and its references with it, as PR #187 did.
+ */
+describe("amy update with a fork of a TypeScript workflow that moved", () => {
+  const FLOW = "@acme/workflow-flow";
+  let home: string;
+  let upstream: Upstream;
+  let fork: string;
+  let world: ForkWorld;
+
+  function workflow(directory: string, core: string, version: string, said: string): Record<string, string> {
+    return {
+      [`${directory}/package.json`]: JSON.stringify({ name: FLOW, version, type: "module", main: "./dist/index.js", repository: { type: "git", url: "x", directory } }, null, 2),
+      [`${directory}/tsconfig.json`]: JSON.stringify({
+        extends: "../../tsconfig.base.json",
+        compilerOptions: { rootDir: "src", outDir: "dist" },
+        include: ["src"],
+        references: [{ path: core }],
+      }, null, 2),
+      [`${directory}/src/index.ts`]: `export const said = "${said}";\n\nexport const steps = ["one", "two"];\n`,
+    };
+  }
+
+  beforeEach(async () => {
+    home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "amy-fork-ts-")));
+    upstream = new Upstream(path.join(home, "upstream"));
+    upstream.release({
+      "tsconfig.base.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, composite: true } }, null, 2),
+      "packages/core/package.json": JSON.stringify({ name: "@acme/core", version: "1.0.0" }),
+      ...workflow("packages/workflow-flow", "../core", "1.0.0", "as released"),
+    }, `${FLOW}@1.0.0`);
+    world = new ForkWorld();
+    fork = (await addFork({
+      runner: world, home, profile: PAGING, specs: [FLOW], spec: `${upstream.url}#${FLOW}@1.0.0&path:packages/workflow-flow`, cwd: home,
+    })).directory;
+  });
+  afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
+
+  function moveTo(version: string, said: string): void {
+    upstream.release({
+      "packages/workflow-flow/package.json": null,
+      "packages/workflow-flow/tsconfig.json": null,
+      "packages/workflow-flow/src/index.ts": null,
+      ...workflow("examples/workflow-flow", "../../packages/core", version, said),
+    }, `${FLOW}@${version}`);
+  }
+
+  it("takes a release that changed only its references, with no conflict, when nobody edited the fork", async () => {
+    const tsconfig = fs.readFileSync(path.join(fork, "tsconfig.json"), "utf-8");
+    moveTo("1.1.0", "as released");
+
+    const updates = await mergeForks(world, [{ name: FLOW, fork, version: "1.1.0" }]);
+
+    expect(updates[0]!.merged.conflicts).toEqual([]);
+    applyForkUpdates(updates);
+    expect(fs.readFileSync(path.join(fork, "tsconfig.json"), "utf-8")).toBe(tsconfig);
+    expect(JSON.parse(tsconfig)).not.toHaveProperty("references");
+    expect(JSON.parse(fs.readFileSync(path.join(fork, ".amy-fork.json"), "utf-8"))).toMatchObject({ base: { directory: "examples/workflow-flow" } });
+  });
+
+  it("keeps a person's edit to the source and takes the release's, across the move", async () => {
+    fs.writeFileSync(path.join(fork, "src", "index.ts"), fs.readFileSync(path.join(fork, "src", "index.ts"), "utf-8").replace('"two"', '"two", "three"'));
+    moveTo("1.1.0", "moved");
+
+    const updates = await mergeForks(world, [{ name: FLOW, fork, version: "1.1.0" }]);
+    applyForkUpdates(updates);
+
+    expect(updates[0]!.merged.conflicts).toEqual([]);
+    const source = fs.readFileSync(path.join(fork, "src", "index.ts"), "utf-8");
+    expect(source).toContain('said = "moved"');
+    expect(source).toContain('"two", "three"');
+  });
+});

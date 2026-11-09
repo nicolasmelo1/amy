@@ -795,6 +795,13 @@ export async function mergeForks(runner: CommandRunner, targets: readonly ForkTa
       // The base is read where it was; the next release, wherever it now is.
       const after = await fetchRelease(runner, { url: base.url, directory: base.directory, ref: nextRef }, base.package, nextRef);
       try {
+        // A fork's first edits are the standalone rewrite takeFork made: the
+        // tsconfig flattened, its references dropped. Made on both releases
+        // too, so the merge compares like with like and only what a person
+        // changed is theirs: otherwise a release that moved its references
+        // conflicts with a fork nobody touched.
+        standalone(before.directory, before.root, before.directory);
+        standalone(after.directory, after.root, after.directory);
         const merged = mergeTrees(readTree(before.directory), readTree(target.fork), readTree(after.directory), {
           ours: `fork ${target.fork}`,
           base: `${base.package}@${base.version}`,
