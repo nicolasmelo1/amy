@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { segment } from "./names.js";
 
 /**
  * Seats on a resource, shared by every project and profile on the machine.
@@ -170,7 +171,7 @@ export class Leases {
   }
 
   private file(resource: string): string {
-    return path.join(this.root, `${encodeURIComponent(resource)}.json`);
+    return path.join(this.root, `${segment(resource)}.json`);
   }
 
   private read(resource: string): Ledger {

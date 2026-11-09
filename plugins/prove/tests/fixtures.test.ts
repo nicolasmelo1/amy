@@ -61,3 +61,26 @@ describe("a fixture ensures a state", () => {
     expect(() => readFixtures({ broken: { ensure: [] } })).toThrow(/^the fixture `broken` is not one/);
   });
 });
+
+describe("a person's answer about a fixture", () => {
+  it("is not taken for the state: the fixture is read again, and asked again while it does not hold", async () => {
+    const proving = new ProveWorld({
+      fixtures: { "an-open-account": { ensure: [{ check: { operation: "account.get", input: {}, expect: { path: "open", equals: true } } }] } },
+    });
+    proving.brief("TBO-40", "name: n\nfixtures: [an-open-account]\nsteps:\n  - { id: open, operation: account.get, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    let open = false;
+    const mounted = await proving.mounted([operationsPlugin("bank", { "account.get": () => ({ open }) })]);
+    const asked = await walk(proving, mounted, newRun(mounted, "TBO-40/PROVE#1"), { until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    const firstDeadline = asked.record.asking!.deadlineAt;
+
+    proving.answer("thread-TBO-40", "I couldn't open it");
+    const again = await walk(proving, mounted, asked.record, { until: (record) => record.state === "ASKING" && record.asking !== undefined && proving.posted.length === 2 });
+    expect(again.record.state).toBe("ASKING");
+    expect(again.record.asking!.deadlineAt).toBe(firstDeadline);
+
+    open = true;
+    proving.clock += 1000;
+    proving.answer("thread-TBO-40", "now it is open");
+    expect((await walk(proving, mounted, again.record, { throughWaits: true })).record.state).toBe("PROVEN");
+  });
+});

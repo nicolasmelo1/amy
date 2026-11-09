@@ -149,3 +149,14 @@ describe("a run is proven only when every step held", () => {
     expect(record.results?.read).toEqual({ status: "unsupported", why: "the agent answered `read` with no calls amy can read" });
   });
 });
+
+describe("an expected value", () => {
+  it("equals a mapping with the same fields in any order, and an array only in its own order", async () => {
+    const { same } = await import("../src/scenario.js");
+
+    expect(same({ paid: true, currency: "USD" }, { currency: "USD", paid: true })).toBe(true);
+    expect(same([1, 2], [2, 1])).toBe(false);
+    expect(same({ a: [{ b: 1, c: 2 }] }, { a: [{ c: 2, b: 1 }] })).toBe(true);
+    expect(same({ a: 1 }, { a: 1, b: undefined })).toBe(false);
+  });
+});

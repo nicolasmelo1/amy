@@ -195,6 +195,15 @@ export function meets(output: unknown, expectation: Expectation): boolean {
   return expectation.equals === undefined ? found.value !== undefined && found.value !== null && found.value !== false : same(found.value, expectation.equals);
 }
 
+/** Whether two values are equal as data: a mapping's keys in any order, an array's items in theirs. */
 export function same(one: unknown, other: unknown): boolean {
-  return JSON.stringify(one) === JSON.stringify(other);
+  if (Array.isArray(one) || Array.isArray(other)) {
+    return Array.isArray(one) && Array.isArray(other) && one.length === other.length && one.every((item, at) => same(item, other[at]));
+  }
+  if (typeof one === "object" && one !== null && typeof other === "object" && other !== null) {
+    const keys = Object.keys(one);
+    return keys.length === Object.keys(other).length
+      && keys.every((key) => Object.hasOwn(other, key) && same((one as Record<string, unknown>)[key], (other as Record<string, unknown>)[key]));
+  }
+  return Object.is(one, other);
 }

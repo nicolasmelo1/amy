@@ -3,6 +3,7 @@ import path from "node:path";
 import type { HarnessReply, Operated } from "@amykit/core";
 import { StepResult } from "./assertions.js";
 import { OperationCall, Step, meets } from "./scenario.js";
+import { segment } from "./names.js";
 
 /**
  * What a step runs through: the mounted operations, and a harness only an
@@ -52,7 +53,7 @@ export class Replays {
   }
 
   private file(scenario: string, step: string): string {
-    return path.join(this.root, encodeURIComponent(scenario), `${encodeURIComponent(step)}.json`);
+    return path.join(this.root, segment(scenario), `${segment(step)}.json`);
   }
 }
 

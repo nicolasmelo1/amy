@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { AssertionResult, blocking, holds } from "./assertions.js";
+import { segment } from "./names.js";
 
 /**
  * A proof is a project artifact, not an execution state: one record per unit
@@ -85,6 +86,6 @@ export class ProofStore {
   }
 
   private file(unit: string): string {
-    return path.join(this.root, `${encodeURIComponent(unit)}.json`);
+    return path.join(this.root, `${segment(unit)}.json`);
   }
 }

@@ -61,7 +61,7 @@ export function terminalOperations(runner: CommandRunner) {
     id: "terminal.type",
     domain: "terminal",
     summary: "Type text into the program",
-    description: "Runs `tu type <text>`.",
+    description: "Runs `tu type -- <text>`: the text is typed as it is, even when it starts with `-`.",
     input: z.object({ text: z.string().describe("what to type") }),
     output: z.object({ done: z.boolean().describe("done") }),
     errors,
@@ -69,7 +69,7 @@ export function terminalOperations(runner: CommandRunner) {
     http: { method: "post", path: "/terminal/type" },
     examples: [{ summary: "a line", input: { text: "hello" }, output: { done: true } }],
     async handler({ text }, context) {
-      const ran = await tu(runner, context, "terminal.type", ["type", ...session(context, "terminal.type"), text]);
+      const ran = await tu(runner, context, "terminal.type", ["type", ...session(context, "terminal.type"), "--", text]);
       return ran.ok ? { done: true } : fail(FAILED, ran.why);
     },
   });
@@ -78,7 +78,7 @@ export function terminalOperations(runner: CommandRunner) {
     id: "terminal.press",
     domain: "terminal",
     summary: "Press keys, in order",
-    description: "Runs `tu press <key>...`, as `Escape : w q Enter` or `Ctrl+C`.",
+    description: "Runs `tu press -- <key>...`, as `Escape : w q Enter` or `Ctrl+C`.",
     input: z.object({ keys: z.array(z.string().min(1)).min(1).describe("the keys, in order") }),
     output: z.object({ done: z.boolean().describe("done") }),
     errors,
@@ -86,7 +86,7 @@ export function terminalOperations(runner: CommandRunner) {
     http: { method: "post", path: "/terminal/press" },
     examples: [{ summary: "save and quit", input: { keys: ["Escape", ":", "w", "q", "Enter"] }, output: { done: true } }],
     async handler({ keys }, context) {
-      const ran = await tu(runner, context, "terminal.press", ["press", ...session(context, "terminal.press"), ...keys]);
+      const ran = await tu(runner, context, "terminal.press", ["press", ...session(context, "terminal.press"), "--", ...keys]);
       return ran.ok ? { done: true } : fail(FAILED, ran.why);
     },
   });
@@ -110,8 +110,9 @@ export function terminalOperations(runner: CommandRunner) {
       if (text === undefined && stableMs === undefined) return fail("terminal.wait", "a wait names the text to see or how long the screen stays still");
       const ran = await tu(runner, context, "terminal.wait", [
         "wait", ...session(context, "terminal.wait"),
-        ...(text !== undefined ? ["--text", text] : ["--stable", String(stableMs)]),
-        "--timeout", String(timeoutMs),
+        // Bound with `=`: a pattern starting with `-` would read as an option.
+        ...(text !== undefined ? [`--text=${text}`] : [`--stable=${stableMs}`]),
+        `--timeout=${timeoutMs}`,
       ], timeoutMs);
       if (ran.ok) return { matched: true };
       return /timed out/i.test(ran.why) ? { matched: false } : fail(FAILED, ran.why);

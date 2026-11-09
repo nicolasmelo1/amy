@@ -34,8 +34,8 @@ export interface ProveRecord extends WorkRecord {
   failed?: string;
   /** A fixture nothing could make hold, waiting for a person. */
   fixtureAsk?: { readonly fixture: string; readonly question: string };
-  /** Fixtures a person made hold, which are not ensured again this run. */
-  heldByPerson?: string[];
+  /** When the person asked to make each fixture hold has to have done it by: the first ask's deadline. */
+  fixtureDeadlines?: Record<string, string>;
   results?: Record<string, StepResult>;
   /** The calls each agent step made this run, kept as its replay only if its assertions pass. */
   agentCalls?: Record<string, OperationCall[]>;
@@ -134,9 +134,12 @@ export const decide = {
     if (lost) return lost;
     if (record.failed) return end("refused", record.failed);
     if (record.fixtureAsk) {
-      return advance("ASKING", `the fixture \`${record.fixtureAsk.fixture}\` cannot reach its state on its own`, {
-        type: "ask", fixture: record.fixtureAsk.fixture, question: record.fixtureAsk.question, deadlineMs: policy.fixtureDeadlineMs,
-      });
+      // Asked again while it still does not hold, within the first ask's deadline.
+      const { fixture, question } = record.fixtureAsk;
+      const by = record.fixtureDeadlines?.[fixture];
+      if (by && observation.now >= by) return end("refused", `nobody made the fixture \`${fixture}\` hold before ${by}`);
+      const deadlineMs = by ? Date.parse(by) - Date.parse(observation.now) : policy.fixtureDeadlineMs;
+      return advance("ASKING", `the fixture \`${fixture}\` cannot reach its state on its own`, { type: "ask", fixture, question, deadlineMs });
     }
     if (record.prepared) return advance("RUNNING", "the resources are up and every fixture holds");
     return act("bring the resources up and ensure the fixtures", { type: "prepare" });

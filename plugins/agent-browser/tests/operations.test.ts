@@ -79,7 +79,7 @@ describe("the terminal plugin drives terminal-use", () => {
     const runner = new FakeRunner([
       { when: ["run"], answer: { stdout: JSON.stringify({ type: "session_created", name: "amy", pid: 4242 }) } },
       { when: ["screenshot"], answer: { stdout: JSON.stringify({ type: "screenshot", format: "text", content: "~\n-- INSERT --", rows: 24, cols: 80 }) } },
-      { when: ["--text", "never"], answer: { ok: false, exitCode: 1, stderr: "Error: Wait timed out" } },
+      { when: ["--text=never"], answer: { ok: false, exitCode: 1, stderr: "Error: Wait timed out" } },
     ]);
     const contract = defineContract(terminalOperations(runner));
     const at = context(defaults(terminalSettings));
@@ -87,6 +87,8 @@ describe("the terminal plugin drives terminal-use", () => {
     expect(await invoke(contract, "terminal.run", { command: "vim", args: ["notes.md"] }, at)).toEqual({ kind: "output", output: { pid: 4242 } });
     expect(await invoke(contract, "terminal.press", { keys: ["i"] }, at)).toEqual({ kind: "output", output: { done: true } });
     expect(await invoke(contract, "terminal.type", { text: "hello" }, at)).toEqual({ kind: "output", output: { done: true } });
+    expect(await invoke(contract, "terminal.type", { text: "--help" }, at)).toEqual({ kind: "output", output: { done: true } });
+    expect(await invoke(contract, "terminal.wait", { text: "-+" }, at)).toEqual({ kind: "output", output: { matched: true } });
     expect(await invoke(contract, "terminal.wait", { text: "INSERT" }, at)).toEqual({ kind: "output", output: { matched: true } });
     expect(await invoke(contract, "terminal.wait", { text: "never", timeoutMs: 100 }, at)).toEqual({ kind: "output", output: { matched: false } });
     expect(await invoke(contract, "terminal.screen", {}, at)).toEqual({ kind: "output", output: { content: "~\n-- INSERT --", rows: 24, cols: 80 } });
@@ -95,10 +97,12 @@ describe("the terminal plugin drives terminal-use", () => {
 
     expect(runner.lines.map((line) => line.slice(1).join(" "))).toEqual([
       "--json run --name amy vim notes.md",
-      "--json press --name amy i",
-      "--json type --name amy hello",
-      "--json wait --name amy --text INSERT --timeout 5000",
-      "--json wait --name amy --text never --timeout 100",
+      "--json press --name amy -- i",
+      "--json type --name amy -- hello",
+      "--json type --name amy -- --help",
+      "--json wait --name amy --text=-+ --timeout=5000",
+      "--json wait --name amy --text=INSERT --timeout=5000",
+      "--json wait --name amy --text=never --timeout=100",
       "--json screenshot --name amy",
       "--json kill --name amy",
     ]);

@@ -78,3 +78,23 @@ describe("a replay is kept only when the step's assertions passed", () => {
     expect(again.record.state).toBe("PROVEN");
   });
 });
+
+describe("a name in a file's path", () => {
+  it("stays inside its directory, dots and all", async () => {
+    const { segment } = await import("../src/names.js");
+    const { Replays } = await import("../src/steps.js");
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-replays-"));
+    const proofs = path.join(root, "proofs");
+    fs.mkdirSync(proofs);
+    fs.writeFileSync(path.join(proofs, "OTHER-1.json"), "{}");
+
+    new Replays(path.join(proofs, "replays")).put("..", "OTHER-1", { calls: [] });
+    new Replays(path.join(proofs, "replays")).remove("..", "OTHER-1");
+
+    expect(fs.readFileSync(path.join(proofs, "OTHER-1.json"), "utf-8")).toBe("{}");
+    expect(segment("..")).toBe("%2E%2E");
+  });
+});

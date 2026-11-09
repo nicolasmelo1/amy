@@ -179,3 +179,19 @@ describe("a lease lock left by a daemon that died holding it", () => {
     expect(JSON.parse(fs.readFileSync(path.join(lock, "owner.json"), "utf-8"))).toEqual({ pid: process.pid, stamp: "mine" });
   });
 });
+
+describe("a run that lost its seat mid-scenario", () => {
+  it("starts the scenario over once it has a seat again, keeping nothing the old resource answered", async () => {
+    const world = new ProveWorld({ resources: { account: { capacity: 1, check: "ok" } }, policy: { leaseTtlMs: 5000 } }, { ok });
+    world.brief("TBO-41", "name: n\nresources: [account]\nsteps:\n  - { id: open, operation: bank.open, input: {} }\n  - { id: look, kind: human, ask: is it there?, deadlineMs: 600000 }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    const mounted = await world.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
+    const asking = await walk(world, mounted, newRun(mounted, "TBO-41/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    expect(asking.record.results?.open).toBeDefined();
+
+    world.clock += 6000;
+    const { record } = await walk(world, mounted, asking.record);
+
+    expect(record.state).toBe("LEASING");
+    expect(record.results).toBeUndefined();
+  });
+});

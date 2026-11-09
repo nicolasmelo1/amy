@@ -309,10 +309,13 @@ async function broughtUp(scope: ActionScope, work: Work): Promise<boolean> {
   return true;
 }
 
-/** Ensures every fixture a person has not already made hold; false when one is missing or needs a person. */
+/**
+ * Ensures every fixture; false when one is missing or needs a person. A
+ * person's answer is not taken for the state: the fixture is read again, and
+ * asked again while it still does not hold.
+ */
 async function fixturesHold(scope: ActionScope, work: Work): Promise<boolean> {
   for (const name of work.record.scenario?.fixtures ?? []) {
-    if ((work.record.heldByPerson ?? []).includes(name)) continue;
     const fixture = scope.policy.fixtures[name];
     if (!fixture) {
       work.outcomes.failed = `the scenario starts from the fixture \`${name}\`, which no configured fixture is`;
@@ -346,6 +349,9 @@ function remember(record: ProveRecord, outcomes: Record<string, unknown>, observ
   if (from === "READING" && next.state !== "READING" && observation.scenario) {
     next = { ...next, scenario: observation.scenario, briefRevision: observation.briefRevision };
   }
+  if (next.asking?.fixture && !next.fixtureDeadlines?.[next.asking.fixture]) {
+    next = { ...next, fixtureDeadlines: { ...next.fixtureDeadlines, [next.asking.fixture]: next.asking.deadlineAt } };
+  }
   if (from === "ASKING" && next.state !== "ASKING") next = afterAsking(record, next, observation);
   if (observation.lost.length > 0 && next.state === "LEASING") next = unseated(next, observation);
   return ended(from, record, next, observation);
@@ -375,17 +381,19 @@ function afterAsking(before: ProveRecord, after: ProveRecord, observation: Obser
   }
   if (reply && before.asking?.fixture) {
     const { fixtureAsk: _settled, ...rest } = next;
-    return { ...rest, heldByPerson: [...(next.heldByPerson ?? []), before.asking.fixture] } as ProveRecord;
+    return rest as ProveRecord;
   }
   return next as ProveRecord;
 }
 
 /**
  * A lease that ran out is a seat somebody else may have taken: the run
- * waits for one again, and prepares from the start once it has it.
+ * waits for one again, and prepares and runs from the start once it has it.
  */
 function unseated(record: ProveRecord, observation: Observation): ProveRecord {
-  const { prepared: _prepared, fixtureAsk: _fixture, asking: _asking, ...rest } = record;
+  // What the steps found belongs to the resources as they were: a seat lost
+  // may mean another run took them down, so the scenario starts over.
+  const { prepared: _prepared, fixtureAsk: _fixture, asking: _asking, results: _results, untilSince: _until, agentCalls: _calls, ...rest } = record;
   return { ...rest, held: (record.held ?? []).filter((one) => !observation.lost.includes(one)), up: [] } as ProveRecord;
 }
 
