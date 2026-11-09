@@ -51,7 +51,7 @@
       "path": "plugins/serial-engine/tsconfig.json",
       "type": "registry:file",
       "target": "forks/plugin-serial-engine/tsconfig.json",
-      "content": "{\n  \"extends\": \"../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist\"\n  },\n  \"include\": [\n    \"src\"\n  ],\n  \"references\": [\n    {\n      \"path\": \"../../packages/core\"\n    },\n    {\n      \"path\": \"../../packages/workflow-ticket-to-qa\"\n    }\n  ]\n}\n"
+      "content": "{\n  \"extends\": \"../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist\"\n  },\n  \"include\": [\n    \"src\"\n  ],\n  \"references\": [\n    {\n      \"path\": \"../../packages/core\"\n    },\n    {\n      \"path\": \"../../examples/workflow-ticket-to-qa\"\n    }\n  ]\n}\n"
     }
   ],
   "meta": {

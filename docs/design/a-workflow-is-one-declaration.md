@@ -128,7 +128,7 @@ author migrates once.
       (proof: test:packages/core/tests/define-workflow.test.ts)
 - [x] `ticket-to-qa` under `writes: operator` is still mounted claiming no
       writes, and refused any writer
-      (proof: test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/plugin.test.ts)
 - [x] What `amy workflow new` writes uses it, and still runs before anybody
       edits it
       (proof: assertion:mine.the_scaffold_runs_before_it_is_edited)

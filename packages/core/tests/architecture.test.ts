@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import * as core from "../src/index.js";
@@ -90,10 +91,10 @@ describe("a config is typed by its schema", () => {
 
   it("leaves scalar and string-array settings uncast in shipped plugins", () => {
     const pluginSource = fs.readdirSync(path.join(root, "plugins"), { recursive: true, encoding: "utf8" }) as string[];
-    const workflowSource = fs.readdirSync(path.join(root, "packages"), { recursive: true, encoding: "utf8" }) as string[];
+    const workflowSource = fs.readdirSync(path.join(root, "examples"), { recursive: true, encoding: "utf8" }) as string[];
     const pluginFiles = [
       ...pluginSource.filter((file) => /\/src\/plugin\.ts$/.test(file)).map((file) => path.join("plugins", file)),
-      ...workflowSource.filter((file) => /^workflow-[^/]+\/src\/plugin\.ts$/.test(file)).map((file) => path.join("packages", file)),
+      ...workflowSource.filter((file) => /^workflow-[^/]+\/src\/plugin\.ts$/.test(file)).map((file) => path.join("examples", file)),
     ];
     const scalarCast = /ctx\.config\.[a-zA-Z]+\s+as\s+(?:string|number|boolean|string\[\])/;
     const offenders = pluginFiles.flatMap((file) => fs.readFileSync(path.join(root, file), "utf8").split("\n")
@@ -108,7 +109,7 @@ describe("a mount builds once, and only the core knows when", () => {
   const root = path.resolve(import.meta.dirname, "../../..");
   const sources = [
     ...fs.readdirSync(path.join(root, "plugins")).map((name) => path.join("plugins", name, "src")),
-    ...fs.readdirSync(path.join(root, "packages")).filter((name) => name.startsWith("workflow-")).map((name) => path.join("packages", name, "src")),
+    ...fs.readdirSync(path.join(root, "examples")).filter((name) => name.startsWith("workflow-")).map((name) => path.join("examples", name, "src")),
   ].filter((directory) => fs.existsSync(path.join(root, directory)));
 
   it("leaves no plugin or workflow keying anything by PluginContext", () => {
@@ -137,7 +138,7 @@ describe("a workflow is three pieces", () => {
 
   it("leaves each shipped workflow with one declaration and no manual runtime registration", () => {
     const offenders = workflows.flatMap((name) => {
-      const source = fs.readFileSync(path.join(root, "packages", name, "src/plugin.ts"), "utf8");
+      const source = fs.readFileSync(path.join(root, "examples", name, "src/plugin.ts"), "utf8");
       const declarations = source.match(/\bdefineWorkflow\s*\(/g)?.length ?? 0;
       return declarations === 1 && !/registry\.workflow|WORKFLOW_RUNTIME|function required/.test(source)
         ? []
@@ -149,7 +150,7 @@ describe("a workflow is three pieces", () => {
 
   it("gives the small workflows decide and actions, with no obsolete four-file machine", () => {
     const offenders = workflows.slice(0, 2).flatMap((name) => {
-      const directory = path.join(root, "packages", name, "src");
+      const directory = path.join(root, "examples", name, "src");
       const plugin = fs.readFileSync(path.join(directory, "plugin.ts"), "utf8");
       const record = fs.readFileSync(path.join(directory, "record.ts"), "utf8");
       const obsolete = ["state.ts", "effects.ts", "machine.ts", "runtime.ts"].some((file) => fs.existsSync(path.join(directory, file)));
@@ -160,7 +161,7 @@ describe("a workflow is three pieces", () => {
   });
 
   it("wires ticket-to-qa's own before, decisions and after without removing its public machine", () => {
-    const source = fs.readFileSync(path.join(root, "packages/workflow-ticket-to-qa/src/plugin.ts"), "utf8");
+    const source = fs.readFileSync(path.join(root, "examples/workflow-ticket-to-qa/src/plugin.ts"), "utf8");
     expect(source).toMatch(/\bbefore,\s*\n\s*decide,\s*\n\s*after,/);
     expect(source).not.toMatch(/\bplan,|\bruntime:/);
   });
@@ -171,6 +172,7 @@ describe("the host lends the checkout", () => {
   const outsideTheCore = [
     ...fs.readdirSync(path.join(root, "plugins")).map((name) => path.join("plugins", name)),
     ...fs.readdirSync(path.join(root, "packages")).filter((name) => name !== "core").map((name) => path.join("packages", name)),
+    ...fs.readdirSync(path.join(root, "examples"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => path.join("examples", entry.name)),
   ];
 
   /** Every line matching `pattern` in the TypeScript under `directories`, outside build output. */
@@ -205,5 +207,88 @@ describe("the host lends the checkout", () => {
 
   it("leaves the branch settings described once, in the core", () => {
     expect(linesMatching(shipped, /^\s*(?:defaultBranch|baseBranch):\s*\{/)).toEqual([]);
+  });
+});
+
+/**
+ * packages/ holds amy and what it needs to run; examples/ holds the workflows
+ * it ships, under the names an install already holds. The machine may lean on
+ * an example to test itself, never to run.
+ */
+describe("the examples are not the machine", () => {
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const moved = ["workflow-errand", "workflow-feature-grooming", "workflow-note-to-plan", "workflow-pull-request", "workflow-ticket-to-qa"];
+
+  interface Manifest {
+    name: string;
+    version: string;
+    private?: boolean;
+    repository?: { directory?: string };
+    dependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
+  }
+
+  function manifestsUnder(group: string, base = root): Array<{ directory: string; manifest: Manifest }> {
+    return fs.readdirSync(path.join(base, group)).sort()
+      .map((name) => path.join(group, name))
+      .filter((directory) => fs.existsSync(path.join(base, directory, "package.json")))
+      .map((directory) => ({ directory, manifest: JSON.parse(fs.readFileSync(path.join(base, directory, "package.json"), "utf8")) as Manifest }));
+  }
+
+  /** Every published package under packages/ naming an example in what it needs to run, as `package -> example`. */
+  function leaningOnExamples(base = root): string[] {
+    const examples = new Set(manifestsUnder("examples", base).map(({ manifest }) => manifest.name));
+    return manifestsUnder("packages", base)
+      .filter(({ manifest }) => manifest.private !== true)
+      .flatMap(({ manifest }) =>
+        Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies })
+          .filter((name) => examples.has(name))
+          .map((name) => `${manifest.name} -> ${name}`),
+      );
+  }
+
+  it("keeps the five shipped workflows under examples/, and the testkit under packages/", () => {
+    const examples = manifestsUnder("examples").map(({ directory }) => path.basename(directory));
+    const packages = manifestsUnder("packages").map(({ directory }) => path.basename(directory));
+
+    expect(examples).toEqual(expect.arrayContaining(moved));
+    expect(packages.filter((name) => moved.includes(name))).toEqual([]);
+    expect(packages).toContain("workflow-testkit");
+  });
+
+  it("lets no published package under packages/ depend on an example", () => {
+    expect(manifestsUnder("examples").length).toBeGreaterThanOrEqual(moved.length);
+    expect(leaningOnExamples()).toEqual([]);
+  });
+
+  it("names the package and the example when one does, and lets a test lean on it", () => {
+    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "amy-leaning-"));
+    const write = (directory: string, manifest: object) => {
+      fs.mkdirSync(path.join(fixture, directory), { recursive: true });
+      fs.writeFileSync(path.join(fixture, directory, "package.json"), JSON.stringify(manifest));
+    };
+    try {
+      write("examples/workflow-errand", { name: "@amykit/workflow-errand", version: "0.6.0" });
+      write("packages/cli", { name: "@amykit/cli", version: "0.6.0", dependencies: { "@amykit/workflow-errand": "^0.6.0" }, devDependencies: { "@amykit/workflow-errand": "^0.6.0" } });
+      write("packages/services", { name: "@amykit/services", version: "0.6.0", peerDependencies: { "@amykit/workflow-errand": "^0.6.0" } });
+      write("packages/test-fixtures", { name: "@amykit/test-fixtures", version: "0.1.0", private: true, dependencies: { "@amykit/workflow-errand": "*" } });
+
+      expect(leaningOnExamples(fixture)).toEqual(["@amykit/cli -> @amykit/workflow-errand", "@amykit/services -> @amykit/workflow-errand"]);
+    } finally {
+      fs.rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps each moved package's name, version and release group, with repository.directory following it", () => {
+    const changeset = JSON.parse(fs.readFileSync(path.join(root, ".changeset/config.json"), "utf8")) as { fixed?: string[][] };
+    const fixed = (changeset.fixed ?? []).flat();
+
+    for (const name of moved) {
+      const manifest = JSON.parse(fs.readFileSync(path.join(root, "examples", name, "package.json"), "utf8")) as Manifest;
+      expect(manifest.name).toBe(`@amykit/${name}`);
+      expect(manifest.version).toBe(JSON.parse(fs.readFileSync(path.join(root, "packages/core/package.json"), "utf8")).version);
+      expect(manifest.repository?.directory).toBe(`examples/${name}`);
+      expect(fixed.some((pattern) => pattern === manifest.name || (pattern.endsWith("*") && manifest.name.startsWith(pattern.slice(0, -1))))).toBe(true);
+    }
   });
 });

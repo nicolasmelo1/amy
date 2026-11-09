@@ -1241,6 +1241,11 @@
         },
         {
           "depth": 3,
+          "title": "**The examples are not the machine.**",
+          "slug": "the-examples-are-not-the-machine"
+        },
+        {
+          "depth": 3,
           "title": "**The frame is closed.**",
           "slug": "the-frame-is-closed"
         },
@@ -9067,10 +9072,10 @@
         "version": "0.6.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
-        "directory": "packages/workflow-errand",
+        "directory": "examples/workflow-errand",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-errand",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-errand",
-        "readme": "packages/workflow-errand/README.md",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/examples/workflow-errand",
+        "readme": "examples/workflow-errand/README.md",
         "mounts": [],
         "contributes": [
           {
@@ -9143,10 +9148,10 @@
         "version": "0.6.0",
         "kind": "workflow",
         "description": "Feature grooming against read-only base-branch source snapshots.",
-        "directory": "packages/workflow-feature-grooming",
+        "directory": "examples/workflow-feature-grooming",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-feature-grooming",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-feature-grooming",
-        "readme": "packages/workflow-feature-grooming/README.md",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/examples/workflow-feature-grooming",
+        "readme": "examples/workflow-feature-grooming/README.md",
         "mounts": [],
         "contributes": [
           {
@@ -9190,10 +9195,10 @@
         "version": "0.6.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
-        "directory": "packages/workflow-note-to-plan",
+        "directory": "examples/workflow-note-to-plan",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-note-to-plan",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-note-to-plan",
-        "readme": "packages/workflow-note-to-plan/README.md",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/examples/workflow-note-to-plan",
+        "readme": "examples/workflow-note-to-plan/README.md",
         "mounts": [],
         "contributes": [
           {
@@ -9276,10 +9281,10 @@
         "version": "0.6.0",
         "kind": "workflow",
         "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
-        "directory": "packages/workflow-pull-request",
+        "directory": "examples/workflow-pull-request",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-pull-request",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-pull-request",
-        "readme": "packages/workflow-pull-request/README.md",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/examples/workflow-pull-request",
+        "readme": "examples/workflow-pull-request/README.md",
         "mounts": [],
         "contributes": [
           {
@@ -9324,10 +9329,10 @@
         "version": "0.6.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
-        "directory": "packages/workflow-ticket-to-qa",
+        "directory": "examples/workflow-ticket-to-qa",
         "npm": "https://www.npmjs.com/package/@amykit/workflow-ticket-to-qa",
-        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-ticket-to-qa",
-        "readme": "packages/workflow-ticket-to-qa/README.md",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/examples/workflow-ticket-to-qa",
+        "readme": "examples/workflow-ticket-to-qa/README.md",
         "mounts": [],
         "contributes": [
           {
@@ -9445,6 +9450,40 @@
     ]
   },
   "workflows": [
+    {
+      "package": "@amykit/plugin-prove",
+      "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
+      "name": "prove",
+      "states": [
+        "READING",
+        "LEASING",
+        "PREPARING",
+        "refused",
+        "RUNNING",
+        "ASKING",
+        "PROVEN"
+      ],
+      "waitingStates": [
+        "READING",
+        "LEASING",
+        "ASKING"
+      ],
+      "terminalStates": [
+        "refused",
+        "PROVEN"
+      ],
+      "initialState": "READING",
+      "usesActions": [
+        "ask",
+        "escalate",
+        "finish",
+        "lease",
+        "prepare",
+        "renew",
+        "run-step"
+      ],
+      "called": true
+    },
     {
       "package": "@amykit/workflow-errand",
       "description": "Something said in passing becomes work: capture it, do it, say what happened.",
@@ -9585,40 +9624,6 @@
         "self-review",
         "triage"
       ]
-    },
-    {
-      "package": "@amykit/plugin-prove",
-      "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
-      "name": "prove",
-      "states": [
-        "READING",
-        "LEASING",
-        "PREPARING",
-        "refused",
-        "RUNNING",
-        "ASKING",
-        "PROVEN"
-      ],
-      "waitingStates": [
-        "READING",
-        "LEASING",
-        "ASKING"
-      ],
-      "terminalStates": [
-        "refused",
-        "PROVEN"
-      ],
-      "initialState": "READING",
-      "usesActions": [
-        "ask",
-        "escalate",
-        "finish",
-        "lease",
-        "prepare",
-        "renew",
-        "run-step"
-      ],
-      "called": true
     }
   ],
   "factory": {
@@ -9677,8 +9682,8 @@
           "packages/core/src/ports/Ticketing.ts",
           "packages/core/src/operator.ts",
           "packages/core/src/runtime.ts",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd",
           "plugins/linear/src/**",
           "plugins/serial-engine/src/**",
           "plugins/github/src/**",
@@ -9748,8 +9753,8 @@
         "activation": [
           "packages/core/src/ports/Conversation.ts",
           "packages/core/src/actions.ts",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd",
           "plugins/slack/src/**",
           "plugins/serial-engine/src/**"
         ],
@@ -9774,8 +9779,8 @@
           "packages/core/src/expand.ts",
           "packages/core/src/define-workflow.ts",
           "packages/core/src/diagram.ts",
-          "packages/workflow-pull-request/src/**",
-          "packages/workflow-pull-request/workflow.mmd",
+          "examples/workflow-pull-request/src/**",
+          "examples/workflow-pull-request/workflow.mmd",
           "packages/cli/src/workflow-add.ts",
           "packages/cli/src/workflow.ts",
           "packages/cli/src/status-page.tsx"
@@ -9969,8 +9974,8 @@
       {
         "name": "errand",
         "activation": [
-          "packages/workflow-errand/src/**",
-          "packages/workflow-errand/workflow.mmd",
+          "examples/workflow-errand/src/**",
+          "examples/workflow-errand/workflow.mmd",
           "plugins/file-tasks/src/**",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
@@ -9981,8 +9986,8 @@
           "plugins/notify-fanout/src/**",
           "plugins/notify-inbox/src/**",
           "plugins/serial-engine/src/**",
-          "packages/workflow-pull-request/src/**",
-          "packages/workflow-pull-request/workflow.mmd",
+          "examples/workflow-pull-request/src/**",
+          "examples/workflow-pull-request/workflow.mmd",
           "packages/core/src/calls.ts"
         ],
         "evidence": ".software-factory/evidence/errand.json",
@@ -10009,8 +10014,8 @@
       {
         "name": "feature-grooming",
         "activation": [
-          "packages/workflow-feature-grooming/src/**",
-          "packages/workflow-feature-grooming/workflow.mmd",
+          "examples/workflow-feature-grooming/src/**",
+          "examples/workflow-feature-grooming/workflow.mmd",
           "packages/core/src/ports/BaseSource.ts",
           "packages/core/src/ports/Ticketing.ts",
           "plugins/linear/src/**",
@@ -10112,8 +10117,8 @@
       {
         "name": "note-to-plan",
         "activation": [
-          "packages/workflow-note-to-plan/src/**",
-          "packages/workflow-note-to-plan/workflow.mmd",
+          "examples/workflow-note-to-plan/src/**",
+          "examples/workflow-note-to-plan/workflow.mmd",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-notes/src/**",
@@ -10121,8 +10126,8 @@
           "plugins/agent-relay/src/**",
           "plugins/serial-engine/src/**",
           "plugins/github/src/**",
-          "packages/workflow-pull-request/src/**",
-          "packages/workflow-pull-request/workflow.mmd",
+          "examples/workflow-pull-request/src/**",
+          "examples/workflow-pull-request/workflow.mmd",
           "packages/core/src/calls.ts"
         ],
         "evidence": ".software-factory/evidence/note-to-plan.json",
@@ -10216,7 +10221,8 @@
         "name": "plugin-github",
         "activation": [
           "plugins/github/src/**",
-          "packages/workflow-*/src/**"
+          "examples/workflow-*/src/**",
+          "packages/workflow-testkit/src/**"
         ],
         "evidence": ".software-factory/evidence/plugin-github.json",
         "plan": "docs/design/a-stack-knows-its-parent.md",
@@ -10234,8 +10240,8 @@
           "plugins/next-steps/src/**",
           "packages/core/src/ports/Ticketing.ts",
           "packages/core/src/ports/BaseSource.ts",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd"
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-next-steps.json",
         "plan": "docs/design/a-row-of-next-steps-is-a-ticket.md",
@@ -10280,8 +10286,8 @@
           "packages/core/src/ports/Conversation.ts",
           "packages/test-fixtures/contracts/telegram-bot-api.json",
           "packages/test-fixtures/src/contracts/telegram.ts",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd"
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-telegram.json",
         "plan": "docs/design/telegram-is-a-conversation.md",
@@ -10342,8 +10348,8 @@
       {
         "name": "ticket-to-qa",
         "activation": [
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd",
           "packages/agent-kit/src/**",
           "packages/cli/src/**",
           "plugins/file-store/src/**",
@@ -10452,12 +10458,12 @@
           "packages/core/src/action-ports.ts",
           "packages/core/src/index.ts",
           "packages/cli/src/workflow.ts",
-          "packages/workflow-errand/src/**",
-          "packages/workflow-errand/workflow.mmd",
-          "packages/workflow-note-to-plan/src/**",
-          "packages/workflow-note-to-plan/workflow.mmd",
-          "packages/workflow-ticket-to-qa/src/**",
-          "packages/workflow-ticket-to-qa/workflow.mmd"
+          "examples/workflow-errand/src/**",
+          "examples/workflow-errand/workflow.mmd",
+          "examples/workflow-note-to-plan/src/**",
+          "examples/workflow-note-to-plan/workflow.mmd",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/workflow-three-pieces.json",
         "plan": "docs/design/a-workflow-is-three-pieces.md",
@@ -11986,6 +11992,38 @@
         "level": "minor"
       },
       {
+        "id": "the-examples-are-not-the-machine",
+        "title": "**The examples are not the machine.**",
+        "body": "The five workflows amy ships moved from `packages/` to `examples/`, under the\nsame names and versions, so an install that names one updates without\nnoticing. `packages/` now holds amy itself and what it needs to run. Each\nexample opens its README with what it is for, written for somebody who has\nnever seen amy, above the reference generated from the package. A fork of a\nversion released after the move is read from `examples/`.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-pull-request",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "the-frame-is-closed",
         "title": "**The frame is closed.**",
         "body": "amy's window is about to be drawn by more than one renderer, and two renderers\ndrift apart without either being wrong. Before the first one exists, the\nwindow is a locked file and every renderer is measured against it.\n\n- `packages/ui/frame.yaml` is the closed wireframe as data: five regions and\n  where each sits relative to the others, what each holds, the sections, the\n  actions, a Neovim-style default keymap, the mouse, the surfaces a renderer\n  may declare, the slots plugins add to, the narrowest window and the one\n  rule by which a label may be abbreviated. It ships with `@amykit/ui`, which\n  still depends on nothing, and is hash-locked.\n- `@amykit/ui/frame` checks what it parses to (`checkFrame`), and reads keys in Neovim's\n  notation: `buildKeymap` lays a person's `ui.keys` over the frame's and\n  refuses, by name, a remap to an action the frame does not declare or two\n  bindings a keypress cannot tell apart; `KeyReader` reads sequences, counts\n  and the leader the way Neovim does. The renderer contract lives here too.\n- New package `@amykit/ui-conformance`, and its `amy-ui-conformance` command,\n  drive every\n  renderer through a fixed script over a fixed world — by default keys, by a\n  remapped keymap and by the mouse, and the default way twice — and read a\n  projection out of what it laid out: regions, what each holds, and how each\n  pair sits relative to each other, never a box. Eleven assertions hold it to\n  the frame, to the other renderers and to the approved golden, naming the\n  region, the relation or the first node that differs.\n- Three local rules: `L0.A_RENDERER_ONLY_TRANSLATES`,\n  `L0.A_RENDERER_NAMES_NO_COLOUR` and `L1.EVERY_RENDERER_HOLDS_THE_FRAME`.",
@@ -12135,24 +12173,8 @@
         "file": "packages/model-specs/CHANGELOG.md"
       },
       {
-        "name": "@amykit/workflow-errand",
-        "file": "packages/workflow-errand/CHANGELOG.md"
-      },
-      {
-        "name": "@amykit/workflow-feature-grooming",
-        "file": "packages/workflow-feature-grooming/CHANGELOG.md"
-      },
-      {
-        "name": "@amykit/workflow-note-to-plan",
-        "file": "packages/workflow-note-to-plan/CHANGELOG.md"
-      },
-      {
         "name": "@amykit/workflow-testkit",
         "file": "packages/workflow-testkit/CHANGELOG.md"
-      },
-      {
-        "name": "@amykit/workflow-ticket-to-qa",
-        "file": "packages/workflow-ticket-to-qa/CHANGELOG.md"
       },
       {
         "name": "@amykit/plugin-agent-relay",
@@ -12237,6 +12259,22 @@
       {
         "name": "@amykit/plugin-slack",
         "file": "plugins/slack/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-errand",
+        "file": "examples/workflow-errand/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-feature-grooming",
+        "file": "examples/workflow-feature-grooming/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-note-to-plan",
+        "file": "examples/workflow-note-to-plan/CHANGELOG.md"
+      },
+      {
+        "name": "@amykit/workflow-ticket-to-qa",
+        "file": "examples/workflow-ticket-to-qa/CHANGELOG.md"
       }
     ]
   },

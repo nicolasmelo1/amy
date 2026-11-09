@@ -6,7 +6,7 @@
 mechanisms:
   - id: record-migration
     says: a record an older version saved is read, planned and moved by this one
-    paths: ["packages/workflow-*/src/machine.ts", "packages/workflow-*/src/record.ts", "packages/core/src/work.ts"]
+    paths: ["examples/workflow-*/src/machine.ts", "examples/workflow-*/src/record.ts", "packages/core/src/work.ts"]
   - id: calls
     says: a workflow calls another, and the call nests to any depth
     paths: ["packages/core/src/calls.ts", "packages/core/src/define-workflow.ts", "packages/core/src/expand.ts"]
@@ -15,7 +15,7 @@ mechanisms:
     paths: ["packages/core/src/define-workflow.ts"]
   - id: diagram
     says: workflow.mmd is the state machine, read and refused at mount
-    paths: ["packages/core/src/diagram.ts", "packages/*/workflow.mmd"]
+    paths: ["packages/core/src/diagram.ts", "packages/*/workflow.mmd", "examples/*/workflow.mmd"]
   - id: engines
     says: the serial and the concurrent engine end in the same record
     paths: ["plugins/serial-engine/src/**", "plugins/concurrent-engine/src/**"]
@@ -27,7 +27,7 @@ mechanisms:
     paths: ["packages/core/src/agent-run.ts", "packages/core/src/runtime.ts", "packages/core/src/work.ts", "packages/agent-kit/src/**"]
   - id: agent-replies
     says: an agent's reply can be empty, partial, rate-limited or formatted, and is read as data
-    paths: ["packages/agent-kit/src/**", "packages/workflow-ticket-to-qa/src/agent-steps.ts", "plugins/claude/src/**", "plugins/codex/src/**", "plugins/hermes-agent/src/**", "plugins/agent-relay/src/**"]
+    paths: ["packages/agent-kit/src/**", "examples/workflow-ticket-to-qa/src/agent-steps.ts", "plugins/claude/src/**", "plugins/codex/src/**", "plugins/hermes-agent/src/**", "plugins/agent-relay/src/**"]
   - id: checkouts-and-leases
     says: git trees, worktrees, branch leases and lent revisions; a move never loses a commit
     paths: ["packages/core/src/git.ts", "packages/core/src/leases.ts", "packages/core/src/checkouts.ts", "plugins/file-worktree/src/**"]

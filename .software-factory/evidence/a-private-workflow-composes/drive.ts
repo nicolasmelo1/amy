@@ -48,9 +48,9 @@ const core = (await dist("packages/core/dist/index.js")) as typeof import("@amyk
 const { GitHubCodeHost } = (await dist("plugins/github/dist/index.js")) as typeof import("@amykit/plugin-github");
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
-const ticketToQa = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+const ticketToQa = (await dist("examples/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
 // The workflow as the host mounts it, shaped by the diagram at its package root.
-const drawnTicketToQa = core.withDiagramBeside(ticketToQa.plugin, pathToFileURL(path.join(repo, "packages/workflow-ticket-to-qa/dist/index.js")));
+const drawnTicketToQa = core.withDiagramBeside(ticketToQa.plugin, pathToFileURL(path.join(repo, "examples/workflow-ticket-to-qa/dist/index.js")));
 
 /** A thread and a pull request as this run writes them, with what the shared world leaves out. */
 type Thread = WorldThread & { path?: string };

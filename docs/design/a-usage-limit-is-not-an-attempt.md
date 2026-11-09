@@ -36,15 +36,15 @@ criteria:
   - { id: A1, statement: "recorded app-server turn errors carrying usageLimitExceeded or rateLimitExceeded classify as rate-limited with their reset; any other turn error still as failed", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S1, S2, S5, S7, S11], done: true }
   - { id: A6, statement: "a run on the app-server harness gives the same reply, cost and outcome as on exec for a recorded completed and a recorded failed turn", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7, S8], done: true }
   - { id: A7, statement: "a Hermes usage file with failure_reason rate_limit classifies as rate-limited, waiting until failure_resets_at or the policy backoff without it; one without failure_reason, failed as today", proof: "test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S9, S10, S11, S12], done: true }
-  - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "property:packages/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4], done: true }
-  - { id: A3, statement: "the step waits until the reported reset time, or the policy's backoff when none, then runs again on the tree it left", proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3, S4], done: true }
-  - { id: A4, statement: "with two attempts allowed, limited twice then failed twice escalates after the second failure, not the second limit", proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3], done: true }
+  - { id: A2, statement: "a ladder ending on rate-limited records no attempt, and attemptsIn is unchanged", proof: "property:examples/workflow-ticket-to-qa/tests/attempts.property.test.ts#limit_charged_as_attempt", sources: [S3, S4], done: true }
+  - { id: A3, statement: "the step waits until the reported reset time, or the policy's backoff when none, then runs again on the tree it left", proof: "test:examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3, S4], done: true }
+  - { id: A4, statement: "with two attempts allowed, limited twice then failed twice escalates after the second failure, not the second limit", proof: "test:examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3], done: true }
   - { id: A5, statement: "a limited run preserves the no-evidence streak; genuine unchanged runs still park at budget.progress.maxUnchanged", proof: "test:plugins/serial-engine/tests/Worker.test.ts", sources: [S4, S6], done: true }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "A1, A6, A7" }
   - { mechanism: attempts-and-waits, answer: works, proof: "A2, A3" }
   - { mechanism: budget-and-evidence, answer: works, proof: "A5" }
-  - { mechanism: record-migration, answer: works, proof: "test:packages/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts" }
+  - { mechanism: record-migration, answer: works, proof: "test:examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts" }
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit only gains a walkthrough; its walking is unchanged" }
   - { mechanism: install-and-update, answer: works, proof: "test:packages/cli/tests/add.test.ts" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "managed spawn changes only how a host cancels children; no tracker or code-host capability changes" }

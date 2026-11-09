@@ -114,7 +114,7 @@ fake ports the runtime is built from, and a `meanwhile` list of what the people
 in it do while the machine waits. The kit calls every handler for real against
 the observation the runtime built, so a fake has to take the arguments the real
 port takes; one that ignores them proves itself. Both shipped workflows run it
-unmodified, in `packages/workflow-*/tests/conformance.test.ts`, and a workflow
+unmodified, in `examples/workflow-*/tests/conformance.test.ts`, and a workflow
 from `amy workflow new` has it from its first commit as `npm test`.
 
 ## Artifact tests, and why unit tests are not enough

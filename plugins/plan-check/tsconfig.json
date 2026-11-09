@@ -12,7 +12,7 @@
       "path": "../../packages/core"
     },
     {
-      "path": "../../packages/workflow-note-to-plan"
+      "path": "../../examples/workflow-note-to-plan"
     }
   ]
 }

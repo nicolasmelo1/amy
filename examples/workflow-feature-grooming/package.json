@@ -7,7 +7,7 @@
   "author": "Nicolas Melo",
   "homepage": "https://github.com/nicolasmelo1/amy#readme",
   "bugs": "https://github.com/nicolasmelo1/amy/issues",
-  "repository": { "type": "git", "url": "git+https://github.com/nicolasmelo1/amy.git", "directory": "packages/workflow-feature-grooming" },
+  "repository": { "type": "git", "url": "git+https://github.com/nicolasmelo1/amy.git", "directory": "examples/workflow-feature-grooming" },
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

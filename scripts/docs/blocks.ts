@@ -500,7 +500,7 @@ function workflowStates(packages: PackageFact[]): string {
 function workspaceLayout(packages: PackageFact[]): string {
   const lines: string[] = [];
 
-  for (const group of ["packages", "plugins"]) {
+  for (const group of ["packages", "plugins", "examples"]) {
     const inGroup = packages.filter((entry) => entry.group === group);
     if (inGroup.length === 0) continue;
 

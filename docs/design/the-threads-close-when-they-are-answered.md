@@ -85,15 +85,15 @@ is driven purely.
 - [x] `unresolveReviewThread` puts back what a reverted fix had closed
       (proof: test:plugins/github/tests/GitHubCodeHost.test.ts)
 - [x] The core dispatches `resolve-review-thread` to the code-host port
-      (proof: test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/plugin.test.ts)
 - [x] A thread the agent answered is closed by the machine, and the next
       look sees it closed
-      (proof: test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/machine.test.ts)
 - [x] A colleague's thread is never closed by the machine, however it was
-      judged (proof: test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
+      judged (proof: test:examples/workflow-ticket-to-qa/tests/machine.test.ts)
 - [x] `COPILOT_FIX` leaves because no automated thread is unresolved, not
       because the attempts ran out
-      (proof: test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/walkthrough.test.ts)
 
 **Exit condition:** a state whose exit is "no automated thread unresolved"
 reaches that exit — the threads it answered are closed, and the ceiling is

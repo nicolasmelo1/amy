@@ -11,7 +11,7 @@
   ],
   "references": [
     {
-      "path": "../../packages/workflow-note-to-plan"
+      "path": "../../examples/workflow-note-to-plan"
     },
     {
       "path": "../../plugins/claude"
@@ -59,10 +59,10 @@
       "path": "../core"
     },
     {
-      "path": "../workflow-errand"
+      "path": "../../examples/workflow-errand"
     },
     {
-      "path": "../workflow-ticket-to-qa"
+      "path": "../../examples/workflow-ticket-to-qa"
     },
     {
       "path": "../ui"

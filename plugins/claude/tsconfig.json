@@ -12,7 +12,7 @@
       "path": "../../packages/core"
     },
     {
-      "path": "../../packages/workflow-ticket-to-qa"
+      "path": "../../examples/workflow-ticket-to-qa"
     },
     {
       "path": "../../packages/model-specs"

@@ -24,10 +24,10 @@ touches:
   - packages/core/tests/lineage.test.ts
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/tests/triggers.property.test.ts
-  - packages/workflow-ticket-to-qa/workflow.mmd
-  - packages/workflow-ticket-to-qa/src/machine.ts
-  - packages/workflow-ticket-to-qa/src/record.ts
-  - packages/workflow-ticket-to-qa/tests/record.test.ts
+  - examples/workflow-ticket-to-qa/workflow.mmd
+  - examples/workflow-ticket-to-qa/src/machine.ts
+  - examples/workflow-ticket-to-qa/src/record.ts
+  - examples/workflow-ticket-to-qa/tests/record.test.ts
   - packages/workflow-review-round/**
   - packages/workflow-testkit/src/**
   - packages/workflow-testkit/tests/triggers.test.ts
@@ -44,7 +44,7 @@ criteria:
   - { id: A6, statement: "an event whose key throws or resolves no ticket starts no run and leaves a log line naming the event", proof: "deferred:property:plugins/serial-engine/tests/triggers.property.test.ts#an_unkeyed_event_starts_a_run", sources: [S5, S14] }
   - { id: A7, statement: "for any interleaving of discovery and events finding one key, at most one run of that workflow is going for it", proof: "deferred:property:plugins/serial-engine/tests/triggers.property.test.ts#discovery_and_event_start_two_runs", sources: [S4, S8, S15] }
   - { id: A8, statement: "an event for a key whose run has ended starts a new run in the same lineage, not a wake of the ended one", proof: "deferred:test:packages/core/tests/lineage.test.ts", sources: [S7, S16] }
-  - { id: A9, statement: "a ticket-to-qa record saved in any of PR_OPEN..RE_REVIEW is refused at load naming the record and its state", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/record.test.ts", sources: [S10, S17] }
+  - { id: A9, statement: "a ticket-to-qa record saved in any of PR_OPEN..RE_REVIEW is refused at load naming the record and its state", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/record.test.ts", sources: [S10, S17] }
 crosses:
   - { mechanism: record-migration, answer: refused, by: "a ticket-to-qa record saved in PR_OPEN..RE_REVIEW before the split is refused by name at load, not migrated (S17, A9)" }
   - { mechanism: calls, answer: n/a, why: "runs share a lineage by key; no workflow calls another" }

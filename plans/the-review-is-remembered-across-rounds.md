@@ -13,30 +13,30 @@ sources:
   - { id: S11, kind: decision, said: "deferred threads are listed alongside disagreements in whatever the workflow hands the owner, so a promise the machine made is visible to who collects it" }
   - { id: S12, kind: decision, said: "gate ticket-to-qa extended; it also asserts review.an_answered_thread_is_never_worked_twice and review.a_wontfix_position_is_stated_once_not_re_argued" }
 touches:
-  - packages/workflow-ticket-to-qa/src/record.ts
-  - packages/workflow-ticket-to-qa/src/machine.ts
-  - packages/workflow-ticket-to-qa/src/review.ts
-  - packages/workflow-ticket-to-qa/src/agent-steps.ts
+  - examples/workflow-ticket-to-qa/src/record.ts
+  - examples/workflow-ticket-to-qa/src/machine.ts
+  - examples/workflow-ticket-to-qa/src/review.ts
+  - examples/workflow-ticket-to-qa/src/agent-steps.ts
   - packages/core/src/ports/CodeHost.ts
   - plugins/github/src/GitHubCodeHost.ts
   - plugins/github/tests/GitHubCodeHost.test.ts
   - packages/test-fixtures/src/fakes.ts
-  - packages/workflow-ticket-to-qa/tests/record.test.ts
-  - packages/workflow-ticket-to-qa/tests/machine.test.ts
-  - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
-  - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/tests/record.test.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
+  - examples/workflow-ticket-to-qa/tests/walkthrough.test.ts
+  - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - .software-factory/evidence/ticket-to-qa-scenario.sh
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "the record stores deferred/answered/wont-fix verdicts with their note, and disagreements() still returns only disagreed", proof: "test:packages/workflow-ticket-to-qa/tests/record.test.ts", sources: [S1, S2, S5, S6, S7] }
-  - { id: A2, statement: "a thread whose latest comment is new relative to judgedUpTo is outstanding again; one at or before it is settled", proof: "test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S3, S8, S9] }
+  - { id: A1, statement: "the record stores deferred/answered/wont-fix verdicts with their note, and disagreements() still returns only disagreed", proof: "test:examples/workflow-ticket-to-qa/tests/record.test.ts", sources: [S1, S2, S5, S6, S7] }
+  - { id: A2, statement: "a thread whose latest comment is new relative to judgedUpTo is outstanding again; one at or before it is settled", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S3, S8, S9] }
   - { id: A3, statement: "a deferred thread is listed for the owner with its note", proof: "assertion:review.a_deferred_thread_is_listed_for_the_owner", sources: [S11, S12] }
   - { id: A4, statement: "a thread replied to after an answered verdict is judged again, not skipped", proof: "assertion:review.a_reply_reopens_a_thread_the_record_had_settled", sources: [S4, S9, S12] }
-  - { id: A5, statement: "the triage prompt carries the record's memory of each thread", proof: "test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10] }
-  - { id: A6, statement: "no existing state changes behaviour with the widened vocabulary", proof: "test:packages/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S7, S12] }
+  - { id: A5, statement: "the triage prompt carries the record's memory of each thread", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10] }
+  - { id: A6, statement: "no existing state changes behaviour with the widened vocabulary", proof: "test:examples/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S7, S12] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A6" }
-  - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts; readVerdicts reads the five verdicts of S6, and disagreed still reaches the owner" }
+  - { mechanism: agent-replies, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts; readVerdicts reads the five verdicts of S6, and disagreed still reaches the owner" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "a thread comment gains the id judgedUpTo names, read from the forge; no write is added" }
 guarantee:
   - { holds: "a thread is work again only when a comment newer than its judgedUpTo appears in it", not_against: "a comment edited in place, or deleted, upstream: only a new comment reopens a thread" }

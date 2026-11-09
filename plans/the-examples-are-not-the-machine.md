@@ -19,6 +19,12 @@ touches:
   - packages/workflow-pull-request/**
   - packages/workflow-ticket-to-qa/**
   - packages/core/tests/architecture.test.ts
+  - packages/core/tests/operation.test.ts
+  - packages/cli/src/registry-item.ts
+  - packages/cli/tests/diagram-gates.test.ts
+  - packages/cli/tests/registry-item.test.ts
+  - packages/test-fixtures/src/ticket-to-qa.ts
+  - packages/ui/tests/a-view-draws-nothing.test.ts
   - plugins/agent-relay/tsconfig.json
   - plugins/claude/tsconfig.json
   - plugins/codex/tsconfig.json
@@ -42,9 +48,17 @@ touches:
   - scripts/**
   - .software-factory/policy.yaml
   - .software-factory/evidence/**
+  - .software-factory/rules/a-view-draws-nothing.yaml
+  - .software-factory/rules/fixtures-name-nobody-real.yaml
+  - .software-factory/mutations/**
+  - .software-factory/locks/**
+  - .software-factory/ratchet.yaml
+  - registry/**
+  - CONTRIBUTING.md
+  - .changeset/**
 untouched:
   - "packages/workflow-testkit/**: amy workflow check drives it, so it is the machine (S3)"
-  - "packages/cli/src/**: it imports no workflow; its string tables naming the shipped workflows (profiles.ts, slices.ts, config.ts, config-template.ts) stay, moving what a workflow needs into it is another row"
+  - "packages/cli/src/** but registry-item.ts: it imports no workflow; its string tables naming the shipped workflows (profiles.ts, slices.ts, config.ts, config-template.ts) stay, moving what a workflow needs into it is another row. registry-item.ts lists the directories a published package lives in, so it learns examples/ or the registry loses the five workflows"
 criteria:
   - { id: A1, statement: "examples/ holds the five workflow packages, and packages/ holds none of them and keeps workflow-testkit", proof: "deferred:test:packages/core/tests/architecture.test.ts", sources: [S1, S2, S3] }
   - { id: A2, statement: "no published package under packages/ names a package under examples/ in dependencies or peerDependencies, and adding one turns the test red naming both", proof: "deferred:test:packages/core/tests/architecture.test.ts", sources: [S4, S5, S10] }
@@ -56,6 +70,7 @@ crosses:
   - { mechanism: record-migration, answer: n/a, why: "a record is read by the same code under another directory; no saved record changes shape" }
   - { mechanism: agent-replies, answer: n/a, why: "agent-steps.ts moves unchanged; only the path the catalog names follows it" }
   - { mechanism: workflow-tooling, answer: n/a, why: "the testkit stays in packages/ and drives the moved workflows as packages, by name" }
+  - { mechanism: rendering, answer: n/a, why: "a-view-draws-nothing.test.ts only learns to read examples/ beside packages/ and plugins/; no view and no renderer changes" }
 guarantee:
   - { holds: "an install that names a shipped workflow by package name mounts it before and after the move, unchanged", not_against: "an install that names a workflow by a path into a clone of this repository" }
   - { holds: "every path the gate, the catalog and the plans read that named a moved file names it after the move", not_against: "delivered design notes under docs/design, which describe what shipped where it shipped and keep their text" }

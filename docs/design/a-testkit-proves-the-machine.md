@@ -110,7 +110,7 @@ factory beside the plugin, so the suite and the plugin build the same thing.
 - [x] A workflow whose terminal-by-giving-up state has no exit fails
       (proof: test:packages/workflow-testkit/tests/escalation.test.ts)
 - [x] Both shipped workflows pass it unmodified
-      (proof: test:packages/workflow-ticket-to-qa/tests/conformance.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/conformance.test.ts)
 - [x] `amy workflow new` writes a scaffold whose suite passes on the first run
       (proof: test:packages/cli/tests/scaffold.test.ts)
 

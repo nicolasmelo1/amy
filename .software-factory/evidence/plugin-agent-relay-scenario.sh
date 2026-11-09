@@ -22,7 +22,7 @@ report=${1:-.software-factory/evidence/plugin-agent-relay-run.json}
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 here=$(cd "$(dirname "$0")" && pwd)
 
-for pkg in plugins/agent-relay plugins/claude plugins/codex plugins/hermes-agent packages/core packages/agent-kit packages/workflow-ticket-to-qa; do
+for pkg in plugins/agent-relay plugins/claude plugins/codex plugins/hermes-agent packages/core packages/agent-kit examples/workflow-ticket-to-qa; do
   test -f "$repo/$pkg/dist/index.js" ||
     { echo "build it first: npm run build ($pkg)" >&2; exit 1; }
 done

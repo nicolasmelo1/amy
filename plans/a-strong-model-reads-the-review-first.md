@@ -22,13 +22,13 @@ sources:
 touches:
   - packages/core/src/actions.ts
   - packages/core/tests/mount.test.ts
-  - packages/workflow-ticket-to-qa/src/agent-steps.ts
-  - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/src/agent-steps.ts
+  - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - .software-factory/policy.yaml
 untouched:
   - packages/core/src/ports/Agent.ts   # the port only asks (S19)
 criteria:
-  - { id: A1, statement: "the triage-review prompt carries ticket, conversation and threads, and its answer is read into a per-thread verdict with the context named in the prompt", proof: "test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S1, S2, S5, S6, S7, S8, S19] }
+  - { id: A1, statement: "the triage-review prompt carries ticket, conversation and threads, and its answer is read into a per-thread verdict with the context named in the prompt", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S1, S2, S5, S6, S7, S8, S19] }
   - { id: A2, statement: "an answer verdict is replied on the pull request and no code changes", proof: "assertion:review.an_answerable_objection_is_answered_without_a_code_change", sources: [S3, S9, S14, S15] }
   - { id: A3, statement: "a hand-off verdict reaches the executor with the triage note in its prompt", proof: "assertion:review.a_handoff_carries_the_triage_note_to_the_executor", sources: [S9, S12, S13, S15] }
   - { id: A4, statement: "an already-settled verdict is not re-argued by the executor", proof: "assertion:review.an_already_settled_thread_is_not_re_argued", sources: [S9, S16] }

@@ -10,7 +10,7 @@ const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
 
 /** The files the generator reads: what git tracks, and what it would track, under the packages. */
 function tracked(root: string): string[] {
-  return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "packages", "plugins"], { cwd: root, encoding: "utf-8" })
+  return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "packages", "plugins", "examples"], { cwd: root, encoding: "utf-8" })
     .split("\0")
     .filter((file) => file && fs.existsSync(path.join(root, file)));
 }

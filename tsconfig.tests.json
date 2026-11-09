@@ -93,22 +93,22 @@
         "packages/test-fixtures/src/index.ts"
       ],
       "@amykit/workflow-errand": [
-        "packages/workflow-errand/src/index.ts"
+        "examples/workflow-errand/src/index.ts"
       ],
       "@amykit/workflow-pull-request": [
-        "packages/workflow-pull-request/src/index.ts"
+        "examples/workflow-pull-request/src/index.ts"
       ],
       "@amykit/workflow-note-to-plan": [
-        "packages/workflow-note-to-plan/src/index.ts"
+        "examples/workflow-note-to-plan/src/index.ts"
       ],
       "@amykit/workflow-feature-grooming": [
-        "packages/workflow-feature-grooming/src/index.ts"
+        "examples/workflow-feature-grooming/src/index.ts"
       ],
       "@amykit/workflow-testkit": [
         "packages/workflow-testkit/src/index.ts"
       ],
       "@amykit/workflow-ticket-to-qa": [
-        "packages/workflow-ticket-to-qa/src/index.ts"
+        "examples/workflow-ticket-to-qa/src/index.ts"
       ],
       "@amykit/ui": [
         "packages/ui/src/index.ts"
@@ -153,6 +153,7 @@
     "plugins/*/tests/**/*.ts",
     "examples/*/*/*.ts",
     "examples/*/tests/**/*.ts",
+    "examples/*/src/**/*.ts",
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "plugins/*/src/**/*.ts",

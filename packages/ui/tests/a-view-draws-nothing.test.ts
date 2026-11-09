@@ -85,7 +85,7 @@ function jsxRuntime(options: Record<string, unknown>): string | undefined {
 }
 
 describe("a view compiles against amy's runtime, never a renderer's by default", () => {
-  const configs = ["packages", "plugins"].flatMap((root) =>
+  const configs = ["packages", "plugins", "examples"].flatMap((root) =>
     fs
       .readdirSync(path.join(repo, root))
       .map((name) => path.join(repo, root, name, "tsconfig.json"))

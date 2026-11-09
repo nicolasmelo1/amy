@@ -1,5 +1,6 @@
 import { banner, literal, table } from "../lib/markdown.js";
 import { isMounted } from "../lib/facts.js";
+import { readIfPresent } from "../lib/repo.js";
 import type { Brought, Facts, GeneratedFile, MountedFact, WorkflowShape } from "../lib/facts.js";
 
 const DOCS = "https://github.com/nicolasmelo1/amy/tree/main/docs";
@@ -15,19 +16,47 @@ const DOCS = "https://github.com/nicolasmelo1/amy/tree/main/docs";
  *
  * The root README is not here on purpose: it is the front door, it is argued
  * rather than listed, and generating it would cost the one piece of writing
- * that makes somebody try this at all.
+ * that makes somebody try this at all. An example under `examples/` is the
+ * same kind of door, so its introduction is prose too, and only the reference
+ * below it is generated.
  */
 export function readmesFrom(facts: Facts): GeneratedFile[] {
   return facts.packages
     .filter(isMounted)
-    .map((entry) => ({
-      file: `${entry.directory}/README.md`,
-      text: readmeFor(entry),
-    }));
+    .map((entry) => {
+      const file = `${entry.directory}/README.md`;
+      return { file, text: entry.group === "examples" ? exampleReadme(file, entry) : readmeFor(entry) };
+    });
+}
+
+const REFERENCE_OPEN = "<!-- amy:generated reference -->";
+const REFERENCE_CLOSE = "<!-- amy:end reference -->";
+
+/**
+ * An example's README: the prose somebody wrote, then the reference.
+ *
+ * Everything above the `reference` block belongs to whoever wrote it and is
+ * kept as it is; the block is rewritten from the package, so a setting the
+ * workflow gains still reaches its README. One with no block is refused rather
+ * than written over, because overwriting it would throw the prose away.
+ */
+function exampleReadme(file: string, entry: MountedFact): string {
+  const before = readIfPresent(file) ?? "";
+  const start = before.indexOf(REFERENCE_OPEN);
+  if (start === -1) {
+    throw new Error(
+      `${file} is an example's README, so it opens with prose and places \`${REFERENCE_OPEN}\` where the generated reference goes`,
+    );
+  }
+
+  const end = before.indexOf(REFERENCE_CLOSE, start);
+  const after = end === -1 ? "" : before.slice(end + REFERENCE_CLOSE.length);
+
+  return `${before.slice(0, start)}${REFERENCE_OPEN}\n\n${reference(entry)}\n\n${REFERENCE_CLOSE}${after}`;
 }
 
 function readmeFor(entry: MountedFact): string {
-  const parts = [
+  return `${[
     banner("the package itself"),
     "",
     `# ${entry.name}`,
@@ -36,8 +65,14 @@ function readmeFor(entry: MountedFact): string {
     "",
     entry.kind === "workflow" ? workflowIntro() : pluginIntro(entry),
     "",
-    ...(entry.workflow?.called ? calling(entry) : installing(entry)),
-  ];
+    reference(entry),
+    "",
+  ].join("\n")}`.replace(/\n{3,}/g, "\n\n");
+}
+
+/** What the package states in code: how it is mounted, its states, its settings and what it brings. */
+function reference(entry: MountedFact): string {
+  const parts = [...(entry.workflow?.called ? calling(entry) : installing(entry))];
 
   if (entry.kind === "workflow" && entry.workflow) {
     parts.push("", "## The lifecycle", "", states(entry.workflow), "", uses(entry.workflow));
@@ -67,10 +102,9 @@ function readmeFor(entry: MountedFact): string {
     "## Licence",
     "",
     "MIT",
-    "",
   );
 
-  return `${parts.join("\n").replace(/\n{3,}/g, "\n\n")}`;
+  return parts.join("\n").replace(/\n{3,}/g, "\n\n");
 }
 
 function pluginIntro(entry: MountedFact): string {
@@ -161,6 +195,7 @@ function states(machine: WorkflowShape): string {
 }
 
 function uses(machine: WorkflowShape): string {
+  if (machine.usesActions.length === 0) return "";
   return `It emits ${sentence(machine.usesActions.map((a) => `\`${a}\``))}.`;
 }
 

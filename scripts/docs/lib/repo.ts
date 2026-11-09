@@ -25,17 +25,22 @@ export interface WorkspaceDirectory {
   entry: string;
 }
 
-/** Every directory holding a package, in the two workspace roots. */
+/**
+ * Every directory holding a package, in the three workspace roots.
+ *
+ * `examples/` also holds folders that are a project rather than a package, like
+ * `a-whole-project`: they declare no entry point, so nothing is built to read.
+ */
 export function workspaceDirectories(): WorkspaceDirectory[] {
   const found: WorkspaceDirectory[] = [];
 
-  for (const group of ["packages", "plugins"]) {
+  for (const group of ["packages", "plugins", "examples"]) {
     const base = path.join(ROOT, group);
     if (!fs.existsSync(base)) continue;
 
     for (const entry of fs.readdirSync(base).sort()) {
       const dir = path.join(base, entry);
-      if (fs.existsSync(path.join(dir, "package.json"))) found.push({ group, dir, entry });
+      if (hasEntryPoint(path.join(dir, "package.json"))) found.push({ group, dir, entry });
     }
   }
 
@@ -60,4 +65,10 @@ export function docFiles(from = DOCS, prefix = ""): string[] {
   }
 
   return found;
+}
+
+function hasEntryPoint(manifest: string): boolean {
+  if (!fs.existsSync(manifest)) return false;
+  const parsed = JSON.parse(fs.readFileSync(manifest, "utf8")) as { main?: string; exports?: unknown };
+  return parsed.main !== undefined || parsed.exports !== undefined;
 }

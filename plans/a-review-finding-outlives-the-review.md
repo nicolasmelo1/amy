@@ -25,7 +25,7 @@ touches:
   - packages/core/tests/mount.test.ts
   - plugins/serial-engine/src/Worker.ts
   - plugins/file-store/src/**
-  - packages/workflow-ticket-to-qa/src/plugin.ts
+  - examples/workflow-ticket-to-qa/src/plugin.ts
   - packages/cli/src/index.ts
   - packages/cli/tests/findings.test.ts
   - .software-factory/policy.yaml

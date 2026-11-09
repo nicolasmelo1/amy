@@ -6,7 +6,7 @@ import { TicketRecord, plugin } from "@amykit/workflow-ticket-to-qa";
  * package root. The fixtures live beside it in this repository, so the root
  * is found from here, the way the host finds it from the package's entry.
  */
-export const drawnTicketToQa = withDiagramBeside(plugin, new URL("../../workflow-ticket-to-qa/package.json", import.meta.url));
+export const drawnTicketToQa = withDiagramBeside(plugin, new URL("../../../examples/workflow-ticket-to-qa/package.json", import.meta.url));
 
 export const ticketToQa = drawnTicketToQa.workflow;
 export const newTicketRecord: (workId: string, now: Date) => TicketRecord & WorkRecord = drawnTicketToQa.newRecord;
