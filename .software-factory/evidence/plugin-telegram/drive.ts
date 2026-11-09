@@ -99,10 +99,10 @@ extraPlugins:
   const asked = await telegramWorld();
   const topicOf = (title: string) => Number(Object.entries(asked.topics).find(([, name]) => name === title)?.[0]);
   const questionsOnTracker = lines<{ query?: string; variables?: { input?: { body?: string } } }>(path.join(root, "world", "tracker.log"))
-    .filter((call) => /commentCreate/.test(call.query ?? "") && /currency/i.test(call.variables?.input?.body ?? ""));
+    .filter((call) => /commentCreate/.test(call.query ?? "") && /currency|invoice total use BRL/i.test(call.variables?.input?.body ?? ""));
   record("telegram.a_question_reaches_its_own_topic",
     Object.keys(asked.topics).length === 2 &&
-      asked.sent.some((message) => message.topic === topicOf(TITLE) && /currency/i.test(message.text)) &&
+      asked.sent.some((message) => message.topic === topicOf(TITLE) && message.text.includes("Should the invoice total use BRL?")) &&
       asked.sent.some((message) => message.topic === topicOf(OTHER_TITLE)) &&
       questionsOnTracker.length === 0,
     { topics: asked.topics, sent: asked.sent, questionsOnTracker: questionsOnTracker.length, states: [stateOf(TICKET), stateOf(OTHER)] });

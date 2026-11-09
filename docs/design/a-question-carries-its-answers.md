@@ -17,7 +17,7 @@ sources:
   - { id: S14, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "S16 there makes Socket Mode a setting, off by default; the Block Kit half of S11 lands with that setting, not before it exists" }
   - { id: S15, kind: reference, ref: "https://core.telegram.org/bots/api", said: "an inline keyboard's press arrives as a callback_query update through the same getUpdates, once callback_query is in allowed_updates" }
   - { id: S16, kind: decision, ref: "plugins/telegram/src/TelegramConversation.ts", said: "Telegram: an inline keyboard under amy's message; choices toggles a ✓ per press and sends on Send; every press is acknowledged with answerCallbackQuery; callback_data is the ask id and answer index, under 64 bytes" }
-  - { id: S17, kind: reference, ref: "packages/workflow-ticket-to-qa/src/agent-steps.ts", said: "triage returns questions: string[], posted by ask-question as a bulleted list" }
+  - { id: S17, kind: reference, ref: "examples/workflow-ticket-to-qa/src/agent-steps.ts", said: "triage returns questions: string[], posted by ask-question as a bulleted list" }
   - { id: S18, kind: reference, ref: "docs/design/no-port-method-ships-unproven.md", said: "a port member no shipped workflow calls has nothing proving it works" }
   - { id: S19, kind: decision, said: "ticket-to-qa is the first caller: triage may give a question its closed answers, ask-question posts each such question as an ask, and the chosen answer goes back to triage beside the question, as a typed reply does today" }
   - { id: S20, kind: decision, said: "the window's half lands with the window: the transcript carries asks and answers, addThreadTurn takes an answer, the thread panel shows buttons; written into those two plans, not built here. Decided 2026-11-05" }
@@ -31,6 +31,10 @@ sources:
   - { id: S28, kind: decision, said: "an accepted answer is sticky: Slack writes it to its state directory as Telegram writes each press, so a mark removed later does not undo it; S25's recompute stops once an ask is answered. Decided 2026-11-08" }
 touches:
   - .software-factory/evidence/ticket-to-qa/**
+  - docs/design/the-lifecycle-is-proven-end-to-end.md
+  - docs/development/the-gate.md
+  - docs/reference/contracts.md
+  - plugins/slack/tests/held-to-the-contract.ts
   - .software-factory/policy.yaml
   - packages/core/src/ports/Conversation.ts
   - packages/core/src/index.ts
@@ -51,40 +55,53 @@ touches:
   - examples/workflow-ticket-to-qa/src/actions.ts
   - examples/workflow-ticket-to-qa/src/machine.ts
   - examples/workflow-ticket-to-qa/src/record.ts
+  - examples/workflow-ticket-to-qa/src/observation.ts
+  - examples/workflow-ticket-to-qa/src/discussion.ts
   - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
   - examples/workflow-ticket-to-qa/tests/walkthrough.test.ts
   - examples/workflow-ticket-to-qa/tests/asks.property.test.ts
+  - plugins/slack/tests/asks.property.test.ts
+  - plugins/telegram/tests/asks.property.test.ts
   - packages/workflow-testkit/src/world.ts
   - docs/concepts/ports.md
+  - registry/core.json
+  - registry/plugin-slack.json
+  - registry/plugin-telegram.json
+  - registry/workflow-ticket-to-qa.json
   - plans/every-endpoint-is-named-before-it-is-built.md
   - plans/a-conversation-before-the-work.md
   - plans/an-event-is-a-reason-to-look.md
 criteria:
-  - { id: A1, statement: "Ask, its three forms and Reply.answer are exported from the core and name no product", proof: "deferred:test:packages/core/tests/ports.test.ts", sources: [S3, S5, S6, S20] }
-  - { id: A2, statement: "an approval ask in Slack is posted with ✅ and ❌ on amy's message, and the operator's ✅ comes back from replies as answer { ask, chosen: [approve] } with kind decision", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S6, S7, S10, S11, S12, S14] }
-  - { id: A3, statement: "a choices ask in Slack returns the keycaps the operator put on it only once they add ✅, and a reaction by anybody else is never an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S12] }
-  - { id: A4, statement: "a choice ask with eleven answers in Slack without Socket Mode is posted as a numbered list with no reactions", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S8, S13] }
-  - { id: A5, statement: "an approval, a choice and a choices ask in Telegram are inline keyboards; each press is acknowledged, a choices press toggles its ✓, and Send returns the chosen answers once", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.asks.test.ts", sources: [S15, S16] }
-  - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22] }
-  - { id: A7, statement: "an answer reads as a decision under answer and under discuss, and an unmarked typed reply to the same ask reads as it does today", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7] }
-  - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S8] }
-  - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S1, S2, S17, S18, S19] }
-  - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17] }
-  - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "deferred:assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21] }
-  - { id: A13, statement: "for any ask answered once, replies from the same since returns that same answer on every call, after an adapter restart too, in Slack and Telegram alike, a mark removed after the answer was accepted included", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28] }
-  - { id: A14, statement: "an ask whose answers are fewer than 2, more than 10, repeated, empty or longer than the medium's button label is posted as a plain question with no marks or keyboard", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S26] }
-  - { id: A15, statement: "in Slack a keycap outside the ask's range, and ✅ on a single choice, are ignored: neither answers nor competes with an answer", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S27] }
-  - { id: A16, statement: "in Slack, a reaction removed after a look accepted its answer leaves that answer returned, after an adapter restart too", proof: "deferred:test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S28] }
+  - { id: A1, statement: "Ask, its three forms and Reply.answer are exported from the core and name no product", proof: "test:packages/core/tests/ports.test.ts", sources: [S3, S5, S6, S20], done: true }
+  - { id: A2, statement: "an approval ask in Slack is posted with ✅ and ❌ on amy's message, and the operator's ✅ comes back from replies as answer { ask, chosen: [approve] } with kind decision", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S6, S7, S10, S11, S12, S14], done: true }
+  - { id: A3, statement: "a choices ask in Slack returns the keycaps the operator put on it only once they add ✅, and a reaction by anybody else is never an answer", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S12], done: true }
+  - { id: A4, statement: "a choice ask with eleven answers in Slack without Socket Mode is posted as a numbered list with no reactions", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S8, S13], done: true }
+  - { id: A5, statement: "an approval, a choice and a choices ask in Telegram are inline keyboards; each press is acknowledged, a choices press toggles its ✓, and Send returns the chosen answers once", proof: "test:plugins/telegram/tests/TelegramConversation.asks.test.ts", sources: [S15, S16], done: true }
+  - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "property:plugins/slack/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22], done: true }
+  - { id: A7, statement: "an answer reads as a decision under answer and under discuss, and an unmarked typed reply to the same ask reads as it does today", proof: "property:examples/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7], done: true }
+  - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts (falls back to numbered text when the conversation does not declare asks; posts a closed answer set as an ask only when the conversation declares asks)", sources: [S8], done: true }
+  - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts (treats a selected answer as a decision under discuss and returns it beside its question), assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S1, S2, S17, S18, S19], done: true }
+  - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17], done: true }
+  - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21], done: true }
+  - { id: A13, statement: "for any approval answered once in Slack, replies from the same since returns that answer on every look, across restarts, whatever marks are changed, removed or added after", proof: "property:plugins/slack/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28], done: true }
+  - { id: A17, statement: "for any ask answered once in Telegram, replies from the same since returns that answer on every look, across restarts, whatever is pressed after", proof: "property:plugins/telegram/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25], done: true }
+  - { id: A14, statement: "an ask whose answers are fewer than 2, more than 10, repeated, empty or longer than the medium's button label is posted as a plain question with no marks or keyboard", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts (posts an ask it cannot mark as a plain numbered question), test:plugins/telegram/tests/TelegramConversation.asks.test.ts (sends an ask it cannot put on a keyboard as a plain numbered question)", sources: [S26], done: true }
+  - { id: A15, statement: "in Slack a keycap outside the ask's range, and ✅ on a single choice, are ignored: neither answers nor competes with an answer", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S27], done: true }
+  - { id: A16, statement: "in Slack, a reaction removed after a look accepted its answer leaves that answer returned, after an adapter restart too", proof: "property:plugins/slack/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S28], done: true }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "Conversation.ts gains an optional ask on post and an optional answer on Reply; with no conversation mounted, ask-question comments the numbered list on the tracker exactly as it comments the questions today" }
-  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A2, A3, A4" }
-  - { mechanism: agent-replies, answer: works, proof: "deferred:A10" }
-  - { mechanism: record-migration, answer: works, proof: "deferred:A9, a record saved with questions as strings plans as today" }
-  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A13; a look retried after a failure or a budget park reads the accepted answer again" }
-  - { mechanism: workflow-tooling, answer: works, proof: "deferred:A8, the testkit world's conversation answers an ask as scripted" }
+  - { mechanism: events-and-notifications, answer: works, proof: "A2, A3, A4" }
+  - { mechanism: agent-replies, answer: works, proof: "A10" }
+  - { mechanism: record-migration, answer: works, proof: "A9, a record saved with questions as strings plans as today" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "A13, A17; a look retried after a failure or a budget park reads the accepted answer again" }
+  - { mechanism: workflow-tooling, answer: works, proof: "A8, the testkit world's conversation answers an ask as scripted" }
 guarantee:
   - { holds: "only the configured operator's press or reaction is an answer, as only their reply is one today", not_against: "a person holding the operator's own Slack or Telegram account" }
   - { holds: "one ask has one answer, the first complete one a look read; a change of mind after it is a new reply in the thread, read by policy", not_against: "the order of reactions made between two looks, which polling cannot see" }
+  - { holds: "an accepted answer is kept on disk and replayed after a restart", not_against: "a power loss before the disk flushed it; a Telegram reader paused past the bot lock's lease that another process took over; or a Slack ask deleted after it was answered" }
+  - { holds: "amy says once in the thread that it took an answer, or that marks conflict", not_against: "two processes reading one thread at the same moment, as one piece of work is looked at by one process at a time; or a Telegram send whose answer never arrived" }
+  - { holds: "a press on a Telegram keyboard is read once its ask is recorded", not_against: "a crash between Telegram showing the keyboard and amy recording the ask: a press on it is told the question is closed" }
   - { holds: "an ask is shown as a form only with 2 to 10 distinct, non-empty answers that fit a button; every other ask is a plain question", not_against: "two answers that differ only in a way the person cannot see, such as trailing spaces or look-alike characters" }
   - { holds: "only a keycap within range, ✅ or ❌ on an approval, or ✅ on choices, is a mark; once accepted, an answer survives its mark being removed", not_against: "a mark removed before any look read it, which polling cannot see" }
   - { holds: "a form never stops the typed reply: the person can always answer in words, and it reads as it reads today", not_against: "a workflow whose own code ignores text replies to a question it asked as a form" }

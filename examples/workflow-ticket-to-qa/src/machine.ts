@@ -134,12 +134,39 @@ function conversationLines(record: TicketRecord, conversation: Observation["conv
       if (asked.has(comment.body)) continue;
       asked.add(comment.body);
       lines.push(`You asked: ${comment.body}`);
-    } else if (comment.author && !asked.has(comment.body)) {
-      lines.push(`${comment.author} answered: ${comment.body}`);
+    } else if (comment.author && (!asked.has(comment.body) || comment.answer)) {
+      const answer = comment.answer
+        ? `${comment.answer.ask}: ${comment.answer.chosen.join(", ")}`
+        : comment.body;
+      lines.push(`${comment.author} answered: ${answer}`);
     }
   }
 
   return lines;
+}
+
+/**
+ * Keeps a closed answer only when it still belongs to this triage, and only
+ * keeps the first answer for each ask. The workflow, not an adapter's memory,
+ * owns that selection: replaying the same look yields the same answer, while
+ * a stale button press cannot settle a newer triage.
+ */
+function selectedAnswers(record: TicketRecord, conversation: Observation["conversation"]): Observation["conversation"] {
+  const questions = new Map<string, readonly string[]>();
+  for (const question of record.triage?.questions ?? []) {
+    if (typeof question !== "string") questions.set(question.prompt, question.answers);
+  }
+
+  const answered = new Set<string>();
+  return conversation.filter((comment) => {
+    if (!comment.answer) return true;
+    const choices = questions.get(comment.answer.ask);
+    const chosen = comment.answer.chosen;
+    const valid = choices !== undefined && chosen.length > 0 && chosen.every((answer) => choices.includes(answer));
+    if (!valid || answered.has(comment.answer.ask)) return false;
+    answered.add(comment.answer.ask);
+    return true;
+  });
 }
 
 /**
@@ -151,7 +178,8 @@ function conversationLines(record: TicketRecord, conversation: Observation["conv
  */
 function planClarifying(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   const since = record.triage?.at ?? "";
-  const decisions = obs.conversation.filter((comment) => comment.fromAmy || readAs(comment, policy) === "decision");
+  const conversation = selectedAnswers(record, obs.conversation);
+  const decisions = conversation.filter((comment) => comment.fromAmy || readAs(comment, policy) === "decision");
   const answered = conversationLines(record, decisions);
 
   // Only a decision unblocks the wait. The discussion before it — answered,
@@ -160,11 +188,11 @@ function planClarifying(record: TicketRecord, obs: Observation, policy: Policy):
   if (answered.some((line) => line.includes("answered:"))) {
     return advance("READY", "the question in the work thread was answered", {
       type: "triage",
-      conversation: [...discussionBefore(record, obs, policy, since), ...answered],
+      conversation: [...discussionBefore(record, { conversation }, policy, since), ...answered],
     });
   }
 
-  const discussion = discussing(record, obs.conversation, policy, since, (record.triage?.askedQuestions ?? []).join("\n"));
+  const discussion = discussing(record, conversation, policy, since, (record.triage?.askedQuestions ?? []).join("\n"));
   if (discussion) return act(`answering ${discussion.turns.length} turn(s) of a discussion before anything is decided`, discussion);
 
   // Re-asking is the defect this state used to be: a look without an answer

@@ -13,7 +13,7 @@ import { ReviewThread, Ticket } from "@amykit/core";
 export interface TriageOutcome {
   /** True when the ticket can be implemented as written. */
   clear: boolean;
-  questions: string[];
+  questions: TriageQuestion[];
   at: string;
   /**
    * The questions the machine asked on the ticket for this ticket to be
@@ -25,6 +25,9 @@ export interface TriageOutcome {
    */
   askedQuestions: string[];
 }
+
+/** A triage question may offer a closed, single-choice answer set. */
+export type TriageQuestion = string | { prompt: string; answers: string[] };
 
 /** What one judged review comment concluded. */
 export interface ThreadVerdict {
@@ -68,7 +71,7 @@ export function triagePrompt(ticket: Ticket, conversation?: readonly string[]): 
     ``,
     `if you could start implementing right now, or:`,
     ``,
-    `{"clear": false, "questions": ["...", "..."]}`,
+    `{"clear": false, "questions": ["...", {"prompt": "...", "answers": ["...", "..."]}]}`,
     ``,
     `listing only questions that genuinely block the work. A question you`,
     `could answer yourself by reading the code is not a blocking question.`,
@@ -79,9 +82,32 @@ export function triagePrompt(ticket: Ticket, conversation?: readonly string[]): 
 
 /** Reads a triage answer; the questions asked are recorded so they are never asked twice. */
 export function readTriage(answer: unknown, at: string): TriageOutcome {
-  const reply = answer as { clear: boolean; questions?: string[] };
-  const questions = reply.clear ? [] : (reply.questions ?? []);
-  return { clear: reply.clear, questions, askedQuestions: questions, at };
+  const reply = answer as { clear?: unknown; questions?: unknown };
+  const questions = reply.clear === true ? [] : readQuestions(reply.questions);
+  return { clear: reply.clear === true, questions, askedQuestions: questions.map(questionText), at };
+}
+
+function readQuestions(value: unknown): TriageQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((question): TriageQuestion[] => {
+    if (typeof question === "string") return [question];
+    if (!question || typeof question !== "object" || typeof (question as { prompt?: unknown }).prompt !== "string") return [];
+    const { prompt, answers } = question as { prompt: string; answers?: unknown };
+    return [hasChoices(prompt, answers) ? { prompt, answers } : prompt];
+  });
+}
+
+/** A structured ask needs words for both its question and every selectable answer. */
+function hasChoices(prompt: string, answers: unknown): answers is string[] {
+  return prompt.trim().length > 0 &&
+    Array.isArray(answers) &&
+    answers.length >= 2 && answers.length <= 10 &&
+    answers.every((answer) => typeof answer === "string" && answer.trim().length > 0) &&
+    new Set(answers).size === answers.length;
+}
+
+export function questionText(question: TriageQuestion): string {
+  return typeof question === "string" ? question : question.prompt;
 }
 
 /** A triage that could not be read: not clear, and nothing to ask. */

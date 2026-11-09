@@ -303,6 +303,11 @@
           "description": ""
         },
         {
+          "title": "A question carries its answers",
+          "path": "/design/a-question-carries-its-answers",
+          "description": ""
+        },
+        {
           "title": "A question is not an answer",
           "path": "/design/a-question-is-not-an-answer",
           "description": ""
@@ -1198,6 +1203,11 @@
           "depth": 3,
           "title": "Treat structured provider usage limits as waits rather than attempts.",
           "slug": "treat-structured-provider-usage-limits-as-waits-rather-than-attempts"
+        },
+        {
+          "depth": 3,
+          "title": "Questions can carry closed answers through the conversation adapters, and ticket-to-qa records a selected answer beside its question.",
+          "slug": "questions-can-carry-closed-answers-through-the-conversation-adapters-and-ticket-to-qa-records-a-selected-answer-beside-its-question"
         },
         {
           "depth": 3,
@@ -2356,6 +2366,17 @@
           "slug": "acceptance"
         }
       ]
+    },
+    {
+      "path": "/design/a-question-carries-its-answers",
+      "file": "docs/design/a-question-carries-its-answers.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-question-carries-its-answers.md",
+      "title": "A question carries its answers",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-question-is-not-an-answer",
@@ -6069,7 +6090,7 @@
           },
           {
             "name": "post",
-            "signature": "post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string>",
+            "signature": "post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string>",
             "doc": ""
           },
           {
@@ -10362,6 +10383,8 @@
           "plugins/command-gate/src/**",
           "plugins/notify-fanout/src/**",
           "plugins/notify-inbox/src/**",
+          "plugins/slack/src/**",
+          "packages/core/src/ports/Conversation.ts",
           "packages/core/src/calls.ts",
           "packages/core/src/leases.ts",
           "plugins/concurrent-engine/src/**"
@@ -10383,6 +10406,7 @@
           "lifecycle.the_operator_is_told_where_to_answer",
           "lifecycle.a_waiting_state_makes_no_move_until_the_world_does",
           "lifecycle.the_answer_on_the_ticket_releases_the_work",
+          "lifecycle.an_ask_is_answered_by_a_press",
           "clarifying.clears_when_the_question_is_answered",
           "clarifying.does_not_ask_the_same_question_twice",
           "clarifying.ignores_its_own_comments",
@@ -11738,6 +11762,30 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "closed-answers-reach-ticket-triage",
+        "title": "Questions can carry closed answers through the conversation adapters, and ticket-to-qa records a selected answer beside its question.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-telegram",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "grooming-reads-the-sections-its-workflow-declares",

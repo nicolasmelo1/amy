@@ -30,7 +30,7 @@ sources:
   - { id: S28, kind: reference, ref: "plans/the-window-is-served.md", said: "a server never runs an agent for a paired device: the machine asking is the one whose harness answers, so connecting two amys never lends one's agents, or shell, to the other" }
   - { id: S29, kind: decision, said: "a discussion turn is answered by an agent, so one from a paired device is refused; its decisions still move the work, since a decision runs no agent" }
   - { id: S30, kind: decision, said: "with the repository here but the record's branch not yet pushed, the ask runs in this checkout at the base branch, is handed the record's diff from its server, and says the code it reads is the base's" }
-  - { id: S31, kind: reference, ref: "plans/a-question-carries-its-answers.md", said: "an ask shows its answers as buttons in the thread panel, choices with a send; a press submits the answer through the port as a decision; an answered ask shows the answer taken, no buttons. Decided 2026-11-05" }
+  - { id: S31, kind: reference, ref: "docs/design/a-question-carries-its-answers.md", said: "an ask shows its answers as buttons in the thread panel, choices with a send; a press submits the answer through the port as a decision; an answered ask shows the answer taken, no buttons. Decided 2026-11-05" }
   - { id: S32, kind: decision, said: "for that round trip submit's turn gains answer?: { ask, chosen }, taking the place of text, and each transcript entry gains ask? and answer?, so the panel draws a form and an answered one. Decided 2026-11-05" }
 touches:
   - packages/core/src/ports/Conversation.ts

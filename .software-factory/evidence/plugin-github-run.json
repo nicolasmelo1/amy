@@ -7,7 +7,7 @@
     "entry": "dist/index.js"
   },
   "observed": {
-    "assertions_run": 6,
+    "assertions_run": 7,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -30,6 +30,10 @@
     },
     {
       "type": "stack.an_absent_parent_or_one_closed_unmerged_waits",
+      "status": "passed"
+    },
+    {
+      "type": "stack.the_workflows_were_read",
       "status": "passed"
     },
     {

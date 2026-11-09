@@ -8,7 +8,7 @@
     "built_by": "scripts/install.sh"
   },
   "observed": {
-    "assertions_run": 61,
+    "assertions_run": 62,
     "assertions_failed": 0,
     "version": "dev (running from source, not an installed build)",
     "looks": 47,
@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 9568,
+      "pid": 49521,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
-      "a colleague answered the question and revised the brief",
-      "the automated reviewer looked at 3b1ba51 and left one comment",
-      "the automated reviewer looked at 8f8686b and had nothing to say",
+      "the Slack operator pressed ✅ for BRL and revised the brief",
+      "the automated reviewer looked at c36858e and left one comment",
+      "the automated reviewer looked at 6fed554 and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 8f8686b",
-      "the owner settled the disagreement on the ticket",
-      "ada approved 44df91b",
-      "the automated reviewer looked at 44df91b and had nothing to say",
-      "the automated reviewer looked at 8e742ab and had nothing to say",
-      "ada approved 8e742ab"
+      "ada asked for changes on 6fed554",
+      "the owner settled the disagreement in Slack",
+      "ada approved 0b3e848",
+      "the automated reviewer looked at 0b3e848 and had nothing to say",
+      "the automated reviewer looked at a198bf4 and had nothing to say",
+      "ada approved a198bf4"
     ],
     "agent_calls": [
       "triage",
@@ -92,7 +92,7 @@
       "address-threads"
     ],
     "gh_calls": 56,
-    "tracker_calls": 119,
+    "tracker_calls": 108,
     "commits_on_the_branch": [
       "BILL-4021: address review comments",
       "BILL-4021: address review comments",
@@ -106,20 +106,20 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-09T15:51:16.979Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-09T15:51:16.573Z): Which currency should the invoice total be shown in?\"\n}"
+      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-09T17:25:41.204Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-09T17:25:40.859Z): Should the invoice total use BRL?\"\n}"
     },
-    "budget": "Claude: unavailable — Claude usage is unavailable: no OAuth token is configured",
+    "budget": "Codex: unavailable — codex app-server exited before completion (1)",
     "second_run_transitions": 22,
     "concurrent_run_transitions": 22,
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-Ffrgvv/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "c7f448ae0589d3067c1eaa7a4a29102eb682c497"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-JQ47Rx/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "e19b6b1a998b2eaaf93dfddffa6aef7b0b11ea2f"
       },
       {
-        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-Ffrgvv/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "3b1ba51bbdd9ff0eccf0bd62a82e0cdf1ba091a1"
+        "tree": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/amy-e2e-JQ47Rx/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "c36858e1a5e50c11160c61104dac53d58e00019d"
       }
     ]
   },
@@ -186,6 +186,10 @@
     },
     {
       "type": "clarifying.clears_when_the_question_is_answered",
+      "status": "passed"
+    },
+    {
+      "type": "lifecycle.an_ask_is_answered_by_a_press",
       "status": "passed"
     },
     {

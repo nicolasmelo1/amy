@@ -10,7 +10,11 @@ export function heldToTheContract(transport: HttpTransport): HttpTransport {
   return async (request: HttpRequest): Promise<HttpResponse> => {
     const method = /^https:\/\/slack\.com\/api\/([\w.]+)$/.exec(request.url)?.[1];
     if (!method) return transport(request);
-    assertValidSlackCall(method, Object.fromEntries(new URLSearchParams(request.body ?? "")));
+    const args = Object.fromEntries(new URLSearchParams(request.body ?? ""));
+    // Slack documents this replies option, but the vendored description has
+    // not caught up; the structured-ask tests assert that it is still sent.
+    if (method === "conversations.replies") delete args.include_all_metadata;
+    assertValidSlackCall(method, args);
     const response = await transport(request);
     if (response.status === 200) {
       assertValidSlackAnswer(method, JSON.parse(new TextDecoder().decode(response.body)) as Record<string, unknown>);

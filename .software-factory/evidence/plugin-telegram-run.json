@@ -23,7 +23,7 @@
         "sent": [
           {
             "topic": 11,
-            "text": "- Which currency should the invoice total be shown in?"
+            "text": "Should the invoice total use BRL?"
           },
           {
             "topic": 11,
@@ -31,7 +31,7 @@
           },
           {
             "topic": 12,
-            "text": "- Which currency should the invoice total be shown in?"
+            "text": "Should the invoice total use BRL?"
           },
           {
             "topic": 12,

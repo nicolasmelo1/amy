@@ -468,6 +468,12 @@ The `amy-update` gate stubbed out both of these with a stand-in npm that answere
 
 
 
+### Questions can carry closed answers through the conversation adapters, and ticket-to-qa records a selected answer beside its question.
+
+`minor` · `@amykit/core`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/workflow-ticket-to-qa`
+
+
+
 ### **Grooming reads the sections its workflow declares.**
 
 `minor` · `@amykit/cli`, `@amykit/core`

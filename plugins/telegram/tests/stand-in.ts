@@ -44,8 +44,9 @@ export interface StandInOptions {
 export function botApiStandIn(options: StandInOptions = {}) {
   const topics = new Map<number, string>();
   const sent: { topic: number; text: string }[] = [];
-  const updates: { update_id: number; message: Message }[] = [];
+  const updates: { update_id: number; message?: Message; callback_query?: Record<string, unknown> }[] = [];
   const files = new Map<string, File>();
+  const messages = new Map<number, Message>();
   const calls: { method: string; args: Record<string, unknown> }[] = [];
   let confirmed = 0;
   let nextUpdate = 70_000;
@@ -80,8 +81,12 @@ export function botApiStandIn(options: StandInOptions = {}) {
       const topic = Number(args.message_thread_id);
       if (!topics.has(topic)) return refuse(400, "Bad Request: message thread not found");
       sent.push({ topic, text: String(args.text) });
-      return { message_id: nextMessage++, message_thread_id: topic, is_topic_message: true, from: user(BOT_ID, true), chat: chat(OPERATOR), date: clock, text: String(args.text) };
+      const message: Message = { message_id: nextMessage++, message_thread_id: topic, is_topic_message: true, from: user(BOT_ID, true), chat: chat(OPERATOR), date: clock, text: String(args.text) };
+      messages.set(message.message_id, message);
+      return message;
     },
+    editMessageReplyMarkup: () => true,
+    answerCallbackQuery: () => true,
     getUpdates: (args) => {
       if (options.polledElsewhere) return refuse(409, "Conflict: terminated by other getUpdates request; make sure that only one bot instance is running");
       if (typeof args.offset === "number") confirmed = Math.max(confirmed, args.offset);
@@ -172,6 +177,16 @@ export function botApiStandIn(options: StandInOptions = {}) {
     return message;
   }
 
+  /** The operator (or somebody else) presses an inline button on a sent topic message. */
+  function press(data: string, where: { topic: number; messageId?: number; from?: number } = { topic: 0 }): void {
+    const message = where.messageId === undefined
+      ? [...messages.values()].filter((sent) => sent.message_thread_id === where.topic).at(-1)
+      : messages.get(where.messageId);
+    if (!message) throw new Error(`the stand-in has no sent message in topic ${where.topic}`);
+    const from = where.from ?? OPERATOR;
+    updates.push({ update_id: nextUpdate++, callback_query: { id: `c${nextUpdate}`, from: user(from), message, chat_instance: `chat-${(message.chat as { id: number }).id}`, data } });
+  }
+
   /** Telegram restarts its update ids, as it does after a week with none. */
   function restartUpdateIds(from: number): void {
     nextUpdate = from;
@@ -182,6 +197,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
     transport,
     restartUpdateIds,
     say,
+    press,
     topics,
     sent,
     calls,

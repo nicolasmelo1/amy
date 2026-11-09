@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Conversation, Reply, ThreadRef } from "@amykit/core";
+import { Ask, Conversation, Reply, ThreadRef } from "@amykit/core";
 import { SlackApi, TooLarge } from "./SlackApi.js";
 import { ThreadMap, privateDirectory } from "./ThreadMap.js";
 
@@ -55,6 +55,12 @@ interface SlackReaction {
   count?: number;
 }
 
+interface AnswerVerdict {
+  chosen?: string[];
+  ambiguous: boolean;
+  observed: string[];
+}
+
 interface SlackMessage {
   ts?: string;
   thread_ts?: string;
@@ -94,8 +100,16 @@ export const DEFAULT_MARKS = { decision: "white_check_mark", discussion: "speech
 
 /** What marks a root as amy's, and whose work it opened. */
 const ROOT_EVENT = "amy_work_thread";
+const ASK_EVENT = "amy_ask";
+const ASK_FALLBACK_EVENT = "amy_ask_fallback";
+const ASK_AMBIGUOUS_EVENT = "amy_ask_ambiguous";
+const ASK_TAKEN_EVENT = "amy_ask_taken";
+const KEYCAPS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "keycap_ten"] as const;
+const APPROVAL_REACTIONS = ["white_check_mark", "x"] as const;
+const SUBMIT_REACTION = "white_check_mark";
 
 export class SlackConversation implements Conversation {
+  readonly asks = true as const;
   private readonly threads: ThreadMap;
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
@@ -138,34 +152,66 @@ export class SlackConversation implements Conversation {
     return opened;
   }
 
-  async post(thread: ThreadRef, message: { text: string; files?: string[] }): Promise<string> {
+  async post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string> {
     if (message.files?.length) {
-      // Uploading needs `files:write`, which this plugin does not ask for:
-      // amy asks in words, and the operator's pictures come the other way.
       throw new Error("@amykit/plugin-slack does not upload files; post their paths as text");
     }
-    // Writing to a thread is using it, as reading its replies is.
     this.threads.used(thread.id);
     this.pruneNowAndThen();
+    if (!message.ask) return this.postText(thread.id, message.text);
+
+    const ask = message.ask;
+    if (!validAsk(ask)) return this.postAskFallback(thread.id, message.text, ask);
+    if (ask.form !== "approval" && ask.answers.length > KEYCAPS.length) {
+      return this.postAskFallback(thread.id, message.text, ask);
+    }
     const { body } = await this.api.call("chat.postMessage", {
       channel: this.options.channel,
       thread_ts: thread.id,
-      text: message.text,
+      text: renderAsk(message.text, ask, false),
+      metadata: askMetadata(ASK_EVENT, ask),
     });
-    return String(body.ts);
+    const ts = String(body.ts);
+    this.rememberAskedFrom(thread.id, ts);
+    try {
+      for (const name of reactionsFor(ask)) {
+        await this.api.call("reactions.add", { channel: this.options.channel, timestamp: ts, name });
+      }
+    } catch {
+      // The ask stands as posted, its answers listed on it: the operator
+      // reacts by hand, which is read as any reaction is, or types.
+    }
+    return ts;
   }
 
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
     const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
-    // Reading a thread is using it, whether or not the caller opened it
-    // first — marked before the prune, so the prune never takes it.
     this.threads.used(thread.id);
     this.pruneNowAndThen();
     const bot = await this.botUserId();
+    // A later copy of the same ask must see the earlier decision. Slack has
+    // no reaction timestamp, so recover the thread's ask messages instead
+    // of retaining an accepted answer in process memory. Where amy recorded
+    // the first ask it posted here, one read from there holds both the asks
+    // and what is recent: conversations.replies may be limited to one call
+    // a minute, so a look makes one.
+    const askedFrom = this.askedFrom(thread.id);
+    const read = askedFrom === undefined
+      ? await this.threadMessages(thread.id, after)
+      : await this.threadMessages(thread.id, Math.min(after, askedFrom), true);
+    const recent = askedFrom === undefined ? read : read.filter((message) => message.ts !== undefined && tsToMicros(message.ts) > after);
+    // Metadata is anybody's to attach: an ask, or the notice amy took one,
+    // is read only from a message this bot wrote, so another app cannot
+    // turn the operator's reaction into an answer to amy's question.
+    const amys = (messages: SlackMessage[]) => messages.filter((message) => message.metadata === undefined || message.user === bot);
+    // With no record (an ask from before amy kept one), a recent ask still
+    // sends the look back for the whole thread, as it always did.
+    const unrecorded = askedFrom === undefined && recent.some((message) => message.user === bot && readAsk(message) !== undefined);
+    const messages = amys(unrecorded ? await this.threadMessages(thread.id, 0) : read);
+    const answers = await this.askedReplies(thread.id, after, messages);
 
-    const answers: Reply[] = [];
-    for (const message of await this.threadMessages(thread.id, after)) {
+    for (const message of recent) {
       if (!this.isOperatorAnswer(message, thread.id, bot)) continue;
       const at = tsToMicros(message.ts!);
       if (at <= after) continue;
@@ -251,6 +297,7 @@ export class SlackConversation implements Conversation {
     privateDirectory(this.filesDirectory);
     fs.writeFileSync(this.forgottenMarker(ts), "", { mode: 0o600 });
     fs.rmSync(this.threadFiles(ts), { recursive: true, force: true });
+    fs.rmSync(this.answerDirectory(ts), { recursive: true, force: true });
   }
 
   /** Throttled, and never the reason a call fails: pruning is housekeeping. */
@@ -263,6 +310,180 @@ export class SlackConversation implements Conversation {
     } catch {
       // A file another process removed first, or one still being written.
     }
+  }
+
+  private async postText(threadTs: string, text: string): Promise<string> {
+    const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text });
+    return String(body.ts);
+  }
+
+  private async postAskFallback(threadTs: string, text: string, ask: Ask): Promise<string> {
+    const { body } = await this.api.call("chat.postMessage", {
+      channel: this.options.channel,
+      thread_ts: threadTs,
+      text: renderAsk(text, ask, true),
+      metadata: askMetadata(ASK_FALLBACK_EVENT, ask),
+    });
+    return String(body.ts);
+  }
+
+  /** Reconstruct answers from Slack every time; no accepted-answer cache survives a process. */
+  private async askedReplies(threadTs: string, after: number, messages: SlackMessage[]): Promise<Reply[]> {
+    const asks = messages.map(readAsk).filter((ask): ask is { message: SlackMessage; ask: Ask } => ask !== undefined);
+    const taken = new Set<string>();
+    const replies: Reply[] = [];
+    for (const entry of asks.sort((a, b) => tsToMicros(a.message.ts!) - tsToMicros(b.message.ts!))) {
+      const remembered = this.rememberedAnswer(threadTs, entry.ask.id);
+      // Re-read an accepted ask too: its decision is immutable, but a later
+      // complete, different mark still deserves the once-only acknowledgement.
+      // Marks Slack cannot fully list block a first answer, never a saved
+      // one: the remembered answer is replayed and nothing new is read.
+      const verdict: AnswerVerdict = await this.answerOf(entry.message, entry.ask).catch((error: unknown): AnswerVerdict => {
+        if (remembered) return { ambiguous: false, observed: [] };
+        throw error;
+      });
+      const accepted = await this.acceptedAnswer(threadTs, messages, entry, remembered, verdict);
+      if (!accepted) continue;
+      const chosen = accepted.chosen;
+      // Another copy of the ask carries the answer: this one is replayed by
+      // nothing, and a complete mark on it is a later answer, told once.
+      if (accepted.messageTs !== entry.message.ts) {
+        if (verdict.chosen || verdict.ambiguous) await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
+        continue;
+      }
+      if (this.hasChangedAnswer(remembered, verdict)) await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
+      if (taken.has(entry.ask.id)) {
+        await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
+        continue;
+      }
+      taken.add(entry.ask.id);
+      // An answer saved before amy dated it carries its ask's time instead.
+      const acceptedAt = accepted.acceptedAt === undefined ? tsToMicros(accepted.messageTs) : instantToMicros(accepted.acceptedAt);
+      if (acceptedAt > after) {
+        replies.push({ at: microsToInstant(acceptedAt), author: this.options.operator, text: entry.ask.prompt, files: [], kind: "decision", answer: { ask: entry.ask.id, chosen } });
+      }
+    }
+    return replies;
+  }
+
+  /** The answer this ask holds after this look, if any: the remembered one, or the first complete one seen now. */
+  private async acceptedAnswer(
+    threadTs: string,
+    messages: SlackMessage[],
+    entry: { message: SlackMessage; ask: Ask },
+    remembered: { chosen: string[]; messageTs: string; acceptedAt?: string } | undefined,
+    verdict: AnswerVerdict,
+  ): Promise<{ chosen: string[]; messageTs: string; acceptedAt?: string } | undefined> {
+    if (verdict.ambiguous) {
+      await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
+      // A later conflict cannot revoke the durable first answer: replay it
+      // so a look that previously parked still has the decision to apply.
+      if (remembered) await this.acknowledgeTaken(threadTs, messages, entry.ask, remembered.chosen);
+      return remembered;
+    }
+    if (!verdict.chosen) return remembered;
+    return remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen, entry.message.ts!);
+  }
+
+  /** The first complete answer is immutable once seen, even if its reaction changes later. */
+  protected rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string; acceptedAt?: string } | undefined {
+    try {
+      const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown; messageTs?: unknown; acceptedAt?: unknown };
+      if (!Array.isArray(state.chosen) || !state.chosen.every((chosen) => typeof chosen === "string") || typeof state.messageTs !== "string") return undefined;
+      return { chosen: state.chosen, messageTs: state.messageTs, ...(typeof state.acceptedAt === "string" ? { acceptedAt: state.acceptedAt } : {}) };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
+
+  /** Creates the decision once; a competing reader adopts the value written first. */
+  private rememberAnswer(threadTs: string, askId: string, chosen: string[], messageTs: string): { chosen: string[]; messageTs: string; acceptedAt?: string } {
+    const file = this.answerFile(threadTs, askId);
+    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+    const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
+    const handle = fs.openSync(staged, "wx", 0o600);
+    try {
+      // When amy first saw it, not when it asked: an ask posted before a
+      // look's since can still be answered after it.
+      fs.writeFileSync(handle, JSON.stringify({ chosen, messageTs, acceptedAt: this.clock().toISOString() }));
+      fs.fsyncSync(handle);
+    } finally {
+      fs.closeSync(handle);
+    }
+    try {
+      fs.linkSync(staged, file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    } finally {
+      fs.rmSync(staged, { force: true });
+    }
+    return this.rememberedAnswer(threadTs, askId) ?? { chosen, messageTs, acceptedAt: this.clock().toISOString() };
+  }
+
+  /** The first ask amy posted in this thread, as microseconds, if it kept one. */
+  private askedFrom(threadTs: string): number | undefined {
+    try {
+      const ts = fs.readFileSync(path.join(this.answerDirectory(threadTs), "asked-from"), "utf-8").trim();
+      const micros = tsToMicros(ts);
+      return Number.isNaN(micros) ? undefined : micros;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
+
+  /** Keeps the earliest ask's ts; a later ask leaves it where it is. */
+  private rememberAskedFrom(threadTs: string, ts: string): void {
+    const earlier = this.askedFrom(threadTs);
+    if (earlier !== undefined && earlier <= tsToMicros(ts)) return;
+    fs.mkdirSync(this.answerDirectory(threadTs), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(path.join(this.answerDirectory(threadTs), "asked-from"), ts, { mode: 0o600 });
+  }
+
+  private answerFile(threadTs: string, askId: string): string {
+    return path.join(this.answerDirectory(threadTs), `${createHash("sha256").update(askId).digest("hex")}.json`);
+  }
+
+  private answerDirectory(threadTs: string): string {
+    return path.join(this.options.directory, "answers", safeName(threadTs));
+  }
+
+  private hasChangedAnswer(remembered: { chosen: string[] } | undefined, verdict: AnswerVerdict): boolean {
+    return remembered !== undefined && (verdict.ambiguous || (verdict.chosen !== undefined && !sameAnswers(remembered.chosen, verdict.chosen)));
+  }
+
+  private async answerOf(message: SlackMessage, ask: Ask): Promise<AnswerVerdict> {
+    const names = reactionsFor(ask);
+    const reactions = await this.completeReactions(message, names);
+    if (names.some((name) => this.marked(reactions, name) === UNKNOWN)) throw new Error(`Slack did not identify every reaction on ask ${ask.id}`);
+    const marked = names.filter((name) => this.marked(reactions, name) === true);
+    if (ask.form === "approval") {
+      return { chosen: marked.length === 1 ? [marked[0] === "white_check_mark" ? "approve" : "reject"] : undefined, ambiguous: marked.length > 1, observed: marked };
+    }
+    const selected = KEYCAPS.slice(0, ask.answers.length).filter((name) => marked.includes(name));
+    if (ask.form === "choice" && selected.length > 1) return { ambiguous: true, observed: selected };
+    if (ask.form === "choices" && !marked.includes(SUBMIT_REACTION)) return { ambiguous: false, observed: selected };
+    if (ask.form === "choice" && selected.length !== 1) return { ambiguous: false, observed: selected };
+    return { chosen: selected.map((name) => ask.answers[KEYCAPS.indexOf(name)]!), ambiguous: false, observed: selected };
+  }
+
+  private async completeReactions(message: SlackMessage, names: readonly string[]): Promise<SlackReaction[]> {
+    const listed = message.reactions ?? [];
+    if (names.some((name) => this.marked(listed, name) === UNKNOWN)) return this.allReactions(message.ts!);
+    return listed;
+  }
+
+  private async explainAmbiguity(threadTs: string, messages: SlackMessage[], ask: Ask, observed: string[]): Promise<void> {
+    if (hasAskEvent(messages, ASK_AMBIGUOUS_EVENT, ask.id)) return;
+    await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text: `I saw conflicting answers for ${ask.id}: ${observed.join(", ")}. Please leave one answer.`, metadata: askMetadata(ASK_AMBIGUOUS_EVENT, ask) });
+    rememberAskEvent(messages, ASK_AMBIGUOUS_EVENT, ask);
+  }
+
+  private async acknowledgeTaken(threadTs: string, messages: SlackMessage[], ask: Ask, chosen: string[]): Promise<void> {
+    if (hasAskEvent(messages, ASK_TAKEN_EVENT, ask.id)) return;
+    await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text: `Amy already took ${ask.id}: ${chosen.join(", ")}.`, metadata: askMetadata(ASK_TAKEN_EVENT, ask) });
+    rememberAskEvent(messages, ASK_TAKEN_EVENT, ask);
   }
 
   private async channelChecks(scopes: readonly string[]): Promise<SlackCheck[]> {
@@ -284,6 +505,8 @@ export class SlackConversation implements Conversation {
         isPrivate ? "groups:read" : "channels:read",
         isPrivate ? "groups:history" : "channels:history",
         "files:read",
+        "reactions:write",
+        "reactions:read",
       ];
       const missing = needed.filter((scope) => !scopes.includes(scope));
       checks.push({
@@ -341,9 +564,12 @@ export class SlackConversation implements Conversation {
     return root?.ts;
   }
 
-  /** Every message in the thread after `afterMicros`, across pages. */
-  private threadMessages(ts: string, afterMicros: number): Promise<SlackMessage[]> {
-    return this.pages("conversations.replies", { channel: this.options.channel, ts, oldest: microsToTs(afterMicros) });
+  /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
+  private threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+    return this.pages("conversations.replies", {
+      channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
+      ...(inclusive ? { inclusive: "true" } : {}),
+    });
   }
 
   private async pages(method: string, args: Record<string, string>): Promise<SlackMessage[]> {
@@ -476,6 +702,56 @@ export class SlackConversation implements Conversation {
     }
     return target;
   }
+}
+
+function askMetadata(event: string, ask: Ask): string {
+  return JSON.stringify({ event_type: event, event_payload: { ask } });
+}
+
+function readAsk(message: SlackMessage): { message: SlackMessage; ask: Ask } | undefined {
+  if (message.metadata?.event_type !== ASK_EVENT || !message.ts) return undefined;
+  const ask = message.metadata.event_payload?.ask;
+  if (!isAsk(ask)) return undefined;
+  return { message, ask };
+}
+
+function isAsk(value: unknown): value is Ask {
+  if (!value || typeof value !== "object") return false;
+  const ask = value as Partial<Ask>;
+  if (typeof ask.id !== "string" || typeof ask.prompt !== "string" || !Array.isArray(ask.answers)) return false;
+  if (ask.form === "approval") return ask.answers.length === 2 && ask.answers[0] === "approve" && ask.answers[1] === "reject";
+  return ask.form === "choice" || ask.form === "choices";
+}
+
+function hasAskEvent(messages: readonly SlackMessage[], event: string, askId: string): boolean {
+  return messages.some((message) => message.metadata?.event_type === event && readMetadataAskId(message) === askId);
+}
+
+/** Make a successful notice visible to duplicate asks in this same poll. */
+function rememberAskEvent(messages: SlackMessage[], event: string, ask: Ask): void {
+  messages.push({ metadata: { event_type: event, event_payload: { ask } } });
+}
+
+function readMetadataAskId(message: SlackMessage): string | undefined {
+  const ask = message.metadata?.event_payload?.ask;
+  return ask && typeof ask === "object" && typeof (ask as { id?: unknown }).id === "string" ? (ask as { id: string }).id : undefined;
+}
+
+function validAsk(ask: Ask): boolean {
+  return ask.answers.length >= 2 && ask.answers.length <= 10 && ask.answers.every((answer) => answer.trim().length > 0 && answer.length <= 64) && new Set(ask.answers).size === ask.answers.length;
+}
+
+function reactionsFor(ask: Ask): readonly string[] {
+  return ask.form === "approval" ? APPROVAL_REACTIONS : ask.form === "choice" ? KEYCAPS.slice(0, ask.answers.length) : [...KEYCAPS.slice(0, ask.answers.length), SUBMIT_REACTION];
+}
+
+function sameAnswers(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((answer, index) => answer === right[index]);
+}
+
+function renderAsk(text: string, ask: Ask, fallback: boolean): string {
+  const answers = ask.answers.map((answer, index) => `${fallback ? `${index + 1}.` : ask.form === "approval" ? (index === 0 ? "✅" : "❌") : `${index + 1}️⃣`} ${answer}`);
+  return [text === ask.prompt ? "" : text, ask.prompt, ...answers].filter(Boolean).join("\n");
 }
 
 /**

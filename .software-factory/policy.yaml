@@ -285,6 +285,8 @@ gates:
       - "plugins/command-gate/src/**"
       - "plugins/notify-fanout/src/**"
       - "plugins/notify-inbox/src/**"
+      - "plugins/slack/src/**"
+      - "packages/core/src/ports/Conversation.ts"
       # Its gate and self-review are the lanes of a fork: what composes them,
       # what holds what they use, and the engine that moves them side by side.
       - "packages/core/src/calls.ts"
@@ -307,6 +309,7 @@ gates:
       - "lifecycle.the_operator_is_told_where_to_answer"
       - "lifecycle.a_waiting_state_makes_no_move_until_the_world_does"
       - "lifecycle.the_answer_on_the_ticket_releases_the_work"
+      - "lifecycle.an_ask_is_answered_by_a_press"
       - "clarifying.clears_when_the_question_is_answered"
       - "clarifying.does_not_ask_the_same_question_twice"
       - "clarifying.ignores_its_own_comments"

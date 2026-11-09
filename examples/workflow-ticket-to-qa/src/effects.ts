@@ -1,4 +1,5 @@
 import { planning } from "@amykit/core";
+import { TriageQuestion } from "./agent-steps.js";
 import { TicketState } from "./state.js";
 
 /**
@@ -12,7 +13,7 @@ import { TicketState } from "./state.js";
 export type Effect =
   /** Read the ticket and decide whether it can be implemented as written. */
   | { type: "triage"; conversation?: string[] }
-  | { type: "ask-question"; questions: string[] }
+  | { type: "ask-question"; questions: TriageQuestion[] }
   | { type: "implement"; retryContext?: string; continuationContext?: string; conversation?: string[]; discussion?: string[] }
   | { type: "open-pull-request" }
   | { type: "resolve-review-thread"; threadId: string }

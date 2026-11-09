@@ -33,6 +33,8 @@ export const OTHER_REPO = "acme/gadgets";
 export const TICKET_THREE = "OPS-4025";
 export const THIRD_BRANCH = "amy/ops-4025-show-the-currency-on-the-credit-note";
 export const BOT = "copilot-pull-request-reviewer[bot]";
+export const SLACK_BOT = "U0AMYBOT";
+export const SLACK_OPERATOR = "U0OWNER";
 
 /** The tracker's state file, which the stand-in tracker serves and the run edits. */
 export interface User {
@@ -313,7 +315,7 @@ const AGENT_SCRIPT = {
   currency: "BRL",
   triage: {
     clear: false,
-    questions: ["Which currency should the invoice total be shown in?"],
+    questions: [{ prompt: "Should the invoice total use BRL?", answers: ["approve", "reject"] }],
   },
   // The human's second comment is refused first and answered once the owner
   // has settled it, which is the path an escalation exists for.
@@ -353,9 +355,32 @@ qa:
 export type EngineChoice = "serial" | "concurrent";
 
 /**
- * The plugins a profile mounts when it names the concurrent engine: the same
- * list the serial one is recommended with, the engine swapped.
+ * The plugins the serial world mounts. No Hermes: no ladder here names it,
+ * and its doctor check asks a real `hermes` binary for its profile, which a
+ * developer's machine may have and CI does not.
  */
+const SLACK_PLUGINS = [
+  "@amykit/plugin-file-queue",
+  "@amykit/plugin-file-store",
+  "@amykit/plugin-file-brief-store",
+  "@amykit/plugin-file-notes",
+  "@amykit/plugin-github",
+  "@amykit/plugin-linear",
+  "@amykit/plugin-slack",
+  "@amykit/workflow-ticket-to-qa",
+  "@amykit/plugin-file-worktree",
+  "@amykit/plugin-claude",
+  "@amykit/plugin-codex",
+  "@amykit/plugin-agent-relay",
+  "@amykit/plugin-notify-fanout",
+  "@amykit/plugin-notify-inbox",
+  "@amykit/plugin-serial-engine",
+  "@amykit/plugin-command-gate",
+];
+
+/** The lifecycle fixture stays transport-neutral unless a proof asks for Slack. */
+const SERIAL_PLUGINS = SLACK_PLUGINS.filter((name) => name !== "@amykit/plugin-slack");
+
 const CONCURRENT_PLUGINS = [
   "@amykit/plugin-file-queue",
   "@amykit/plugin-file-store",
@@ -363,6 +388,7 @@ const CONCURRENT_PLUGINS = [
   "@amykit/plugin-file-notes",
   "@amykit/plugin-github",
   "@amykit/plugin-linear",
+  "@amykit/plugin-slack",
   "@amykit/workflow-ticket-to-qa",
   "@amykit/plugin-file-worktree",
   "@amykit/plugin-claude",
@@ -375,10 +401,9 @@ const CONCURRENT_PLUGINS = [
   "@amykit/plugin-command-gate",
 ];
 
-function config(root: string, endpoint: string, engine: EngineChoice): string {
-  const plugins = engine === "concurrent"
-    ? `\n    plugins:\n${CONCURRENT_PLUGINS.map((name) => `      - "${name}"`).join("\n")}`
-    : "";
+function config(root: string, endpoint: string, engine: EngineChoice, withSlack: boolean): string {
+  const plugins = engine === "concurrent" ? CONCURRENT_PLUGINS : withSlack ? SLACK_PLUGINS : SERIAL_PLUGINS;
+  const profilePlugins = `\n    plugins:\n${plugins.map((name) => `      - "${name}"`).join("\n")}`;
   return `# The workflow is named, not shipped: a machine drives nothing until the
 # config declares one, so this run names the one it is driving. The settings
 # under it are the workflow's vocabulary — the status a ticket lands in for
@@ -386,7 +411,7 @@ function config(root: string, endpoint: string, engine: EngineChoice): string {
 # that drives, not to the machine.
 workflows:
   tickets:
-    workflow: "@amykit/workflow-ticket-to-qa"${plugins}
+    workflow: "@amykit/workflow-ticket-to-qa"${profilePlugins}
     settings:
       qaStatusName: In QA
 
@@ -434,6 +459,10 @@ plugins:
   # The tracker's slice. A hand-written slice is merged over the derived
   # one, so only the settings somebody meant to change need to be named — and
   # the tracker's vocabulary lives nowhere but here, which is the point.
+  "@amykit/plugin-slack":
+    channel: C0WORK
+    token: env:SLACK_BOT_TOKEN
+    operator: ${SLACK_OPERATOR}
   "@amykit/plugin-linear":
     workingStatusName: In Progress
     repoByTeam:
@@ -494,6 +523,7 @@ export function build(root: string, { source }: { source: string }): void {
   write(path.join(world, "code-host.json"), CODE_HOST_STATE);
   write(path.join(world, "agent.json"), AGENT_SCRIPT);
   write(path.join(world, "agent-gadgets.json"), AGENT_GADGETS_SCRIPT);
+  write(path.join(world, "slack.json"), { nextTs: Math.floor(Date.now() / 1000), messages: [] });
 
   // Each stand-in is a wrapper and the TypeScript it runs, side by side.
   for (const tool of ["gh", "claude", "codex"]) {
@@ -506,7 +536,7 @@ export function build(root: string, { source }: { source: string }): void {
   // Read from the working directory, gitignored in the real one. Short and
   // obviously fake: a key shaped like a real one is a finding for a secret
   // scanner, and rightly so.
-  fs.writeFileSync(path.join(root, "home", ".env"), "LINEAR_API_KEY=lin_api_standin\n", "utf-8");
+  fs.writeFileSync(path.join(root, "home", ".env"), "LINEAR_API_KEY=lin_api_standin\nSLACK_BOT_TOKEN=xoxb-stand-in\n", "utf-8");
 }
 
 /**
@@ -523,9 +553,9 @@ export function editRoster(root: string): void {
 }
 
 /** Writes the config an operator would have edited, over the one `amy init` wrote. */
-export function configure(root: string, endpoint: string, engine: EngineChoice = "serial"): void {
+export function configure(root: string, endpoint: string, engine: EngineChoice = "serial", withSlack = false): void {
   const amyDir = path.join(root, "home", ".amy");
-  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine), "utf-8");
+  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine, withSlack), "utf-8");
 
   // An operator's brief is durable state, not a prompt fixture. The child
   // ticket names this exact parent id through the tracker on each observation.

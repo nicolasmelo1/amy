@@ -1,6 +1,7 @@
 import {
   ActionContext,
   AgentRun,
+  Ask,
   baseBranchFor,
   Conversation,
   FoundWork,
@@ -25,6 +26,7 @@ import {
   threadPrompt,
   triagePrompt,
   unreadTriage,
+  questionText,
 } from "./agent-steps.js";
 import { Effect, WRITE_EFFECTS, WriteEffect } from "./effects.js";
 import { Observation, Policy, Said } from "./observation.js";
@@ -180,11 +182,22 @@ const ACTIONS: TicketActions = {
     const { conversation, tracker, brief } = scope.ports;
     if (conversation) {
       const thread = await conversation.open(work.record.id, work.observation.ticket.title);
-      await conversation.post(thread, { text: effect.questions.map((question) => `- ${question}`).join("\n") });
+      if (conversation.asks) {
+        for (const question of effect.questions) {
+          if (typeof question === "string") {
+            await conversation.post(thread, { text: question });
+          } else {
+            const ask = askFor(question);
+            await conversation.post(thread, { text: ask.prompt, ask });
+          }
+        }
+      } else {
+        await conversation.post(thread, { text: numberedQuestions(effect.questions) });
+      }
     } else {
       await tracker.comment(
         work.observation.ticket.id,
-        effect.questions.map((question) => `- ${question}`).join("\n"),
+        numberedQuestions(effect.questions),
       );
     }
     await scope.announce(`${work.record.id} needs an answer before I can start.`);
@@ -198,7 +211,7 @@ const ACTIONS: TicketActions = {
       for (const question of effect.questions) {
         await brief.appendQuestion({
           id: briefId,
-          question: { workId: work.record.id, question, at: scope.ctx.now().toISOString() },
+          question: { workId: work.record.id, question: questionText(question), at: scope.ctx.now().toISOString() },
           at: scope.ctx.now().toISOString(),
         });
       }
@@ -457,11 +470,14 @@ async function answersFor(
 
   const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
   const said = await saidSince(scope, current.id, ticket, since);
-  const escalationAnswered = awaitingOwner && (said ? decided(said, scope.policy) : await tracker.hasReplyAfter(ticket.id, since));
+  // A button carries the question it answered. A press from an earlier wait
+  // is evidence for that earlier question, never an escalation decision.
+  const relevant = said?.filter((reply) => !reply.answer || (awaitingAnswer && current.triage!.askedQuestions.includes(reply.answer.ask)));
+  const escalationAnswered = awaitingOwner && (relevant ? decided(relevant, scope.policy) : await tracker.hasReplyAfter(ticket.id, since));
   // The ticket's comments are read once there is an answer in them, not on
   // every poll of a wait: the owner's words are what the resumed step acts on.
   return {
-    conversation: said ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
+    conversation: relevant ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
     escalationAnswered,
   };
 }
@@ -549,7 +565,7 @@ interface Words {
 /** One sentence per write, so a new write does not build until it can be said. */
 const WRITE_WORDS: { [K in WriteEffect["type"]]: (write: Extract<WriteEffect, { type: K }>, words: Words) => string } = {
   "ask-question": (write, { ticket, where }) =>
-    [`${ticket.id} needs an answer before I can start. Answer ${where}:`, ...write.questions.map((q) => `- ${q}`)].join("\n"),
+    [`${ticket.id} needs an answer before I can start. Answer ${where}:`, numberedQuestions(write.questions)].join("\n"),
   "escalate": (write, { ticket, where }) => `${ticket.id} needs your call, answer ${where}: ${write.reason}`,
   "open-pull-request": (_write, { ticket, base }) =>
     `Open a pull request for ${ticket.id} in ${ticket.repo}, from ${branchOf(ticket)} into ${base}, titled "${pullRequestTitle(ticket)}". I carry on once I see it.`,
@@ -597,8 +613,26 @@ function repliesFor(conversation: Conversation, workId: string, title: string, s
       at: reply.at,
       fromAmy: false,
       ...(reply.kind ? { kind: reply.kind } : {}),
+      ...(reply.answer ? { answer: reply.answer, kind: "decision" as const } : {}),
     })),
   );
+}
+
+/** Text fallback for adapters that cannot render asks, and tracker comments. */
+function numberedQuestions(questions: readonly import("./agent-steps.js").TriageQuestion[]): string {
+  return questions.map((question, index) => {
+    const text = questionText(question);
+    return typeof question === "string"
+      ? `- ${text}`
+      : `${index + 1}. ${text}\n${question.answers.map((answer, answerIndex) => `   ${answerIndex + 1}. ${answer}`).join("\n")}`;
+  }).join("\n");
+}
+
+function askFor(question: Exclude<import("./agent-steps.js").TriageQuestion, string>): Ask {
+  if (question.answers[0] === "approve" && question.answers[1] === "reject" && question.answers.length === 2) {
+    return { id: question.prompt, prompt: question.prompt, form: "approval", answers: ["approve", "reject"] };
+  }
+  return { id: question.prompt, prompt: question.prompt, form: "choice", answers: question.answers };
 }
 
 /**

@@ -158,6 +158,32 @@ describe("reading ticket-to-qa's answers", () => {
     expect(readTriage({ clear: true, questions: ["ignored"] }, "now")).toMatchObject({ clear: true, questions: [] });
   });
 
+  it("keeps a closed answer set, but treats malformed forms as plain questions", () => {
+    expect(readTriage({ clear: false, questions: [{ prompt: "Which currency?", answers: ["BRL", "USD"] }] }, "now")).toMatchObject({
+      questions: [{ prompt: "Which currency?", answers: ["BRL", "USD"] }],
+      askedQuestions: ["Which currency?"],
+    });
+    expect(readTriage({ clear: false, questions: [{ prompt: "Which currency?", answers: ["BRL", 7] }] }, "now")).toMatchObject({
+      questions: ["Which currency?"],
+      askedQuestions: ["Which currency?"],
+    });
+    for (const answers of [[], [""], ["   "], [7]]) {
+      expect(readTriage({ clear: false, questions: [{ prompt: "Which currency?", answers }] }, "now")).toMatchObject({
+        questions: ["Which currency?"],
+        askedQuestions: ["Which currency?"],
+      });
+    }
+    expect(readTriage({ clear: false, questions: [{ prompt: "  ", answers: ["BRL"] }] }, "now")).toMatchObject({
+      questions: ["  "],
+      askedQuestions: ["  "],
+    });
+    for (const answers of [["BRL"], ["BRL", "BRL"], Array.from({ length: 11 }, (_, index) => `choice ${index}`)]) {
+      expect(readTriage({ clear: false, questions: [{ prompt: "Which currency?", answers }] }, "now")).toMatchObject({
+        questions: ["Which currency?"],
+      });
+    }
+  });
+
   it("sends a comment the agent did not answer to the owner rather than dropping it", () => {
     const verdicts = readVerdicts({ verdicts: [{ threadId: "T1", verdict: "fixed", note: "done" }] }, [
       thread({ id: "T1" }),
