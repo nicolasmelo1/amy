@@ -10,6 +10,7 @@ sources:
   - { id: S8, kind: reference, ref: "plans/a-picture-is-a-comment-too.md", said: "the tracker's side of the same gap: a picture on a Linear or GitHub comment" }
   - { id: S9, kind: decision, said: "a video is handed to the agent as the frames sampled from it plus the path, because harnesses read images and not video; the sampling is the host's, the harness is unchanged. Proposed 2026-11-09" }
   - { id: S10, kind: decision, said: "a file too large for the medium is not dropped: the post goes out with a line naming the file and its local path, as replies already do for a file too large to download. Proposed 2026-11-09" }
+  - { id: S11, kind: code, ref: "packages/test-fixtures/src/contracts/slack.ts", said: "the Slack stand-in holds every call to the vendored contract, which describes neither files.getUploadURLExternal nor files.completeUploadExternal; the upload is added to it from Slack's own reference, not bypassed" }
 touches:
   - plugins/slack/src/SlackApi.ts
   - plugins/slack/src/SlackConversation.ts
@@ -23,14 +24,16 @@ touches:
   - plugins/telegram/tests/every-method-is-exercised.test.ts
   - plugins/telegram/README.md
   - packages/agent-kit/src/attachments.ts
+  - packages/agent-kit/src/index.ts
+  - packages/test-fixtures/src/contracts/slack.ts
   - packages/agent-kit/tests/attachments.test.ts
   - packages/workflow-ticket-to-qa/src/actions.ts
   - docs/concepts/ports.md
 criteria:
-  - { id: A1, statement: "post with a PNG and an MP4 on Slack uploads both into the work's thread under its parent message, and the doctor check names files:write when the token lacks it", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S1, S2, S3, S6] }
+  - { id: A1, statement: "post with a PNG and an MP4 on Slack uploads both into the work's thread under its parent message, and the doctor check names files:write when the token lacks it", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S1, S2, S3, S6, S11] }
   - { id: A2, statement: "post with a PNG and an MP4 on Telegram sends a photo and a video into the work's topic", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.test.ts", sources: [S2, S4] }
   - { id: A3, statement: "a Telegram reply carrying a video, a video note or an animation comes back with the file as a local path, as a photo does", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.test.ts", sources: [S4, S7] }
-  - { id: A4, statement: "a reply with an image reaches the agent as an image it is told to open, and a reply with a video as sampled frames plus the path", proof: "deferred:test:packages/agent-kit/tests/attachments.test.ts", sources: [S5, S8, S9] }
+  - { id: A4, statement: "a reply with an image reaches the agent as an image it is told to open, and a reply with a video as sampled frames plus the path, through the helper @amykit/agent-kit exports", proof: "deferred:test:packages/agent-kit/tests/attachments.test.ts", sources: [S5, S8, S9] }
   - { id: A5, statement: "a file over the medium's upload limit posts the text with a line naming the file and its path, and no upload is tried", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.test.ts", sources: [S10] }
 crosses:
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A1" }

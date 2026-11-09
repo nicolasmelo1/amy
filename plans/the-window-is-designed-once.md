@@ -33,11 +33,16 @@ sources:
   - { id: S31, kind: decision, said: "every primitive has a terminal drawing: Diff a coloured unified diff, Timeline a list, StateMachine the workflow's states and labelled edges said in words, drawn from what the server parsed, never from Mermaid text" }
   - { id: S32, kind: decision, said: "a renderer only translates primitives, holding no view, snapshot or rule another renderer does not, so two renderers cannot disagree about what a record says" }
   - { id: S34, kind: reference, ref: "docs/design/a-phase-is-proven-not-asserted.md", said: "a UI check passes on structure first, then pixels within a threshold, then an agent; what none of them settles is unsupported, never a pass" }
+  - { id: S38, kind: reference, ref: "https://agent-browser.dev/desktop/guides/chromium-and-electron", said: "agent-desktop launch <app> --cdp opens the app with a DevTools port and returns it in data.cdp; agent-browser connect <port> drives that app's web contents" }
   - { id: S37, kind: code, ref: "plugins/terminal/src/plugin.ts", said: "terminal.screen answers text, rows and columns, no image; in a terminal the drawing is the grid. Pixels are the webview's and the desktop app's evidence" }
   - { id: S35, kind: decision, said: "the desktop app is driven by agent-desktop, with agent-browser joining its DevTools port for pixels; the menu bar by agent-desktop reading the menu as an item tree. Decided 2026-11-09" }
   - { id: S36, kind: decision, said: "a changed baseline is an approval: made with --approve, its lock in the same commit. Decided 2026-11-09" }
   - { id: S33, kind: decision, said: "the desktop renderer declares it draws menubar; the terminal and the web page do not, so their absence is a declaration the gate reads, not a disagreement it forgives" }
 touches:
+  - plugins/agent-browser/src/plugin.ts
+  - plugins/agent-browser/tests/connect.test.ts
+  - plugins/agent-desktop/src/plugin.ts
+  - plugins/agent-desktop/tests/launch.test.ts
   - packages/ui/tokens.json
   - packages/ui/design/**
   - packages/ui/frame.yaml
@@ -62,6 +67,7 @@ criteria:
   - { id: A4, statement: "an example whose drawing lacks a text, a badge tone or a row its tree has fails on structure naming the example and the surface, whatever its pixels say", proof: "deferred:assertion:design.structure_comes_before_pixels", sources: [S8, S34] }
   - { id: A5, statement: "a drawing whose pixels differ from its approved baseline past the threshold, and that the agent cannot settle, is unsupported and keeps the gate red; nothing an agent says counts as an approval", proof: "deferred:assertion:design.no_agent_approves_a_baseline", sources: [S8, S34] }
   - { id: A18, statement: "a terminal scenario is proven by its screen's text grid against an approved baseline grid; no pixel baseline is asked of the terminal, because terminal.screen reads text, rows and columns", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S37] }
+  - { id: A19, statement: "a desktop scenario launches the packaged app through desktop.launch with cdp, joins its port through browser.connect, and its pixel evidence names that app's target; a session on any other page fails the scenario", proof: "deferred:test:plugins/agent-browser/tests/connect.test.ts", sources: [S35, S38] }
   - { id: A6, statement: "a baseline changed without --approve, or without its lock in the same commit, fails the gate naming the file", proof: "deferred:assertion:design.a_baseline_is_approved_by_a_person", sources: [S36] }
   - { id: A7, statement: "`npm run design -- terminal Badge` draws every Badge example through the Ink renderer and nothing else; `npm run design -- web` serves one page of every example; `npm run design -- desktop` opens it in the desktop app", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S10, S11, S12] }
   - { id: A8, statement: "on a machine with no display, `npm run design` opens the terminal and web, says by name that the desktop cannot open here, and exits zero", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S13] }

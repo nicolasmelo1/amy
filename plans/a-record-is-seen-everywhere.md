@@ -25,7 +25,7 @@ touches:
 criteria:
   - { id: A1, statement: "what this slice delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S12] }
   - { id: A2, statement: "the strip in a record's canvas is its workflow's diagram, with every edge the file draws and the record's state marked, in the app and as one line in the terminal", proof: "deferred:assertion:window.the_strip_is_the_diagram", sources: [S1, S2, S3] }
-  - { id: A3, statement: "the right panel shows the record's log, or its thread when it waits on its owner, in the app and the terminal alike", proof: "deferred:assertion:window.the_panel_follows_the_record", sources: [S4] }
+  - { id: A3, statement: "the right panel shows the record's log, in the app and the terminal alike; the thread of a record waiting on its owner arrives with a-conversation-before-the-work", proof: "deferred:assertion:window.the_panel_follows_the_record", sources: [S4] }
   - { id: A4, statement: "every ⋯ action, from a row, the menu bar's submenu or the terminal's leader key, leaves the same record, queue and log a run of its command leaves", proof: "deferred:assertion:window.an_action_is_its_command", sources: [S5, S8] }
   - { id: A5, statement: "no row's ⋯ offers an action wider than its row: no record row pauses the machine or retires a record", proof: "deferred:test:packages/cli/tests/ui-actions.test.ts", sources: [S5, S6, S7] }
   - { id: A6, statement: "the fake tracker's and forge's call logs hold no write any renderer made", proof: "deferred:assertion:window.the_window_writes_nothing_the_cli_cannot", sources: [S8] }
@@ -38,6 +38,7 @@ guarantee:
   - { holds: "an action from any renderer leaves exactly what its command leaves", not_against: "two people acting on one record from two renderers at once; the queue orders them as it orders two commands" }
 cut:
   - "retiring one record from the window: waits for work-that-is-over-goes-away (S7)"
+  - "the thread in the right panel: a-conversation-before-the-work, which brings work.thread, getThread and the transcript it reads"
   - "deciding from the menu bar: refused; a decision happens in the thread (S10)"
   - "opening a record's checkout in $EDITOR from the terminal: the-workplace-opens-where-you-work, which brings the openers it needs"
 exit: "one record opened from the app, the terminal and the menu bar shows the same strip and log; poked from the terminal's leader key it moves in the app"
