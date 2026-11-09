@@ -1641,6 +1641,17 @@ const assertions = assertionsFor(first, second, sideBySide);
 const failed = assertions.filter((assertion) => assertion.status === "failed");
 
 for (const assertion of failed) process.stderr.write(`FAILED ${assertion.type}\n`);
+// A failure on a machine nobody can log into says nothing without what the
+// doctor answered there: the doctor is what most assertions read.
+if (failed.length > 0) {
+  for (const [label, ran] of [
+    ["doctor", first.doctor],
+    ["doctor, third repository", first.thirdDoctor],
+    ["doctor, retuned", first.retuned?.doctor],
+  ] as const) {
+    if (ran && ran.code !== 0) process.stderr.write(`--- ${label} exited ${ran.code}:\n${ran.out}\n`);
+  }
+}
 
 fs.writeFileSync(
   reportPath,
