@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mount, type HostServices, type Plugin, WORKSPACE_PORT } from "@amykit/core";
-import { plugin } from "../src/plugin.js";
+import { call, declaredCallee, mount, withDiagramBeside, type HostServices, type Plugin } from "@amykit/core";
+import { plugin as declared } from "../src/plugin.js";
 
-/** The workplace, mounted with the checkouts a test names. */
-const workplace = (checkouts: Record<string, string>): Plugin => ({ name: "workspace", register: (registry) => registry.port(WORKSPACE_PORT, { workspaceRoot: "/somewhere", checkouts }) });
-const workspace = workplace({});
-/** The feature port grooming reads its tickets through. */
-const feature: Plugin = { name: "feature", register: (registry) => registry.port("feature", {}) };
+/** The workflow as the host mounts it, shaped by the diagram at the package root. */
+const plugin = withDiagramBeside(declared, import.meta.url);
+
+const briefs: Plugin = { name: "briefs", register: (registry) => registry.port("brief", { get: async () => null }) };
 
 const host: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
@@ -15,21 +14,21 @@ const host: HostServices = {
 };
 
 describe("feature-grooming plugin", () => {
-  it("refuses a feature repository without an explicit checkout at boot", async () => {
-    const outcome = await mount([feature, workspace, plugin], { "@amykit/workflow-feature-grooming": { repos: ["acme/widgets"] } }, host);
-    expect(outcome).toMatchObject({ ok: false, problems: [expect.stringContaining("configured checkout for `acme/widgets`")] });
-  });
-
-  it("mounts before the workspace's provider, the order the recommended set lists them in", async () => {
-    const outcome = await mount([feature, plugin, workplace({ "acme/widgets": "/somewhere/widgets" })], { "@amykit/workflow-feature-grooming": { repos: ["acme/widgets"] } }, host);
+  it("mounts with the brief port alone, and mounts no port of its own", async () => {
+    const outcome = await mount([briefs, plugin], { "@amykit/workflow-feature-grooming": { repos: ["acme/widgets"] } }, host);
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
-    expect(outcome.mounted.ports.get("grooming-source")).toBeDefined();
+    expect([...outcome.mounted.ports.keys()].sort()).toEqual(["brief"]);
   });
 
-  it("still refuses a repository without a checkout at boot when the provider mounts after it", async () => {
-    const outcome = await mount([feature, plugin, workspace], { "@amykit/workflow-feature-grooming": { repos: ["acme/widgets"] } }, host);
+  it("can be called, returning the criteria at BRIEFED", () => {
+    expect(() => call(plugin)).not.toThrow();
+    expect(declaredCallee(plugin).returns).toEqual(["BRIEFED"]);
+  });
 
-    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("configured checkout for `acme/widgets`");
+  it("refuses a mount with no brief store, by the port", async () => {
+    const outcome = await mount([plugin], { "@amykit/workflow-feature-grooming": { repos: [] } }, host);
+
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain("brief");
   });
 });

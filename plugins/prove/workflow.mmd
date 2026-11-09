@@ -1,0 +1,31 @@
+stateDiagram-v2
+    %% One proving walk for every scenario. The scenario is the input, so a
+    %% single request and two apps with a fixture and a person differ in data
+    %% alone, never in this diagram. Dashed states wait as looks, spending no
+    %% attempt: for a brief that names a scenario, for a seat on a resource.
+    %% ASKING keeps its seats while a person answers, and gives them back at
+    %% its deadline. Every end releases what the run held.
+    classDef waiting stroke-dasharray: 4 4
+    classDef attention stroke-width:3px
+
+    [*] --> READING
+    READING --> LEASING: the brief names a scenario
+    LEASING --> PREPARING: every resource it needs is leased
+    LEASING --> refused: it needs a resource nobody configured
+    PREPARING --> RUNNING: the resources are up and the fixtures hold
+    PREPARING --> ASKING: a fixture cannot reach its state
+    PREPARING --> LEASING: a lease ran out
+    PREPARING --> refused: a resource failed its check
+    RUNNING --> ASKING: a human step
+    RUNNING --> LEASING: a lease ran out
+    RUNNING --> PROVEN: every assertion passed
+    RUNNING --> refused: an assertion failed or could not be evaluated
+    ASKING --> RUNNING: the person answered the step
+    ASKING --> PREPARING: the person made the fixture hold
+    ASKING --> LEASING: a lease ran out
+    ASKING --> refused: nobody answered before the deadline
+    PROVEN --> [*]
+    refused --> [*]
+
+    class READING,LEASING waiting
+    class ASKING attention

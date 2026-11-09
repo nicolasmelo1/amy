@@ -73,6 +73,8 @@ A page is markdown with markers in it:
 
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
+| `@amykit/plugin-agent-browser` | Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent. |  |  |
+| `@amykit/plugin-agent-desktop` | Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs. |  |  |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
 | `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude`<br>`usage:Claude` |
 | `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex`<br>`usage:Codex` |
@@ -96,7 +98,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
-| `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
+| `@amykit/plugin-terminal` | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. |  |  |
 
 <!-- amy:end plugin-index -->
 

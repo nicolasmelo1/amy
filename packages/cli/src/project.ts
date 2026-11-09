@@ -4,6 +4,7 @@ import {
   BriefDeclaration,
   BriefOperation,
   BriefRecord,
+  BriefStore,
   ConfigSchema,
   Mounted,
   MountedOperation,
@@ -16,6 +17,7 @@ import {
   WorkRecord,
   call,
   defineWorkflow,
+  optional,
   declaredCallee,
   policyFor,
   validateConfig,
@@ -253,7 +255,8 @@ function projectDiagram(
   phases: readonly ProjectPhase[],
 ): string {
   const state = (one: ProjectPhase) => PHASE_STATE[one.phase];
-  const after = (at: number): string => (at + 1 < phases.length ? state(phases[at + 1]!) : "DONE");
+  const gated = briefGated(phases);
+  const after = (at: number): string => (gated && phases[at]!.phase === "brief" ? GROOMED : at + 1 < phases.length ? state(phases[at + 1]!) : "DONE");
   const before = (at: number): string => (at > 0 ? state(phases[at - 1]!) : "DONE");
   const lines: string[] = ["stateDiagram-v2", `  [*] --> ${state(phases[0]!)}`];
   phases.forEach((one, at) => {
@@ -270,6 +273,7 @@ function projectDiagram(
       lines.push(`  ${state(one)} --> ${to}: ${end}`);
     }
   });
+  if (gated) lines.push(`  ${GROOMED} --> ${afterBrief(phases)}: every phase's brief check is green`);
   if (phases.some((one) => one.phase === "brief") && phases.some((one) => one.phase === "prove")) {
     lines.push("  PROOF_COMPLETE --> DONE: every criterion is answered");
     lines.push(`  PROOF_COMPLETE --> ${state(phases.find((one) => one.phase === "workflow") ?? phases[0]!)}: a criterion is unanswered`);
@@ -278,7 +282,29 @@ function projectDiagram(
   // walk order: the diagram's own list is the order the lines were read.
   lines.push(`  DONE --> [*]`);
   lines.push(...phases.map((one) => `  class ${state(one)} call`));
+  if (gated) lines.push(`  class ${GROOMED} waiting`);
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * The state a project waits in between its brief and its work while a later
+ * phase still refuses the brief: the brief phase's own check is the brief
+ * phase's, and a missing scenario is the proving phase's to refuse.
+ */
+const GROOMED = "GROOMED";
+
+/** How often a project waiting on its brief looks again. */
+const GROOMED_LOOK_MS = 5 * 60 * 1000;
+
+/** The state the walk goes to once the brief is ready: the phase after the brief, or the end. */
+function afterBrief(phases: readonly ProjectPhase[]): string {
+  const next = phases[phases.findIndex((one) => one.phase === "brief") + 1];
+  return next ? PHASE_STATE[next.phase] : "DONE";
+}
+
+/** Whether the walk waits on every phase's brief check after BRIEF: a later phase asks the brief something. */
+function briefGated(phases: readonly ProjectPhase[]): boolean {
+  return phases.some((one) => one.phase === "brief") && phases.some((one) => one.phase !== "brief" && one.plugin.brief !== undefined);
 }
 
 /** The schemas the project's phases declare, merged, or why they disagree. */
@@ -350,6 +376,7 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     }
     return [...claimed];
   };
+  const briefs: readonly PhaseBrief[] = args.phases.map((one) => ({ phase: one.phase, workflow: one.name, declaration: one.plugin.brief }));
   const composed = defineWorkflow({
     // A configured profile names the generated root's plugin and slice, but
     // a phase may legitimately use that same workflow declaration name.
@@ -359,16 +386,23 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     pluginName: composedPluginName(args.profile),
     configSchema: schema,
     policy: {},
-    needs: {},
+    needs: { brief: optional<BriefStore>() },
     ...(Object.keys(args.absent).length > 0 ? { phases: args.absent } : {}),
     trackerWrites: claims("trackerWrites"),
     codeHostWrites: claims("codeHostWrites"),
     record: () => ({}),
     discover: async () => [],
-    observe: async () => ({}),
+    observe: async (scope, record): Promise<{ readonly refusals?: readonly string[] }> => (record.state === GROOMED
+      ? { refusals: await refusedBrief(briefs, record.id, scope.ports.brief, scope.ctx.contributions(OPERATIONS_COLLECTION)) }
+      : {}),
     actions: {},
     remember: (_scope, record) => record,
     decide: {
+      ...(briefGated(args.phases) ? {
+        [GROOMED]: (record: WorkRecord, observation: { readonly refusals?: readonly string[] }) => (observation.refusals ?? []).length === 0
+          ? { kind: "advance" as const, to: afterBrief(args.phases), effects: [], why: "every phase's brief check is green" }
+          : { kind: "wait" as const, retryAfterMs: GROOMED_LOOK_MS, effects: [], why: `the brief of ${record.id} is still refused: ${(observation.refusals ?? []).join("; ")}` },
+      } : {}),
       ...(args.phases.some((one) => one.phase === "brief") && args.phases.some((one) => one.phase === "prove") ? {
         PROOF_COMPLETE: (record) => proofAnswered(record)
           ? { kind: "advance" as const, to: "DONE", effects: [], why: "the proof answered every criterion the brief settled" }
@@ -379,7 +413,7 @@ function build(args: { readonly profile: Pick<Profile, "name" | "settings">; rea
     calls: bindingsFor(args.phases, contexts) as never,
   });
   const drawn = withDiagram(composed, projectDiagram(args.phases), "the project's own folders");
-  PHASE_BRIEFS.set(drawn, args.phases.map((one) => ({ phase: one.phase, workflow: one.name, declaration: one.plugin.brief })));
+  PHASE_BRIEFS.set(drawn, briefs);
   return drawn;
 }
 
@@ -450,6 +484,18 @@ export function sectionsOf(briefs: readonly PhaseBrief[]): readonly { readonly p
     }
   }
   return sections;
+}
+
+/** What every phase's check refuses in a brief as the walk reads it: through the brief port, with the mounted operations. */
+async function refusedBrief(
+  briefs: readonly PhaseBrief[],
+  id: string,
+  store: BriefStore | undefined,
+  offered: ReadonlyMap<string, object>,
+): Promise<readonly string[]> {
+  if (!store) return ["no brief store is mounted, so nothing can say the brief is ready"];
+  const checked = await checkBrief(briefs, id, await store.get(id), operationsOffered({ contributions: new Map([[OPERATIONS_COLLECTION, new Map(offered)]]) }));
+  return checked.refusals.map((one) => `${one.phase ?? one.workflow}${one.section ? ` ${one.section}` : ""}: ${one.rule}`);
 }
 
 /** The operations the mounted plugins offer, as a brief check is handed them: id and input schema. */

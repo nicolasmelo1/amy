@@ -1,0 +1,41 @@
+{
+  "name": "@amykit/plugin-prove",
+  "version": "0.6.0",
+  "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": "https://github.com/nicolasmelo1/amy/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "plugins/prove"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "workflow.mmd"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0",
+    "yaml": "^2.8.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@amykit/plugin-command": "^0.6.0",
+    "@amykit/test-fixtures": "^0.1.0",
+    "fast-check": "^4.10.2"
+  }
+}

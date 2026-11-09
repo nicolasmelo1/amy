@@ -1,0 +1,17 @@
+{
+  "name": "@amykit/example-a-whole-project",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A whole project: brief/ grooms the feature, workflow/ walks a ticket to QA, prove/ proves it against the real system.",
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@amykit/core": "^0.6.0",
+    "@amykit/plugin-prove": "^0.6.0",
+    "@amykit/workflow-feature-grooming": "^0.6.0",
+    "@amykit/workflow-ticket-to-qa": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/test-fixtures": "^0.1.0"
+  }
+}

@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // shape.
 export default defineConfig({
   test: {
-    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts"],
+    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "examples/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts"],
     // fast-check runs from a fixed seed, so a property a plan cites is
     // deterministic. See CONTRIBUTING.md, on `property:` proofs.
     setupFiles: ["scripts/properties.setup.ts"],
@@ -66,6 +66,11 @@ export default defineConfig({
       "@amykit/plugin-hermes-agent": resolve(here, "plugins/hermes-agent/src/index.ts"),
       "@amykit/plugin-agent-relay": resolve(here, "plugins/agent-relay/src/index.ts"),
       "@amykit/plugin-ui-stub": resolve(here, "plugins/ui-stub/src/index.ts"),
+      "@amykit/workflow-feature-grooming": resolve(here, "packages/workflow-feature-grooming/src/index.ts"),
+      "@amykit/plugin-prove": resolve(here, "plugins/prove/src/index.ts"),
+      "@amykit/plugin-agent-browser": resolve(here, "plugins/agent-browser/src/index.ts"),
+      "@amykit/plugin-agent-desktop": resolve(here, "plugins/agent-desktop/src/index.ts"),
+      "@amykit/plugin-terminal": resolve(here, "plugins/terminal/src/index.ts"),
       "@amykit/cli": resolve(here, "packages/cli/src/index.ts"),
       // The runtimes before the package: an alias matches by prefix, so
       // `@amykit/ui` alone would swallow `@amykit/ui/jsx-runtime`.

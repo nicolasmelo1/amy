@@ -7,5 +7,5 @@
   "updateInternalDependencies": "patch",
   "fixed": [["@amykit/*"]],
   "linked": [],
-  "ignore": ["@amykit/test-fixtures", "@amykit/plugin-ui-stub"]
+  "ignore": ["@amykit/test-fixtures", "@amykit/plugin-ui-stub", "@amykit/example-a-whole-project"]
 }

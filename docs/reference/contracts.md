@@ -28,8 +28,6 @@ explains why for each.
 | `conversation` | `@amykit/plugin-slack`<br>`@amykit/plugin-telegram` | _reached directly_ |
 | `feature` | `@amykit/plugin-linear` | _reached directly_ |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
-| `grooming-source` | `@amykit/workflow-feature-grooming` | _reached directly_ |
-| `grooming-tracker` | `@amykit/workflow-feature-grooming` | _reached directly_ |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |
 | `notifier` | `@amykit/plugin-notify-fanout` | `announce`, `hand-over` |
 | `notify` | `@amykit/plugin-notify-hermes` | _reached directly_ |

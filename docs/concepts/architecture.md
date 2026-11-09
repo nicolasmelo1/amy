@@ -89,6 +89,8 @@ packages/
 └── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 
 plugins/
+├── agent-browser        Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.
+├── agent-desktop        Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.
 ├── agent-relay          One agent made of several: swaps harness on a quota, escalates model on a failure.
 ├── claude               The claude CLI as the agent, over its JSON envelope.
 ├── codex                The codex CLI as the agent, over its JSONL event stream.
@@ -110,9 +112,11 @@ plugins/
 ├── notify-hermes        Announcements over Hermes, which already owns the messaging credentials.
 ├── notify-inbox         Announcements as a file on disk plus a desktop notification.
 ├── plan-check           The quality bar for a drafted plan: the repository's own check, run in its checkout.
+├── prove                Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.
 ├── serial-engine        Advances one work item by one move per tick.
 ├── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
 ├── telegram             A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.
+├── terminal             Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.
 └── ui-stub              The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.
 ```
 
@@ -136,11 +140,13 @@ this repository.
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |
 | `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
-| `@amykit/workflow-feature-grooming` | plugin | `@amykit/core` |
+| `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |
 | `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
 | `@amykit/workflow-pull-request` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
 | `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
+| `@amykit/plugin-agent-browser` | plugin | `@amykit/core` |
+| `@amykit/plugin-agent-desktop` | plugin | `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-claude` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 | `@amykit/plugin-codex` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
@@ -162,9 +168,11 @@ this repository.
 | `@amykit/plugin-notify-hermes` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-notify-inbox` | plugin | `@amykit/core`, `@amykit/plugin-notify-fanout` |
 | `@amykit/plugin-plan-check` | plugin | `@amykit/core`, `@amykit/workflow-note-to-plan` |
+| `@amykit/plugin-prove` | workflow | `@amykit/core` |
 | `@amykit/plugin-serial-engine` | plugin | `@amykit/core` |
 | `@amykit/plugin-slack` | plugin | `@amykit/core` |
 | `@amykit/plugin-telegram` | plugin | `@amykit/core` |
+| `@amykit/plugin-terminal` | plugin | `@amykit/core` |
 | `@amykit/plugin-ui-stub` | library | `@amykit/ui` |
 
 <!-- amy:end workspace-dependencies -->

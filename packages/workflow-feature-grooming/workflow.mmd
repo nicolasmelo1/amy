@@ -1,0 +1,13 @@
+stateDiagram-v2
+    %% A feature's brief, groomed until its own check accepts it. GROOMING
+    %% waits as a look while the brief is missing or refused: grooming is a
+    %% person answering `amy-groom`'s questions, not something this walk does.
+    %% BRIEFED returns the criteria the brief settled, which a project hands
+    %% its work and its proof.
+    classDef waiting stroke-dasharray: 4 4
+
+    [*] --> GROOMING
+    GROOMING --> BRIEFED: the brief answers every section and its check accepts it
+    BRIEFED --> [*]
+
+    class GROOMING waiting

@@ -130,6 +130,18 @@
       ],
       "@amykit/services": [
         "packages/services/src/index.ts"
+      ],
+      "@amykit/plugin-prove": [
+        "plugins/prove/src/index.ts"
+      ],
+      "@amykit/plugin-agent-browser": [
+        "plugins/agent-browser/src/index.ts"
+      ],
+      "@amykit/plugin-agent-desktop": [
+        "plugins/agent-desktop/src/index.ts"
+      ],
+      "@amykit/plugin-terminal": [
+        "plugins/terminal/src/index.ts"
       ]
     },
     "jsx": "react-jsx",
@@ -139,6 +151,8 @@
     "packages/*/tests/**/*.ts",
     "packages/*/tests/**/*.tsx",
     "plugins/*/tests/**/*.ts",
+    "examples/*/*/*.ts",
+    "examples/*/tests/**/*.ts",
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "plugins/*/src/**/*.ts",

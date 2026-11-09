@@ -18,6 +18,8 @@ maintains.
 
 | Plugin | What it is | Mounts | Contributes |
 | :-- | :-- | :-- | :-- |
+| `@amykit/plugin-agent-browser` | Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent. |  |  |
+| `@amykit/plugin-agent-desktop` | Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs. |  |  |
 | `@amykit/plugin-agent-relay` | One agent made of several: swaps harness on a quota, escalates model on a failure. | `agent` |  |
 | `@amykit/plugin-claude` | The claude CLI as the agent, over its JSON envelope. |  | `harness:claude`<br>`usage:Claude` |
 | `@amykit/plugin-codex` | The codex CLI as the agent, over its JSONL event stream. |  | `harness:codex`<br>`usage:Codex` |
@@ -41,7 +43,7 @@ maintains.
 | `@amykit/plugin-serial-engine` | Advances one work item by one move per tick. | the engine |  |
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
-| `@amykit/workflow-feature-grooming` | Feature grooming against read-only base-branch source snapshots. | `grooming-source`<br>`grooming-tracker` |  |
+| `@amykit/plugin-terminal` | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. |  |  |
 
 <!-- amy:end plugin-index -->
 
@@ -52,6 +54,56 @@ is a refusal naming the plugin and the key — see
 [Plugins and the registry](../concepts/plugins.md).
 
 <!-- amy:generated plugin-settings -->
+
+### `@amykit/plugin-agent-browser`
+
+Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/agent-browser` |
+| Mounts | _nothing_ |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-agent-browser":
+    binary: agent-browser
+    session: amy
+    timeoutMs: 60000
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `binary` | `string` | no | `agent-browser` | the agent-browser command, or a path to it |
+| `session` | `string` | no | `amy` | the agent-browser session every operation drives, so steps of one scenario share one browser |
+| `timeoutMs` | `number` | no | `60000` | how long one agent-browser command may run |
+
+### `@amykit/plugin-agent-desktop`
+
+Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/agent-desktop` |
+| Mounts | _nothing_ |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+```yaml
+plugins:
+  "@amykit/plugin-agent-desktop":
+    binary: agent-desktop
+    timeoutMs: 60000
+```
+
+| Setting | Type | Required | Default | What it is |
+| :-- | :-- | :-- | :-- | :-- |
+| `binary` | `string` | no | `agent-desktop` | the agent-desktop command, or a path to it |
+| `timeoutMs` | `number` | no | `60000` | how long one agent-desktop command may run |
 
 ### `@amykit/plugin-agent-relay`
 
@@ -673,32 +725,31 @@ plugins:
 | `operator` | `string` | **yes** |  | your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers |
 | `server` | `string` | no | `https://api.telegram.org` | the Bot API server, for a local one instead of Telegram's |
 
-### `@amykit/workflow-feature-grooming`
+### `@amykit/plugin-terminal`
 
-Feature grooming against read-only base-branch source snapshots.
+Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.
 
 |  |  |
 | :-- | :-- |
-| Source | `packages/workflow-feature-grooming` |
-| Mounts | `grooming-source`<br>`grooming-tracker` |
+| Source | `plugins/terminal` |
+| Mounts | _nothing_ |
 | Contributes | _nothing_ |
 | Needs in the environment | _nothing_ |
 | Depends on | `@amykit/core` |
 
 ```yaml
 plugins:
-  "@amykit/workflow-feature-grooming":
-    baseBranch: {}
-    defaultBranch: main
-    repos:
-      - …
+  "@amykit/plugin-terminal":
+    binary: tu
+    session: amy
+    timeoutMs: 60000
 ```
 
 | Setting | Type | Required | Default | What it is |
 | :-- | :-- | :-- | :-- | :-- |
-| `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
-| `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
-| `repos` | `string[]` | **yes** |  | repositories whose configured base branch grooming may read |
+| `binary` | `string` | no | `tu` | the terminal-use command, or a path to it |
+| `session` | `string` | no | `amy` | the terminal-use session every operation drives, so steps of one scenario share one program |
+| `timeoutMs` | `number` | no | `60000` | how long one terminal-use command may run, past any wait it was asked for |
 
 <!-- amy:end plugin-settings -->
 
@@ -711,6 +762,6 @@ plugins:
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
 | `usage` | `Claude` — `@amykit/plugin-claude`<br>`Codex` — `@amykit/plugin-codex`<br>`Hermes ()` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
-| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
+| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`feature-grooming` — `@amykit/workflow-feature-grooming`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`prove` — `@amykit/plugin-prove`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->

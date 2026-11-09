@@ -4,7 +4,9 @@
 
 Feature grooming against read-only base-branch source snapshots.
 
-A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `grooming-source` port and the `grooming-tracker` port.
+A workflow for [amy](https://github.com/nicolasmelo1/amy): a pure `plan()` that says what
+happens next, and a runtime that says how each step is done. The engine drives it without
+knowing what any of its states mean.
 
 ## Install
 
@@ -17,10 +19,18 @@ Then name it in `~/.amy/config.yaml`:
 
 ```yaml
 workflows:
-  your-profile:
-    plugins:
-      - "@amykit/workflow-feature-grooming"
+  feature-grooming:
+    workflow: "@amykit/workflow-feature-grooming"
 ```
+
+## The lifecycle
+
+| State | Kind |
+| :-- | :-- |
+| `GROOMING` | initial, waiting |
+| `BRIEFED` | terminal |
+
+It emits .
 
 ## Configuration
 
@@ -29,6 +39,8 @@ plugins:
   "@amykit/workflow-feature-grooming":
     baseBranch: {}
     defaultBranch: "main"
+    policy:
+      briefLookMs: 300000
     repos: <string[]>
 ```
 
@@ -36,6 +48,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `baseBranch` | `record` | no | `{}` | where one repository's base branch is, instead of the fallback. A repository named here has its work cut from, and its pull requests opened against, that branch |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
+| `policy.briefLookMs` | `number` | no | `300000` | how often a brief still being groomed is looked at again |
 | `repos` | `string[]` | **yes** |  | repositories whose configured base branch grooming may read |
 
 Every field is checked at boot against the schema this package declares. A key that is
@@ -44,8 +57,8 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
-- [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 
 ## Licence

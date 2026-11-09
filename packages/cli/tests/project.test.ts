@@ -130,6 +130,29 @@ describe("a project is brief, work and proof", () => {
     expect(Object.keys(walk.workflow!.calls ?? {})).toEqual(["BRIEF", "WORK", "PROVE"]);
   });
 
+  it("waits in GROOMED after BRIEF only when a later phase asks the brief something", () => {
+    const brief = declaredPhase("brief-of-gated", { states: ["BRIEFED"], terminal: ["BRIEFED"], brief: { sections: ["Goal"], check: () => [] } });
+    const work = declaredPhase("work-of-gated", { states: ["OPENED"], terminal: ["OPENED"] });
+    const asking = declaredPhase("prove-of-gated", { states: ["CHECKED"], terminal: ["SATISFIED"], brief: { sections: ["Scenario"] } });
+    const silent = declaredPhase("prove-of-ungated", { states: ["CHECKED"], terminal: ["SATISFIED"] });
+    const compose = (prove: PhasePlugin) => composeProject({
+      profile: { name: "gated", settings: {} },
+      slices: {},
+      phases: [
+        { phase: "brief", plugin: brief, name: brief.name },
+        { phase: "workflow", plugin: work, name: work.name },
+        { phase: "prove", plugin: prove, name: prove.name },
+      ],
+      absent: {},
+      root,
+    }).plugin as PhasePlugin;
+
+    const gated = compose(asking).workflow!;
+    expect(gated.states).toEqual(["BRIEF", "GROOMED", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
+    expect(gated.waitingStates).toContain("GROOMED");
+    expect(compose(silent).workflow!.states).toEqual(["BRIEF", "WORK", "PROVE", "PROOF_COMPLETE", "DONE"]);
+  });
+
   it("gives the generated project a distinct declaration identity from a same-named phase", () => {
     const work = declaredPhase("project-invoices", { states: ["OPENED"], terminal: ["OPENED"] });
     const composed = composeProject({
