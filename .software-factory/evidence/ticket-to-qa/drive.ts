@@ -408,10 +408,11 @@ function reactions(): Record<string, Reaction> {
     ESCALATED(root, record) {
       if (repliedAfter(root, "u-owner", found(record.escalation, "escalation").askedAt)) return null;
       const slackFile = path.join(root, "world", "slack.json");
-      const slack = read<{ nextTs: number; messages: { ts: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const slack = read<{ nextTs: number; messages: { ts: string; channel?: string; thread_ts?: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const thread = [...slack.messages].reverse().find((message) => message.user === "U0AMYBOT");
       const ts = `${Math.max(slack.nextTs, Math.floor(Date.now() / 1000))}.000100`;
       slack.nextTs = Number(ts.slice(0, ts.indexOf("."))) + 1;
-      slack.messages.push({ ts, user: SLACK_OPERATOR, text: "Agreed, leave the rename out of this one. Do the rest.", reactions: [] });
+      slack.messages.push({ ts, ...(thread?.channel ? { channel: thread.channel } : {}), ...(thread?.thread_ts ? { thread_ts: thread.thread_ts } : {}), user: SLACK_OPERATOR, text: "Agreed, leave the rename out of this one. Do the rest.", reactions: [] });
       write(slackFile, slack);
       return "the owner settled the disagreement in Slack";
     },
@@ -774,10 +775,11 @@ function walkThird(root: string, react: Record<string, Reaction>, moves: Move[])
     if (move && third) moves.push({ at: new Date().toISOString(), state: third.state, move });
     if (third?.state === "CLARIFYING" && !thirdAnswered) {
       const slackFile = path.join(root, "world", "slack.json");
-      const slack = read<{ nextTs: number; messages: { ts: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const slack = read<{ nextTs: number; messages: { ts: string; channel?: string; thread_ts?: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
+      const thread = [...slack.messages].reverse().find((message) => message.user === "U0AMYBOT");
       const nextTs = Math.max(slack.nextTs, Math.floor(Date.now() / 1000));
       slack.nextTs = nextTs + 1;
-      slack.messages.push({ ts: `${nextTs}.000100`, user: SLACK_OPERATOR, text: "Credit notes are also in BRL.", reactions: [] });
+      slack.messages.push({ ts: `${nextTs}.000100`, ...(thread?.channel ? { channel: thread.channel } : {}), ...(thread?.thread_ts ? { thread_ts: thread.thread_ts } : {}), user: SLACK_OPERATOR, text: "Credit notes are also in BRL.", reactions: [] });
       write(slackFile, slack);
       thirdAnswered = true;
     }

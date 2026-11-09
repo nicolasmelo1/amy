@@ -177,6 +177,11 @@ describe("reading ticket-to-qa's answers", () => {
       questions: ["  "],
       askedQuestions: ["  "],
     });
+    for (const answers of [["BRL"], ["BRL", "BRL"], Array.from({ length: 11 }, (_, index) => `choice ${index}`)]) {
+      expect(readTriage({ clear: false, questions: [{ prompt: "Which currency?", answers }] }, "now")).toMatchObject({
+        questions: ["Which currency?"],
+      });
+    }
   });
 
   it("sends a comment the agent did not answer to the owner rather than dropping it", () => {

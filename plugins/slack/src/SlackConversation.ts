@@ -155,6 +155,7 @@ export class SlackConversation implements Conversation {
     if (!message.ask) return this.postText(thread.id, message.text);
 
     const ask = message.ask;
+    if (!validAsk(ask)) return this.postAskFallback(thread.id, message.text, ask);
     if (ask.form !== "approval" && ask.answers.length > KEYCAPS.length) {
       return this.postAskFallback(thread.id, message.text, ask);
     }
@@ -311,32 +312,33 @@ export class SlackConversation implements Conversation {
     const taken = new Set<string>();
     const replies: Reply[] = [];
     for (const entry of asks.sort((a, b) => tsToMicros(a.message.ts!) - tsToMicros(b.message.ts!))) {
-      const at = tsToMicros(entry.message.ts!);
       const remembered = this.rememberedAnswer(threadTs, entry.ask.id);
-      const verdict = remembered ? { chosen: remembered, ambiguous: false, observed: [] } : await this.answerOf(entry.message, entry.ask);
+      const verdict = remembered ? { chosen: remembered.chosen, ambiguous: false, observed: [] } : await this.answerOf(entry.message, entry.ask);
       if (verdict.ambiguous) {
         await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
         continue;
       }
       if (!verdict.chosen) continue;
-      const chosen = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen);
+      const accepted = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen, entry.message.ts!);
+      const chosen = accepted.chosen;
       if (taken.has(entry.ask.id)) {
         await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
         continue;
       }
       taken.add(entry.ask.id);
-      if (at > after) {
-        replies.push({ at: microsToInstant(at), author: this.options.operator, text: entry.ask.prompt, files: [], kind: "decision", answer: { ask: entry.ask.id, chosen } });
+      const acceptedAt = tsToMicros(accepted.messageTs);
+      if (acceptedAt > after && accepted.messageTs === entry.message.ts) {
+        replies.push({ at: microsToInstant(acceptedAt), author: this.options.operator, text: entry.ask.prompt, files: [], kind: "decision", answer: { ask: entry.ask.id, chosen } });
       }
     }
     return replies;
   }
 
   /** The first complete answer is immutable once seen, even if its reaction changes later. */
-  private rememberedAnswer(threadTs: string, askId: string): string[] | undefined {
+  private rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string } | undefined {
     try {
-      const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown };
-      return Array.isArray(state.chosen) && state.chosen.every((chosen) => typeof chosen === "string") ? state.chosen : undefined;
+      const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown; messageTs?: unknown };
+      return Array.isArray(state.chosen) && state.chosen.every((chosen) => typeof chosen === "string") && typeof state.messageTs === "string" ? { chosen: state.chosen, messageTs: state.messageTs } : undefined;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
@@ -344,13 +346,13 @@ export class SlackConversation implements Conversation {
   }
 
   /** Creates the decision once; a competing reader adopts the value written first. */
-  private rememberAnswer(threadTs: string, askId: string, chosen: string[]): string[] {
+  private rememberAnswer(threadTs: string, askId: string, chosen: string[], messageTs: string): { chosen: string[]; messageTs: string } {
     const file = this.answerFile(threadTs, askId);
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
     const handle = fs.openSync(staged, "wx", 0o600);
     try {
-      fs.writeFileSync(handle, JSON.stringify({ chosen }));
+      fs.writeFileSync(handle, JSON.stringify({ chosen, messageTs }));
       fs.fsyncSync(handle);
     } finally {
       fs.closeSync(handle);
@@ -362,7 +364,7 @@ export class SlackConversation implements Conversation {
     } finally {
       fs.rmSync(staged, { force: true });
     }
-    return this.rememberedAnswer(threadTs, askId) ?? chosen;
+    return this.rememberedAnswer(threadTs, askId) ?? { chosen, messageTs };
   }
 
   private answerFile(threadTs: string, askId: string): string {
@@ -376,6 +378,7 @@ export class SlackConversation implements Conversation {
   private async answerOf(message: SlackMessage, ask: Ask): Promise<{ chosen?: string[]; ambiguous: boolean; observed: string[] }> {
     const names = ask.form === "approval" ? [...APPROVAL_REACTIONS] : [...KEYCAPS.slice(0, ask.answers.length), SUBMIT_REACTION];
     const reactions = await this.completeReactions(message, names);
+    if (names.some((name) => this.marked(reactions, name) === UNKNOWN)) throw new Error(`Slack did not identify every reaction on ask ${ask.id}`);
     const marked = names.filter((name) => this.marked(reactions, name) === true);
     if (ask.form === "approval") {
       return { chosen: marked.length === 1 ? [marked[0] === "white_check_mark" ? "approve" : "reject"] : undefined, ambiguous: marked.length > 1, observed: marked };
@@ -644,6 +647,10 @@ function hasAskEvent(messages: readonly SlackMessage[], event: string, askId: st
 function readMetadataAskId(message: SlackMessage): string | undefined {
   const ask = message.metadata?.event_payload?.ask;
   return ask && typeof ask === "object" && typeof (ask as { id?: unknown }).id === "string" ? (ask as { id: string }).id : undefined;
+}
+
+function validAsk(ask: Ask): boolean {
+  return ask.answers.length >= 2 && ask.answers.length <= 10 && ask.answers.every((answer) => answer.trim().length > 0 && answer.length <= 64) && new Set(ask.answers).size === ask.answers.length;
 }
 
 function reactionsFor(ask: Ask): readonly string[] {

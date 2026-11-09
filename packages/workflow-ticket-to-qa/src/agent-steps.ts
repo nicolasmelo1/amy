@@ -101,8 +101,9 @@ function readQuestions(value: unknown): TriageQuestion[] {
 function hasChoices(prompt: string, answers: unknown): answers is string[] {
   return prompt.trim().length > 0 &&
     Array.isArray(answers) &&
-    answers.length > 0 &&
-    answers.every((answer) => typeof answer === "string" && answer.trim().length > 0);
+    answers.length >= 2 && answers.length <= 10 &&
+    answers.every((answer) => typeof answer === "string" && answer.trim().length > 0) &&
+    new Set(answers).size === answers.length;
 }
 
 export function questionText(question: TriageQuestion): string {

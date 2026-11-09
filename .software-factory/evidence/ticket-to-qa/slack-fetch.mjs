@@ -21,7 +21,7 @@ globalThis.fetch = async (input, init) => {
     const nextTs = Math.max(state.nextTs, Math.floor(Date.now() / 1000));
     const ts = `${nextTs}.000100`;
     state.nextTs = nextTs + 1;
-    state.messages.push({ ts, user: bot, bot_id: "B0AMY", text: args.text ?? "", ...(args.metadata ? { metadata: JSON.parse(args.metadata) } : {}), reactions: [] });
+    state.messages.push({ ts, channel: args.channel, thread_ts: args.thread_ts, user: bot, bot_id: "B0AMY", text: args.text ?? "", ...(args.metadata ? { metadata: JSON.parse(args.metadata) } : {}), reactions: [] });
     write(state);
     return response({ channel: args.channel, ts, message: { type: "message", text: args.text ?? "", ts } });
   }
@@ -35,7 +35,11 @@ globalThis.fetch = async (input, init) => {
     write(state);
     return response({});
   }
-  if (method === "conversations.replies") return response({ messages: state.messages, has_more: false });
+  if (method === "conversations.replies") {
+    const oldest = Number(args.oldest ?? "0");
+    const messages = state.messages.filter((message) => message.channel === args.channel && message.thread_ts === args.ts && Number(message.ts) >= oldest);
+    return response({ messages, has_more: false });
+  }
   if (method === "conversations.info") return response({ channel: { name: "work", is_private: false, is_member: true } });
   if (method === "reactions.get") { const message = state.messages.find((entry) => entry.ts === args.timestamp); return response({ message: { reactions: message?.reactions ?? [] } }); }
   return response({ ok: false, error: `unhandled_${method}` });

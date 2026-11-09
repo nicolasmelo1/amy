@@ -111,6 +111,9 @@ interface FiledAsk {
   at: string;
   selected: number[];
   accepted?: { at: string; chosen: string[] };
+  /** Callback ids already applied; retries must not toggle a persisted selection. */
+  callbacks?: string[];
+  acknowledged?: boolean;
 }
 
 /** A reply as filed under its topic: what it said, and the files it carried, not yet fetched. */
@@ -205,29 +208,31 @@ export class TelegramConversation implements Conversation {
   }
 
   async post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string> {
-    if (message.files?.length) {
-      // amy asks in words; the operator's pictures come the other way.
-      throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
-    }
-    let sent = "";
+    if (message.files?.length) throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
     const topic = topicOf(thread);
-    const text = message.ask
-      ? [message.text === message.ask.prompt ? "" : message.text, message.ask.prompt].filter(Boolean).join("\n")
-      : message.text;
+    return message.ask ? this.postAsk(topic, message.text, message.ask) : this.sendParts(topic, message.text);
+  }
+
+  private async postAsk(topic: number, text: string, ask: Ask): Promise<string> {
+    const usable = validAsk(ask);
+    const recorded = usable ? readJson<FiledAsk>(this.askFile(topic, ask.id)) : undefined;
+    if (recorded) return String(recorded.messageId);
+    const body = [text === ask.prompt ? "" : text, ask.prompt, usable ? "" : numberedAnswers(ask)].filter(Boolean).join("\n");
+    return this.sendParts(topic, body, usable ? ask : undefined);
+  }
+
+  private async sendParts(topic: number, text: string, ask?: Ask): Promise<string> {
+    let sent = "";
     const rendered = parts(text);
     for (const [index, part] of rendered.entries()) {
       const result = await this.api.call<{ message_id: number }>("sendMessage", {
-        chat_id: this.chat(),
-        message_thread_id: topic,
-        text: part,
-        ...(message.ask && index === rendered.length - 1 ? { reply_markup: keyboardFor(message.ask, askKey(message.ask.id), []) } : {}),
+        chat_id: this.chat(), message_thread_id: topic, text: part,
+        ...(ask && index === rendered.length - 1 ? { reply_markup: keyboardFor(ask, askKey(ask.id), []) } : {}),
       });
       sent = String(result.message_id);
-      // When it was posted, by this machine's clock, kept by its id: what tells a reply written before it apart.
       createOnce(path.join(this.options.directory, "posted", String(topic), `${result.message_id}.json`), { at: new Date().toISOString() }, this.options.directory);
-      if (message.ask && index === rendered.length - 1) {
-        const state: FiledAsk = { ask: message.ask, messageId: result.message_id, at: new Date().toISOString(), selected: [] };
-        createOnce(this.askFile(topic, message.ask.id), state, this.options.directory);
+      if (ask && index === rendered.length - 1) {
+        createOnce(this.askFile(topic, ask.id), { ask, messageId: result.message_id, at: new Date().toISOString(), selected: [], callbacks: [] } satisfies FiledAsk, this.options.directory);
       }
     }
     return sent;
@@ -342,12 +347,11 @@ export class TelegramConversation implements Conversation {
 
   /** Handles a button only after resolving its real topic owner from the callback message. */
   private async fileCallback(callback: TelegramCallbackQuery): Promise<void> {
-    if (String(callback.from.id) !== this.operator) {
-      await this.api.call("answerCallbackQuery", { callback_query_id: callback.id });
-      return;
-    }
     const context = this.callbackContext(callback);
-    const text = context ? await this.applyCallback(context, callback.data) : "this question is no longer open";
+    // The callback's private chat owns the profile; a shared bot must not let
+    // the first polling profile discard another operator's press.
+    const ownsChat = context?.message.chat.id === callback.from.id;
+    const text = context && ownsChat ? await this.applyCallback(context, callback.data, callback.id) : "this question is no longer open";
     await this.api.call("answerCallbackQuery", { callback_query_id: callback.id, ...(text ? { text } : {}) });
   }
 
@@ -360,34 +364,49 @@ export class TelegramConversation implements Conversation {
     return place ? { message, topic, directory: place.directory } : undefined;
   }
 
-  private async applyCallback(context: { message: TelegramMessage; topic: number; directory: string }, data: string | undefined): Promise<string | undefined> {
+  private async applyCallback(context: { message: TelegramMessage; topic: number; directory: string }, data: string | undefined, callbackId: string): Promise<string | undefined> {
     const parsed = data ? parseCallback(data) : undefined;
     const state = parsed ? this.askByKey(context.directory, context.topic, parsed.key) : undefined;
-    if (!parsed || !state || state.messageId !== context.message.message_id || state.accepted) return "this question is no longer open";
-    if (parsed.send) return this.sendChoices(context, state);
+    if (!parsed || !state || state.messageId !== context.message.message_id) return "this question is no longer open";
+    if (state.callbacks?.includes(callbackId)) return undefined;
+    if (state.accepted) return this.acknowledgeAccepted(context, state, callbackId);
+    if (parsed.send) return this.sendChoices(context, state, callbackId);
     if (parsed.index === undefined || parsed.index < 0 || parsed.index >= state.ask.answers.length) return "this question is no longer open";
-    return this.choose(context, state, parsed.index, parsed.key);
+    return this.choose(context, state, parsed.index, parsed.key, callbackId);
   }
 
-  private async sendChoices(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk): Promise<string | undefined> {
+  private async sendChoices(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
     if (state.ask.form !== "choices") return "this question is no longer open";
     state.accepted = { at: new Date().toISOString(), chosen: state.selected.map((index) => state.ask.answers[index]!).filter(Boolean) };
+    state.callbacks = [...(state.callbacks ?? []), callbackId];
     this.writeAsk(context.directory, context.topic, state);
     await this.closeKeyboard(context.message);
     return undefined;
   }
 
-  private async choose(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, index: number, key: string): Promise<string | undefined> {
+  private async choose(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, index: number, key: string, callbackId: string): Promise<string | undefined> {
     if (state.ask.form !== "choices") {
       state.accepted = { at: new Date().toISOString(), chosen: [state.ask.answers[index]!] };
+      state.callbacks = [...(state.callbacks ?? []), callbackId];
       this.writeAsk(context.directory, context.topic, state);
       await this.closeKeyboard(context.message);
       return undefined;
     }
     state.selected = state.selected.includes(index) ? state.selected.filter((selected) => selected !== index) : [...state.selected, index].sort((left, right) => left - right);
+    state.callbacks = [...(state.callbacks ?? []), callbackId];
     this.writeAsk(context.directory, context.topic, state);
     await this.api.call("editMessageReplyMarkup", { chat_id: context.message.chat.id, message_id: context.message.message_id, reply_markup: keyboardFor(state.ask, key, state.selected) });
     return undefined;
+  }
+
+  private async acknowledgeAccepted(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
+    state.callbacks = [...(state.callbacks ?? []), callbackId];
+    if (!state.acknowledged) {
+      await this.api.call("sendMessage", { chat_id: context.message.chat.id, message_thread_id: context.topic, text: `Amy already took ${state.ask.id}: ${state.accepted!.chosen.join(", ")}.` });
+      state.acknowledged = true;
+    }
+    this.writeAsk(context.directory, context.topic, state);
+    return "this question is no longer open";
   }
 
   private async closeKeyboard(message: TelegramMessage): Promise<void> {
@@ -654,6 +673,14 @@ function parseCallback(data: string): { key: string; index?: number; send: boole
   const match = /^amy:([0-9a-f]{24}):(send|\d+)$/.exec(data);
   if (!match) return undefined;
   return match[2] === "send" ? { key: match[1]!, send: true } : { key: match[1]!, index: Number(match[2]), send: false };
+}
+
+function validAsk(ask: Ask): boolean {
+  return ask.answers.length >= 2 && ask.answers.length <= 10 && ask.answers.every((answer) => answer.trim().length > 0 && answer.length <= 64) && new Set(ask.answers).size === ask.answers.length;
+}
+
+function numberedAnswers(ask: Ask): string {
+  return ask.answers.map((answer, index) => `${index + 1}. ${answer}`).join("\n");
 }
 
 function keyboardFor(ask: Ask, key: string, selected: number[]): { inline_keyboard: { text: string; callback_data: string }[][] } {
