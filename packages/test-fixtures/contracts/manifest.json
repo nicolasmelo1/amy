@@ -47,8 +47,8 @@
       "file": "telegram-bot-api.json",
       "url": "https://core.telegram.org/bots/api",
       "publisher": "Telegram — the Bot API reference page, derived into its types and methods",
-      "version": "10.3",
-      "sha256": "ba0441d761a26434884cde053a9fbdbcfd900f457684a0ccbc605677ff43b37d"
+      "version": "10.4",
+      "sha256": "71fe445580ad15cb9dbce18a2450c84404e61f927fa2777bc9d4b93e9ef7c996"
     }
   ]
 }
