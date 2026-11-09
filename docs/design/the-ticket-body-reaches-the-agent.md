@@ -127,7 +127,7 @@ survives the trip to the action:
 - [x] A body reaches `triage` and `implement` through the runtime unchanged
       (proof: assertion:lifecycle.triage.reads_a_body_the_tracker_supplied)
 - [x] A tracker that supplies no body still mounts and still drives work
-      (proof: test:packages/workflow-ticket-to-qa/tests/runtime.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/runtime.test.ts)
 
 **Exit condition:** a ticket whose description contains an instruction the
 title does not — an ownership boundary, an acceptance criterion, a named

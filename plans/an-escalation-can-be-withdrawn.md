@@ -25,18 +25,18 @@ touches:
   - packages/core/src/define-workflow.ts
   - packages/core/src/event-contract.ts
   - packages/core/events.json
-  - packages/workflow-ticket-to-qa/src/plugin.ts
+  - examples/workflow-ticket-to-qa/src/plugin.ts
   - packages/cli/tests/withdraw.test.ts
   - packages/cli/tests/attempts.test.ts
-  - packages/workflow-ticket-to-qa/tests/plugin.test.ts
+  - examples/workflow-ticket-to-qa/tests/plugin.test.ts
   - packages/core/tests/event-contract.test.ts
 criteria:
   - { id: A1, statement: "a resumed record starts its next look with no attempts spent in the state it re-enters", proof: "test:packages/cli/tests/withdraw.test.ts", sources: [S1, S3, S4, S5, S6, S12, S20] }
   - { id: A2, statement: "a withdrawal refuses a piece of work that is claimed or in flight", proof: "test:packages/cli/tests/withdraw.test.ts", sources: [S7, S8, S10, S18] }
   - { id: A3, statement: "the record is backed up before it is changed, and the backup is not listed as work", proof: "test:packages/cli/tests/withdraw.test.ts", sources: [S11] }
   - { id: A4, statement: "the history says a person resumed it, and amy status still tells the truth about how it got there", proof: "test:packages/cli/tests/withdraw.test.ts", sources: [S13] }
-  - { id: A5, statement: "a workflow that folds its own escalation fields drops them on resume", proof: "test:packages/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S9, S15, S20] }
-  - { id: A6, statement: "a workflow that implements no hook still resumes with --to, and refuses rather than guesses without one", proof: "test:packages/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2, S14, S16] }
+  - { id: A5, statement: "a workflow that folds its own escalation fields drops them on resume", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S9, S15, S20] }
+  - { id: A6, statement: "a workflow that implements no hook still resumes with --to, and refuses rather than guesses without one", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2, S14, S16] }
   - { id: A7, statement: "amy attempts --clear resets one state's counter and touches nothing else", proof: "test:packages/cli/tests/attempts.test.ts", sources: [S17] }
   - { id: A8, statement: "the log carries a work.resumed line the contract knows", proof: "test:packages/core/tests/event-contract.test.ts", sources: [S19] }
 crosses:

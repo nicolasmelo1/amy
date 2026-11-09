@@ -28,10 +28,10 @@ footer directs the operator to answer on the ticket.
 - [x] The inbox footer names where the answer is expected
       (proof: test:plugins/notify-inbox/tests/inboxChannel.test.ts)
 - [x] A workflow keeps its tracker answer path when no conversation port is
-      mounted (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
+      mounted (proof: test:examples/workflow-ticket-to-qa/tests/briefs.test.ts)
 - [x] A workflow opens its work thread and resumes from its reply when a
       conversation port is mounted
-      (proof: test:packages/workflow-ticket-to-qa/tests/briefs.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/briefs.test.ts)
 
 **Exit condition:** a workflow can ask its operator a question and hear the
 answer, text and pictures, without the tracker being written to or read for it.

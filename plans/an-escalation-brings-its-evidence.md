@@ -44,11 +44,11 @@ touches:
   - packages/core/events.json
   - packages/core/tests/work.test.ts
   - packages/core/tests/history.property.test.ts
-  - packages/workflow-ticket-to-qa/src/machine.ts
-  - packages/workflow-ticket-to-qa/src/record.ts
+  - examples/workflow-ticket-to-qa/src/machine.ts
+  - examples/workflow-ticket-to-qa/src/record.ts
   - packages/core/src/action-ports.ts
-  - packages/workflow-ticket-to-qa/src/discussion.ts
-  - packages/workflow-ticket-to-qa/tests/machine.test.ts
+  - examples/workflow-ticket-to-qa/src/discussion.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
   - packages/core/tests/action-ports.test.ts
   - plugins/claude/src/ClaudeHarness.ts
   - plugins/codex/src/CodexHarness.ts
@@ -66,7 +66,7 @@ touches:
   - packages/cli/tests/paths.test.ts
 criteria:
   - { id: A1, statement: "an advance that carries evidence stores it on the history entry it appends, and a second escalation of the same work shows only its own", proof: "deferred:property:packages/core/tests/history.property.test.ts#first_evidence_never_overwritten", sources: [S4, S8, S9] }
-  - { id: A2, statement: "ticket-to-qa's red-gate, unconverged-review and unsettled-thread escalations carry the output that tripped them, and their announcement quotes it and names amy show", proof: "deferred:test:packages/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S2, S3, S10, S11] }
+  - { id: A2, statement: "ticket-to-qa's red-gate, unconverged-review and unsettled-thread escalations carry the output that tripped them, and their announcement quotes it and names amy show", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S2, S3, S10, S11] }
   - { id: A3, statement: "every agent run leaves a file with its output and, for Claude, its session id, and the agent.run event names that file", proof: "deferred:test:packages/core/tests/action-ports.test.ts", sources: [S5, S12, S13] }
   - { id: A4, statement: "a recorded Codex run yields its session id from a structured field, or the plan records that Codex reports none", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S14] }
   - { id: A5, statement: "amy show <workId> finds a record in any profile and project without a path, and prints its history with each move's evidence and every run", proof: "deferred:test:packages/cli/tests/show.test.ts", sources: [S1, S6, S15, S16, S21, S23] }

@@ -12,7 +12,7 @@ export default defineConfig({
     include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "examples/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts"],
     // fast-check runs from a fixed seed, so a property a plan cites is
     // deterministic. See CONTRIBUTING.md, on `property:` proofs.
-    setupFiles: ["scripts/properties.setup.ts"],
+    setupFiles: ["scripts/git.setup.ts", "scripts/properties.setup.ts"],
 
     // Named explicitly, or the default pattern walks
     // `.software-factory/mutations` as well, where the repositories are
@@ -20,9 +20,9 @@ export default defineConfig({
     benchmark: { include: ["packages/*/tests/**/*.bench.ts", "plugins/*/tests/**/*.bench.ts"] },
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx", "plugins/*/src/**/*.ts"],
+      include: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx", "plugins/*/src/**/*.ts", "examples/*/src/**/*.ts"],
       // Barrels re-export and nothing else, so covering them measures nothing.
-      exclude: ["packages/*/src/index.ts", "plugins/*/src/index.ts", "packages/test-fixtures/**"],
+      exclude: ["packages/*/src/index.ts", "plugins/*/src/index.ts", "examples/*/src/index.ts", "packages/test-fixtures/**"],
       reporter: ["text-summary"],
       // Set just under what the suite achieves today, so coverage can only be
       // ratcheted up. Raise these when they stop hurting, never lower them.
@@ -39,9 +39,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@amykit/core": resolve(here, "packages/core/src/index.ts"),
-      "@amykit/workflow-ticket-to-qa": resolve(here, "packages/workflow-ticket-to-qa/src/index.ts"),
-      "@amykit/workflow-note-to-plan": resolve(here, "packages/workflow-note-to-plan/src/index.ts"),
-      "@amykit/workflow-pull-request": resolve(here, "packages/workflow-pull-request/src/index.ts"),
+      "@amykit/workflow-ticket-to-qa": resolve(here, "examples/workflow-ticket-to-qa/src/index.ts"),
+      "@amykit/workflow-note-to-plan": resolve(here, "examples/workflow-note-to-plan/src/index.ts"),
+      "@amykit/workflow-pull-request": resolve(here, "examples/workflow-pull-request/src/index.ts"),
       "@amykit/workflow-testkit": resolve(here, "packages/workflow-testkit/src/index.ts"),
       "@amykit/model-specs": resolve(here, "packages/model-specs/src/index.ts"),
       "@amykit/plugin-file-queue": resolve(here, "plugins/file-queue/src/index.ts"),
@@ -66,7 +66,7 @@ export default defineConfig({
       "@amykit/plugin-hermes-agent": resolve(here, "plugins/hermes-agent/src/index.ts"),
       "@amykit/plugin-agent-relay": resolve(here, "plugins/agent-relay/src/index.ts"),
       "@amykit/plugin-ui-stub": resolve(here, "plugins/ui-stub/src/index.ts"),
-      "@amykit/workflow-feature-grooming": resolve(here, "packages/workflow-feature-grooming/src/index.ts"),
+      "@amykit/workflow-feature-grooming": resolve(here, "examples/workflow-feature-grooming/src/index.ts"),
       "@amykit/plugin-prove": resolve(here, "plugins/prove/src/index.ts"),
       "@amykit/plugin-agent-browser": resolve(here, "plugins/agent-browser/src/index.ts"),
       "@amykit/plugin-agent-desktop": resolve(here, "plugins/agent-desktop/src/index.ts"),

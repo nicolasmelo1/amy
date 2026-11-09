@@ -26,7 +26,7 @@ for argument in "$@"; do
   if [ "$argument" = "--keep" ]; then keep="--keep"; fi
 done
 
-for built in packages/core/dist/index.js plugins/next-steps/dist/index.js packages/workflow-ticket-to-qa/dist/index.js; do
+for built in packages/core/dist/index.js plugins/next-steps/dist/index.js examples/workflow-ticket-to-qa/dist/index.js; do
   test -f "$repo/$built" || { echo "build it first: npm run build" >&2; exit 1; }
 done
 

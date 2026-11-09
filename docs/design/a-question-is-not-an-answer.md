@@ -137,16 +137,16 @@ for a read-only run (`escalated.a_discussion_runs_read_only`), and under
 - [x] The step after a decision is prompted with the whole discussion and the
       decision marked last (proof: assertion:conversation.decision_carries_the_discussion)
 - [x] A `discuss` run commits nothing and counts no attempt, and is charged to
-      the budget (proof: test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
+      the budget (proof: test:examples/workflow-ticket-to-qa/tests/machine.test.ts)
 - [x] Under `answer`, a reply marked as a discussion is answered in the
       thread and does not resume the work
       (proof: assertion:escalated.a_marked_discussion_never_resumes)
 - [x] Under `answer`, the first unmarked reply resumes the work, as today
-      (proof: test:packages/workflow-ticket-to-qa/tests/machine.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/machine.test.ts)
 - [x] The Slack adapter leaves `kind` unset on plain text, and sets it only
       on a reply the person marked (proof: test:plugins/slack/tests/SlackConversation.test.ts)
 - [x] An unknown `policy.conversation` value is refused at boot by name
-      (proof: test:packages/workflow-ticket-to-qa/tests/plugin.test.ts)
+      (proof: test:examples/workflow-ticket-to-qa/tests/plugin.test.ts)
 
 **Exit condition:** under `policy.conversation: discuss`, an escalated record
 whose owner asks three questions in the thread gets three answers there and

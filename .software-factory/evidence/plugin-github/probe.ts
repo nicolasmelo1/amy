@@ -47,12 +47,18 @@ parent = { state: "CLOSED", merged: false, headRefName: "ada/parent", baseRefNam
 record("stack.an_absent_parent_or_one_closed_unmerged_waits", (await host.pullRequestAncestry("acme/widgets", 90))?.state === "closed-unmerged");
 parent = null;
 record("stack.an_absent_parent_or_one_closed_unmerged_waits", (await host.pullRequestAncestry("acme/widgets", 90))?.state === "absent");
-const workflowSources = fs.readdirSync(path.join(repo, "packages"), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && entry.name.startsWith("workflow-"))
-  .flatMap((entry) => fs.readdirSync(path.join(repo, "packages", entry.name, "src"), { recursive: true, encoding: "utf8" })
+// The shipped workflows live in examples/, the testkit in packages/; a
+// directory a build left behind with no sources is not a workflow.
+const workflowSources = ["examples", "packages"]
+  .flatMap((root) => fs.readdirSync(path.join(repo, root), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("workflow-"))
+    .map((entry) => path.join(repo, root, entry.name, "src")))
+  .filter((src) => fs.existsSync(src))
+  .flatMap((src) => fs.readdirSync(src, { recursive: true, encoding: "utf8" })
     .filter((file) => file.endsWith(".ts"))
-    .map((file) => path.join(repo, "packages", entry.name, "src", file)))
+    .map((file) => path.join(src, file)))
   .map((file) => fs.readFileSync(file, "utf8"));
+record("stack.the_workflows_were_read", workflowSources.length > 0);
 record("stack.no_workflow_learns_the_word_github", workflowSources.every((source) => !source.toLowerCase().includes("github")));
 const failed = assertions.filter((assertion) => assertion.status !== "passed");
 fs.writeFileSync(report, `${JSON.stringify({ scenario: "plugin-github", status: failed.length === 0 ? "passed" : "failed", goal: "Prove the built GitHub adapter gives stacked work an explicit parent base without teaching a workflow its forge.", artifact: { package: "@amykit/plugin-github", entry: "dist/index.js" }, observed: { assertions_run: assertions.length, assertions_failed: failed.length, node: process.version }, assertions }, null, 2)}\n`);

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { type } from "arktype";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { plugin as errand } from "../../workflow-errand/src/plugin.js";
+import { plugin as errand } from "../../../examples/workflow-errand/src/plugin.js";
 import {
   call,
   contractDocument,

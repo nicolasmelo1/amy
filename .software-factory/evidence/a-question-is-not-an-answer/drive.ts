@@ -31,9 +31,9 @@ const { WORKFLOW_RUNTIME, dispatchesTo, mount, withDiagramBeside } = (await dist
 const { SlackApi, SlackConversation } = (await dist("plugins/slack/dist/index.js")) as typeof import("@amykit/plugin-slack");
 const { FileQueue } = (await dist("plugins/file-queue/dist/index.js")) as typeof import("@amykit/plugin-file-queue");
 const { Worker } = (await dist("plugins/serial-engine/dist/index.js")) as typeof import("@amykit/plugin-serial-engine");
-const { DEFAULT_POLICY, plugin } = (await dist("packages/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
+const { DEFAULT_POLICY, plugin } = (await dist("examples/workflow-ticket-to-qa/dist/index.js")) as typeof import("@amykit/workflow-ticket-to-qa");
 // The workflow as the host mounts it, shaped by the diagram at its package root.
-const drawn = withDiagramBeside(plugin, pathToFileURL(path.join(repo, "packages/workflow-ticket-to-qa/dist/index.js")));
+const drawn = withDiagramBeside(plugin, pathToFileURL(path.join(repo, "examples/workflow-ticket-to-qa/dist/index.js")));
 const { workflow: ticketToQa } = drawn;
 
 const CHANNEL = "C0WORK";

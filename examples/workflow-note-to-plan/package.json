@@ -1,7 +1,7 @@
 {
-  "name": "@amykit/workflow-pull-request",
+  "name": "@amykit/workflow-note-to-plan",
   "version": "0.6.0",
-  "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
+  "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
   "type": "module",
   "license": "MIT",
   "author": "Nicolas Melo",
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolasmelo1/amy.git",
-    "directory": "packages/workflow-pull-request"
+    "directory": "examples/workflow-note-to-plan"
   },
   "publishConfig": {
     "access": "public",
@@ -29,9 +29,13 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.6.0",
+    "@amykit/plugin-file-queue": "^0.6.0",
+    "@amykit/workflow-pull-request": "^0.6.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@amykit/test-fixtures": "^0.1.0",
     "@amykit/workflow-testkit": "^0.6.0"
   }
 }

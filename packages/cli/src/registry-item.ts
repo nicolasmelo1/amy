@@ -81,7 +81,7 @@ function installable(dependencies: Record<string, string> | undefined, unpublish
 /** The packages a registry item is generated for: every workspace package that is published. */
 export function publicPackages(repository: string): string[] {
   const found: string[] = [];
-  for (const group of ["packages", "plugins"]) {
+  for (const group of ["packages", "plugins", "examples"]) {
     const parent = path.join(repository, group);
     if (!fs.existsSync(parent)) continue;
     for (const entry of fs.readdirSync(parent).sort()) {

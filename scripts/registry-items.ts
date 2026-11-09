@@ -7,7 +7,7 @@ import path from "node:path";
 import { itemFile, publicPackages, registryItem, serialize, staleItems } from "../packages/cli/src/registry-item.js";
 
 const root = process.cwd();
-const tracked = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "packages", "plugins"], { cwd: root, encoding: "utf-8" })
+const tracked = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "packages", "plugins", "examples"], { cwd: root, encoding: "utf-8" })
   .split("\0")
   .filter((file) => file && fs.existsSync(path.join(root, file)));
 

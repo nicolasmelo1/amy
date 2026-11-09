@@ -81,12 +81,7 @@ packages/
 ├── test-fixtures        Shared test builders and scripted doubles. Not published.
 ├── ui                   A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.
 ├── ui-conformance       The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.
-├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
-├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
-├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
-├── workflow-pull-request A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.
-├── workflow-testkit     The tests every workflow needs and nobody writes, driven against a world its author supplies.
-└── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
+└── workflow-testkit     The tests every workflow needs and nobody writes, driven against a world its author supplies.
 
 plugins/
 ├── agent-browser        Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.
@@ -118,6 +113,13 @@ plugins/
 ├── telegram             A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.
 ├── terminal             Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.
 └── ui-stub              The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.
+
+examples/
+├── workflow-errand      Something said in passing becomes work: capture it, do it, say what happened.
+├── workflow-feature-grooming Feature grooming against read-only base-branch source snapshots.
+├── workflow-note-to-plan The note-to-plan workflow: friction becomes a plan in the repository it is about.
+├── workflow-pull-request A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.
+└── workflow-ticket-to-qa The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().
 ```
 
 <!-- amy:end workspace-layout -->
@@ -139,12 +141,7 @@ this repository.
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |
-| `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
-| `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |
-| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
-| `@amykit/workflow-pull-request` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
-| `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
 | `@amykit/plugin-agent-browser` | plugin | `@amykit/core` |
 | `@amykit/plugin-agent-desktop` | plugin | `@amykit/core` |
 | `@amykit/plugin-agent-relay` | plugin | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
@@ -174,6 +171,11 @@ this repository.
 | `@amykit/plugin-telegram` | plugin | `@amykit/core` |
 | `@amykit/plugin-terminal` | plugin | `@amykit/core` |
 | `@amykit/plugin-ui-stub` | library | `@amykit/ui` |
+| `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
+| `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |
+| `@amykit/workflow-note-to-plan` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
+| `@amykit/workflow-pull-request` | workflow | `@amykit/core` |
+| `@amykit/workflow-ticket-to-qa` | workflow | `@amykit/agent-kit`, `@amykit/core` |
 
 <!-- amy:end workspace-dependencies -->
 

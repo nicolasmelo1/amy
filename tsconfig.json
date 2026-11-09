@@ -2,10 +2,10 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/workflow-errand"
+      "path": "./examples/workflow-errand"
     },
     {
-      "path": "./packages/workflow-pull-request"
+      "path": "./examples/workflow-pull-request"
     },
     {
       "path": "./plugins/command"
@@ -44,13 +44,13 @@
       "path": "packages/ui-conformance"
     },
     {
-      "path": "packages/workflow-note-to-plan"
+      "path": "examples/workflow-note-to-plan"
     },
     {
-      "path": "packages/workflow-feature-grooming"
+      "path": "examples/workflow-feature-grooming"
     },
     {
-      "path": "packages/workflow-ticket-to-qa"
+      "path": "examples/workflow-ticket-to-qa"
     },
     {
       "path": "packages/workflow-testkit"

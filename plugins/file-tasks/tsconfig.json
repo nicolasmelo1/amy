@@ -12,7 +12,7 @@
       "path": "../../packages/core"
     },
     {
-      "path": "../../packages/workflow-errand"
+      "path": "../../examples/workflow-errand"
     }
   ]
 }

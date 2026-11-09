@@ -143,7 +143,8 @@ gates:
   plugin-github:
     activation:
       - "plugins/github/src/**"
-      - "packages/workflow-*/src/**"
+      - "examples/workflow-*/src/**"
+      - "packages/workflow-testkit/src/**"
     evidence: ".software-factory/evidence/plugin-github.json"
     plan: "docs/design/a-stack-knows-its-parent.md"
     required_assertions:
@@ -269,9 +270,9 @@ gates:
   # plugin and an activation path for it are the same decision.
   ticket-to-qa:
     activation:
-      - "packages/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/src/**"
       # Its shape: a changed diagram is a changed workflow.
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-store/src/**"
@@ -368,9 +369,9 @@ gates:
   # engine is in there too: it is the thing claimed not to have changed.
   note-to-plan:
     activation:
-      - "packages/workflow-note-to-plan/src/**"
+      - "examples/workflow-note-to-plan/src/**"
       # Its shape: a changed diagram is a changed workflow.
-      - "packages/workflow-note-to-plan/workflow.mmd"
+      - "examples/workflow-note-to-plan/workflow.mmd"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
       - "plugins/file-notes/src/**"
@@ -380,8 +381,8 @@ gates:
       - "plugins/github/src/**"
       # Its pull request is opened by a call: the callee, and the core that
       # makes the call, are as much this workflow as its own source.
-      - "packages/workflow-pull-request/src/**"
-      - "packages/workflow-pull-request/workflow.mmd"
+      - "examples/workflow-pull-request/src/**"
+      - "examples/workflow-pull-request/workflow.mmd"
       - "packages/core/src/calls.ts"
     evidence: ".software-factory/evidence/note-to-plan.json"
     plan: "docs/design/friction-becomes-a-plan.md"
@@ -421,9 +422,9 @@ gates:
   # longer exists.
   errand:
     activation:
-      - "packages/workflow-errand/src/**"
+      - "examples/workflow-errand/src/**"
       # Its shape: a changed diagram is a changed workflow.
-      - "packages/workflow-errand/workflow.mmd"
+      - "examples/workflow-errand/workflow.mmd"
       - "plugins/file-tasks/src/**"
       - "packages/agent-kit/src/**"
       - "packages/cli/src/**"
@@ -436,8 +437,8 @@ gates:
       - "plugins/serial-engine/src/**"
       # Its pull request is opened by a call: the callee, and the core that
       # makes the call, are as much this workflow as its own source.
-      - "packages/workflow-pull-request/src/**"
-      - "packages/workflow-pull-request/workflow.mmd"
+      - "examples/workflow-pull-request/src/**"
+      - "examples/workflow-pull-request/workflow.mmd"
       - "packages/core/src/calls.ts"
     evidence: ".software-factory/evidence/errand.json"
     plan: "docs/design/the-errand-is-proven-end-to-end.md"
@@ -478,8 +479,8 @@ gates:
       - "packages/core/src/expand.ts"
       - "packages/core/src/define-workflow.ts"
       - "packages/core/src/diagram.ts"
-      - "packages/workflow-pull-request/src/**"
-      - "packages/workflow-pull-request/workflow.mmd"
+      - "examples/workflow-pull-request/src/**"
+      - "examples/workflow-pull-request/workflow.mmd"
       - "packages/cli/src/workflow-add.ts"
       - "packages/cli/src/workflow.ts"
       - "packages/cli/src/status-page.tsx"
@@ -531,12 +532,12 @@ gates:
       - "packages/core/src/action-ports.ts"
       - "packages/core/src/index.ts"
       - "packages/cli/src/workflow.ts"
-      - "packages/workflow-errand/src/**"
-      - "packages/workflow-errand/workflow.mmd"
-      - "packages/workflow-note-to-plan/src/**"
-      - "packages/workflow-note-to-plan/workflow.mmd"
-      - "packages/workflow-ticket-to-qa/src/**"
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-errand/src/**"
+      - "examples/workflow-errand/workflow.mmd"
+      - "examples/workflow-note-to-plan/src/**"
+      - "examples/workflow-note-to-plan/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/workflow-three-pieces.json"
     plan: "docs/design/a-workflow-is-three-pieces.md"
     required_assertions:
@@ -679,8 +680,8 @@ gates:
 
   feature-grooming:
     activation:
-      - "packages/workflow-feature-grooming/src/**"
-      - "packages/workflow-feature-grooming/workflow.mmd"
+      - "examples/workflow-feature-grooming/src/**"
+      - "examples/workflow-feature-grooming/workflow.mmd"
       - "packages/core/src/ports/BaseSource.ts"
       - "packages/core/src/ports/Ticketing.ts"
       - "plugins/linear/src/**"
@@ -775,9 +776,9 @@ gates:
       - "packages/core/src/ports/Ticketing.ts"
       - "packages/core/src/operator.ts"
       - "packages/core/src/runtime.ts"
-      - "packages/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/src/**"
       # Its shape: a changed diagram is a changed workflow.
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
       - "plugins/linear/src/**"
       - "plugins/serial-engine/src/**"
       - "plugins/github/src/**"
@@ -866,8 +867,8 @@ gates:
       - "packages/test-fixtures/contracts/telegram-bot-api.json"
       - "packages/test-fixtures/src/contracts/telegram.ts"
       # The workflow the scenario drives through the plugin, and its shape.
-      - "packages/workflow-ticket-to-qa/src/**"
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/plugin-telegram.json"
     plan: "docs/design/telegram-is-a-conversation.md"
     required_assertions:
@@ -888,8 +889,8 @@ gates:
       - "plugins/next-steps/src/**"
       - "packages/core/src/ports/Ticketing.ts"
       - "packages/core/src/ports/BaseSource.ts"
-      - "packages/workflow-ticket-to-qa/src/**"
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/plugin-next-steps.json"
     plan: "docs/design/a-row-of-next-steps-is-a-ticket.md"
     required_assertions:
@@ -911,9 +912,9 @@ gates:
     activation:
       - "packages/core/src/ports/Conversation.ts"
       - "packages/core/src/actions.ts"
-      - "packages/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/src/**"
       # Its shape: a changed diagram is a changed workflow.
-      - "packages/workflow-ticket-to-qa/workflow.mmd"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
       - "plugins/slack/src/**"
       - "plugins/serial-engine/src/**"
     evidence: ".software-factory/evidence/a-question-is-not-an-answer.json"

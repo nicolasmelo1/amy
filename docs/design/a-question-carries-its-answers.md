@@ -17,7 +17,7 @@ sources:
   - { id: S14, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "S16 there makes Socket Mode a setting, off by default; the Block Kit half of S11 lands with that setting, not before it exists" }
   - { id: S15, kind: reference, ref: "https://core.telegram.org/bots/api", said: "an inline keyboard's press arrives as a callback_query update through the same getUpdates, once callback_query is in allowed_updates" }
   - { id: S16, kind: decision, ref: "plugins/telegram/src/TelegramConversation.ts", said: "Telegram: an inline keyboard under amy's message; choices toggles a ✓ per press and sends on Send; every press is acknowledged with answerCallbackQuery; callback_data is the ask id and answer index, under 64 bytes" }
-  - { id: S17, kind: reference, ref: "packages/workflow-ticket-to-qa/src/agent-steps.ts", said: "triage returns questions: string[], posted by ask-question as a bulleted list" }
+  - { id: S17, kind: reference, ref: "examples/workflow-ticket-to-qa/src/agent-steps.ts", said: "triage returns questions: string[], posted by ask-question as a bulleted list" }
   - { id: S18, kind: reference, ref: "docs/design/no-port-method-ships-unproven.md", said: "a port member no shipped workflow calls has nothing proving it works" }
   - { id: S19, kind: decision, said: "ticket-to-qa is the first caller: triage may give a question its closed answers, ask-question posts each such question as an ask, and the chosen answer goes back to triage beside the question, as a typed reply does today" }
   - { id: S20, kind: decision, said: "the window's half lands with the window: the transcript carries asks and answers, addThreadTurn takes an answer, the thread panel shows buttons; written into those two plans, not built here. Decided 2026-11-05" }
@@ -50,17 +50,17 @@ touches:
   - plugins/telegram/tests/TelegramConversation.asks.test.ts
   - plugins/telegram/tests/every-method-is-exercised.test.ts
   - plugins/telegram/tests/stand-in.ts
-  - packages/workflow-ticket-to-qa/src/agent-steps.ts
-  - packages/workflow-ticket-to-qa/src/effects.ts
-  - packages/workflow-ticket-to-qa/src/actions.ts
-  - packages/workflow-ticket-to-qa/src/machine.ts
-  - packages/workflow-ticket-to-qa/src/record.ts
-  - packages/workflow-ticket-to-qa/src/observation.ts
-  - packages/workflow-ticket-to-qa/src/discussion.ts
-  - packages/workflow-ticket-to-qa/tests/agent-steps.test.ts
-  - packages/workflow-ticket-to-qa/tests/machine.test.ts
-  - packages/workflow-ticket-to-qa/tests/walkthrough.test.ts
-  - packages/workflow-ticket-to-qa/tests/asks.property.test.ts
+  - examples/workflow-ticket-to-qa/src/agent-steps.ts
+  - examples/workflow-ticket-to-qa/src/effects.ts
+  - examples/workflow-ticket-to-qa/src/actions.ts
+  - examples/workflow-ticket-to-qa/src/machine.ts
+  - examples/workflow-ticket-to-qa/src/record.ts
+  - examples/workflow-ticket-to-qa/src/observation.ts
+  - examples/workflow-ticket-to-qa/src/discussion.ts
+  - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
+  - examples/workflow-ticket-to-qa/tests/walkthrough.test.ts
+  - examples/workflow-ticket-to-qa/tests/asks.property.test.ts
   - plugins/slack/tests/asks.property.test.ts
   - plugins/telegram/tests/asks.property.test.ts
   - packages/workflow-testkit/src/world.ts
@@ -79,10 +79,10 @@ criteria:
   - { id: A4, statement: "a choice ask with eleven answers in Slack without Socket Mode is posted as a numbered list with no reactions", proof: "test:plugins/slack/tests/SlackConversation.asks.test.ts", sources: [S8, S13], done: true }
   - { id: A5, statement: "an approval, a choice and a choices ask in Telegram are inline keyboards; each press is acknowledged, a choices press toggles its ✓, and Send returns the chosen answers once", proof: "test:plugins/telegram/tests/TelegramConversation.asks.test.ts", sources: [S15, S16], done: true }
   - { id: A6, statement: "for any sequence of looks over presses and reactions on one ask, replies returns at most one answer, the first complete one a look read, and none from a look showing competing marks", proof: "property:plugins/slack/tests/asks.property.test.ts#a_later_answer_replaces_the_first", sources: [S9, S22], done: true }
-  - { id: A7, statement: "an answer reads as a decision under answer and under discuss, and an unmarked typed reply to the same ask reads as it does today", proof: "property:packages/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7], done: true }
-  - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "test:packages/workflow-ticket-to-qa/tests/machine.test.ts (falls back to numbered text when the conversation does not declare asks; posts a closed answer set as an ask only when the conversation declares asks)", sources: [S8], done: true }
-  - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "test:packages/workflow-ticket-to-qa/tests/machine.test.ts (treats a selected answer as a decision under discuss and returns it beside its question), assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S1, S2, S17, S18, S19], done: true }
-  - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "test:packages/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17], done: true }
+  - { id: A7, statement: "an answer reads as a decision under answer and under discuss, and an unmarked typed reply to the same ask reads as it does today", proof: "property:examples/workflow-ticket-to-qa/tests/asks.property.test.ts#an_answer_reads_as_policy_says", sources: [S4, S7], done: true }
+  - { id: A8, statement: "an adapter without asks: true is posted the prompt and numbered answers as text, and the walkthrough passes on it unchanged", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts (falls back to numbered text when the conversation does not declare asks; posts a closed answer set as an ask only when the conversation declares asks)", sources: [S8], done: true }
+  - { id: A9, statement: "a triage question with answers reaches CLARIFYING as an ask, the operator's chosen answer goes back to triage beside its question, and the ticket leaves CLARIFYING on it", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts (treats a selected answer as a decision under discuss and returns it beside its question), assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S1, S2, S17, S18, S19], done: true }
+  - { id: A10, statement: "a triage reply whose answers are not a list of strings is read as a plain question, never refused", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S17], done: true }
   - { id: A12, statement: "in the ticket-to-qa scenario, through the installed executable, a stand-in Slack ✅ on an ask moves the ticket out of CLARIFYING with the choice beside its question", proof: "assertion:lifecycle.an_ask_is_answered_by_a_press", sources: [S19, S21], done: true }
   - { id: A13, statement: "for any approval answered once in Slack, replies from the same since returns that answer on every look, across restarts, whatever marks are changed, removed or added after", proof: "property:plugins/slack/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25, S28], done: true }
   - { id: A17, statement: "for any ask answered once in Telegram, replies from the same since returns that answer on every look, across restarts, whatever is pressed after", proof: "property:plugins/telegram/tests/asks.property.test.ts#a_replay_loses_the_answer", sources: [S23, S24, S25], done: true }

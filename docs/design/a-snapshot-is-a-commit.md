@@ -230,7 +230,7 @@ mistake the design doc already refuses.
 - [x] A text beginning with `-` is searched for, never read as a flag
       (proof: test:packages/core/tests/BaseSource.test.ts)
 - [x] The grooming step still receives no checkout path, branch, worktree or
-      runner (proof: test:packages/workflow-feature-grooming/tests/groom.test.ts)
+      runner (proof: test:examples/workflow-feature-grooming/tests/groom.test.ts)
 
 **Exit condition:** grooming a feature whose column was pushed by somebody
 else after this machine last fetched finds that column, names the commit that

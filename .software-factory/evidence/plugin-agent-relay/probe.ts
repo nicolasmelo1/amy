@@ -20,7 +20,7 @@ const { plugin: hermes }: typeof import("@amykit/plugin-hermes-agent") = await i
 const { plugin: relay }: typeof import("@amykit/plugin-agent-relay") = await import(dist("plugins", "agent-relay"));
 const { judgeStep }: typeof import("@amykit/agent-kit") = await import(dist("packages", "agent-kit"));
 const { triagePrompt, readTriage, unreadTriage }: typeof import("@amykit/workflow-ticket-to-qa") = await import(
-  dist("packages", "workflow-ticket-to-qa")
+  dist("examples", "workflow-ticket-to-qa")
 );
 
 const assertions: { type: string; status: "passed" | "failed" }[] = [];
