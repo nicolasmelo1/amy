@@ -7,7 +7,7 @@ sources:
   - { id: S4, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "the diagram is the shape and the decisions are code; labels are prose; export prints the file" }
   - { id: S5, kind: code, ref: "packages/core/src/diagram.ts", symbol: "readDiagram", said: "the reader yields states, initial, terminal, the five classes, calls, forks, state labels and transitions, and refuses what it cannot map" }
   - { id: S6, kind: code, ref: "packages/core/src/diagram.ts", symbol: "markState", said: "nothing writes a Diagram back to Mermaid; the only text produced is the file read, plus a marked class" }
-  - { id: S7, kind: reference, ref: "plans/amy-has-a-window.md", said: "the canvas saves an edited diagram only when the subset reads it, which needs a writer the core does not have" }
+  - { id: S7, kind: reference, ref: "plans/the-workflows-are-seen-everywhere.md", said: "the canvas saves an edited diagram only when the subset reads it, which needs a writer the core does not have" }
   - { id: S8, kind: reference, ref: "plans/an-event-is-a-reason-to-look.md", said: "a label naming a published event is read; every other label stays prose" }
   - { id: S9, kind: decision, said: "the writer lives in the core with no dependency, and keeps the lines amy does not read (comments, classDef, other classes, front matter) in place" }
   - { id: S10, kind: decision, said: "amy workflow export <name> --yaml prints states with label and classes, initial, terminal, transitions with label or event:, calls, forks, and an about: block of name, ports, phases and brief sections" }

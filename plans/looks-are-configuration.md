@@ -1,16 +1,16 @@
 ---
 sources:
-  - { id: S1, kind: reference, ref: "plans/amy-lives-in-the-menu-bar.md", said: "gave every record a standing — attention, active, waiting, finished — from the states a workflow's diagram marks attention" }
+  - { id: S1, kind: reference, ref: "plans/what-needs-you-is-counted-everywhere.md", said: "gives every record a standing — attention, active, waiting, finished — from the states a workflow's diagram marks attention" }
   - { id: S2, kind: decision, said: "the window colours by standing, so a workflow nobody configured still reads correctly" }
   - { id: S3, kind: decision, said: "config.yaml's ui block decides the rest: theme (shipped or plugin-contributed), colors overriding any theme token, states overriding one workflow's state, e.g. ticket-to-qa HUMAN_REVIEW" }
   - { id: S4, kind: decision, said: "a theme is a set of tokens — colours, font, density — contributed to a ui-theme collection, so a plugin can ship one" }
   - { id: S5, kind: decision, said: "ui keys are validated at boot like any setting: a state the workflow's diagram does not draw, or a token no theme defines, is refused by name" }
-  - { id: S6, kind: reference, ref: "plans/amy-has-a-window.md", said: "in the desktop app the tokens reach a workflow's diagram as Pele's --pele-* CSS variables, so a theme recolours it with the rest of the window" }
+  - { id: S6, kind: reference, ref: "plans/the-window-is-designed-once.md", said: "in the webview renderer the tokens reach a workflow's diagram as Pele's --pele-* CSS variables, so a theme recolours it with the rest of the window" }
   - { id: S7, kind: decision, said: "the classDef styles in a workflow.mmd are not read: they are how the file looks on GitHub and Obsidian; the window's colours come from the theme and the ui block" }
   - { id: S8, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "colour is the one thing the frame does not fix, so no renderer decides it; a-renderer-names-no-colour keeps every colour in a theme's tokens" }
   - { id: S9, kind: decision, said: "the projection carries each row's standing, never its colour, so 'the escalated records stand out' is asserted the same in a terminal and the desktop app" }
   - { id: S10, kind: decision, said: "how a workflow's diagram is drawn, straight or curved edges, is a theme token like a colour: curved lines change a look, not a frame. A renderer drawing characters ignores it. Decided 2026-11-04" }
-  - { id: S11, kind: reference, ref: "plans/a-component-is-reviewed-on-its-own.md", said: "the tokens are packages/ui/tokens.json, in the Design Tokens Community Group's 2025.10 format; a theme overrides tokens by name and adds none the file does not have" }
+  - { id: S11, kind: reference, ref: "plans/the-window-is-designed-once.md", said: "the tokens are packages/ui/tokens.json, in the Design Tokens Community Group's 2025.10 format; a theme overrides tokens by name and adds none the file does not have" }
 touches:
   - packages/cli/src/config.ts
   - packages/cli/tests/ui-theme.test.ts

@@ -79,7 +79,7 @@ failures:
 cut:
   - "a curses menu library: the terminal adapter reads lines and numbers"
   - "setting up a workflow's own settings beyond amy add's block: that is amy setup <workflow>"
-  - "drawing setup in the window: when amy-has-a-window and the-window-fits-a-terminal land, its asks show there through the conversation port, with no change to the setup workflow"
+  - "drawing setup in the window: when the-work-is-listed-everywhere lands, its asks show there through the conversation port, with no change to the setup workflow"
 exit: "on a machine with nothing configured, amy setup asks which harness, installs only Codex, pings its model, adds a workflow and Slack, and a second amy setup slack shows the saved values as defaults"
 ---
 # Setup is a workflow
