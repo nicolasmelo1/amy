@@ -120,16 +120,30 @@ describe("Slack structured asks", () => {
     expect(http.args("reactions.get")).toEqual([]);
   });
 
-  it("persists the first complete answer through a reaction change and restart", async () => {
+  it("replays the first answer after a changed or conflicting reaction, once acknowledging it", async () => {
     const approved = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
-    const changed = askMessage("1790000100.000100", ASK);
-    const later = askMessage("1790000101.000100", ASK, [reaction("x", [OPERATOR])]);
+    const rejected = askMessage("1790000100.000100", ASK, [reaction("x", [OPERATOR])]);
+    const conflicted = askMessage("1790000100.000100", ASK, [reaction("white_check_mark", [OPERATOR]), reaction("x", [OPERATOR])]);
     const firstLook = await slack(new Http([auth(), messages([approved]), messages([approved])])).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
-    const restarted = new Http([auth(), messages([changed, later]), messages([changed, later]), { method: "chat.postMessage", json: { ts: "1790000102.000100" } }]);
+    const restarted = new Http([auth(), messages([rejected, conflicted]), messages([rejected, conflicted]),
+      { method: "chat.postMessage", json: { ts: "1790000102.000100" } },
+      { method: "chat.postMessage", json: { ts: "1790000103.000100" } },
+    ]);
     const secondLook = await slack(restarted).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
     expect(firstLook[0]!.answer).toEqual({ ask: "ship", chosen: ["approve"] });
-    expect(secondLook[0]!.answer).toEqual({ ask: "ship", chosen: ["approve"] });
+    expect(secondLook).toMatchObject([{ answer: { ask: "ship", chosen: ["approve"] } }]);
     expect(secondLook).toHaveLength(1);
-    expect(restarted.args("chat.postMessage")[0]!.text).toContain("already took ship: approve");
+    expect(restarted.args("chat.postMessage").map((post) => post.text)).toEqual(expect.arrayContaining([
+      expect.stringContaining("already took ship: approve"),
+      expect.stringContaining("conflicting answers for ship"),
+    ]));
+    expect(restarted.args("chat.postMessage").filter((post) => post.text?.includes("already took ship") === true)).toHaveLength(1);
+  });
+
+  it("records a notice during the poll so duplicate asks cannot post it twice", async () => {
+    const duplicate = askMessage("1790000101.000100", ASK, [reaction("white_check_mark", [OPERATOR]), reaction("x", [OPERATOR])]);
+    const http = new Http([auth(), messages([duplicate, duplicate]), messages([duplicate, duplicate]), { method: "chat.postMessage", json: { ts: "1790000102.000100" } }]);
+    await expect(slack(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).resolves.toEqual([]);
+    expect(http.args("chat.postMessage")).toHaveLength(1);
   });
 });

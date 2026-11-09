@@ -10361,6 +10361,8 @@
           "plugins/command-gate/src/**",
           "plugins/notify-fanout/src/**",
           "plugins/notify-inbox/src/**",
+          "plugins/slack/src/**",
+          "packages/core/src/ports/Conversation.ts",
           "packages/core/src/calls.ts",
           "packages/core/src/leases.ts",
           "plugins/concurrent-engine/src/**"

@@ -284,6 +284,8 @@ gates:
       - "plugins/command-gate/src/**"
       - "plugins/notify-fanout/src/**"
       - "plugins/notify-inbox/src/**"
+      - "plugins/slack/src/**"
+      - "packages/core/src/ports/Conversation.ts"
       # Its gate and self-review are the lanes of a fork: what composes them,
       # what holds what they use, and the engine that moves them side by side.
       - "packages/core/src/calls.ts"

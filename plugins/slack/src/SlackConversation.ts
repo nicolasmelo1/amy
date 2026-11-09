@@ -55,6 +55,12 @@ interface SlackReaction {
   count?: number;
 }
 
+interface AnswerVerdict {
+  chosen?: string[];
+  ambiguous: boolean;
+  observed: string[];
+}
+
 interface SlackMessage {
   ts?: string;
   thread_ts?: string;
@@ -318,15 +324,16 @@ export class SlackConversation implements Conversation {
       const verdict = await this.answerOf(entry.message, entry.ask);
       if (verdict.ambiguous) {
         await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
+        // A later conflict cannot revoke the durable first answer: replay it
+        // so a look that previously parked still has the decision to apply.
+        if (!remembered) continue;
+        await this.acknowledgeTaken(threadTs, messages, entry.ask, remembered.chosen);
+      } else if (!verdict.chosen && !remembered) {
         continue;
       }
-      if (!verdict.chosen && !remembered) continue;
       const accepted = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen!, entry.message.ts!);
       const chosen = accepted.chosen;
-      if (remembered && verdict.chosen && !sameAnswers(chosen, verdict.chosen)) {
-        await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
-        continue;
-      }
+      if (this.hasChangedAnswer(remembered, verdict)) await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
       if (taken.has(entry.ask.id)) {
         await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
         continue;
@@ -381,7 +388,11 @@ export class SlackConversation implements Conversation {
     return path.join(this.options.directory, "answers", safeName(threadTs));
   }
 
-  private async answerOf(message: SlackMessage, ask: Ask): Promise<{ chosen?: string[]; ambiguous: boolean; observed: string[] }> {
+  private hasChangedAnswer(remembered: { chosen: string[] } | undefined, verdict: AnswerVerdict): boolean {
+    return remembered !== undefined && (verdict.ambiguous || (verdict.chosen !== undefined && !sameAnswers(remembered.chosen, verdict.chosen)));
+  }
+
+  private async answerOf(message: SlackMessage, ask: Ask): Promise<AnswerVerdict> {
     const names = reactionsFor(ask);
     const reactions = await this.completeReactions(message, names);
     if (names.some((name) => this.marked(reactions, name) === UNKNOWN)) throw new Error(`Slack did not identify every reaction on ask ${ask.id}`);
@@ -405,11 +416,13 @@ export class SlackConversation implements Conversation {
   private async explainAmbiguity(threadTs: string, messages: SlackMessage[], ask: Ask, observed: string[]): Promise<void> {
     if (hasAskEvent(messages, ASK_AMBIGUOUS_EVENT, ask.id)) return;
     await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text: `I saw conflicting answers for ${ask.id}: ${observed.join(", ")}. Please leave one answer.`, metadata: askMetadata(ASK_AMBIGUOUS_EVENT, ask) });
+    rememberAskEvent(messages, ASK_AMBIGUOUS_EVENT, ask);
   }
 
   private async acknowledgeTaken(threadTs: string, messages: SlackMessage[], ask: Ask, chosen: string[]): Promise<void> {
     if (hasAskEvent(messages, ASK_TAKEN_EVENT, ask.id)) return;
     await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text: `Amy already took ${ask.id}: ${chosen.join(", ")}.`, metadata: askMetadata(ASK_TAKEN_EVENT, ask) });
+    rememberAskEvent(messages, ASK_TAKEN_EVENT, ask);
   }
 
   private async channelChecks(scopes: readonly string[]): Promise<SlackCheck[]> {
@@ -648,6 +661,11 @@ function isAsk(value: unknown): value is Ask {
 
 function hasAskEvent(messages: readonly SlackMessage[], event: string, askId: string): boolean {
   return messages.some((message) => message.metadata?.event_type === event && readMetadataAskId(message) === askId);
+}
+
+/** Make a successful notice visible to duplicate asks in this same poll. */
+function rememberAskEvent(messages: SlackMessage[], event: string, ask: Ask): void {
+  messages.push({ metadata: { event_type: event, event_payload: { ask } } });
 }
 
 function readMetadataAskId(message: SlackMessage): string | undefined {
