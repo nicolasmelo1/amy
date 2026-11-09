@@ -1,5 +1,5 @@
 {
-  "version": "10.3",
+  "version": "10.4",
   "types": {
     "AcceptedGiftTypes": {
       "unlimited_gifts": {
@@ -81,6 +81,32 @@
       "file_size": {
         "type": "Integer",
         "required": false
+      }
+    },
+    "AreaPosition": {
+      "x_percentage": {
+        "type": "Float",
+        "required": true
+      },
+      "y_percentage": {
+        "type": "Float",
+        "required": true
+      },
+      "width_percentage": {
+        "type": "Float",
+        "required": true
+      },
+      "height_percentage": {
+        "type": "Float",
+        "required": true
+      },
+      "rotation_angle": {
+        "type": "Float",
+        "required": true
+      },
+      "corner_radius_percentage": {
+        "type": "Float",
+        "required": true
       }
     },
     "Audio": {
@@ -962,6 +988,14 @@
       "community": {
         "type": "Community",
         "required": false
+      },
+      "ton_wallet_card": {
+        "type": "TonWalletCard",
+        "required": false
+      },
+      "share_theme": {
+        "type": "ChatShareTheme",
+        "required": false
       }
     },
     "ChatInviteLink": {
@@ -1444,6 +1478,52 @@
         "required": false
       }
     },
+    "ChatShareThemeBackdrop": {
+      "id": {
+        "type": "Integer",
+        "required": true
+      },
+      "name": {
+        "type": "String",
+        "required": true
+      },
+      "colors": {
+        "type": "UniqueGiftBackdropColors",
+        "required": true
+      }
+    },
+    "ChatShareThemeBackdrops": {
+      "backdrops": {
+        "type": "Array of ChatShareThemeBackdrop",
+        "required": true
+      }
+    },
+    "ChatShareThemeEmoji": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "emoji"
+      },
+      "emojis": {
+        "type": "Array of EmojiType",
+        "required": true
+      },
+      "background_backdrop_id": {
+        "type": "Integer",
+        "required": false
+      }
+    },
+    "ChatShareThemeUniqueGift": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "unique_gift"
+      },
+      "gift": {
+        "type": "UniqueGift",
+        "required": true
+      }
+    },
     "Checklist": {
       "title": {
         "type": "String",
@@ -1646,6 +1726,28 @@
         "required": false
       }
     },
+    "EmojiTypeCustomEmoji": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "custom_emoji"
+      },
+      "custom_emoji_id": {
+        "type": "String",
+        "required": true
+      }
+    },
+    "EmojiTypeEmoji": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "emoji"
+      },
+      "emoji": {
+        "type": "String",
+        "required": true
+      }
+    },
     "EncryptedCredentials": {
       "data": {
         "type": "String",
@@ -1705,7 +1807,7 @@
     "EphemeralMessageParameters": {
       "receiver_user_id": {
         "type": "Integer",
-        "required": true
+        "required": false
       },
       "callback_query_id": {
         "type": "String",
@@ -1775,6 +1877,10 @@
       },
       "voice": {
         "type": "Voice",
+        "required": false
+      },
+      "widget": {
+        "type": "Widget",
         "required": false
       },
       "has_media_spoiler": {
@@ -4267,6 +4373,32 @@
         "required": true
       }
     },
+    "InputSharedWidgetMessageContent": {
+      "widget_id": {
+        "type": "String",
+        "required": true
+      },
+      "chat_data": {
+        "type": "String",
+        "required": false
+      },
+      "caption": {
+        "type": "String",
+        "required": false
+      },
+      "parse_mode": {
+        "type": "String",
+        "required": false
+      },
+      "caption_entities": {
+        "type": "Array of MessageEntity",
+        "required": false
+      },
+      "show_caption_above_media": {
+        "type": "Boolean",
+        "required": false
+      }
+    },
     "InputSticker": {
       "sticker": {
         "type": "String",
@@ -4370,6 +4502,52 @@
       },
       "google_place_type": {
         "type": "String",
+        "required": false
+      }
+    },
+    "InputWidgetMessageContent": {
+      "html": {
+        "type": "String",
+        "required": true
+      },
+      "width": {
+        "type": "Integer",
+        "required": false
+      },
+      "height": {
+        "type": "Integer",
+        "required": false
+      },
+      "public_data": {
+        "type": "String",
+        "required": false
+      },
+      "chat_data": {
+        "type": "String",
+        "required": false
+      },
+      "caption": {
+        "type": "String",
+        "required": false
+      },
+      "parse_mode": {
+        "type": "String",
+        "required": false
+      },
+      "caption_entities": {
+        "type": "Array of MessageEntity",
+        "required": false
+      },
+      "show_caption_above_media": {
+        "type": "Boolean",
+        "required": false
+      },
+      "allow_queries": {
+        "type": "Boolean",
+        "required": false
+      },
+      "is_shared": {
+        "type": "Boolean",
         "required": false
       }
     },
@@ -4928,6 +5106,10 @@
         "type": "Voice",
         "required": false
       },
+      "widget": {
+        "type": "Widget",
+        "required": false
+      },
       "caption": {
         "type": "String",
         "required": false
@@ -5156,6 +5338,10 @@
         "type": "PaidMessagePriceChanged",
         "required": false
       },
+      "paid_messages_waived": {
+        "type": "PaidMessagesWaived",
+        "required": false
+      },
       "poll_option_added": {
         "type": "PollOptionAdded",
         "required": false
@@ -5182,6 +5368,10 @@
       },
       "suggested_post_refunded": {
         "type": "SuggestedPostRefunded",
+        "required": false
+      },
+      "ton_wallet_transfer": {
+        "type": "TonWalletTransfer",
         "required": false
       },
       "video_chat_scheduled": {
@@ -5605,6 +5795,7 @@
         "required": true
       }
     },
+    "PaidMessagesWaived": {},
     "PassportData": {
       "data": {
         "type": "Array of EncryptedPassportElement",
@@ -6230,6 +6421,10 @@
       },
       "quote_entities": {
         "type": "Array of MessageEntity",
+        "required": false
+      },
+      "quote_rich_texts": {
+        "type": "Array of RichText",
         "required": false
       },
       "quote_position": {
@@ -7090,6 +7285,21 @@
         "required": true
       }
     },
+    "RichTextTonAddress": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "ton_address"
+      },
+      "text": {
+        "type": "RichText",
+        "required": true
+      },
+      "address": {
+        "type": "String",
+        "required": true
+      }
+    },
     "RichTextUnderline": {
       "type": {
         "type": "String",
@@ -7148,6 +7358,28 @@
       "photo": {
         "type": "Array of PhotoSize",
         "required": false
+      }
+    },
+    "SharedWidgetQuery": {
+      "id": {
+        "type": "String",
+        "required": true
+      },
+      "from": {
+        "type": "User",
+        "required": true
+      },
+      "type": {
+        "type": "WidgetQueryType",
+        "required": true
+      },
+      "data": {
+        "type": "String",
+        "required": true
+      },
+      "widget_id": {
+        "type": "String",
+        "required": true
       }
     },
     "ShippingAddress": {
@@ -7346,37 +7578,11 @@
     },
     "StoryArea": {
       "position": {
-        "type": "StoryAreaPosition",
+        "type": "AreaPosition",
         "required": true
       },
       "type": {
         "type": "StoryAreaType",
-        "required": true
-      }
-    },
-    "StoryAreaPosition": {
-      "x_percentage": {
-        "type": "Float",
-        "required": true
-      },
-      "y_percentage": {
-        "type": "Float",
-        "required": true
-      },
-      "width_percentage": {
-        "type": "Float",
-        "required": true
-      },
-      "height_percentage": {
-        "type": "Float",
-        "required": true
-      },
-      "rotation_angle": {
-        "type": "Float",
-        "required": true
-      },
-      "corner_radius_percentage": {
-        "type": "Float",
         "required": true
       }
     },
@@ -7628,12 +7834,102 @@
         "type": "Array of MessageEntity",
         "required": false
       },
+      "rich_texts": {
+        "type": "Array of RichText",
+        "required": false
+      },
       "position": {
         "type": "Integer",
         "required": true
       },
       "is_manual": {
         "type": "True",
+        "required": false
+      }
+    },
+    "TonNft": {
+      "address": {
+        "type": "String",
+        "required": true
+      },
+      "collection_address": {
+        "type": "String",
+        "required": false
+      },
+      "index": {
+        "type": "String",
+        "required": true
+      },
+      "name": {
+        "type": "String",
+        "required": true
+      },
+      "description": {
+        "type": "String",
+        "required": true
+      },
+      "attributes": {
+        "type": "Array of TonNftAttribute",
+        "required": false
+      },
+      "gift": {
+        "type": "UniqueGift",
+        "required": false
+      }
+    },
+    "TonNftAttribute": {
+      "trait_type": {
+        "type": "String",
+        "required": true
+      },
+      "value": {
+        "type": "String",
+        "required": true
+      }
+    },
+    "TonWalletCard": {
+      "address": {
+        "type": "String",
+        "required": true
+      },
+      "amount": {
+        "type": "String",
+        "required": true
+      },
+      "stickers": {
+        "type": "Array of TonWalletCardSticker",
+        "required": true
+      },
+      "background_nft_address": {
+        "type": "String",
+        "required": false
+      }
+    },
+    "TonWalletCardSticker": {
+      "position": {
+        "type": "AreaPosition",
+        "required": true
+      },
+      "nft": {
+        "type": "TonNft",
+        "required": true
+      }
+    },
+    "TonWalletTransfer": {
+      "transaction_id": {
+        "type": "String",
+        "required": true
+      },
+      "peer_address": {
+        "type": "String",
+        "required": true
+      },
+      "amount": {
+        "type": "String",
+        "required": true
+      },
+      "comment": {
+        "type": "String",
         "required": false
       }
     },
@@ -7987,6 +8283,14 @@
       },
       "callback_query": {
         "type": "CallbackQuery",
+        "required": false
+      },
+      "widget_query": {
+        "type": "WidgetQuery",
+        "required": false
+      },
+      "shared_widget_query": {
+        "type": "SharedWidgetQuery",
         "required": false
       },
       "shipping_query": {
@@ -8397,6 +8701,133 @@
         "required": false
       }
     },
+    "Widget": {
+      "id": {
+        "type": "String",
+        "required": false
+      },
+      "width": {
+        "type": "Integer",
+        "required": false
+      },
+      "height": {
+        "type": "Integer",
+        "required": false
+      },
+      "html": {
+        "type": "String",
+        "required": true
+      },
+      "public_data": {
+        "type": "String",
+        "required": false
+      },
+      "chat_data": {
+        "type": "String",
+        "required": false
+      }
+    },
+    "WidgetQuery": {
+      "id": {
+        "type": "String",
+        "required": true
+      },
+      "from": {
+        "type": "User",
+        "required": true
+      },
+      "chat": {
+        "type": "Chat",
+        "required": false
+      },
+      "message_id": {
+        "type": "Integer",
+        "required": false
+      },
+      "inline_message_id": {
+        "type": "String",
+        "required": false
+      },
+      "chat_instance": {
+        "type": "String",
+        "required": true
+      },
+      "chat_type": {
+        "type": "String",
+        "required": false
+      },
+      "type": {
+        "type": "WidgetQueryType",
+        "required": true
+      },
+      "data": {
+        "type": "String",
+        "required": true
+      },
+      "widget_id": {
+        "type": "String",
+        "required": false
+      }
+    },
+    "WidgetQueryTypeData": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "data"
+      },
+      "wallet_card": {
+        "type": "TonWalletCard",
+        "required": false
+      }
+    },
+    "WidgetQueryTypeSentTransaction": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "sent_transaction"
+      },
+      "wallet": {
+        "type": "WidgetQueryWallet",
+        "required": true
+      },
+      "msg_hash": {
+        "type": "String",
+        "required": true
+      }
+    },
+    "WidgetQueryTypeSignData": {
+      "type": {
+        "type": "String",
+        "required": true,
+        "value": "sign_data"
+      },
+      "wallet": {
+        "type": "WidgetQueryWallet",
+        "required": true
+      },
+      "sign_data": {
+        "type": "String",
+        "required": true
+      }
+    },
+    "WidgetQueryWallet": {
+      "address": {
+        "type": "String",
+        "required": true
+      },
+      "amount": {
+        "type": "String",
+        "required": true
+      },
+      "public_key": {
+        "type": "String",
+        "required": false
+      },
+      "state_init": {
+        "type": "String",
+        "required": false
+      }
+    },
     "WriteAccessAllowed": {
       "from_request": {
         "type": "Boolean",
@@ -8446,6 +8877,14 @@
       "ChatMemberLeft",
       "ChatMemberBanned"
     ],
+    "ChatShareTheme": [
+      "ChatShareThemeEmoji",
+      "ChatShareThemeUniqueGift"
+    ],
+    "EmojiType": [
+      "EmojiTypeEmoji",
+      "EmojiTypeCustomEmoji"
+    ],
     "InlineQueryResult": [
       "InlineQueryResultCachedAudio",
       "InlineQueryResultCachedDocument",
@@ -8482,7 +8921,9 @@
       "InputLocationMessageContent",
       "InputVenueMessageContent",
       "InputContactMessageContent",
-      "InputInvoiceMessageContent"
+      "InputInvoiceMessageContent",
+      "InputWidgetMessageContent",
+      "InputSharedWidgetMessageContent"
     ],
     "InputPaidMedia": [
       "InputPaidMediaLivePhoto",
@@ -8633,6 +9074,7 @@
       "RichTextEmailAddress",
       "RichTextPhoneNumber",
       "RichTextBankCardNumber",
+      "RichTextTonAddress",
       "RichTextMention",
       "RichTextHashtag",
       "RichTextCashtag",
@@ -8658,6 +9100,11 @@
       "TransactionPartnerTelegramAds",
       "TransactionPartnerTelegramApi",
       "TransactionPartnerOther"
+    ],
+    "WidgetQueryType": [
+      "WidgetQueryTypeData",
+      "WidgetQueryTypeSignData",
+      "WidgetQueryTypeSentTransaction"
     ]
   },
   "methods": {
@@ -8808,6 +9255,19 @@
         }
       },
       "returns": "SentWebAppMessage"
+    },
+    "answerWidgetQuery": {
+      "parameters": {
+        "widget_query_id": {
+          "type": "String",
+          "required": true
+        },
+        "data": {
+          "type": "String",
+          "required": false
+        }
+      },
+      "returns": "True"
     },
     "approveChatJoinRequest": {
       "parameters": {
@@ -9254,6 +9714,19 @@
         "actor_chat_id": {
           "type": "Integer",
           "required": false
+        }
+      },
+      "returns": "True"
+    },
+    "deleteBusinessAccountGift": {
+      "parameters": {
+        "business_connection_id": {
+          "type": "String",
+          "required": true
+        },
+        "owned_gift_id": {
+          "type": "String",
+          "required": true
         }
       },
       "returns": "True"
@@ -9837,6 +10310,48 @@
       },
       "returns": "Message or True"
     },
+    "editMessageWidgetData": {
+      "parameters": {
+        "chat_id": {
+          "type": "Integer or String",
+          "required": false
+        },
+        "message_id": {
+          "type": "Integer",
+          "required": false
+        },
+        "inline_message_id": {
+          "type": "String",
+          "required": false
+        },
+        "public_data": {
+          "type": "String",
+          "required": false
+        },
+        "chat_data": {
+          "type": "String",
+          "required": false
+        }
+      },
+      "returns": "True"
+    },
+    "editSharedWidgetData": {
+      "parameters": {
+        "widget_id": {
+          "type": "String",
+          "required": true
+        },
+        "public_data": {
+          "type": "String",
+          "required": true
+        },
+        "cache_time": {
+          "type": "Integer",
+          "required": false
+        }
+      },
+      "returns": "True"
+    },
     "editStory": {
       "parameters": {
         "business_connection_id": {
@@ -10147,6 +10662,10 @@
       },
       "returns": "MenuButton"
     },
+    "getChatShareThemeBackdrops": {
+      "parameters": {},
+      "returns": "ChatShareThemeBackdrops"
+    },
     "getCustomEmojiStickers": {
       "parameters": {
         "custom_emoji_ids": {
@@ -10286,6 +10805,15 @@
         }
       },
       "returns": "StickerSet"
+    },
+    "getUniqueGift": {
+      "parameters": {
+        "name": {
+          "type": "String",
+          "required": true
+        }
+      },
+      "returns": "UniqueGift"
     },
     "getUpdates": {
       "parameters": {
@@ -10845,7 +11373,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -10938,7 +11466,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11094,7 +11622,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11216,7 +11744,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11500,7 +12028,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11581,7 +12109,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11703,7 +12231,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -11882,7 +12410,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12100,7 +12628,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12178,6 +12706,67 @@
       },
       "returns": "True"
     },
+    "sendSharedWidget": {
+      "parameters": {
+        "chat_id": {
+          "type": "Integer or String",
+          "required": true
+        },
+        "message_thread_id": {
+          "type": "Integer",
+          "required": false
+        },
+        "widget_id": {
+          "type": "String",
+          "required": true
+        },
+        "chat_data": {
+          "type": "String",
+          "required": false
+        },
+        "caption": {
+          "type": "String",
+          "required": false
+        },
+        "parse_mode": {
+          "type": "String",
+          "required": false
+        },
+        "caption_entities": {
+          "type": "Array of MessageEntity",
+          "required": false
+        },
+        "show_caption_above_media": {
+          "type": "Boolean",
+          "required": false
+        },
+        "disable_notification": {
+          "type": "Boolean",
+          "required": false
+        },
+        "protect_content": {
+          "type": "Boolean",
+          "required": false
+        },
+        "allow_paid_broadcast": {
+          "type": "Boolean",
+          "required": false
+        },
+        "message_effect_id": {
+          "type": "String",
+          "required": false
+        },
+        "reply_parameters": {
+          "type": "ReplyParameters",
+          "required": false
+        },
+        "reply_markup": {
+          "type": "InlineKeyboardMarkup or ReplyKeyboardMarkup or ReplyKeyboardRemove or ForceReply",
+          "required": false
+        }
+      },
+      "returns": "Message"
+    },
     "sendSticker": {
       "parameters": {
         "business_connection_id": {
@@ -12186,7 +12775,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12247,7 +12836,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12332,7 +12921,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12437,7 +13026,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12506,7 +13095,7 @@
         },
         "chat_id": {
           "type": "Integer or String",
-          "required": true
+          "required": false
         },
         "message_thread_id": {
           "type": "Integer",
@@ -12558,6 +13147,87 @@
         },
         "suggested_post_parameters": {
           "type": "SuggestedPostParameters",
+          "required": false
+        },
+        "reply_parameters": {
+          "type": "ReplyParameters",
+          "required": false
+        },
+        "reply_markup": {
+          "type": "InlineKeyboardMarkup or ReplyKeyboardMarkup or ReplyKeyboardRemove or ForceReply",
+          "required": false
+        }
+      },
+      "returns": "Message"
+    },
+    "sendWidget": {
+      "parameters": {
+        "chat_id": {
+          "type": "Integer or String",
+          "required": true
+        },
+        "message_thread_id": {
+          "type": "Integer",
+          "required": false
+        },
+        "html": {
+          "type": "String",
+          "required": true
+        },
+        "width": {
+          "type": "Integer",
+          "required": false
+        },
+        "height": {
+          "type": "Integer",
+          "required": false
+        },
+        "public_data": {
+          "type": "String",
+          "required": false
+        },
+        "chat_data": {
+          "type": "String",
+          "required": false
+        },
+        "caption": {
+          "type": "String",
+          "required": false
+        },
+        "parse_mode": {
+          "type": "String",
+          "required": false
+        },
+        "caption_entities": {
+          "type": "Array of MessageEntity",
+          "required": false
+        },
+        "show_caption_above_media": {
+          "type": "Boolean",
+          "required": false
+        },
+        "allow_queries": {
+          "type": "Boolean",
+          "required": false
+        },
+        "is_shared": {
+          "type": "Boolean",
+          "required": false
+        },
+        "disable_notification": {
+          "type": "Boolean",
+          "required": false
+        },
+        "protect_content": {
+          "type": "Boolean",
+          "required": false
+        },
+        "allow_paid_broadcast": {
+          "type": "Boolean",
+          "required": false
+        },
+        "message_effect_id": {
+          "type": "String",
           "required": false
         },
         "reply_parameters": {
@@ -13289,6 +13959,14 @@
         "custom_description": {
           "type": "String",
           "required": false
+        },
+        "custom_description_parse_mode": {
+          "type": "String",
+          "required": false
+        },
+        "custom_description_entities": {
+          "type": "Array of MessageEntity",
+          "required": false
         }
       },
       "returns": "True"
@@ -13301,6 +13979,14 @@
         },
         "custom_description": {
           "type": "String",
+          "required": false
+        },
+        "custom_description_parse_mode": {
+          "type": "String",
+          "required": false
+        },
+        "custom_description_entities": {
+          "type": "Array of MessageEntity",
           "required": false
         }
       },
