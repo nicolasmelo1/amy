@@ -4,11 +4,12 @@ import { escapeXml } from "./launchd.js";
 import type { LoopSpec, MachineFacts, Supervisor } from "./index.js";
 
 /**
- * Windows: a scheduled task (S35). Registered for the person with no
- * elevation, started at logon after a short delay and again when it fails,
- * a counted number of times (S37). It starts amy through wscript, which has
- * no console: a loop under cmd.exe is sent a close event at logon, which
- * Task Scheduler reads as the person cancelling it and never restarts (S36).
+ * Windows: a scheduled task (S35), registered for the person with no
+ * elevation and started at logon after a short delay. It starts amy through
+ * wscript, which has no console (S36), and the launcher is what restarts the
+ * loop: Task Scheduler's own RestartOnFailure covers a task that fails to
+ * start, not a process that dies later, so the launcher runs the loop again
+ * after an exit that is not clean, a counted number of times (S37).
  * Installing it removes a Startup entry, so nothing starts twice (S40); the
  * Startup folder is used only when the task cannot be registered.
  */
@@ -52,6 +53,12 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
   };
 }
 
+/** How many times the launcher starts a loop that did not exit cleanly before it gives up. */
+const MAX_RESTARTS = 255;
+
+/** How long it waits before starting it again. */
+const RESTART_PAUSE_MS = 5000;
+
 /** The task: at logon, delayed, no elevation, no time limit, on battery too, restarted when it fails. */
 export function taskOf(spec: LoopSpec, user: string, launcher: string): string {
   return [
@@ -81,7 +88,11 @@ export function taskOf(spec: LoopSpec, user: string, launcher: string): string {
   ].join("\r\n");
 }
 
-/** The console-less launcher: sets amy's environment, runs the loop hidden, waits, and hands back its exit. */
+/**
+ * The console-less launcher: sets amy's environment and runs the loop hidden,
+ * waiting on it; a clean exit ends it, any other runs the loop again after a
+ * pause, up to a count, and the last exit is handed back to the task.
+ */
 export function launcherOf(spec: LoopSpec): string {
   const vbs = (value: string) => `"${value.replace(/"/g, '""')}"`;
   const command = [spec.program, ...spec.args].map((arg) => `""${arg.replace(/"/g, '""""')}""`).join(" ");
@@ -90,7 +101,14 @@ export function launcherOf(spec: LoopSpec): string {
     `Set environment = shell.Environment("PROCESS")`,
     ...Object.entries(spec.env).map(([key, value]) => `environment(${vbs(key)}) = ${vbs(value)}`),
     `shell.CurrentDirectory = ${vbs(spec.workingDirectory)}`,
-    `code = shell.Run("${command}", 0, True)`,
+    `failures = 0`,
+    `Do`,
+    `  code = shell.Run("${command}", 0, True)`,
+    `  If code = 0 Then Exit Do`,
+    `  failures = failures + 1`,
+    `  If failures >= ${MAX_RESTARTS} Then Exit Do`,
+    `  WScript.Sleep ${RESTART_PAUSE_MS}`,
+    `Loop`,
     `WScript.Quit code`,
     ``,
   ].join("\r\n");

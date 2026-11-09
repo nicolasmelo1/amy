@@ -64,7 +64,8 @@ export function unitOf(spec: LoopSpec): string {
     "[Service]",
     "Type=simple",
     `ExecStart=${[spec.program, ...spec.args].map(quoted).join(" ")}`,
-    `WorkingDirectory=${quoted(spec.workingDirectory)}`,
+    // A path, read as written: systemd takes no quotes here.
+    `WorkingDirectory=${spec.workingDirectory.replace(/%/g, "%%")}`,
     ...Object.entries(spec.env).map(([key, value]) => `Environment=${quoted(`${key}=${value}`)}`),
     "Restart=on-failure",
     "RestartSec=5",

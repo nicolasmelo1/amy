@@ -136,3 +136,5 @@ Half the work with an agent is conversation. Here amy talks in Slack and
 Telegram, the chats it already lives in: a plain message is an ask that writes
 nothing, `/action` lets the turn act on amy, and a work thread still decides.
 A chat with no threads, as WhatsApp's will be, is routed by what a message quotes.
+On Windows the task's console-less launcher restarts a loop that did not exit
+cleanly: RestartOnFailure only covers a task that fails to start.

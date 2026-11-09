@@ -97,6 +97,7 @@ describe("what each supervisor is handed", () => {
     expect(unit).toContain('ExecStart="/usr/local/bin/node" "/opt/amy/index.js"');
     expect(unit).toContain('"50%%" "$$HOME"');
     expect(unit).toContain('Environment="AMY_HOME=/state"');
+    expect(unit).toContain("WorkingDirectory=/state\n");
     expect(unit).toContain("WantedBy=default.target");
   });
 
@@ -110,6 +111,8 @@ describe("what each supervisor is handed", () => {
     expect(launcher).toContain('environment("AMY_HOME") = "/state"');
     expect(launcher).toContain('code = shell.Run("""/usr/local/bin/node"" ""/opt/amy/index.js"" ""--workflow""');
     expect(launcher).toContain(", 0, True)");
+    expect(launcher).toContain("  If code = 0 Then Exit Do");
+    expect(launcher).toContain("  If failures >= 255 Then Exit Do");
     expect(launcher).toContain("WScript.Quit code");
   });
 });
@@ -218,7 +221,7 @@ describe.runIf(REAL)(`under this machine's own supervisor, ${process.platform} (
     expect(doctor.stdout).toMatch(/ok {3}supervisor {2}(launchd|systemd --user|Task Scheduler)/);
 
     process.kill(first, "SIGKILL");
-    // launchd throttles a respawn to 30s after the last; Task Scheduler restarts a failed task after a minute.
+    // launchd throttles a respawn to 30s after the last; the Windows launcher pauses 5s.
     expect(await until(() => alive(recorded()) && recorded() !== first, 180_000)).toBe(true);
     expect(recorded()).not.toBe(first);
   }, 240_000);
@@ -245,7 +248,8 @@ describe.runIf(REAL)(`under this machine's own supervisor, ${process.platform} (
     const xml = spawnSync("schtasks", ["/Query", "/TN", `\\amy\\${label}`, "/XML"], { encoding: "utf-8" }).stdout;
     expect(xml).toMatch(/<LogonTrigger>/);
     expect(xml).toMatch(/<Command>wscript\.exe<\/Command>/);
-    expect(xml).toMatch(/<RunLevel>LeastPrivilege<\/RunLevel>/);
+    // Least privilege is the default, which Task Scheduler leaves out when it answers.
+    expect(xml).not.toMatch(/HighestAvailable/);
     expect(xml).toMatch(/<RestartOnFailure>/);
     const startup = path.join(process.env.APPDATA ?? "", "Microsoft", "Windows", "Start Menu", "Programs", "Startup", `${label}.vbs`);
     expect(fs.existsSync(startup)).toBe(false);
