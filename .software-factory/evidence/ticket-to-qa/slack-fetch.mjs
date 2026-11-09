@@ -36,8 +36,10 @@ globalThis.fetch = async (input, init) => {
     return response({});
   }
   if (method === "conversations.replies") {
+    // As Slack: a message at exactly `oldest` is left out unless asked for.
     const oldest = Number(args.oldest ?? "0");
-    const messages = state.messages.filter((message) => message.channel === args.channel && message.thread_ts === args.ts && Number(message.ts) >= oldest);
+    const after = (ts) => (args.inclusive === "true" ? Number(ts) >= oldest : Number(ts) > oldest);
+    const messages = state.messages.filter((message) => message.channel === args.channel && message.thread_ts === args.ts && after(message.ts));
     return response({ messages, has_more: false });
   }
   if (method === "conversations.info") return response({ channel: { name: "work", is_private: false, is_member: true } });

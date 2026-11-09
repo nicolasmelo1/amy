@@ -197,7 +197,9 @@ export class SlackConversation implements Conversation {
     // and what is recent: conversations.replies may be limited to one call
     // a minute, so a look makes one.
     const askedFrom = this.askedFrom(thread.id);
-    const read = await this.threadMessages(thread.id, askedFrom === undefined ? after : Math.min(after, askedFrom));
+    const read = askedFrom === undefined
+      ? await this.threadMessages(thread.id, after)
+      : await this.threadMessages(thread.id, Math.min(after, askedFrom), true);
     const recent = askedFrom === undefined ? read : read.filter((message) => message.ts !== undefined && tsToMicros(message.ts) > after);
     // Metadata is anybody's to attach: an ask, or the notice amy took one,
     // is read only from a message this bot wrote, so another app cannot
@@ -355,7 +357,8 @@ export class SlackConversation implements Conversation {
         continue;
       }
       taken.add(entry.ask.id);
-      const acceptedAt = tsToMicros(accepted.messageTs);
+      // An answer saved before amy dated it carries its ask's time instead.
+      const acceptedAt = accepted.acceptedAt === undefined ? tsToMicros(accepted.messageTs) : instantToMicros(accepted.acceptedAt);
       if (acceptedAt > after) {
         replies.push({ at: microsToInstant(acceptedAt), author: this.options.operator, text: entry.ask.prompt, files: [], kind: "decision", answer: { ask: entry.ask.id, chosen } });
       }
@@ -368,9 +371,9 @@ export class SlackConversation implements Conversation {
     threadTs: string,
     messages: SlackMessage[],
     entry: { message: SlackMessage; ask: Ask },
-    remembered: { chosen: string[]; messageTs: string } | undefined,
+    remembered: { chosen: string[]; messageTs: string; acceptedAt?: string } | undefined,
     verdict: AnswerVerdict,
-  ): Promise<{ chosen: string[]; messageTs: string } | undefined> {
+  ): Promise<{ chosen: string[]; messageTs: string; acceptedAt?: string } | undefined> {
     if (verdict.ambiguous) {
       await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
       // A later conflict cannot revoke the durable first answer: replay it
@@ -383,10 +386,11 @@ export class SlackConversation implements Conversation {
   }
 
   /** The first complete answer is immutable once seen, even if its reaction changes later. */
-  protected rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string } | undefined {
+  protected rememberedAnswer(threadTs: string, askId: string): { chosen: string[]; messageTs: string; acceptedAt?: string } | undefined {
     try {
-      const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown; messageTs?: unknown };
-      return Array.isArray(state.chosen) && state.chosen.every((chosen) => typeof chosen === "string") && typeof state.messageTs === "string" ? { chosen: state.chosen, messageTs: state.messageTs } : undefined;
+      const state = JSON.parse(fs.readFileSync(this.answerFile(threadTs, askId), "utf-8")) as { chosen?: unknown; messageTs?: unknown; acceptedAt?: unknown };
+      if (!Array.isArray(state.chosen) || !state.chosen.every((chosen) => typeof chosen === "string") || typeof state.messageTs !== "string") return undefined;
+      return { chosen: state.chosen, messageTs: state.messageTs, ...(typeof state.acceptedAt === "string" ? { acceptedAt: state.acceptedAt } : {}) };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw error;
@@ -394,13 +398,15 @@ export class SlackConversation implements Conversation {
   }
 
   /** Creates the decision once; a competing reader adopts the value written first. */
-  private rememberAnswer(threadTs: string, askId: string, chosen: string[], messageTs: string): { chosen: string[]; messageTs: string } {
+  private rememberAnswer(threadTs: string, askId: string, chosen: string[], messageTs: string): { chosen: string[]; messageTs: string; acceptedAt?: string } {
     const file = this.answerFile(threadTs, askId);
     fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
     const staged = path.join(path.dirname(file), `.${randomUUID()}.partial`);
     const handle = fs.openSync(staged, "wx", 0o600);
     try {
-      fs.writeFileSync(handle, JSON.stringify({ chosen, messageTs }));
+      // When amy first saw it, not when it asked: an ask posted before a
+      // look's since can still be answered after it.
+      fs.writeFileSync(handle, JSON.stringify({ chosen, messageTs, acceptedAt: this.clock().toISOString() }));
       fs.fsyncSync(handle);
     } finally {
       fs.closeSync(handle);
@@ -412,7 +418,7 @@ export class SlackConversation implements Conversation {
     } finally {
       fs.rmSync(staged, { force: true });
     }
-    return this.rememberedAnswer(threadTs, askId) ?? { chosen, messageTs };
+    return this.rememberedAnswer(threadTs, askId) ?? { chosen, messageTs, acceptedAt: this.clock().toISOString() };
   }
 
   /** The first ask amy posted in this thread, as microseconds, if it kept one. */
@@ -558,9 +564,12 @@ export class SlackConversation implements Conversation {
     return root?.ts;
   }
 
-  /** Every message in the thread after `afterMicros`, across pages. */
-  private threadMessages(ts: string, afterMicros: number): Promise<SlackMessage[]> {
-    return this.pages("conversations.replies", { channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true" });
+  /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
+  private threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+    return this.pages("conversations.replies", {
+      channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
+      ...(inclusive ? { inclusive: "true" } : {}),
+    });
   }
 
   private async pages(method: string, args: Record<string, string>): Promise<SlackMessage[]> {

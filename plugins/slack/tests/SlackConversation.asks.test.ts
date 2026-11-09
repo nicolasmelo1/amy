@@ -221,7 +221,8 @@ describe("Slack structured asks", () => {
 
     await amy.replies({ id: THREAD }, "2026-09-22T12:00:00.000Z");
 
-    expect(http.args("conversations.replies")).toEqual([expect.objectContaining({ oldest: "1790000100.000100" })]);
+    // Slack leaves a message at exactly `oldest` out unless asked: the ask itself is asked for.
+    expect(http.args("conversations.replies")).toEqual([expect.objectContaining({ oldest: "1790000100.000100", inclusive: "true" })]);
   });
 
   it("replays a saved approval when a later mark's users cannot be listed", async () => {
@@ -237,6 +238,19 @@ describe("Slack structured asks", () => {
       { answer: { ask: "ship", chosen: ["approve"] } },
     ]);
     expect(later.args("chat.postMessage")).toEqual([]);
+  });
+
+  it("returns an answer first seen after since, on an ask posted before it", async () => {
+    const other = { id: "currency", prompt: "Which?", form: "choice" as const, answers: ["BRL", "USD"] };
+    const first = askMessage("1790000100.000100", other);
+    const second = askMessage("1790000200.000100", ASK, [reaction("white_check_mark", [OPERATOR])]);
+    const http = new Http([auth(), messages([first, second]), messages([first, second])]);
+
+    // Both asks went out on 2026-09-21; the look starts a day later and is
+    // the first to see the approval.
+    await expect(slack(http).replies({ id: THREAD }, "2026-09-22T12:00:00.000Z")).resolves.toMatchObject([
+      { answer: { ask: "ship", chosen: ["approve"] } },
+    ]);
   });
 
   it("records a notice during the poll so duplicate asks cannot post it twice", async () => {
