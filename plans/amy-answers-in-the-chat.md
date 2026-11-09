@@ -9,7 +9,7 @@ sources:
   - { id: S7, kind: reference, ref: "https://developers.secure.facebook.com/docs/whatsapp/api/webhooks/inbound", said: "WhatsApp has no threads; an inbound reply carries context.id, the wamid of the message it quotes" }
   - { id: S8, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "two conversations never confused: asking writes nothing; discussing with the work ends in a decision. That row is the window's half" }
   - { id: S9, kind: code, ref: "packages/core/src/ports/Harness.ts", said: "readOnly is enforced by the harness's own sandbox (claude plan mode, codex read-only) or the harness refuses the run, as hermes does" }
-  - { id: S10, kind: decision, said: "a message without /action is an ask: it reads and answers and writes nothing, enforced rather than asked for. Decided 2026-11-09" }
+  - { id: S10, kind: decision, said: "a message that reaches no work and has no /action is an ask: it reads and answers and writes nothing, enforced rather than asked for. Decided 2026-11-09" }
   - { id: S11, kind: decision, said: "/action at a message's start is the green flag for that turn to act on amy: start or stop the loop, add or change a workflow, and the like. Decided 2026-11-09" }
   - { id: S12, kind: decision, said: "under /action too the harness runs read-only; its answer names amy commands from a fixed list and amy runs them as amy with arguments, never a shell. Proposed 2026-11-09" }
   - { id: S13, kind: reference, ref: "plans/the-command-line-holds-no-rule.md", said: "every built-in becomes an operation of @amykit/services; this row ships first, so its list is the command line's, and becomes those operations when that row lands" }
@@ -40,6 +40,8 @@ sources:
   - { id: S28, kind: decision, said: "/action restart assembles the new mount in a child first; only one that boots is let through, the loop exits to its supervisor, and the chat says the new pid. Proposed 2026-11-09" }
   - { id: S29, kind: decision, said: "the chat does not depend on the workflow mounting: a loop whose mount fails still answers in the chat, says what failed, and takes /action. Proposed 2026-11-09" }
   - { id: S30, kind: decision, said: "/action may change config.yaml as a shown diff, applied only if the new config mounts in a child; otherwise the old file stays and the chat says why. Proposed 2026-11-09" }
+  - { id: S42, kind: decision, said: "a message is routed to a work first (its thread, a quote, an id); only one that reaches no work is an ask or an action, so a work reply keeps its policy. Proposed 2026-11-09" }
+  - { id: S43, kind: decision, said: "with no supervisor, /action restart is refused: the running loop and the chat stay, and the chat says no supervisor would start the new one. Proposed 2026-11-09" }
   - { id: S22, kind: reference, ref: "docs/design/telegram-is-a-conversation.md", said: "only the configured operator is answered; anyone else is ignored, as Slack's isOperatorAnswer does" }
 touches:
   - packages/core/src/ports/Conversation.ts
@@ -69,24 +71,26 @@ criteria:
   - { id: A8, statement: "grooming started from the chat runs the mounted workflow's grooming, and its call log holds only the writes that workflow claims", proof: "deferred:assertion:chat.grooming_writes_what_its_workflow_claims", sources: [S17, S18] }
   - { id: A9, statement: "a message from anyone but the operator answers nothing, in either adapter", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S22] }
   - { id: A11, statement: "on macOS, Linux and Windows, a loop started by amy start and killed hard is running again with a new pid, and one stopped with amy stop is not", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S24, S25, S26, S27, S31, S32, S33, S35, S37, S38, S41] }
+  - { id: A17, statement: "on Linux with no working systemd, /action restart is refused, the loop keeps its pid and the chat still answers", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S39, S43] }
   - { id: A15, statement: "amy doctor names the supervisor in use, refuses a Linux user with lingering off, and says so when no supervisor is there", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S33, S34, S38, S39] }
   - { id: A16, statement: "the Windows task launches amy with no console, survives a logoff and logon, and no Startup entry is left beside it", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S35, S36, S40] }
   - { id: A12, statement: "/action restart with a config that does not mount leaves the running loop as it was and says why; one that mounts answers with the new pid", proof: "deferred:assertion:chat.a_restart_lets_only_a_booting_mount_through", sources: [S24, S25, S28] }
   - { id: A13, statement: "a loop started with a workflow that fails to mount still answers an ask in the chat, naming the failure, and takes /action restart", proof: "deferred:assertion:chat.the_chat_outlives_a_broken_mount", sources: [S23, S29] }
   - { id: A14, statement: "a config change under /action is shown as a diff and written only when the new config mounts; a refused one leaves config.yaml byte for byte", proof: "deferred:test:packages/cli/tests/chat-action.test.ts", sources: [S30] }
-  - { id: A10, statement: "with the chat read all the time, a work thread's /decide still moves its work and a discussion turn still does not", proof: "deferred:assertion:chat.the_work_thread_still_decides", sources: [S19, S20] }
+  - { id: A10, statement: "with the chat read all the time, a work thread's /decide and an unmarked reply under policy answer still move its work, a discussion turn does not", proof: "deferred:assertion:chat.the_work_thread_still_decides", sources: [S19, S20, S42] }
 crosses:
-  - { mechanism: tracker-and-host-writes, answer: refused, by: "an ask reaches no writer and an action only amy's operations; an unclaimed writer still rejects before its adapter (S18, A2, A4, A8)" }
+  - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A2, A4, A8" }
   - { mechanism: events-and-notifications, answer: works, proof: "deferred:A1, A7, A9" }
   - { mechanism: profiles-and-state, answer: works, proof: "deferred:A5, A10, A11, A12" }
   - { mechanism: config, answer: works, proof: "deferred:A14" }
 guarantee:
-  - { holds: "a message without /action writes nothing: the harness runs read-only under its own sandbox, and no operation is invoked", not_against: "a harness whose own sandbox is broken" }
+  - { holds: "a message routed as an ask writes nothing: the harness runs read-only under its own sandbox and no operation is invoked; a work reply keeps its own policy", not_against: "a harness whose own sandbox is broken" }
   - { holds: "/action reaches only operations in amy's contract", not_against: "an operation whose effect is wider than the person meant" }
   - { holds: "a config or mount that does not boot never replaces the running loop, and the chat outlives a broken mount", not_against: "a machine off, asleep or offline; a Windows machine nobody has logged in to; more crashes than the task's restart count" }
   - { holds: "a chat without threads reaches a work only when the message is addressed to it", not_against: "a person quoting the wrong message" }
 failures:
   - { step: restart, when: "the new mount does not boot", goes_to: "the running loop stays, and the chat names what failed" }
+  - { step: restart, when: "the loop runs with no supervisor", goes_to: "refused; the loop and the chat stay, and the chat says why" }
   - { step: start, when: "Linux has no working systemd", goes_to: "the loop runs detached and amy doctor says nothing will bring it back" }
   - { step: start, when: "the loop crashes", goes_to: "the supervisor starts it again; a deliberate amy stop is not restarted" }
   - { step: ask, when: "the chosen harness cannot run read-only", goes_to: "refused, naming a harness that can" }
