@@ -871,13 +871,13 @@ async function heldUntilStarted(root: string): Promise<Held> {
   // A loop that is really running when the brake is pulled. `--max 0` runs
   // would tick nothing and let a brake that only writes a file look correct;
   // this one is a daemon the scenario started, and its death is the claim.
-  const running = amy(root, ["start", "--every", "1"]);
+  const running = amy(root, ["start", "--detached", "--every", "1"]);
   const pid = await daemonPid(root);
   const stopped = amy(root, ["stop", "--all"]);
   const ended = pid !== undefined && (await gone(pid));
 
   const heldRun = amy(root, ["run", "--max", "0"]);
-  const started = amy(root, ["start", "--every", "1"]);
+  const started = amy(root, ["start", "--detached", "--every", "1"]);
   const releasedRun = amy(root, ["run", "--max", "0"]);
   const stoppedAgain = amy(root, ["stop"]);
   void running;

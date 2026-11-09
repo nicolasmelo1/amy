@@ -58,11 +58,14 @@ For what the two halves mean and why, see
 
 | Variable | Read by |
 | :-- | :-- |
+| `AMY_SUPERVISOR` | `@amykit/cli` |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
+| `LANG` | `@amykit/cli` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `NO_COLOR` | `@amykit/cli` |
 | `OLLAMA_API_KEY` | `@amykit/plugin-hermes-agent` |
+| `PATH` | `@amykit/cli` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 | `TERM` | `@amykit/cli` |
 | `VITEST` | `@amykit/test-fixtures` |

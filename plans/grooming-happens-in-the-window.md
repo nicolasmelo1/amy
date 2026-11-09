@@ -30,7 +30,7 @@ crosses:
 guarantee:
   - { holds: "amy makes no tracker write while grooming", not_against: "a person moving the ticket to the working status by hand" }
 cut:
-  - "grooming from Slack or Telegram without the window: plans/amy-answers-in-the-chat.md"
+  - "grooming from Slack or Telegram without the window: docs/design/amy-answers-in-the-chat.md"
   - "amy creating or sending a ticket: refused; a draft is something to copy (S4)"
   - "moving the hold decision into the window: refused; holding an ungroomed ticket stays the workflow's decision (S7)"
 exit: "a person picks an existing ticket in the window, is asked each declared section until amy brief check is green, moves it to working status by hand; amy builds it with that brief, its call log holding no tracker write"
@@ -40,4 +40,4 @@ exit: "a person picks an existing ticket in the window, is asked each declared s
 A brief is written today by running the `amy-groom` skill in a separate agent, beside amy. Grooming is a conversation with a shape, and it should start where the work is listed.
 
 This row is the window's half only. Grooming from Slack or Telegram is
-[amy answers in the chat](amy-answers-in-the-chat.md).
+[amy answers in the chat](../docs/design/amy-answers-in-the-chat.md).

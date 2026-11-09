@@ -172,6 +172,10 @@ Declared in `packages/core/src/ports/Conversation.ts`.
 
 | Method | What it does |
 | :-- | :-- |
+| `chat(): Promise<ChatMessage[]>` | The messages that reached no work, filed and not yet settled, oldest first. Present only on adapters that answer in the chat; the daemon reads it all the time, and one arriving mid-turn waits for the next turn. |
+| `settle(id: string): Promise<void>` | The message is answered: it is not handed out again. |
+| `say(place: string, text: string): Promise<string>` | Says something in a chat place, and answers the message's id. |
+| `revise(place: string, id: string, text: string): Promise<void>` | Replaces what a said message reads; only where `edit` is declared. |
 | `open(workId: string, title: string): Promise<ThreadRef>` | Opens the work's remembered thread, creating it only on first use. |
 | `post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string>` |  |
 | `replies(thread: ThreadRef, since: string): Promise<Reply[]>` | Replies after `since`, oldest first. Files are readable local paths. |

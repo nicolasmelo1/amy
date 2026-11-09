@@ -13,7 +13,7 @@ const planted = process.env.SF_FALSIFIER === FALSIFIER;
 
 /** The mutation the property must reject: an adapter that reads its filed asks back without the answer it accepted. */
 class Forgetful extends TelegramConversation {
-  protected override askedUnder(topic: number): FiledAsk[] {
+  protected override askedUnder(topic: string): FiledAsk[] {
     return super.askedUnder(topic).map((asked) => ({ ...asked, accepted: undefined }));
   }
 }

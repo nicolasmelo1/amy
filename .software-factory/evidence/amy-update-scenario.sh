@@ -216,7 +216,7 @@ if [ ! -s "$requests" ]; then says update.invalid_auto_update_settings_refuse_be
 # it is intentionally unscheduled rather than silently doing something else.
 rm -f .amy/lifecycle.log
 : > "$requests"
-started=$("$amy" --workflow oncall start --every 1 2>&1 || echo "")
+started=$("$amy" --workflow oncall start --detached --every 1 2>&1 || echo "")
 sleep 1
 if case "$started" in *"started oncall: pid"*) false ;; *) true ;; esac || grep -q '^update$' .amy/lifecycle.log 2>/dev/null; then
   record update.a_daemon_updates_only_at_its_lifecycle_boundary 1

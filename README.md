@@ -97,7 +97,7 @@ arguments, options and defaults.
 | `amy remove` | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | `amy run` | Keep advancing until nothing is due |
 | `amy skills` | Install amy's skills into the harnesses on this machine |
-| `amy start` | Start the loop in the background, and keep it running |
+| `amy start` | Start the loop under the machine's supervisor, which keeps it running |
 | `amy status` | Show where every piece of work stands and what the queue holds |
 | `amy stop` | Stop the background loop; --all pulls the machine's handbrake |
 | `amy tick` | Advance one piece of work by one move, discovering first |
@@ -118,7 +118,7 @@ npm run gate
 
 This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a deliberately broken fixture.
 
-**27 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end readme-factory -->
 

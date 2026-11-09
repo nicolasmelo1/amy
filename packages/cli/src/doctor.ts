@@ -7,6 +7,7 @@ import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
 import { type PhaseBrief, uncheckedBrief } from "./project.js";
+import type { Found } from "./supervisor/index.js";
 
 export type { Check } from "@amykit/core";
 
@@ -433,4 +434,16 @@ function expandHome(value: string): string {
   if (value === "~") return os.homedir();
   if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
   return value;
+}
+
+/**
+ * Which supervisor keeps the loop running (S38): named when there is one,
+ * refused when it would let the loop die at logout — a Linux user who does
+ * not linger — and said plainly when there is none, which is not a fault of
+ * the machine but means nothing brings a dead loop back (S39).
+ */
+export function supervisorCheck(found: Found): Check {
+  if (!found.ok) return { label: "supervisor", ok: true, detail: `none — ${found.why}; amy start runs the loop detached, and nothing brings it back if it stops` };
+  if (found.refuse) return { label: "supervisor", ok: false, detail: `${found.detail}, but ${found.refuse}` };
+  return { label: "supervisor", ok: true, detail: found.detail };
 }

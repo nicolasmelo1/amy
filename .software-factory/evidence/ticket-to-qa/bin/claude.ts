@@ -45,6 +45,8 @@ const script = JSON.parse(fs.readFileSync(scriptFile, "utf-8")) as Script;
 const file = path.join(process.cwd(), script.file);
 
 const STEPS = [
+  { step: "chat", says: "answering the person who runs it, in their chat" },
+  { step: "discuss", says: "the work resumes only when they decide" },
   { step: "triage", says: "deciding whether a ticket can be implemented as written" },
   { step: "implement", says: "Implement this ticket in the current repository." },
   { step: "address-threads", says: "left comments on the pull request" },
@@ -67,6 +69,8 @@ fs.appendFileSync(
     step,
     model,
     retry,
+    // What the harness asked of the CLI: plan mode is claude's own read-only sandbox.
+    readOnly: process.argv.includes("plan"),
     cwd: process.cwd(),
     head: headHere(),
     prompt,
@@ -127,7 +131,28 @@ function implement(): string {
   return "worked out the total from the line items";
 }
 
+/**
+ * A turn in the chat, answered from the world's `chat.json`: the first rule
+ * whose words are in the person's newest message. A rule may hand back the
+ * config with a line added, as a block `config apply` reads.
+ */
+function chat(): string {
+  const newest = prompt.slice(prompt.lastIndexOf("Person: ") + "Person: ".length);
+  const rules = JSON.parse(fs.readFileSync(path.join(world!, "chat.json"), "utf-8")) as { when: string; answer: string; configLine?: string; configReplace?: [string, string]; commands?: string[] }[];
+  const rule = rules.find((one) => newest.includes(one.when));
+  if (!rule) return `I have no scripted answer for: ${newest}`;
+  if (rule.configLine === undefined && rule.configReplace === undefined) return rule.answer;
+  let config = fs.readFileSync(path.join(process.env.HOME ?? "", ".amy", "config.yaml"), "utf-8").trimEnd();
+  if (rule.configReplace) config = config.split(rule.configReplace[0]).join(rule.configReplace[1]);
+  if (rule.configLine !== undefined) config = `${config}\n${rule.configLine}`;
+  const commands = (rule.commands ?? ["config apply"]).join("\n");
+  return `${rule.answer}\n\n\`\`\`config.yaml\n${config}\n\`\`\`\n\n\`\`\`amy\n${commands}\n\`\`\`\n`;
+}
+
 const ANSWERS: Record<string, () => string> = {
+  chat,
+  // A discussion turn about work that waits on its owner: answered, and nothing decided.
+  discuss: () => "It asks so the rounding is the owner's call. Say /decide when it is settled.",
   triage: () => {
     // The re-read, after somebody answered the question on the ticket: clear.
     // The machine must not re-ask, and the answer it was given is what makes
