@@ -37,10 +37,10 @@ const { plugin: engine }: typeof import("@amykit/plugin-serial-engine") = await 
 // neither, which is what lets this scenario drive the real one rather than a
 // copy of it.
 const { plugin: declared }: typeof import("@amykit/workflow-ticket-to-qa") = await import(
-  dist("packages", "workflow-ticket-to-qa")
+  dist("examples", "workflow-ticket-to-qa")
 );
 // Shaped by the diagram at its package root, the way the host's loader shapes it.
-const workflow = withDiagramBeside(declared, dist("packages", "workflow-ticket-to-qa"));
+const workflow = withDiagramBeside(declared, dist("examples", "workflow-ticket-to-qa"));
 const { plugin: fanout, CHANNEL_COLLECTION }: typeof import("@amykit/plugin-notify-fanout") = await import(
   dist("plugins", "notify-fanout")
 );

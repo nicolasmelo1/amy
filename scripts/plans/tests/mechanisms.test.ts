@@ -56,6 +56,22 @@ describe("the paths the gate and the catalog read follow the move", () => {
   });
 });
 
+describe("the scenarios read the workflows where they now are", () => {
+  it("leaves no evidence script reaching a moved workflow under packages/, however the path is spelled", () => {
+    // `dist("packages", "workflow-ticket-to-qa")` names the old place as well
+    // as "packages/workflow-ticket-to-qa" does, and passes on any disk that
+    // still holds a build from before the move.
+    const spelled = /packages["'/,\s]+(workflow-errand|workflow-feature-grooming|workflow-note-to-plan|workflow-pull-request|workflow-ticket-to-qa)\b/;
+    const stale = tracked
+      .filter((file) => file.startsWith(".software-factory/evidence/") && /\.(ts|sh)$/.test(file))
+      .flatMap((file) => fs.readFileSync(path.join(root, file), "utf8").split("\n")
+        .filter((line) => spelled.test(line))
+        .map((line) => `${file}: ${line.trim()}`));
+
+    expect(stale).toEqual([]);
+  });
+});
+
 describe("a change under examples/ is seen where it was seen before", () => {
   it("activates the gate that proves the workflow it changed", () => {
     const advanced = plansAdvancedBy(
