@@ -92,6 +92,29 @@ describe("Telegram structured asks", () => {
     expect(drawn.inline_keyboard.flat().map((button) => button.text)).toContain("red");
   });
 
+  it("confirms a redelivered press whose keyboard message is gone, and keeps its answer", async () => {
+    const telegram = botApiStandIn();
+    let edits = 0;
+    const transport: typeof telegram.transport = async (request) => {
+      if (request.url.endsWith("/editMessageReplyMarkup")) {
+        edits += 1;
+        const description = edits === 1 ? "Bad Request: try again" : "Bad Request: message to edit not found";
+        return { status: 400, body: new TextEncoder().encode(JSON.stringify({ ok: false, error_code: 400, description })) };
+      }
+      return telegram.transport(request);
+    };
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-asks-"));
+    const amy = new TelegramConversation(new BotApi(TOKEN, { transport, sleep: async () => {} }), { operator: String(OPERATOR), directory });
+    const thread = await amy.open("BILL-7", "Total");
+    const since = new Date().toISOString();
+    await amy.post(thread, { text: "", ask: { id: "ship", prompt: "Ship it?", form: "approval", answers: ["approve", "reject"] } });
+    telegram.press(callback(telegram, 0), { topic: Number(thread.id) });
+
+    await expect(amy.replies(thread, since)).rejects.toThrow(/try again/);
+    await expect(amy.replies(thread, since)).resolves.toMatchObject([{ answer: { ask: "ship", chosen: ["approve"] } }]);
+    expect(telegram.pending()).toBe(0);
+  });
+
   it("sends one keyboard when the same ask is posted twice at once, and both posts name it", async () => {
     const telegram = botApiStandIn();
     const { amy } = conversation(telegram);

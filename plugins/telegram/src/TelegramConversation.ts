@@ -430,8 +430,10 @@ export class TelegramConversation implements Conversation {
     try {
       await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: markup });
     } catch (error) {
-      // Already showing what was saved: the first edit landed after all.
-      if (!(error instanceof BotApiRefusal && /message is not modified/i.test(error.description))) throw error;
+      // Already showing what was saved (the first edit landed after all), or
+      // the message is gone: either way there is nothing left to draw, and
+      // the saved answer must not hold the batch back.
+      if (!(error instanceof BotApiRefusal && /message is not modified|message to edit not found/i.test(error.description))) throw error;
     }
     return undefined;
   }

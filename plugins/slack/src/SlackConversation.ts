@@ -326,17 +326,15 @@ export class SlackConversation implements Conversation {
       // Re-read an accepted ask too: its decision is immutable, but a later
       // complete, different mark still deserves the once-only acknowledgement.
       const verdict = await this.answerOf(entry.message, entry.ask);
-      if (verdict.ambiguous) {
-        await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
-        // A later conflict cannot revoke the durable first answer: replay it
-        // so a look that previously parked still has the decision to apply.
-        if (!remembered) continue;
-        await this.acknowledgeTaken(threadTs, messages, entry.ask, remembered.chosen);
-      } else if (!verdict.chosen && !remembered) {
+      const accepted = await this.acceptedAnswer(threadTs, messages, entry, remembered, verdict);
+      if (!accepted) continue;
+      const chosen = accepted.chosen;
+      // Another copy of the ask carries the answer: this one is replayed by
+      // nothing, and a complete mark on it is a later answer, told once.
+      if (accepted.messageTs !== entry.message.ts) {
+        if (verdict.chosen || verdict.ambiguous) await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
         continue;
       }
-      const accepted = remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen!, entry.message.ts!);
-      const chosen = accepted.chosen;
       if (this.hasChangedAnswer(remembered, verdict)) await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
       if (taken.has(entry.ask.id)) {
         await this.acknowledgeTaken(threadTs, messages, entry.ask, chosen);
@@ -344,11 +342,30 @@ export class SlackConversation implements Conversation {
       }
       taken.add(entry.ask.id);
       const acceptedAt = tsToMicros(accepted.messageTs);
-      if (acceptedAt > after && accepted.messageTs === entry.message.ts) {
+      if (acceptedAt > after) {
         replies.push({ at: microsToInstant(acceptedAt), author: this.options.operator, text: entry.ask.prompt, files: [], kind: "decision", answer: { ask: entry.ask.id, chosen } });
       }
     }
     return replies;
+  }
+
+  /** The answer this ask holds after this look, if any: the remembered one, or the first complete one seen now. */
+  private async acceptedAnswer(
+    threadTs: string,
+    messages: SlackMessage[],
+    entry: { message: SlackMessage; ask: Ask },
+    remembered: { chosen: string[]; messageTs: string } | undefined,
+    verdict: AnswerVerdict,
+  ): Promise<{ chosen: string[]; messageTs: string } | undefined> {
+    if (verdict.ambiguous) {
+      await this.explainAmbiguity(threadTs, messages, entry.ask, verdict.observed);
+      // A later conflict cannot revoke the durable first answer: replay it
+      // so a look that previously parked still has the decision to apply.
+      if (remembered) await this.acknowledgeTaken(threadTs, messages, entry.ask, remembered.chosen);
+      return remembered;
+    }
+    if (!verdict.chosen) return remembered;
+    return remembered ?? this.rememberAnswer(threadTs, entry.ask.id, verdict.chosen, entry.message.ts!);
   }
 
   /** The first complete answer is immutable once seen, even if its reaction changes later. */
