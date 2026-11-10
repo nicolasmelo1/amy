@@ -131,7 +131,7 @@ describe("a config change is a shown diff, written only when it mounts (A14)", (
     expect(fs.readFileSync(world.config, "utf-8")).toBe("workflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"@amykit/plugin-telegram\"]\n");
     expect(world.said.at(-1)).toMatch(/config apply: written, and it mounts\. It takes effect when the loop restarts: \/action restart\./);
     expect(world.said.at(-1)).toMatch(/```diff\n {4}billing:\n {6}workflow: \.\/billing\n\+ {5}plugins: \["@amykit\/plugin-telegram"\]\n```$/);
-    expect(world.ran[0]!.args).toEqual(expect.arrayContaining(["mount-check", "--config"]));
+    expect(world.ran[0]!.args).toEqual(expect.arrayContaining(["mount-check", "--all", "--config"]));
   });
 
   it("leaves config.yaml byte for byte when the new one does not mount, and says why", async () => {

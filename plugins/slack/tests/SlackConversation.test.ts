@@ -694,6 +694,27 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
     expect(http.argsOf("conversations.replies").map((args) => args.ts)).toEqual([ROOT]);
   });
 
+  it("keeps a chat poll due when a work thread reads between its slots", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "still here" }]),
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    now = new Date(now.getTime() + 61_000);
+    await amy.chat();
+    await amy.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+    now = new Date(now.getTime() + 61_000);
+
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["first", "still here"]);
+    expect(http.argsOf("conversations.replies").map((args) => args.ts)).toEqual([ROOT, THREAD, ROOT]);
+  });
+
   it("edits what it said in place", async () => {
     const http = new ScriptedHttp([
       { match: method("chat.update"), answer: ok({ channel: CHANNEL, ts: "1790000203.000100", text: "two lines", message: { type: "message", text: "two lines" } }) },

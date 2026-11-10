@@ -1181,7 +1181,8 @@ program
   .command("mount-check", { hidden: true })
   .description("Internal: whether the selected profile assembles, for a daemon about to remount")
   .option("--config <file>", "assemble this config instead of config.yaml, as a change asked from the chat would be")
-  .action(async (options: { config?: string }) => {
+  .option("--all", "assemble every profile in the config, before replacing the shared config.yaml")
+  .action(async (options: { config?: string; all?: boolean }) => {
     // A config asked for in the chat is mounted from its own file first, and
     // only one that mounts replaces config.yaml (S30).
     const config = options.config ? loadConfigFrom(home, fs.readFileSync(options.config, "utf-8")) : undefined;
@@ -1196,10 +1197,13 @@ program
     // This must take the same path as daemon startup. In particular, an
     // edited fork is rebuilt before assembly; assembling its installed copy
     // would approve a candidate that the replacement daemon cannot boot.
-    const assembled = config ? await assemble(selected(config), config) : await assemble(selected());
-    if (assembled.ok) return;
-    for (const problem of assembled.problems) console.log(problem);
-    process.exitCode = 1;
+    const selectedProfiles = options.all ? Object.values(profiles(config ?? loadConfig(home), home)) : [selected(config)];
+    for (const profile of selectedProfiles) {
+      const assembled = config ? await assemble(profile, config) : await assemble(profile);
+      if (assembled.ok) continue;
+      for (const problem of assembled.problems) console.log(`${profile.name}: ${problem}`);
+      process.exitCode = 1;
+    }
   });
 
 /** Makes a directly invoked foreground daemon visible to concurrent update. */

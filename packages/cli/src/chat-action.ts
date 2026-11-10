@@ -106,7 +106,7 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
   fs.mkdirSync(path.dirname(actor.config), { recursive: true });
   fs.writeFileSync(candidate, next, { mode: 0o600 });
   try {
-    const checked = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check", "--config", candidate], {
+    const checked = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check", "--all", "--config", candidate], {
       timeoutMs: 10 * 60 * 1000,
       ...(actor.env ? { env: actor.env } : {}),
     });

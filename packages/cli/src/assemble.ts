@@ -118,7 +118,8 @@ export function chatPartsOf(mounted: Mounted): ChatParts {
 /**
  * The chat's parts when the workflow does not mount (S29): every configured
  * plugin but the workflow, loaded one by one so one that will not import
- * costs only itself, mounted together, and failing that each on its own.
+ * costs only itself, mounted together, and failing that in every smaller
+ * dependency-complete group before each one on its own.
  * The chat outlives a broken mount because it never needed the workflow.
  */
 export async function assembleChat(
@@ -149,11 +150,14 @@ export async function assembleChat(
 async function recoverChatParts(plugins: readonly Plugin[], slices: Record<string, unknown>, host: Parameters<typeof mount>[2]): Promise<ChatParts> {
   // A workflow-dependent engine can make the all-plugin recovery mount fail,
   // although the relay and its configured harnesses can still answer the chat.
-  // Try each complete group with one plugin removed before falling back to
-  // isolated plugins, which cannot satisfy a relay's harness contribution.
-  for (const omitted of plugins) {
-    const compatible = await mount(plugins.filter((plugin) => plugin !== omitted), slices, host).catch(() => undefined);
-    if (compatible?.ok) return chatPartsOf(compatible.mounted);
+  // Keep trying the largest groups first. Two unrelated providers can both
+  // fail while the conversation, relay and its configured harnesses remain a
+  // complete mount; all-but-one alone cannot reach that recovery path.
+  for (let size = plugins.length - 1; size >= 2; size -= 1) {
+    for (const compatible of groupsOf(plugins, size)) {
+      const mounted = await mount(compatible, slices, host).catch(() => undefined);
+      if (mounted?.ok) return chatPartsOf(mounted.mounted);
+    }
   }
   let conversation: Conversation | undefined;
   let budget: Budget | undefined;
@@ -167,6 +171,17 @@ async function recoverChatParts(plugins: readonly Plugin[], slices: Record<strin
     for (const [name, harness] of parts.harnesses) if (!harnesses.has(name)) harnesses.set(name, harness);
   }
   return { ...(conversation ? { conversation } : {}), harnesses, ...(budget ? { budget } : {}) };
+}
+
+/** Every group of one size, preserving config order so recovery is deterministic. */
+function* groupsOf<T>(items: readonly T[], size: number, from = 0, chosen: readonly T[] = []): Generator<readonly T[]> {
+  if (chosen.length === size) {
+    yield chosen;
+    return;
+  }
+  for (let index = from; index <= items.length - (size - chosen.length); index += 1) {
+    yield* groupsOf(items, size, index + 1, [...chosen, items[index]!]);
+  }
 }
 
 /**

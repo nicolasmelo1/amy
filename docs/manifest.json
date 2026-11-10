@@ -7228,6 +7228,10 @@
             {
               "flags": "--config <file>",
               "description": "assemble this config instead of config.yaml, as a change asked from the chat would be"
+            },
+            {
+              "flags": "--all",
+              "description": "assemble every profile in the config, before replacing the shared config.yaml"
             }
           ],
           "isDefault": false,

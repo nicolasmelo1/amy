@@ -420,6 +420,7 @@ export class SlackConversation implements Conversation {
     return path.join(this.chatDirectory(), "replies.json");
   }
 
+
   private fileChatMessage(message: SlackMessage, root: string): void {
     const text = (message.text ?? "").trim();
     if (!text) return;
@@ -734,9 +735,12 @@ export class SlackConversation implements Conversation {
 
   /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
   private async threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
-    // Work looks use this path too. Recording every call makes chat polling
-    // yield the next slot after a work-thread read instead of taking it first.
-    writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
+    // An existing chat conversation gets its own scheduled slot. Work reads
+    // still happen when the channel has no chat to poll, but never move that
+    // chat's quota marker forward and starve an operator follow-up.
+    if (jsonIn(path.join(this.chatDirectory(), "threads")).length === 0) {
+      writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
+    }
     return this.pages("conversations.replies", {
       channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
       ...(inclusive ? { inclusive: "true" } : {}),
