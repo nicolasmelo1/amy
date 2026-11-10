@@ -189,6 +189,20 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
     expect(await amy.replies(thread, since)).toMatchObject([{ kind: "decision", answer: { ask: "ship", chosen: ["approve"] } }]);
   });
 
+  it("opens each work afresh when topics are turned off, and again when they are turned back on", async () => {
+    const telegram = botApiStandIn();
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-switch-"));
+    const withTopics = await amyWith(telegram, true, directory).open("TBO-1", "Totals");
+    const without = amyWith(telegram, false, directory);
+
+    const addressed = await without.open("TBO-1", "Totals");
+    await without.post(addressed, { text: "Which currency?" });
+
+    expect(withTopics.id).toMatch(/^\d+$/);
+    expect(addressed.id).toMatch(/^w[0-9a-f]{16}$/);
+    expect(await amyWith(telegram, true, directory).open("TBO-1", "Totals")).toEqual(withTopics);
+  });
+
   it("is ready in the doctor with topic mode off", async () => {
     const telegram = botApiStandIn({ topicsEnabled: false });
 

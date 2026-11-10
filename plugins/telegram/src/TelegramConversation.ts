@@ -169,7 +169,6 @@ export class TelegramConversation implements Conversation {
       privateDirectory(options.directory);
       privateDirectory(this.shared());
     }
-    assertTopicMode(options.directory, options.topics !== false);
     this.operator = normalisedId(options.operator);
     this.identity = options.readOnly ? readIdentity(options.directory) ?? "" : identityOf(options.directory);
     if (this.topics()) this.threads = true;
@@ -243,7 +242,7 @@ export class TelegramConversation implements Conversation {
     const key = `${this.chatId()}-${thread}`;
     createOnce(path.join(this.shared(), "owners", `${key}.json`), owner, this.shared());
     // Created once: if another process recorded a thread for this work first, that one is the work's.
-    createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: this.topics() ? Number(thread) : thread, workId }, this.options.directory);
+    createOnce(path.join(this.threadsDirectory(), `${fileNameOf(workId)}.json`), { topic: this.topics() ? Number(thread) : thread, workId }, this.options.directory);
     // Replaced, not created once: a project's phases open one work id each, and
     // the phase that opened it last is the one an addressed message reaches.
     durableDirectory(path.join(this.shared(), "works"), this.shared());
@@ -416,6 +415,16 @@ export class TelegramConversation implements Conversation {
     return this.options.topics !== false;
   }
 
+  /**
+   * Where each work's thread is remembered, one place per mode: a topic is no
+   * thread in a chat without topics, nor the other way round, so turning
+   * topics on or off opens each work afresh rather than reusing an id the
+   * new mode cannot post to.
+   */
+  private threadsDirectory(): string {
+    return path.join(this.options.directory, this.topics() ? "topics" : "addressed");
+  }
+
   /** Where a work's message goes: its topic, or the chat itself when works share it. */
   private inThread(thread: string): { message_thread_id?: number } {
     return this.topics() ? { message_thread_id: Number(thread) } : {};
@@ -429,8 +438,8 @@ export class TelegramConversation implements Conversation {
   }
 
   private workOfThread(thread: string): string | undefined {
-    for (const name of jsonFilesIn(path.join(this.options.directory, "topics"))) {
-      const known = readJson<{ topic: number | string; workId?: string }>(path.join(this.options.directory, "topics", name), true);
+    for (const name of jsonFilesIn(this.threadsDirectory())) {
+      const known = readJson<{ topic: number | string; workId?: string }>(path.join(this.threadsDirectory(), name), true);
       if (known && String(known.topic) === thread) return known.workId;
     }
     return undefined;
@@ -779,7 +788,7 @@ export class TelegramConversation implements Conversation {
   }
 
   private topicOfWork(workId: string): string | undefined {
-    const topic = readJson<{ topic: number | string }>(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`))?.topic;
+    const topic = readJson<{ topic: number | string }>(path.join(this.threadsDirectory(), `${fileNameOf(workId)}.json`))?.topic;
     return topic === undefined ? undefined : String(topic);
   }
 
@@ -1196,19 +1205,6 @@ function readJson<T>(file: string, lenient = false): T | undefined {
   } catch (error) {
     if (lenient) return undefined;
     throw error;
-  }
-}
-
-/** A remembered thread belongs to the mode that created it; changing mode cannot reinterpret it. */
-function assertTopicMode(directory: string, topics: boolean): void {
-  for (const name of jsonFilesIn(path.join(directory, "topics"))) {
-    const remembered = readJson<{ topic?: unknown; workId?: unknown }>(path.join(directory, "topics", name), true);
-    if (!remembered || (typeof remembered.topic !== "number" && typeof remembered.topic !== "string")) continue;
-    const matches = topics ? typeof remembered.topic === "number" : typeof remembered.topic === "string" && /^w[0-9a-f]{16}$/.test(remembered.topic);
-    if (!matches) {
-      const work = typeof remembered.workId === "string" ? ` for ${remembered.workId}` : "";
-      throw new Error(`@amykit/plugin-telegram: \`topics\` cannot change while remembered work threads${work} exist; remove or migrate this profile's Telegram state first`);
-    }
   }
 }
 

@@ -14,15 +14,6 @@ function amyWith(telegram: BotApiStandIn, directory = fs.mkdtempSync(path.join(o
 const askedAt = (telegram: BotApiStandIn) => new Date(telegram.now() * 1000).toISOString();
 
 describe("a topic per piece of work", () => {
-  it("refuses changing topic mode while remembered work threads exist", async () => {
-    const telegram = botApiStandIn();
-    const { amy, directory } = amyWith(telegram);
-    await amy.open("BILL-7", "Total");
-    const api = new BotApi(TOKEN, { transport: telegram.transport, sleep: async () => {} });
-
-    expect(() => new TelegramConversation(api, { operator: String(OPERATOR), directory, topics: false })).toThrow(/`topics` cannot change.*BILL-7/);
-  });
-
   it("opens one topic in the operator's private chat, and the same one again", async () => {
     const telegram = botApiStandIn();
     const { amy } = amyWith(telegram);
