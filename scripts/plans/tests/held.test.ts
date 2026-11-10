@@ -66,6 +66,22 @@ describe("a plan is held to what it said", () => {
     expect(problems).toEqual([]);
   });
 
+  it("lets a note with no declaration, written before plans had one, change its prose with code", () => {
+    const { problems } = judge(
+      [step("c1", ["src/a.ts", "docs/design/old.md"], { "docs/design/old.md": "# An old note\n\nMore prose.\n" })],
+      { "docs/design/old.md": "# An old note\n" },
+    );
+    expect(problems).toEqual([]);
+  });
+
+  it("still refuses a declaration removed together with code", () => {
+    const { problems } = judge(
+      [step("c1", ["src/a.ts", "plans/x.md"], { "plans/x.md": "# A plan\n" })],
+      { "plans/x.md": groomed },
+    );
+    expect(problems).toHaveLength(1);
+  });
+
   it("ignores a plan's prose under its declaration", () => {
     const { problems } = judge(
       [step("c1", ["src/a.ts", "plans/x.md"], { "plans/x.md": `${groomed}\nA longer why.\n` })],

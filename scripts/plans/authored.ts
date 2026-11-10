@@ -117,7 +117,8 @@ function proofProblems(file: string, criteria: Declaration["criteria"] & object,
 /** A command the CLI declares, by the words that name it. */
 interface Known {
   readonly words: readonly string[];
-  readonly options: ReadonlySet<string>;
+  /** Each option, and whether a value follows it. */
+  readonly options: ReadonlyMap<string, boolean>;
   readonly takesArguments: boolean;
 }
 
@@ -129,7 +130,7 @@ function commandProblems(file: string, text: string, criteria: Declaration["crit
   const globals = new Map(cli.options.flatMap((option) => flagsOf(option.flags).map((flag) => [flag, /[<[]/.test(option.flags)] as const)));
   const known: Known[] = cli.commands.map((command) => ({
     words: command.path.map((word) => word.split(" ")[0]!),
-    options: new Set(command.options.flatMap((option) => flagsOf(option.flags))),
+    options: new Map(command.options.flatMap((option) => flagsOf(option.flags).map((flag) => [flag, /[<[]/.test(option.flags)] as const))),
     takesArguments: command.arguments.length > 0 || command.path.some((word) => word.includes(" ")),
   }));
   const problems: string[] = [];
@@ -137,22 +138,34 @@ function commandProblems(file: string, text: string, criteria: Declaration["crit
     const said = `amy ${span!.trim()}`;
     const problem = unknownIn(span!, known, globals);
     if (problem === undefined) continue;
-    if (promised.includes(said) || (problem.command !== "" && promised.includes(`amy ${problem.command}`))) continue;
+    // A criterion that builds a command covers it; an option on a command that
+    // exists is covered only by a criterion naming that option.
+    const covered = problem.flag === undefined
+      ? problem.command !== "" && promised.includes(`amy ${problem.command}`)
+      : promised.includes(problem.flag);
+    if (promised.includes(said) || covered) continue;
     problems.push(`${file} names \`${said}\`, and ${problem.why}: name what the CLI declares at the base, or the criterion that builds it`);
   }
   return [...new Set(problems)];
 }
 
-function unknownIn(span: string, known: readonly Known[], globals: ReadonlyMap<string, boolean>): { command: string; why: string } | undefined {
+interface Unknown {
+  readonly command: string;
+  readonly why: string;
+  /** The option the command does not declare, when that is what is unknown. */
+  readonly flag?: string;
+}
+
+function unknownIn(span: string, known: readonly Known[], globals: ReadonlyMap<string, boolean>): Unknown | undefined {
   const all = span.trim().split(/\s+/);
   const leading = globalsBefore(all, globals);
   if ("unknown" in leading) return leading.unknown;
   const tokens = all.slice(leading.next);
-  const found = commandIn(tokens, known);
+  const found = commandIn(tokens, known, globals);
   if (found === undefined || "unknown" in found) return found?.unknown;
   const words = found.match.words.join(" ");
   const flag = tokens.map((token) => /^(--?[a-zA-Z][\w-]*)/.exec(token)?.[1]).find((one) => one !== undefined && !found.match.options.has(one) && !globals.has(one) && one !== "--help" && one !== "-h");
-  return flag ? { command: words, why: `amy ${words} declares no ${flag}` } : undefined;
+  return flag ? { command: words, why: `amy ${words} declares no ${flag}`, flag } : undefined;
 }
 
 /** Steps over the global options a span opens with, and the value each takes, to where its command starts. */
@@ -170,10 +183,17 @@ function globalsBefore(tokens: readonly string[], globals: ReadonlyMap<string, b
 }
 
 /** The command a span's leading words name, the first word that names none, or nothing when it names no command at all. */
-function commandIn(tokens: readonly string[], known: readonly Known[]): { match: Known } | { unknown: { command: string; why: string } } | undefined {
+function commandIn(tokens: readonly string[], known: readonly Known[], globals: ReadonlyMap<string, boolean>): { match: Known } | { unknown: Unknown } | undefined {
   const words: string[] = [];
   let match: Known | undefined;
-  for (const token of tokens) {
+  for (let at = 0; at < tokens.length; at += 1) {
+    const token = tokens[at]!;
+    // An option between the words, and its value, is stepped over: the words around it still name the command.
+    if (token.startsWith("-")) {
+      const [flag, inline] = token.split("=", 2) as [string, string | undefined];
+      if ((match?.options.get(flag) ?? globals.get(flag)) && inline === undefined) at += 1;
+      continue;
+    }
     if (!/^[a-z][a-z0-9-]*$/.test(token)) break;
     const next = known.find((one) => same(one.words, [...words, token]));
     if (next) {

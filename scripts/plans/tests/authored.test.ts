@@ -118,6 +118,16 @@ describe("the commands a groomed plan names", () => {
     expect(authoredProblems({ file: "plans/x.md", text: plan({ body: "`amy workflow add ./w --onto mine`" }), baseFiles, cli: parsed })).toEqual([expect.stringMatching(/declares no --onto/)]);
   });
 
+  it("are checked through an option between their words", () => {
+    expect(judge(plan({ body: "`amy workflow --workflow mine nonexistent`" }))).toEqual([expect.stringMatching(/the CLI declares no amy workflow nonexistent/)]);
+    expect(judge(plan({ body: "`amy workflow --workflow=mine add ./w --into mine`" }))).toEqual([]);
+  });
+
+  it("refuse an option a criterion only names the command of", () => {
+    expect(judge(plan({ statement: "`amy doctor` says what is wrong", body: "Then `amy doctor --fix`." }))).toEqual([expect.stringMatching(/amy doctor declares no --fix/)]);
+    expect(judge(plan({ statement: "`amy doctor --fix` repairs it", body: "Then `amy doctor --fix`." }))).toEqual([]);
+  });
+
   it("pass a command one of the plan's criteria builds", () => {
     expect(judge(plan({ statement: "`amy setup` walks the machine", body: "Then `amy setup`." }))).toEqual([]);
   });

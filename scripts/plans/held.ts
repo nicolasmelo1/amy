@@ -82,11 +82,13 @@ export function heldProblems(input: HeldInput): HeldReading {
   return { problems, groomed: [...groomed].sort() };
 }
 
-/** The declaration a plan's text opens with, or the whole text when it has none to parse. */
+/** The declaration a plan's text opens with, or nothing when it opens with none. */
 function declarationOf(text: string | undefined): string | undefined {
   if (text === undefined) return undefined;
   const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
-  if (!match) return text;
+  // A note written before plans were declarations has no declaration to hold:
+  // its prose moves freely, and one that loses its declaration still differs.
+  if (!match) return undefined;
   try {
     return JSON.stringify(normalized(yaml.parse(match[1]!)));
   } catch {
