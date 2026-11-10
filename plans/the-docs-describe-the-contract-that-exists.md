@@ -25,36 +25,98 @@ sources:
   - { id: S23, kind: reference, ref: "plans/a-plugin-brings-its-own-commands.md", said: "Quickstart says amy start alone is enough; tick, which discovers first once this plan lands, is how somebody watches one move before trusting the loop" }
   - { id: S24, kind: decision, said: "workflow-feature-grooming is described as what it is; the docs stop calling it something it is not" }
   - { id: S25, kind: decision, said: "Write a workflow's mistakes table loses every row the host now prevents and keeps the ones it cannot" }
-  - { id: S26, kind: decision, said: "the checked blocks are every ```ts fence on the five pages; a page yielding zero blocks fails the check; a block opts out only by a named marker, never by its fence's language. Decided 2026-11-08" }
+  - { id: S26, kind: decision, said: "the checked blocks are every ```ts fence on a checked page; a page yielding zero blocks fails the check; a block opts out only by a named marker, never by its fence's language. Decided 2026-11-08" }
   - { id: S27, kind: decision, said: "a count is a number or a number-word directly before a plural noun, in a heading or a sentence; a generated table is exempt by its marker, nothing else is. Decided 2026-11-08" }
+  - { id: S28, kind: decision, said: "the scope grows from five pages to every page a user reads: README, CONTRIBUTING, docs outside design, examples, plugins and packages READMEs. Plans, changesets, changelogs and docs/design keep their prose. Decided 2026-11-10" }
+  - { id: S29, kind: decision, said: "the root README is the entrypoint and a summary: logo, one paragraph, install in two commands, then a link to every part of the docs. No taglines. Modelled on herdrdev/herdr and pingdotgg/t3code. Decided 2026-11-10" }
+  - { id: S30, kind: decision, said: "amy is said to be an opinionated state machine framework where everything is a plugin, configured your way and left running, on Claude Code, Codex and Hermes subscriptions. Decided 2026-11-10" }
+  - { id: S31, kind: decision, said: "the mark becomes assets/logo.png, cropped, its white made transparent by luminance so the anti-aliased edge keeps no halo; assets/amy-mark.png goes. Decided 2026-11-10" }
+  - { id: S32, kind: decision, said: "the README command table and factory counts leave it: the commands live in the CLI reference, the counts in The gate. Decided 2026-11-10" }
+  - { id: S33, kind: decision, said: "Guides is the second group: project vs workflow vs plugin first, then install a plugin (by name or a fork's path), compose workflows, write a workflow, write and keep a plugin, what a project is, the chat. Decided 2026-11-10" }
+  - { id: S34, kind: decision, said: "the chat guide says Telegram and Slack are the gateway: amy asks there, sends the options, takes the answer, and answers questions about the work. Decided 2026-11-10" }
+  - { id: S35, kind: decision, said: "slop, outside code, inline code and generated blocks: the em dash, an en dash between spaces, and not just, isn't just, not only, not merely. Decided 2026-11-10" }
+  - { id: S36, kind: decision, said: "slop words: delve, tapestry, testament, pivotal, crucial, intricacies, meticulous, vibrant, garner, showcase, highlighting, underscore, fostering, enhance, leverage, multifaceted, seamless, robust, powerful, landscape, serves as, stands as, boasts. Decided 2026-11-10" }
+  - { id: S37, kind: decision, said: "slop adverbs and amy's own taglines: quietly, genuinely, simply, truly, essentially, actually, leave it running, the long part, somewhere else, the real point, the whole point, worth pausing, load-bearing. Decided 2026-11-10" }
+  - { id: S38, kind: decision, said: "allowed, by decision: the arrow, an exclamation mark, emoji, curly quotes, chatbot connectives, deliberately, a bullet opening in bold, a Title Case heading. Decided 2026-11-10" }
+  - { id: S39, kind: reference, ref: "https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing", said: "the catalogue the slop words, negative parallelism and em dash overuse come from" }
+  - { id: S40, kind: decision, said: "prose limits, code and generated blocks not counted: root README 2000 characters, a guide 6000, a concept 8000, an example's introduction 1500. Decided 2026-11-10" }
+  - { id: S41, kind: decision, said: "the README is held to being a summary by proxies: it links every nav group, each of its sections ends in a link, and its install block is at most two commands. Decided 2026-11-10" }
+  - { id: S42, kind: decision, said: "the README has a line for agents, pointing at amy's skills; a glossary gives each term an anchor and a guide's first use of a term links it. Decided 2026-11-10" }
+  - { id: S43, kind: decision, said: "a plugin README stays wholly generated; what it extends (ports, actions, operations, commands, events, environment) is read from the package, and its paragraph on when to use it is amy.about in its package.json. Decided 2026-11-10" }
+  - { id: S44, kind: decision, said: "what the plans delivered is covered: every note in docs/design is linked from a page outside docs/design and plans, or listed in the check as superseded, naming its replacement. Decided 2026-11-10" }
+  - { id: S45, kind: reference, ref: "plans/a-plugin-says-what-it-is.md", said: "puts amy.kinds in package.json and refuses a kinds member on definePlugin; amy.about follows the same place" }
 touches:
-  - docs/concepts/plugins.md
-  - docs/concepts/workflows.md
-  - docs/concepts/ports.md
-  - docs/build/write-a-plugin.md
-  - docs/build/write-a-workflow.md
-  - docs/start/quickstart.md
-  - docs/catalog/index.md
+  - README.md
+  - CONTRIBUTING.md
+  - assets/logo.png
+  - assets/amy-mark.png
+  - docs/nav.yaml
+  - docs/index.md
+  - docs/manifest.json
+  - docs/start/*.md
+  - docs/concepts/*.md
+  - docs/concepts/glossary.md
+  - docs/build/*.md
+  - docs/guides/project-workflow-plugin.md
+  - docs/guides/install-a-plugin.md
+  - docs/guides/compose-workflows.md
+  - docs/guides/write-a-workflow.md
+  - docs/guides/write-a-plugin.md
+  - docs/guides/what-a-project-is.md
+  - docs/guides/the-chat.md
+  - docs/reference/*.md
+  - docs/catalog/*.md
+  - docs/development/*.md
+  - examples/README.md
+  - examples/*/README.md
+  - plugins/*/README.md
+  - plugins/*/package.json
+  - packages/*/README.md
+  - registry/*.json
+  - scripts/docs/blocks.ts
+  - scripts/docs/generate.ts
+  - scripts/docs/prose.ts
+  - scripts/docs/sources/packages.ts
+  - scripts/docs/render/readme.ts
+  - scripts/docs/tests/readme.test.ts
+  - scripts/docs/tests/example-readme.test.ts
   - scripts/docs/tests/examples.test.ts
+  - scripts/docs/tests/prose.test.ts
+  - scripts/docs/tests/plugin-readme.test.ts
 criteria:
-  - { id: A1, statement: "every code block on the five pages typechecks against the current core", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S2, S4, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S20, S22] }
-  - { id: A2, statement: "no heading or sentence on the five pages states a count of members that is not generated", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S1, S2, S21] }
+  - { id: A1, statement: "every ts block on every guide and concept page typechecks against the current core", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S2, S4, S7, S8, S9, S10, S11, S12, S13, S14, S15, S16, S17, S20, S22, S26] }
+  - { id: A2, statement: "no heading or sentence on a page in scope states a count of members that is not generated", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S1, S2, S21, S27, S28] }
   - { id: A3, statement: "the example Write a workflow builds is the one amy workflow new writes, and it runs before anybody edits it", proof: "assertion:mine.the_scaffold_runs_before_it_is_edited", sources: [S3, S5, S6, S18, S19, S23, S24, S25] }
-  - { id: A4, statement: "one of the five pages with its ts fences removed, or relabelled, fails the check naming the page; a block skipped without the named marker fails it too", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S26] }
-  - { id: A5, statement: "'seven things' in a heading or a sentence fails the count check, and the same words inside a marked generated table do not", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S21, S27] }
+  - { id: A4, statement: "a guide or concept page with its ts fences removed or relabelled fails the check naming the page; a block skipped without the named marker fails it too", proof: "deferred:test:scripts/docs/tests/examples.test.ts", sources: [S26] }
+  - { id: A5, statement: "'seven things' in a heading or a sentence fails the count check, and the same words inside a marked generated table do not", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S21, S27] }
+  - { id: A6, statement: "each listed slop pattern in the prose of a page in scope fails the docs check naming file, line and pattern; the same text in code, inline code or a generated block passes", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S35, S36, S37, S39] }
+  - { id: A7, statement: "an arrow, an exclamation mark, an emoji, a curly quote and deliberately pass the prose check", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S38] }
+  - { id: A8, statement: "a page over its prose limit fails the docs check naming the page, its size and the limit", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S40] }
+  - { id: A9, statement: "the root README fails the check when it drops a link to a nav group, ends a section without a link, or installs in more than two commands", proof: "deferred:test:scripts/docs/tests/readme.test.ts", sources: [S29, S32, S41] }
+  - { id: A10, statement: "the root README names Claude Code, Codex and Hermes, links the skills for agents, and shows assets/logo.png, whose four corners are fully transparent", proof: "deferred:test:scripts/docs/tests/readme.test.ts", sources: [S30, S31, S42] }
+  - { id: A11, statement: "a guide's first use of a glossary term without a link to its anchor fails the check naming the page and the term", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S33, S42] }
+  - { id: A12, statement: "a docs/design note linked from no page outside docs/design and plans, and not listed as superseded, fails the check naming the note", proof: "deferred:test:scripts/docs/tests/prose.test.ts", sources: [S33, S34, S44] }
+  - { id: A13, statement: "a plugin README lists the ports, actions, operations, commands, events and environment its package registers, and its amy.about; removing amy.about fails the check naming the plugin", proof: "deferred:test:scripts/docs/tests/plugin-readme.test.ts", sources: [S43, S45] }
+  - { id: A14, statement: "an example README's introduction opens with one sentence saying what it does and stays under its limit", proof: "deferred:test:scripts/docs/tests/example-readme.test.ts", sources: [S28, S40] }
 crosses:
   - { mechanism: workflow-tooling, answer: n/a, why: "the page teaches what amy workflow new already writes (workflow.mmd, index.ts); the scaffold and amy workflow check are unchanged, and A3 runs them as they are" }
   - { mechanism: diagram, answer: n/a, why: "the pages describe workflow.mmd as diagram.ts already reads it; the reader is unchanged" }
   - { mechanism: config, answer: n/a, why: "Write a plugin shows definePlugin's typed config as the schema already types it; no schema changes" }
+  - { mechanism: rendering, answer: n/a, why: "only the READMEs of ui and ui-conformance are regenerated; no view or renderer changes" }
+  - { mechanism: install-and-update, answer: n/a, why: "amy.about is read by the docs probe only; the loader does not read it, and install a plugin describes amy add as it is" }
 guarantee:
-  - { holds: "every code block on the five pages typechecks against the current core", not_against: "a block that typechecks but no longer does what its prose says: types prove the shape, not the behaviour" }
-  - { holds: "no hand-written count of members on the five pages", not_against: "pages outside these five, which keep their prose as it is" }
-  - { holds: "the check is green only after it read at least one block on each of the five pages", not_against: "a count spelled other than a number or number-word before a plural noun, such as 'a pair of'" }
+  - { holds: "every code block on the guide and concept pages typechecks against the current core", not_against: "a block that typechecks but no longer does what its prose says: types prove the shape, not the behaviour" }
+  - { holds: "no hand-written count of members and no listed slop pattern in the prose of a page in scope", not_against: "slop the lists do not name: rule of three, uniform sentences, a tone; review still reads for those" }
+  - { holds: "the README links every part of the docs and stays under its limit", not_against: "whether it reads well: the proxies prove it points everywhere, not that it persuades" }
+  - { holds: "every design note is reachable from a page a user reads", not_against: "a note linked from a page that misstates it" }
   - { holds: "the page's example runs before anybody edits it, on this repository's amy", not_against: "a reader on an installed amy older than this repository's core" }
 cut:
   - "renaming workflow-feature-grooming: a breaking change to every config naming it; its own plan if the answer is yes"
-exit: "somebody who has never seen this repository writes a workflow from Write a workflow alone, as a diagram and one file, and it mounts on the first boot"
+  - "rewriting docs/design: the argument behind each decision, kept as written (S28)"
+  - "detecting a rule of three, uniform sentence length or 'X, not Y': too many false positives to gate (S39)"
+exit: "somebody new reads the README, installs amy in two commands, tells a project, a workflow and a plugin apart from Guides alone, and writes a workflow that mounts on the first boot"
 ---
 # The docs describe the contract that exists
 
-The pages somebody reads to write a first plugin or workflow have prose that fell behind the code, making the contract look heavier than it is.
+Every page somebody reads is rewritten once against what exists, starting at a README that is a summary.
+Slop, hand counts and over-long prose fail the docs check instead of waiting for a reviewer.
