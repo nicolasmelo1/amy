@@ -221,6 +221,16 @@ describe("a diff of two configs", () => {
 });
 
 describe("two config changes at once", () => {
+  it("recovers a lock left by a killed config writer", async () => {
+    const world = setup("```config.yaml\nworkflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"x\"]\n```\n```amy\nconfig apply\n```", "/action add x");
+    fs.writeFileSync(`${world.config}.applying`, "999999999");
+
+    await answerTheChat(world.desk);
+
+    expect(fs.readFileSync(world.config, "utf-8")).toContain('plugins: ["x"]');
+    expect(fs.existsSync(`${world.config}.applying`)).toBe(false);
+  });
+
   it("refuses a candidate checked against a config that changed meanwhile", async () => {
     const world = setup("```config.yaml\nworkflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"x\"]\n```\n```amy\nconfig apply\n```", "/action add x");
     const racing = chatAct({

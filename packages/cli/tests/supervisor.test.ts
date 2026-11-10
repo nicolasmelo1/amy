@@ -10,7 +10,7 @@ import { supervisorCheck } from "../src/doctor.js";
 import { profilePaths } from "../src/paths.js";
 import { resolveProfile } from "../src/profiles.js";
 import { LoopSpec, MachineFacts, findSupervisor, labelFor } from "../src/supervisor/index.js";
-import { plistOf } from "../src/supervisor/launchd.js";
+import { launchd, plistOf } from "../src/supervisor/launchd.js";
 import { unitOf } from "../src/supervisor/systemd.js";
 import { launcherOf, taskOf } from "../src/supervisor/windows.js";
 
@@ -83,6 +83,29 @@ describe("one supervisor contract, chosen by platform (A15)", () => {
 });
 
 describe("what each supervisor is handed", () => {
+  it("removes a launchd plist before bootout can terminate the stopping child", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-launchd-stop-"));
+    const label = "amy.billing.0a1b2c3d";
+    const plist = path.join(home, "Library", "LaunchAgents", `${label}.plist`);
+    fs.mkdirSync(path.dirname(plist), { recursive: true });
+    fs.writeFileSync(plist, "installed");
+    let existedAtBootout = true;
+    const supervisor = launchd(machineWith("darwin", {
+      "launchctl bootout": { ok: true },
+    }, {
+      home,
+      runner: { run: async (command: string, args: readonly string[]) => {
+        if (command === "launchctl" && args[0] === "bootout") existedAtBootout = fs.existsSync(plist);
+        return { ok: true, exitCode: 0, stdout: "", stderr: "" };
+      } },
+    }));
+
+    await supervisor.stop(label);
+
+    expect(existedAtBootout).toBe(false);
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
   it("keeps a launchd agent alive only when it did not exit cleanly, throttled, at load", () => {
     const plist = plistOf({ ...SPEC, env: { ...SPEC.env, NOTE: "a & b" } });
     expect(plist).toContain("<key>KeepAlive</key>\n  <dict>\n    <key>SuccessfulExit</key><false/>");

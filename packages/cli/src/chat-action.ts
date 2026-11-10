@@ -116,9 +116,7 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     // Under one lock for the machine, and only over the config this was checked against:
     // a change another chat applied meanwhile is never silently replaced.
     const lock = `${actor.config}.applying`;
-    try {
-      fs.writeFileSync(lock, String(actor.pid), { flag: "wx", mode: 0o600 });
-    } catch {
+    if (!claimConfigLock(lock, actor.pid)) {
       return "config apply: not written — another config change is being applied; ask again once it is done.";
     }
     try {
@@ -133,6 +131,37 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     fs.rmSync(candidate, { force: true });
   }
   return `config apply: written, and it mounts. It takes effect when the loop restarts: /action restart.${fenced(diff, "diff")}`;
+}
+
+/** Claims the config lock, recovering one left by a process that no longer exists. */
+function claimConfigLock(lock: string, pid: number): boolean {
+  try {
+    fs.writeFileSync(lock, String(pid), { flag: "wx", mode: 0o600 });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const owner = Number(fs.readFileSync(lock, "utf-8").trim());
+  if (Number.isSafeInteger(owner) && owner > 0 && processIsAlive(owner)) return false;
+  // Rename makes stale recovery exclusive: another contender either wins this
+  // rename or sees the newly acquired lock below, never removes its owner.
+  try {
+    fs.renameSync(lock, `${lock}.${randomUUID()}.abandoned`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+  return claimConfigLock(lock, pid);
+}
+
+/** EPERM means another user owns a live process; only ESRCH proves it is gone. */
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
 }
 
 /**

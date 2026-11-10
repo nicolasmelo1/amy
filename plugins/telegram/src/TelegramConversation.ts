@@ -169,6 +169,7 @@ export class TelegramConversation implements Conversation {
       privateDirectory(options.directory);
       privateDirectory(this.shared());
     }
+    assertTopicMode(options.directory, options.topics !== false);
     this.operator = normalisedId(options.operator);
     this.identity = options.readOnly ? readIdentity(options.directory) ?? "" : identityOf(options.directory);
     if (this.topics()) this.threads = true;
@@ -1195,6 +1196,19 @@ function readJson<T>(file: string, lenient = false): T | undefined {
   } catch (error) {
     if (lenient) return undefined;
     throw error;
+  }
+}
+
+/** A remembered thread belongs to the mode that created it; changing mode cannot reinterpret it. */
+function assertTopicMode(directory: string, topics: boolean): void {
+  for (const name of jsonFilesIn(path.join(directory, "topics"))) {
+    const remembered = readJson<{ topic?: unknown; workId?: unknown }>(path.join(directory, "topics", name), true);
+    if (!remembered || (typeof remembered.topic !== "number" && typeof remembered.topic !== "string")) continue;
+    const matches = topics ? typeof remembered.topic === "number" : typeof remembered.topic === "string" && /^w[0-9a-f]{16}$/.test(remembered.topic);
+    if (!matches) {
+      const work = typeof remembered.workId === "string" ? ` for ${remembered.workId}` : "";
+      throw new Error(`@amykit/plugin-telegram: \`topics\` cannot change while remembered work threads${work} exist; remove or migrate this profile's Telegram state first`);
+    }
   }
 }
 

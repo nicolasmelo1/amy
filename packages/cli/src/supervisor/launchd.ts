@@ -34,8 +34,8 @@ export function launchd(machine: MachineFacts): Supervisor & { domain(): Promise
       if (!loaded.ok) throw new Error(`launchctl bootstrap ${where} refused ${spec.label}: ${loaded.stderr || loaded.stdout}`);
     },
     async stop(label: string) {
-      await machine.runner.run("launchctl", ["bootout", `${await target()}/${label}`]);
       fs.rmSync(plist(label), { force: true });
+      await machine.runner.run("launchctl", ["bootout", `${await target()}/${label}`]);
     },
     async installed(label: string) {
       return fs.existsSync(plist(label));
