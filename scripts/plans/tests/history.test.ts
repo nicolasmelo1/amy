@@ -84,6 +84,26 @@ describe("the change a plan is judged in", () => {
     expect(steps.at(-1)!.plans.get("plans/x.md")).toContain("src/b.ts");
   });
 
+  it("reads a merge still in progress for what differs from both sides, not for what the other side brought", () => {
+    const { root, git, write } = repository();
+    git("checkout", "--quiet", "-b", "work");
+    write("src/c.ts", "export const c = 1;\n");
+    git("add", ".");
+    git("commit", "--quiet", "-m", "build");
+    git("checkout", "--quiet", "main");
+    write("plans/old.md", "---\ntouches: [src/a.ts, src/b.ts]\n---\n");
+    write("src/a.ts", "export const a = 5;\n");
+    git("commit", "--quiet", "-am", "main moves on");
+    git("checkout", "--quiet", "work");
+    git("merge", "--quiet", "--no-ff", "--no-commit", "main");
+    write("src/d.ts", "export const d = 1;\n");
+
+    const steps = readChange(root, {}).steps;
+
+    expect(steps.at(-1)!.id).toBe("the working tree");
+    expect(steps.at(-1)!.files).toEqual(["src/d.ts"]);
+  });
+
   it("says which refs it tried when none resolves", () => {
     const { root } = repository();
     expect(() => readChange(root, { PLANS_BASE: "nowhere" })).toThrow("no base to read the change against: tried nowhere");

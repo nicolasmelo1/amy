@@ -98,7 +98,9 @@ try {
     (await (await fetch(`${bot}/operator/say`, { method: "POST", body: JSON.stringify({ text, ...where }) })).json()) as { message_id: number };
   const telegramWorld = async () => (await (await fetch(`${bot}/operator/world`)).json()) as TelegramWorld;
 
-  amy("init");
+  // The machine as the operator's `amy setup` left it: its state directory,
+  // with the config the run writes next.
+  fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
   configure(root, `http://127.0.0.1:${tracker}/graphql`);
   let config = fs.readFileSync(configFile, "utf-8")
     .replace(/^plugins:\n/m, `plugins:\n  "@amykit/plugin-telegram":\n    operator: "${OPERATOR}"\n    server: ${bot}\n`)

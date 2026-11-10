@@ -29,7 +29,7 @@ mkdir -p "$work/bin" "$work/home" "$work/global"
 npm_real=$(command -v npm)
 
 # Amy is installed alone. The packages its config names arrive after that,
-# through `amy init --install`, not in the command's own install.
+# installed by the operator into amy's own root, not in the command's install.
 AMY_PACKAGES="@amykit/cli" \
   AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"
@@ -117,10 +117,17 @@ chmod +x "$work/bin/npm"
 export PATH="$work/bin:$PATH"
 export NPM_CONFIG_PREFIX="$work/global"
 
-# The config names only packages. `amy init --install` is the sole installer
-# of the workflow and support plugins below, and it writes all of them under
-# `$HOME/.amy/plugins`.
-init=$("$amy" init --install 2>&1 || echo "")
+# The config names only packages, and the operator installs exactly those
+# into `$HOME/.amy/plugins` — amy adds nothing the config did not name, so
+# the config stays the operator's. `amy setup <workflow>` then prepares what
+# the workflow brings: its file and its setup, in the profile that mounts it.
+mkdir -p .amy/plugins
+printf '{"private":true}\n' > .amy/plugins/package.json
+npm install --prefix "$work/home/.amy/plugins" --no-audit --no-fund --install-links -- \
+  @acme/workflow-oncall @amykit/plugin-file-queue @amykit/plugin-file-store \
+  @amykit/plugin-file-brief-store @amykit/plugin-serial-engine \
+  @amykit/plugin-notify-fanout @amykit/plugin-notify-inbox >/dev/null 2>&1
+prepared=$("$amy" setup @acme/workflow-oncall 2>&1 || echo "")
 
 assertions=""
 record() {
@@ -135,10 +142,10 @@ says() {
   case "$2" in *"$3"*) record "$1" 0 ;; *) record "$1" 1 ;; esac
 }
 
-# 1. Amy installed every configured package into its own npm root, through the
-# command. The global prefix is deliberately empty and no npm call may carry
-# `--global`: a root install that silently fell back would leave the same
-# machine-wide side effect this change exists to remove.
+# 1. Every configured package sits in amy's own npm root and resolves from
+# there. The global prefix is deliberately empty and no npm call may carry
+# `--global`: a machine that needed one would carry the same machine-wide
+# side effect this change exists to remove.
 plugins="$work/home/.amy/plugins"
 if [ -d "$plugins/node_modules/@acme/workflow-oncall" ] &&
    [ -f "$plugins/package.json" ]; then
@@ -163,12 +170,13 @@ else
   record plugins.a_global_install_is_not_needed 1
 fi
 
-# A package `init --install` installed is prepared by that same invocation:
-# its file written and its setup run, with no second `init`.
+# The workflow the operator installed is prepared by `amy setup`: its file
+# written into its profile and its setup run.
 if [ -f "$work/home/.amy/oncall/rota.yaml" ] && [ -f "$work/home/.amy/oncall/pager-ready" ]; then
-  record plugins.an_installed_plugin_is_prepared_by_the_same_init 0
+  record plugins.an_installed_plugin_is_prepared_by_setup 0
 else
-  record plugins.an_installed_plugin_is_prepared_by_the_same_init 1
+  record plugins.an_installed_plugin_is_prepared_by_setup 1
+  printf '%s\n' "$prepared" >&2
 fi
 
 # Something parent-walk resolution would have found, but the explicit root

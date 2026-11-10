@@ -68,7 +68,9 @@ try {
     void (await fetch(`${bot}/operator/say`, { method: "POST", body: JSON.stringify({ text, ...where }) }));
   const telegramWorld = async () => (await (await fetch(`${bot}/operator/world`)).json()) as TelegramWorld;
 
-  amy("init");
+  // The machine as the operator's `amy setup` left it: its state directory,
+  // with the config the run writes next.
+  fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
   configure(root, `http://127.0.0.1:${tracker}/graphql`);
   fs.appendFileSync(path.join(home, ".amy", "config.yaml"), `
 # The conversation: one topic per ticket in the operator's private chat with

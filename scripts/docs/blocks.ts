@@ -118,7 +118,7 @@ function configProfile(config: ConfigFacts): string {
   );
 }
 
-/** The template `amy init` writes, taken from the constant it writes it from. */
+/** The annotated example config, taken from the constant that holds it. */
 function configExample(config: ConfigFacts): string {
   return ["```yaml", config.example.trimEnd(), "```"].join("\n");
 }

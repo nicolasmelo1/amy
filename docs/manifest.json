@@ -508,6 +508,11 @@
           "description": ""
         },
         {
+          "title": "Setup is a workflow",
+          "path": "/design/setup-is-a-workflow",
+          "description": ""
+        },
+        {
           "title": "Telegram is a conversation",
           "path": "/design/telegram-is-a-conversation",
           "description": ""
@@ -1256,6 +1261,11 @@
         },
         {
           "depth": 3,
+          "title": "**Setup is a workflow.**",
+          "slug": "setup-is-a-workflow"
+        },
+        {
+          "depth": 3,
           "title": "**A Telegram topic is a work item's thread.** @amykit/plugin-telegram is the conversation port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is TELEGRAM_BOT_TOKEN in amy's environment and is written nowhere. amy doctor refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
           "slug": "a-telegram-topic-is-a-work-items-thread-amykitplugin-telegram-is-the-conversation-port-over-the-bot-api-each-piece-of-work-gets-its-own-topic-in-the-operators-private-chat-with-a-bot-topics-in-private-chats-bot-api-94-opened-once-and-found-again-after-a-restart-only-the-operators-replies-in-that-topic-are-answers-anybody-elses-and-anything-outside-every-topic-are-ignored-replies-are-filed-on-disk-before-telegrams-update-offset-moves-so-no-restart-and-no-second-process-loses-one-a-file-in-a-reply-arrives-as-a-local-path-and-one-past-the-bot-apis-20-mb-is-named-instead-the-token-is-telegrambottoken-in-amys-environment-and-is-written-nowhere-amy-doctor-refuses-by-name-a-bot-with-topic-mode-off-an-operator-who-never-started-a-chat-with-it-and-a-token-whose-updates-something-else-reads-409-conflict"
         },
@@ -1975,6 +1985,11 @@
           "depth": 3,
           "title": "@amykit/workflow-pull-request",
           "slug": "amykitworkflow-pull-request"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/workflow-setup",
+          "slug": "amykitworkflow-setup"
         },
         {
           "depth": 3,
@@ -3440,6 +3455,17 @@
       ]
     },
     {
+      "path": "/design/setup-is-a-workflow",
+      "file": "docs/design/setup-is-a-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/setup-is-a-workflow.md",
+      "title": "Setup is a workflow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/telegram-is-a-conversation",
       "file": "docs/design/telegram-is-a-conversation.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/telegram-is-a-conversation.md",
@@ -4589,11 +4615,6 @@
         },
         {
           "depth": 3,
-          "title": "amy init",
-          "slug": "amy-init"
-        },
-        {
-          "depth": 3,
           "title": "amy look",
           "slug": "amy-look"
         },
@@ -4631,6 +4652,11 @@
           "depth": 3,
           "title": "amy run",
           "slug": "amy-run"
+        },
+        {
+          "depth": 3,
+          "title": "amy setup",
+          "slug": "amy-setup"
         },
         {
           "depth": 3,
@@ -4721,8 +4747,8 @@
         },
         {
           "depth": 2,
-          "title": "The template amy init writes",
-          "slug": "the-template-amy-init-writes"
+          "title": "The annotated example",
+          "slug": "the-annotated-example"
         },
         {
           "depth": 2,
@@ -5046,6 +5072,11 @@
           "slug": "amykitplugin-terminal"
         },
         {
+          "depth": 3,
+          "title": "@amykit/plugin-terminal-conversation",
+          "slug": "amykitplugin-terminal-conversation"
+        },
+        {
           "depth": 2,
           "title": "Collections",
           "slug": "collections"
@@ -5096,6 +5127,11 @@
           "depth": 3,
           "title": "@amykit/workflow-pull-request",
           "slug": "amykitworkflow-pull-request"
+        },
+        {
+          "depth": 3,
+          "title": "@amykit/workflow-setup",
+          "slug": "amykitworkflow-setup"
         },
         {
           "depth": 3,
@@ -5463,8 +5499,8 @@
         },
         {
           "depth": 2,
-          "title": "The template amy init writes",
-          "slug": "the-template-amy-init-writes"
+          "title": "The annotated example",
+          "slug": "the-annotated-example"
         },
         {
           "depth": 2,
@@ -7227,25 +7263,6 @@
         },
         {
           "path": [
-            "init"
-          ],
-          "description": "Write the config and the files the mounted plugins bring, and install what they need",
-          "arguments": [],
-          "options": [
-            {
-              "flags": "--install",
-              "description": "install the missing packages without asking"
-            },
-            {
-              "flags": "--no-install",
-              "description": "only print what is missing"
-            }
-          ],
-          "isDefault": false,
-          "hidden": false
-        },
-        {
-          "path": [
             "look"
           ],
           "description": "Look at one piece of work now, rather than when it was next due",
@@ -7373,6 +7390,35 @@
               "flags": "--max <n>",
               "description": "stop after this many moves",
               "default": "100"
+            }
+          ],
+          "isDefault": false,
+          "hidden": false
+        },
+        {
+          "path": [
+            "setup"
+          ],
+          "description": "Set the machine up: the harness, the workflow, the channels, one question at a time",
+          "arguments": [
+            {
+              "name": "[plugin]",
+              "required": false,
+              "description": "configure this one plugin, and skip the machine's questions"
+            }
+          ],
+          "options": [
+            {
+              "flags": "--harness <name>",
+              "description": "answer the harness ask before it is asked"
+            },
+            {
+              "flags": "--workflow <name>",
+              "description": "answer the workflow ask; `none` sets up no workflow"
+            },
+            {
+              "flags": "--channels <a,b>",
+              "description": "answer the channels ask, by name, comma-separated"
             }
           ],
           "isDefault": false,
@@ -7688,7 +7734,8 @@
         "actions": [],
         "mountedBy": [
           "@amykit/plugin-slack",
-          "@amykit/plugin-telegram"
+          "@amykit/plugin-telegram",
+          "@amykit/plugin-terminal-conversation"
         ]
       },
       {
@@ -7860,6 +7907,10 @@
           {
             "name": "pull-request",
             "package": "@amykit/workflow-pull-request"
+          },
+          {
+            "name": "setup",
+            "package": "@amykit/workflow-setup"
           },
           {
             "name": "ticket-to-qa",
@@ -8652,7 +8703,7 @@
             "type": "string",
             "required": false,
             "default": "amy",
-            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot"
+            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot"
           },
           {
             "name": "provider",
@@ -9178,6 +9229,22 @@
         "environment": []
       },
       {
+        "name": "@amykit/plugin-terminal-conversation",
+        "version": "0.6.0",
+        "kind": "plugin",
+        "description": "The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.",
+        "directory": "plugins/terminal-conversation",
+        "npm": "https://www.npmjs.com/package/@amykit/plugin-terminal-conversation",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/plugins/terminal-conversation",
+        "readme": "plugins/terminal-conversation/README.md",
+        "mounts": [
+          "conversation"
+        ],
+        "contributes": [],
+        "settings": [],
+        "environment": []
+      },
+      {
         "name": "@amykit/services",
         "version": "0.6.0",
         "kind": "library",
@@ -9463,6 +9530,33 @@
         "environment": []
       },
       {
+        "name": "@amykit/workflow-setup",
+        "version": "0.6.0",
+        "kind": "workflow",
+        "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
+        "directory": "packages/workflow-setup",
+        "npm": "https://www.npmjs.com/package/@amykit/workflow-setup",
+        "source": "https://github.com/nicolasmelo1/amy/tree/main/packages/workflow-setup",
+        "readme": "packages/workflow-setup/README.md",
+        "mounts": [],
+        "contributes": [
+          {
+            "collection": "workflow-runtime",
+            "name": "setup"
+          }
+        ],
+        "settings": [
+          {
+            "name": "policy.askBackoffMs",
+            "type": "number",
+            "required": false,
+            "default": 30000,
+            "description": "how long the walk waits between looks at an ask the person has not answered"
+          }
+        ],
+        "environment": []
+      },
+      {
         "name": "@amykit/workflow-testkit",
         "version": "0.6.0",
         "kind": "library",
@@ -9602,6 +9696,49 @@
     ]
   },
   "workflows": [
+    {
+      "package": "@amykit/workflow-setup",
+      "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
+      "name": "setup",
+      "states": [
+        "DETECTING",
+        "HARNESS",
+        "PLUGIN_INSTALLED",
+        "PINGED",
+        "WORKFLOW",
+        "CHANNELS",
+        "CONFIGURING",
+        "CHECKED",
+        "DONE",
+        "STOPPED"
+      ],
+      "waitingStates": [
+        "HARNESS",
+        "WORKFLOW",
+        "CHANNELS",
+        "CONFIGURING"
+      ],
+      "terminalStates": [
+        "DONE",
+        "STOPPED"
+      ],
+      "initialState": "DETECTING",
+      "usesActions": [
+        "ask-setting",
+        "check",
+        "install",
+        "pending",
+        "ping",
+        "post",
+        "read-config",
+        "setup",
+        "write-ladder",
+        "write-settings",
+        "write-setup-profile",
+        "write-workflow"
+      ],
+      "called": true
+    },
     {
       "package": "@amykit/plugin-prove",
       "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
@@ -10141,10 +10278,10 @@
           "bare.it_says_what_to_do_instead_of_failing",
           "bare.it_names_the_other_way_to_add_one",
           "bare.a_note_without_a_workflow_is_refused_with_the_fix",
-          "bare.init_installs_nothing",
-          "bare.init_writes_its_files",
-          "bare.init_added_no_package",
-          "bare.init_writes_no_declared_workflow",
+          "bare.setup_stops_on_its_first_question",
+          "bare.setup_writes_nothing_unanswered",
+          "bare.setup_added_no_package",
+          "bare.the_example_declares_no_workflow",
           "bare.doctor_asks_the_port_not_the_package",
           "bare.doctor_still_reports_what_it_found",
           "bare.no_workflow_mounts_so_nothing_assembles"
@@ -10187,7 +10324,7 @@
           "errand.help_lists_only_the_machines_commands",
           "errand.a_tick_discovers_before_it_moves",
           "errand.doctor_is_green_without_a_roster",
-          "errand.init_and_add_write_a_config_that_boots"
+          "errand.setup_and_add_write_a_config_that_boots"
         ],
         "scenario": ".software-factory/evidence/errand-scenario.sh"
       },
@@ -12153,6 +12290,34 @@
           },
           {
             "package": "@amykit/workflow-note-to-plan",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "setup-is-a-workflow",
+        "title": "**Setup is a workflow.**",
+        "body": "`amy init` wrote a template and left the person to it. `amy setup` asks, one\nquestion at a time, and is itself an amy workflow drawn in Mermaid: which\nharness should do the work (the ones detected on this machine offered first),\nwhich workflow it should drive, which channels should reach you — installing\nonly what was chosen, asking each chosen plugin's settings one field at a\ntime with the value the machine already holds offered as the default, and\nchecking what it configured before it says it is done. `amy setup <plugin>`\ngoes straight to configuring that one plugin. With no terminal to answer an\nask, the walk stops on the question and prints the flag that answers it, so a\npipeline can say it all at once. The old `amy init` is gone, alias included, and\n`amy setup <workflow>` writes the workflow's own files — the ticket workflow's\nroster — into the profiles that mount it. The terminal it asks in ships as\n`@amykit/plugin-terminal-conversation`, so the window can draw the same asks\nlater with no change to the workflow.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-terminal-conversation",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-setup",
             "level": "minor"
           },
           {

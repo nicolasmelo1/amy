@@ -25,11 +25,11 @@ export interface SettingsSurface {
 }
 
 /**
- * Whether the config `amy init` writes is one this build can read, and one
+ * Whether the annotated example config is one this build can read, and one
  * whose settings are all explained by the schemas that declare them.
  *
  * The loud failure is unchanged: the template carried `agent:` twice, YAML
- * refused a duplicate key rather than merging it, so `amy init` wrote a file
+ * refused a duplicate key rather than merging it, so the example was a file
  * `loadConfig` threw on and every command died on a fresh install. No test
  * had ever parsed the template.
  *
@@ -48,7 +48,7 @@ export function checkConfigTemplate(
 ): string[] {
   const problems = parseErrors.map(
     (error) =>
-      `the template does not parse, so \`amy init\` writes a file nothing can read — ${error}`,
+      `the template does not parse, so the example config is a file nothing can read — ${error}`,
   );
 
   // Everything below reads the parsed document, so a template that does not
@@ -94,7 +94,7 @@ export interface BootCheck {
  * The workflow the boot check mounts, transcribed from the example the
  * template ships commented out.
  *
- * `amy init` writes a config that drives nothing, and that is the point of it:
+ * The example config drives nothing, and that is the point of it:
  * the machine arrives carrying no process, and a machine with none mounted is
  * diagnosed rather than refused. So the boot half cannot assemble the file
  * exactly as written — there would be no workflow to mount, and the check
@@ -162,7 +162,7 @@ export function withExampleWorkflow(config: AmyConfig): AmyConfig {
 }
 
 /**
- * Whether the config `amy init` writes is one that boots.
+ * Whether the annotated example config is one that boots.
  *
  * The check above proves the file parses and names every setting; this proves
  * the one thing that matters most: assembling it against the plugins it names
@@ -178,7 +178,7 @@ export async function checkConfigBoots(configRoot: string): Promise<BootCheck> {
   const drifted = namesTheExample(EXAMPLE_CONFIG);
   if (drifted.length > 0) return { ok: false, problems: drifted };
 
-  // `amy init` writes the example; the loader reads it back the way any
+  // The docs ship the example; the loader reads it back the way any
   // command would. Failures here are the parse half of the check, which is
   // `checkConfigTemplate`'s to report — this is the boot half.
   const config = withExampleWorkflow(loadConfigFrom(configRoot, EXAMPLE_CONFIG));

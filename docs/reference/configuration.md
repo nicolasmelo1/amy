@@ -79,7 +79,7 @@ These live in `~/.amy/.env`, and anything already exported in the shell wins
 over the file. A `.env` in the directory you ran the command from is read too,
 and beats the machine-wide one.
 
-## The template `amy init` writes
+## The annotated example
 
 <!-- amy:generated config-example -->
 

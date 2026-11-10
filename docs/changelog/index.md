@@ -566,6 +566,25 @@ command to ask it, and the shipped skill asked questions of its own.
 
 
 
+### **Setup is a workflow.**
+
+`minor` · `@amykit/cli`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-terminal-conversation`, `@amykit/workflow-setup`, `@amykit/workflow-ticket-to-qa`
+
+`amy init` wrote a template and left the person to it. `amy setup` asks, one
+question at a time, and is itself an amy workflow drawn in Mermaid: which
+harness should do the work (the ones detected on this machine offered first),
+which workflow it should drive, which channels should reach you — installing
+only what was chosen, asking each chosen plugin's settings one field at a
+time with the value the machine already holds offered as the default, and
+checking what it configured before it says it is done. `amy setup <plugin>`
+goes straight to configuring that one plugin. With no terminal to answer an
+ask, the walk stops on the question and prints the flag that answers it, so a
+pipeline can say it all at once. The old `amy init` is gone, alias included, and
+`amy setup <workflow>` writes the workflow's own files — the ticket workflow's
+roster — into the profiles that mount it. The terminal it asks in ships as
+`@amykit/plugin-terminal-conversation`, so the window can draw the same asks
+later with no change to the workflow.
+
 ### **A Telegram topic is a work item's thread.** `@amykit/plugin-telegram` is the `conversation` port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is `TELEGRAM_BOT_TOKEN` in amy's environment and is written nowhere. `amy doctor` refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).
 
 `minor` · `@amykit/plugin-telegram`

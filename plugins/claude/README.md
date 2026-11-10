@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `claude` in
 ## Install
 
 ```sh
-# Add @amykit/plugin-claude to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-claude
 ```
 
 Then name it in `~/.amy/config.yaml`:

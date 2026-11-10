@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `conver
 ## Install
 
 ```sh
-# Add @amykit/plugin-slack to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-slack
 ```
 
 Then name it in `~/.amy/config.yaml`:

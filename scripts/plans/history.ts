@@ -52,7 +52,22 @@ export function readChange(root: string, env: NodeJS.ProcessEnv = process.env): 
     steps.push({ id: sha!.slice(0, 8), files, plans: new Map(files.filter(isPlan).map((file) => [file, show(sha!, file)])) });
   }
 
-  const pending = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0").filter(Boolean).map((line) => line.slice(3));
+  const status = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0").filter(Boolean);
+  let pending = status.map((line) => line.slice(3));
+  // A merge not yet committed counts, as a committed one does, for what
+  // differs from both sides: not for everything the other side brought.
+  const merging = (() => {
+    try {
+      return git("rev-parse", "--verify", "--quiet", "MERGE_HEAD").trim();
+    } catch {
+      return undefined;
+    }
+  })();
+  if (merging) {
+    const fromTheirs = new Set(git("diff", "--name-only", "--no-renames", merging).split("\n").filter(Boolean));
+    const untracked = new Set(status.filter((line) => line.startsWith("??")).map((line) => line.slice(3)));
+    pending = pending.filter((file) => fromTheirs.has(file) || untracked.has(file));
+  }
   if (pending.length > 0) {
     const read = (file: string) => (fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), "utf8") : undefined);
     steps.push({ id: "the working tree", files: pending, plans: new Map(pending.filter(isPlan).map((file) => [file, read(file)])) });

@@ -127,7 +127,7 @@ reach the fan-out without the core learning the word "channel".
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
 | `usage` | `Claude` — `@amykit/plugin-claude`<br>`Codex` — `@amykit/plugin-codex`<br>`Hermes ()` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
-| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`feature-grooming` — `@amykit/workflow-feature-grooming`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`prove` — `@amykit/plugin-prove`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
+| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`feature-grooming` — `@amykit/workflow-feature-grooming`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`prove` — `@amykit/plugin-prove`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`setup` — `@amykit/workflow-setup`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->
 
@@ -242,6 +242,7 @@ that.
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-terminal` | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. |  |  |
+| `@amykit/plugin-terminal-conversation` | The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number. | `conversation` |  |
 
 <!-- amy:end plugin-index -->
 

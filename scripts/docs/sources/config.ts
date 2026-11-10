@@ -10,7 +10,7 @@ const ROSTER = "examples/workflow-ticket-to-qa/src/roster.ts";
  *
  * A plugin declares its settings as data and the host validates them; the
  * host's own block is a TypeScript interface, so it is read as one. The
- * annotated example beside it is the template `amy init` writes, taken from
+ * annotated example beside it is the annotated example config, taken from
  * the same file rather than retyped — a documented example that differs from
  * the one the command produces is worse than none.
  */

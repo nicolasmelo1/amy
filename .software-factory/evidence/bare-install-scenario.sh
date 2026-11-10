@@ -6,8 +6,8 @@
 # Installs only the command onto a machine that has nothing else, and proves
 # what the fresh install can and cannot do: no workflow came with it, nothing
 # was installed behind the command, every command that needs a workflow says
-# so and names what writes one, `amy init` writes its files and installs
-# nothing, and `amy doctor` asks the mounted channel whether its target is
+# so and names what writes one, `amy setup` with nobody to answer it stops on
+# its first question having written and installed nothing, and `amy doctor` asks the mounted channel whether its target is
 # reachable rather than importing one notifier's reader.
 #
 # A harness, not the actor. Who invokes it is what the manifest's `actor`
@@ -74,37 +74,43 @@ says bare.it_names_the_other_way_to_add_one "$ticked" "amy add"
 noted=$("$amy" note "the disk filled up" --repo acme/widgets 2>&1 || echo "")
 says bare.a_note_without_a_workflow_is_refused_with_the_fix "$noted" "nothing on this machine provides it"
 
-# 3. `amy init` writes its files and installs nothing. The lib directory is
-# checked before and after: whatever npm put there for the command alone is
-# what a bare install carries.
+# 3. `amy setup` asks; with no terminal and no flag to answer its first
+# question it stops on it, names the flag, and leaves the machine as it was.
+# The lib directory is checked before and after: whatever npm put there for
+# the command alone is what a bare install carries.
 before=$(ls "$work/lib/node_modules/@amykit" 2>/dev/null | wc -l | tr -d ' ')
 
-init=$("$amy" init 2>&1 || echo "")
-says bare.init_installs_nothing "$init" "kept the plugins it did not need"
-# The config is the host's; the roster is the workflow's file, and nothing is
-# mounted here, so `init` must write the one and not the other.
-if [ -f "$work/home/.amy/config.yaml" ] && [ ! -f "$work/home/.amy/roster.yaml" ]; then
-  record bare.init_writes_its_files 0
+asked=$("$amy" setup </dev/null 2>&1 || echo "")
+says bare.setup_stops_on_its_first_question "$asked" "--harness"
+# Nothing answered, so nothing written: no config, and no workflow's file.
+if [ ! -f "$work/home/.amy/config.yaml" ] && [ ! -f "$work/home/.amy/roster.yaml" ]; then
+  record bare.setup_writes_nothing_unanswered 0
 else
-  record bare.init_writes_its_files 1
+  record bare.setup_writes_nothing_unanswered 1
 fi
+plugins_after=$(ls "$work/home/.amy/plugins/node_modules" 2>/dev/null | wc -l | tr -d ' ')
 
 after=$(ls "$work/lib/node_modules/@amykit" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$before" = "$after" ]; then
-  record bare.init_added_no_package 0
+if [ "$before" = "$after" ] && [ "$plugins_after" = "0" ]; then
+  record bare.setup_added_no_package 0
 else
-  record bare.init_added_no_package 1
+  record bare.setup_added_no_package 1
 fi
 
-# The config `amy init` writes declares nothing: the workflows are examples
-# in comments, and the machine drives none of them until one is uncommented
-# or written. The parse runs from the install's own directory, so the `yaml`
-# the command already carries is what reads the file the command wrote.
+# The operator starts from the annotated example the command ships — the
+# one the configuration docs print — and it declares nothing: the workflows
+# are examples in comments, and the machine drives none of them until one is
+# uncommented or written. Read from the install's own build, and parsed with
+# the `yaml` the command already carries.
+node --input-type=module -e '
+  const { EXAMPLE_CONFIG } = await import(process.argv[1]);
+  (await import("node:fs")).writeFileSync(process.argv[2], EXAMPLE_CONFIG);
+' "$work/lib/node_modules/@amykit/cli/dist/config.js" "$work/home/.amy/config.yaml"
 declared=$("$repo/node_modules/.bin/tsx" "$here/bare-install/declared.ts" "$work/lib" "$work/home/.amy/config.yaml" 2>/dev/null || echo parse-failed)
 if [ "$declared" = "0" ]; then
-  record bare.init_writes_no_declared_workflow 0
+  record bare.the_example_declares_no_workflow 0
 else
-  record bare.init_writes_no_declared_workflow 1
+  record bare.the_example_declares_no_workflow 1
 fi
 
 # 4. `amy doctor` on that machine reports and does not crash: the hermes
@@ -127,7 +133,7 @@ cat > "$report" <<JSON
 {
   "scenario": "bare-install",
   "status": "$status",
-  "goal": "I am installing amy onto a machine that has none of it, and I want the process I choose, not the processes it brought. Prove installing the command installs no workflow and no plugin, that a machine with nothing configured is told what to run next rather than failed at, that amy init writes its files and adds no package, and that doctor reaches a notification target by asking the mounted channel rather than by carrying a notifier's reader in the command.",
+  "goal": "I am installing amy onto a machine that has none of it, and I want the process I choose, not the processes it brought. Prove installing the command installs no workflow and no plugin, that a machine with nothing configured is told what to run next rather than failed at, that amy setup with nobody to answer it writes and adds nothing, and that doctor reaches a notification target by asking the mounted channel rather than by carrying a notifier's reader in the command.",
   "artifact": { "package": "@amykit/cli", "entry": "packages installed by npm, run by node", "built_by": "scripts/install.sh" },
   "observed": {
     "assertions_run": $total,

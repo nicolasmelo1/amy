@@ -625,7 +625,9 @@ function installed(): Lifecycle {
   const ticketIn = (state: TrackerState) => existing(state.issues[0], TICKET);
 
   try {
-    amy("init");
+    // The machine as the operator's `amy setup` left it: its state directory,
+    // with the config the run writes next.
+    fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
     configure(root, tracker.endpoint);
     operatorConfig(root, tracker.endpoint);
     installPlugins(root);

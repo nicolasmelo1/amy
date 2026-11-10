@@ -107,7 +107,7 @@ interface LogLine {
 interface State {
   root: string;
   init: Said;
-  /** What `amy init` wrote on an empty machine, before the run edits it. */
+  /** What `amy setup` wrote on an empty machine, before the run edits it. */
   initConfig: string;
   /** The `amy add` that brings the workflow, read back off the config. */
   added: Said;
@@ -358,24 +358,28 @@ function walkthrough(): State {
   {
     build(root, { source });
 
-    const init = amy(root, ["init"]);
-    // What init wrote, before the run's own config takes its place: the shape
-    // of the file a fresh install holds is what the assertions below read.
+    // npm reads this scenario's loopback registry, so neither the harness
+    // setup installs nor the workflow `add` brings reaches a real one.
+    const registry = process.env.AMY_E2E_REGISTRY;
+    if (registry) process.env.npm_config_registry = registry;
+    // The operator's answers given as flags, with no terminal to ask in:
+    // the stand-in claude on the PATH is the harness, no workflow is chosen
+    // yet and no channel — the workflow arrives with `add` below.
+    const init = amy(root, ["setup", "--harness", "claude", "--workflow", "none", "--channels", ""]);
+    // What setup wrote, before the run's own config takes its place: the
+    // shape of the file a fresh install holds is what the assertions read.
     const configPath = path.join(root, "home", ".amy", "config.yaml");
     const initConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf-8") : "";
     // The machine the add leaves behind boots, said by the command itself:
     // the boot check `add` runs on the config it just wrote. The doctor is
     // not part of this claim — it asks credentials and checkouts a real
-    // machine has, proved later against the stand-ins. npm reads this
-    // scenario's loopback registry, so nothing reaches a real one.
-    const registry = process.env.AMY_E2E_REGISTRY;
-    if (registry) process.env.npm_config_registry = registry;
+    // machine has, proved later against the stand-ins.
     const added = amy(root, ["add", "@amykit/workflow-errand"]);
     const addedConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf-8") : "";
 
     configure(root);
     installPlugins(root);
-    // Made by hand here, because `amy init` has no reason to create a second
+    // Made by hand here, because `amy setup` has no reason to create a second
     // profile's directories and the run must find them already holding state.
     fs.mkdirSync(path.join(queueDir(root, "ledger"), "ready"), { recursive: true });
     seedLedger(root);
@@ -547,8 +551,8 @@ function assertionsFor(state: State): { type: string; status: "passed" | "failed
 /**
  * The shortest road into the machine, kept short.
  *
- * `amy init` writes a config that names no workflow's vocabulary at the top
- * level, `amy add` appends the profile block the workflow's own schema asks
+ * `amy setup`, answered by flags, writes a config that names its harness
+ * and no workflow's vocabulary at the top level, `amy add` appends the profile block the workflow's own schema asks
  * for, and the doctor is green on the machine those two left behind — none of
  * them edited by hand. A top-level `policy:` or `errands:` line here would
  * mean the shim was rebuilt rather than retired.
@@ -559,9 +563,10 @@ function initAddChecks(state: State): Check[] {
   const movedAtTop = /^(policy|plans|errands|qaStatusName|workingStatusName|repoByTeam):/m;
   return [
     [
-      "errand.init_and_add_write_a_config_that_boots",
+      "errand.setup_and_add_write_a_config_that_boots",
       state.init.code === 0 &&
-        state.initConfig.includes("amy add") &&
+        state.init.out.includes("amy is set up") &&
+        /^agent:\n {2}ladder:\n {4}- claude$/m.test(state.initConfig) &&
         !movedAtTop.test(state.initConfig) &&
         state.added.code === 0 &&
         state.added.out.includes("the machine boots") &&
@@ -572,7 +577,7 @@ function initAddChecks(state: State): Check[] {
 }
 
 /**
- * The machine that reviews nobody: init and the doctor carry no roster.
+ * The machine that reviews nobody: setup and the doctor carry no roster.
  *
  * The roster is a ticket machine's file, so a machine that mounted nothing
  * that reviews has no such file anywhere in its state, and the doctor's own
@@ -665,7 +670,7 @@ function helpSpeaksForThisMachine(help: string): boolean {
   const listed = (name: string): boolean => help.split("\n").some((line) => line.startsWith(`  ${name} `) || line.startsWith(`  ${name}[`));
   // And what this machine did mount is listed with the package that brought
   // it: the errand's own verb, and the two adapters every profile mounts.
-  const here = ["btw", "worktrees", "models", "tick", "init", "doctor"];
+  const here = ["btw", "worktrees", "models", "tick", "setup", "doctor"];
   return absent.every((name) => !listed(name)) && here.every(listed);
 }
 

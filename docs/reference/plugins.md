@@ -44,6 +44,7 @@ maintains.
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-terminal` | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. |  |  |
+| `@amykit/plugin-terminal-conversation` | The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number. | `conversation` |  |
 
 <!-- amy:end plugin-index -->
 
@@ -479,7 +480,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
-| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
+| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot |
 | `provider` | `string` | no | `""` | the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
@@ -753,6 +754,20 @@ plugins:
 | `session` | `string` | no | `amy` | the terminal-use session every operation drives, so steps of one scenario share one program |
 | `timeoutMs` | `number` | no | `60000` | how long one terminal-use command may run, past any wait it was asked for |
 
+### `@amykit/plugin-terminal-conversation`
+
+The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.
+
+|  |  |
+| :-- | :-- |
+| Source | `plugins/terminal-conversation` |
+| Mounts | `conversation` |
+| Contributes | _nothing_ |
+| Needs in the environment | _nothing_ |
+| Depends on | `@amykit/core` |
+
+This plugin declares no settings, so the config must not give it any.
+
 <!-- amy:end plugin-settings -->
 
 ## Collections
@@ -764,6 +779,6 @@ plugins:
 | `harness` | `claude` — `@amykit/plugin-claude`<br>`codex` — `@amykit/plugin-codex`<br>`hermes` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
 | `notify-channel` | `hermes` — `@amykit/plugin-notify-hermes`<br>`inbox` — `@amykit/plugin-notify-inbox` | _whichever plugin reads it_ |
 | `usage` | `Claude` — `@amykit/plugin-claude`<br>`Codex` — `@amykit/plugin-codex`<br>`Hermes ()` — `@amykit/plugin-hermes-agent` | `@amykit/agent-kit` |
-| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`feature-grooming` — `@amykit/workflow-feature-grooming`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`prove` — `@amykit/plugin-prove`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
+| `workflow-runtime` | `errand` — `@amykit/workflow-errand`<br>`feature-grooming` — `@amykit/workflow-feature-grooming`<br>`note-to-plan` — `@amykit/workflow-note-to-plan`<br>`prove` — `@amykit/plugin-prove`<br>`pull-request` — `@amykit/workflow-pull-request`<br>`setup` — `@amykit/workflow-setup`<br>`ticket-to-qa` — `@amykit/workflow-ticket-to-qa` | `@amykit/agent-kit` |
 
 <!-- amy:end collections -->

@@ -11,7 +11,7 @@ describe("loadRoster", () => {
     const profile = path.join(home, "tickets");
     fs.mkdirSync(profile, { recursive: true });
 
-    expect(() => loadRoster(profile)).toThrow(/no roster at .*; write one with amy init/);
+    expect(() => loadRoster(profile)).toThrow(/no roster at .*; `amy add` writes one/);
 
     fs.rmSync(home, { recursive: true, force: true });
   });
@@ -24,7 +24,7 @@ describe("loadRoster", () => {
 
     try {
       expect(() => loadRoster(profile)).toThrow(/the machine's old roster is .*roster\.yaml\.moved — copy it here/);
-      expect(() => loadRoster(profile)).not.toThrow(/write one with amy init/);
+      expect(() => loadRoster(profile)).not.toThrow(/`amy add` writes one/);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
@@ -47,7 +47,7 @@ describe("loadRoster", () => {
       } catch (error) {
         expect(error instanceof Error && error.message.includes(path.join(home, "roster.yaml.moved"))).toBe(true);
       }
-      expect(() => loadRoster(state)).toThrow(/write one with amy init/);
+      expect(() => loadRoster(state)).toThrow(/`amy add` writes one/);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }

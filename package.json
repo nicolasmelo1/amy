@@ -77,13 +77,14 @@
     ],
     "ignoreBinaries": [
       "sf",
-      "codex",
       "schtasks",
       "wscript.exe"
     ],
     "ignoreDependencies": [
       "@amykit/workflow-ticket-to-qa",
-      "@amykit/plugin-notify-hermes"
+      "@amykit/plugin-notify-hermes",
+      "@amykit/plugin-notify-fanout",
+      "@amykit/plugin-terminal-conversation"
     ]
   }
 }

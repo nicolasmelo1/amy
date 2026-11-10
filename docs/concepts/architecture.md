@@ -81,6 +81,7 @@ packages/
 ├── test-fixtures        Shared test builders and scripted doubles. Not published.
 ├── ui                   A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.
 ├── ui-conformance       The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.
+├── workflow-setup       Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.
 └── workflow-testkit     The tests every workflow needs and nobody writes, driven against a world its author supplies.
 
 plugins/
@@ -112,6 +113,7 @@ plugins/
 ├── slack                A Slack thread per piece of work, over the Web API, as the conversation port.
 ├── telegram             A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.
 ├── terminal             Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.
+├── terminal-conversation The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.
 └── ui-stub              The stub renderers that draw exactly the frame: one in pixels, one in cells. What the conformance script is proven against before a real window exists.
 
 examples/
@@ -134,13 +136,14 @@ this repository.
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
 | `@amykit/agent-kit` | library | `@amykit/core` |
-| `@amykit/cli` | cli | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/services`, `@amykit/ui` |
+| `@amykit/cli` | cli | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-serial-engine`, `@amykit/plugin-terminal-conversation`, `@amykit/services`, `@amykit/ui`, `@amykit/workflow-setup` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/services` | library | `@amykit/core` |
 | `@amykit/test-fixtures` | library | `@amykit/core`, `@amykit/workflow-ticket-to-qa` |
 | `@amykit/ui` | library | _nothing_ |
 | `@amykit/ui-conformance` | library | `@amykit/ui` |
+| `@amykit/workflow-setup` | workflow | `@amykit/core` |
 | `@amykit/workflow-testkit` | library | `@amykit/core` |
 | `@amykit/plugin-agent-browser` | plugin | `@amykit/core` |
 | `@amykit/plugin-agent-desktop` | plugin | `@amykit/core` |
@@ -170,6 +173,7 @@ this repository.
 | `@amykit/plugin-slack` | plugin | `@amykit/core` |
 | `@amykit/plugin-telegram` | plugin | `@amykit/core` |
 | `@amykit/plugin-terminal` | plugin | `@amykit/core` |
+| `@amykit/plugin-terminal-conversation` | plugin | `@amykit/core` |
 | `@amykit/plugin-ui-stub` | library | `@amykit/ui` |
 | `@amykit/workflow-errand` | workflow | `@amykit/core`, `@amykit/plugin-file-queue`, `@amykit/workflow-pull-request` |
 | `@amykit/workflow-feature-grooming` | workflow | `@amykit/core` |

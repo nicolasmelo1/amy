@@ -59,8 +59,7 @@ read.
 ## Install
 
 ```sh
-# Add @amykit/workflow-feature-grooming to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/workflow-feature-grooming
 ```
 
 Then name it in `~/.amy/config.yaml`:

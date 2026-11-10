@@ -257,7 +257,7 @@ function leftBehind({ home, cwd, config }: DoctorDeps): Check[] {
       .map(([old, now]) => ({
         label: `state left in ${old}`,
         ok: false,
-        detail: `run \`amy init\`, then: mv ${path.join(base, old)} ${path.join(base, now)}`,
+        detail: `move it where the profile reads it: mv ${path.join(base, old)} ${path.join(base, now)}`,
       })),
   );
 }

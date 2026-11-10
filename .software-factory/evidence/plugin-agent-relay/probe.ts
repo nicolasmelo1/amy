@@ -127,7 +127,7 @@ function spent(at: string, costUsd: number): Event {
 
 const LADDER = ["claude:sonnet", "claude:opus", "codex:gpt-5"];
 
-// The shape `amy init` ships: the default ladder and a step's own both naming
+// The shape the annotated example ships: the default ladder and a step's own both naming
 // the same rung. Before the union deduped, this was the config that could not
 // boot — the second `claude:opus` met the collection's one-name rule and the
 // template's own example was refused at mount.
@@ -140,7 +140,7 @@ function reset(mode: string): void {
 
 const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(Boolean);
 
-// 0. The config `amy init` writes mounts. A rung named in both the default
+// 0. The annotated example config mounts. A rung named in both the default
 // ladder and a step's own is one rung — the collection holds one `claude:opus`
 // where the raw union held two — and the step's own ladder decides who a step
 // meets first, which is how the order a first mention set stays observable.

@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `comman
 ## Install
 
 ```sh
-# Add @amykit/plugin-command to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-command
 ```
 
 Then name it in `~/.amy/config.yaml`:

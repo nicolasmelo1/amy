@@ -45,7 +45,6 @@ import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/ag
 import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
-  EXAMPLE_CONFIG,
   configuredAutoUpdateProblems,
   configuredChatProblems,
   loadConfig,
@@ -68,11 +67,12 @@ import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf } from "./assemble.js";
 import { pricedForTheCeiling } from "./chat-pricing.js";
+import { parseSetupFlags, resolveSetupPlugin, runSetupWalk } from "./setup.js";
 import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
 import { hostPaths, pluginList, pluginSlices } from "./slices.js";
-import { PLUGINS_ROOT_FLAGS, ensurePluginsRoot, installIntoPluginsRoot, shellCommand } from "./install.js";
+import { installIntoPluginsRoot } from "./install.js";
 import {
   BootCheck,
   Picked,
@@ -291,141 +291,46 @@ program
   .option("--workflow <name>", "which workflow to drive, by the name the config gives it")
   .version(describeBuild(stamp));
 
+/**
+ * The one way to set a machine up: `amy setup` is the walk. The `amy init`
+ * that wrote a template and left the person to it is gone, alias included.
+ */
+const setTheMachineUp = async (
+  plugin: string | undefined,
+  options: { harness?: string; workflow?: string; channels?: string },
+): Promise<void> => {
+  const settings = parseSetupFlags(process.argv).settings;
+  // `--workflow` is also the program's own option, and commander hands a
+  // name both declare to the program: read there, the answer still reaches
+  // the walk instead of leaving the workflow ask open.
+  const workflow = options.workflow ?? program.opts<{ workflow?: string }>().workflow;
+  process.exitCode = await runSetupWalk(
+    home,
+    {
+      ...(plugin !== undefined ? { plugin: resolveSetupPlugin(plugin) } : {}),
+      ...(options.harness !== undefined ? { harness: options.harness } : {}),
+      ...(workflow !== undefined ? { workflow } : {}),
+      ...(options.channels !== undefined
+        ? { channels: options.channels.split(",").map((one) => one.trim()).filter(Boolean) }
+        : {}),
+      settings,
+    },
+    runner,
+  );
+};
+
 program
-  .command("init")
-  .description("Write the config and the files the mounted plugins bring, and install what they need")
-  .option("--install", "install the missing packages without asking")
-  .option("--no-install", "only print what is missing")
-  .action(async (options: { install?: boolean }) => {
-    const place = paths(home);
-    // The watched directory, made now rather than on the first note, so it is
-    // somewhere to drop a file into before anything has ever run.
-    fs.mkdirSync(place.notes, { recursive: true });
-
-    for (const profile of Object.values(profiles(loadConfig(home), home))) {
-      const own = profilePaths(home, profile);
-      fs.mkdirSync(own.records, { recursive: true });
-      fs.mkdirSync(own.queue, { recursive: true });
-    }
-
-    for (const [file, content] of [[place.config, EXAMPLE_CONFIG]] as const) {
-      if (fs.existsSync(file)) {
-        console.log(`kept   ${file}`);
-        continue;
-      }
-      fs.writeFileSync(file, content, "utf-8");
-      console.log(`wrote  ${file}`);
-    }
-
-    console.log("\nEdit it, then run `amy doctor`.");
-    console.log(`Friction goes in ${place.notes}, or through \`amy note\`.`);
-
-    // Nothing but the command itself is installed with it, so what a
-    // configured workflow needs is worked out here rather than carried by
-    // the CLI: a machine with no use for a plugin has no reason to hold one.
-    //
-    // What each profile *will mount*, not what is recommended for it: a
-    // config naming a plugin nobody here shipped is exactly the case worth
-    // installing, and the recommendation cannot know about it. A config with
-    // no workflow declares nothing, installs nothing, and says which is
-    // which — a bare machine is the machine being set up, not one being
-    // rebuilt.
-    const config = loadConfig(home);
-    const known = Object.values(profiles(config, home));
-    // The files a plugin brings arrive with the machine that mounts it, and
-    // never over one somebody has edited: a template is a starting point, not
-    // a default to restore.
-    await prepare(config, known);
-
-    const wanted = known.flatMap((profile) =>
-      pluginList(config, profile),
-    );
-    const absent = [...new Set(wanted)].filter((name) => !localWorkflow(home, name) && !isFilesystemWorkflow(name) && !installedPlugins(place.plugins).includes(name));
-    if (absent.length === 0) {
-      if (wanted.length === 0) {
-        console.log("\nkept the plugins it did not need: nothing is mounted yet.");
-        console.log("Name a workflow and `amy init` installs only what it asks for.");
-      }
-      return;
-    }
-
-    // A package installed just now brought no files and ran no setup above,
-    // since it would not import then; it does now, and an `init --install`
-    // that left it unprepared until a second `init` would be half an install.
-    if (await supply(absent, options.install)) await prepare(config, known);
-  });
-
-/**
- * Writes the files each profile's plugins bring, then runs what they set up.
- *
- * Both only ever add: a file that is there is kept, and a setup finds what it
- * made before. So running it again after an install prepares just what the
- * install brought.
- */
-async function prepare(config: AmyConfig, known: readonly Profile[]): Promise<void> {
-  const gathered = await gatherBuilt(config, known);
-  for (const profile of known) {
-    writeFiles(home, config, profile, gathered.contributions, commandOut);
-    await runSetup(home, config, profile, gathered.contributions, commandOut, runner);
-  }
-}
-
-/**
- * Installs what the config asks for and this machine has not got.
- *
- * Asked rather than assumed, because installing packages is a change to amy's
- * own state directory and consent is how it is given. With nothing to ask on —
- * a script, a pipe, CI — it prints the command instead of running it: a setup
- * step that silently installed twenty packages in somebody's pipeline would be
- * a surprise nobody consented to, and `--install` is how a pipeline consents.
- *
- * Into `<home>/plugins`, amy's own npm root, rather than a global prefix: the
- * packages are amy's, resolved through the root the loader reads, and nothing
- * outside `.amy` changes when one is added.
- */
-async function supply(absent: readonly string[], chosen?: boolean): Promise<boolean> {
-  console.log(`\nThese are not installed yet:`);
-  for (const name of absent) console.log(`  ${name}`);
-
-  const wanted = chosen ?? (process.stdin.isTTY ? confirm() : false);
-
-  if (!wanted) {
-    console.log(`\nInstall them with:\n  ${shellCommand("npm", ["install", "--prefix", paths(home).plugins, ...PLUGINS_ROOT_FLAGS, "--", ...absent])}`);
-    return false;
-  }
-
-  ensurePluginsRoot(paths(home).plugins);
-  console.log(`\nInstalling ${absent.length} package(s) into ${paths(home).plugins}…`);
-  const outcome = await installIntoPluginsRoot(runner, paths(home).plugins, absent);
-
-  if (!outcome.ok) {
-    console.error(`\n${outcome.command} failed:`);
-    console.error(outcome.output || "it said nothing");
-    console.error("\nInstall them by hand, then run `amy doctor`.");
-    process.exitCode = 1;
-    return false;
-  }
-
-  const still = absent.filter((name) => !installedPlugins(paths(home).plugins).includes(name));
-  if (still.length > 0) {
-    // npm exited zero and the packages are not in the root it was handed,
-    // which means the root npm wrote is not the one this command reads.
-    // Saying so beats a green install followed by a mount that refuses by
-    // name.
-    console.error(`\nnpm succeeded, but these still do not resolve: ${still.join(", ")}`);
-    console.error(`Check what is in ${paths(home).plugins} against the root npm wrote.`);
-    process.exitCode = 1;
-    return false;
-  }
-
-  console.log(`installed ${absent.length} package(s). Now run \`amy doctor\`.`);
-  return true;
-}
-
-function confirm(): boolean {
-  const answer = readAnswer("\nInstall them now? [Y/n] ").toLowerCase();
-  return answer === "" || answer === "y" || answer === "yes";
-}
+  .command("setup")
+  .description("Set the machine up: the harness, the workflow, the channels, one question at a time")
+  .argument("[plugin]", "configure this one plugin, and skip the machine's questions")
+  .option("--harness <name>", "answer the harness ask before it is asked")
+  .option("--workflow <name>", "answer the workflow ask; `none` sets up no workflow")
+  .option("--channels <a,b>", "answer the channels ask, by name, comma-separated")
+  // The setting flags are the walk's own spelling — `--slack.token …` — and
+  // no commander option can name them before the plugin's schema is read,
+  // so they are allowed through here and parsed by the walk's own parser.
+  .allowUnknownOption(true)
+  .action(setTheMachineUp);
 
 program
   .command("doctor")
@@ -1769,8 +1674,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
 
   // The rest of the machine. A workflow's recommended set is derived at
   // every read, so a bare machine now names plugins it has never seen —
-  // installed here, by the same command, the way `amy init --install`
-  // installs what a config names. A plugin add installs nothing extra: it
+  // installed here, by the same command. A plugin add installs nothing extra: it
   // joined a set that already boots.
   if (outcome.workflow) {
     const fresh = loadConfig(home);
@@ -3401,7 +3305,7 @@ program.parseAsync(process.argv).catch((error: unknown) => {
   const unknown = /^error: unknown command '([^']+)'/.exec(message);
   if (unknown) {
     console.error(`unknown command '${unknown[1]}': nothing on this machine provides it.`);
-    console.error("`amy init` writes a config that names the workflows and what each provides — uncomment one, or run `amy add`.");
+    console.error("`amy add <workflow>` mounts a workflow and the commands it provides; `amy setup` walks you through choosing one.");
     process.exitCode = 1;
     return;
   }

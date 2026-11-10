@@ -50,12 +50,14 @@ nothing else and asserts what it can and cannot do:
 - `bare.it_names_the_other_way_to_add_one` — the same refusal names `amy add`
 - `bare.a_note_without_a_workflow_is_refused_with_the_fix` — `amy note` says
   what to mark in the config rather than failing
-- `bare.init_installs_nothing` — `amy init` on the bare machine says it kept
-  the plugins it did not need
-- `bare.init_writes_its_files` — the config and the roster are written
-- `bare.init_added_no_package` — the install's library is unchanged
-- `bare.init_writes_no_declared_workflow` — the written config parses with
-  no workflow declared
+- `bare.setup_stops_on_its_first_question` — `amy setup` with no terminal
+  and no flag stops on the harness ask and names the flag that answers it
+- `bare.setup_writes_nothing_unanswered` — no config and no roster are
+  written by a walk nobody answered
+- `bare.setup_added_no_package` — the install's library and amy's plugin
+  root are unchanged
+- `bare.the_example_declares_no_workflow` — the annotated example config
+  the command ships parses with no workflow declared
 - `bare.doctor_asks_the_port_not_the_package` — the configured Hermes target
   is checked through the mounted channel or reported as unaskable
 - `bare.doctor_still_reports_what_it_found` — everything that does not

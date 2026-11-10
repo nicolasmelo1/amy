@@ -17,15 +17,15 @@ function sources(root: string): { file: string; text: string }[] {
 describe("the CLI's imports", () => {
   // What made the shim: `policy:` was the ticket workflow's type the host
   // kept, `plans:` and `errands:` were two more, and every one of them came
-  // in through an import of a workflow package from the CLI. A workflow that
-  // is not installed on this machine would not even compile here, and a type
-  // the CLI owns is a vocabulary it translates. The line holds for anything a
-  // workflow package would be reached by — not only for the types that left.
-  it("imports no workflow package, for a type or anything else", () => {
+  // in through an import of a workflow package from the CLI, which would
+  // not even compile for a workflow this machine never installed. The line
+  // holds for anything a workflow package would be reached by, with one
+  // exception (S14): the setup workflow, which ships with the command.
+  it("imports no workflow package but the setup one it ships, for a type or anything else", () => {
     const reach = sources(path.join(import.meta.dirname, "..", "src"))
-      .filter(({ text }) => /from\s+["'].*@amykit\/workflow-/m.test(text))
+      .filter(({ text }) => /from\s+["'].*@amykit\/workflow-(?!setup)["']/m.test(text))
       .map(({ file, text }) => {
-        const line = text.split("\n").findIndex((one) => /from\s+["'].*@amykit\/workflow-/.test(one)) + 1;
+        const line = text.split("\n").findIndex((one) => /from\s+["'].*@amykit\/workflow-(?!setup)/.test(one)) + 1;
         return `${file}:${line}`;
       });
 

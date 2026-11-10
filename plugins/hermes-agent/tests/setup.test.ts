@@ -67,11 +67,11 @@ describe("the profile amy runs Hermes in", () => {
 });
 
 describe("what the doctor says about it", () => {
-  it("is red, sending to amy init, when it is missing", async () => {
+  it("is red, sending to amy setup hermes, when it is missing", async () => {
     const check = await checkProfile(hermes(false), "amy");
 
     expect(check.ok).toBe(false);
-    expect(check.detail).toContain("amy init");
+    expect(check.detail).toContain("amy setup hermes");
     // A bare clone would copy the active profile's settings and stay red.
     expect(check.detail).not.toContain("--clone");
   });

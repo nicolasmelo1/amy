@@ -23,7 +23,7 @@ gates:
   # The one claim this repository is named for: installing the command
   # installs nothing else. A fresh machine gets a binary that drives no
   # workflow, every command that needs one says so and names what writes one,
-  # `amy init` writes its files and adds no package, and doctor asks the
+  # `amy setup` unanswered writes and adds nothing, and doctor asks the
   # mounted channel whether its target is reachable instead of importing a
   # notifier's reader.
   #
@@ -44,10 +44,10 @@ gates:
       - "bare.it_says_what_to_do_instead_of_failing"
       - "bare.it_names_the_other_way_to_add_one"
       - "bare.a_note_without_a_workflow_is_refused_with_the_fix"
-      - "bare.init_installs_nothing"
-      - "bare.init_writes_its_files"
-      - "bare.init_added_no_package"
-      - "bare.init_writes_no_declared_workflow"
+      - "bare.setup_stops_on_its_first_question"
+      - "bare.setup_writes_nothing_unanswered"
+      - "bare.setup_added_no_package"
+      - "bare.the_example_declares_no_workflow"
       - "bare.doctor_asks_the_port_not_the_package"
       - "bare.doctor_still_reports_what_it_found"
       - "bare.no_workflow_mounts_so_nothing_assembles"
@@ -465,7 +465,7 @@ gates:
       # The shortest road into the machine, and the config that wrote it: init
       # names no workflow's vocabulary at the top level, add writes the block
       # its schema asks for, and the doctor is green on what they left.
-      - "errand.init_and_add_write_a_config_that_boots"
+      - "errand.setup_and_add_write_a_config_that_boots"
 
   # A workflow calls another the way code calls a function. What only an
   # installed machine can say: that a workflow of somebody's own calls one

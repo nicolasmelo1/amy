@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in 
 ## Install
 
 ```sh
-# Add @amykit/plugin-codex to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-codex
 ```
 
 Then name it in `~/.amy/config.yaml`:
