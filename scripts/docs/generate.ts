@@ -13,7 +13,7 @@ import { releaseFacts } from "./sources/releases.js";
 import { runtimeFacts } from "./sources/runtime.js";
 import { manifestFrom } from "./render/manifest.js";
 import { missingAbout, readmesFrom } from "./render/readme.js";
-import { proseProblems, said } from "./prose.js";
+import { fenceTypeErrors, isCheckedPage, pagesInScope, proseProblems, said } from "./prose.js";
 import type { Facts, GeneratedFile } from "./lib/facts.js";
 
 /**
@@ -83,7 +83,10 @@ async function main(): Promise<void> {
 
   // The hand-written half is held here too, so a slop word or a hand count
   // is named by the same command that names a stale table.
+  // The fences are compiled here as well: a guide showing code that no longer
+  // compiles is as stale as a table the code moved under.
   const prose = proseProblems().map(said);
+  if (check) prose.push(...(await checkedFenceErrors()).map(said));
   if (check && prose.length > 0) {
     fail(["the prose of the documentation breaks a rule the docs check holds:", ...prose.map((line) => `  ${line}`)]);
   }
@@ -166,6 +169,14 @@ function fail(lines: string[]): never {
   console.error(`docs: ${lines[0]}`);
   for (const line of lines.slice(1)) console.error(line);
   process.exit(1);
+}
+
+/** Every `ts` fence on the guide and concept pages, compiled against the core. */
+async function checkedFenceErrors(): Promise<ReturnType<typeof proseProblems>> {
+  const pages = pagesInScope()
+    .filter(isCheckedPage)
+    .map((file) => [file, fs.readFileSync(path.join(ROOT, file), "utf8")] as const);
+  return fenceTypeErrors(Object.fromEntries(pages));
 }
 
 await main();

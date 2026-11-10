@@ -111,13 +111,19 @@ variable is only asked for when a plugin that reads it is mounted.
 amy remove @amykit/plugin-telegram
 ```
 
-`amy remove` takes the package name the config carries, or a profile name. Before
-it changes anything, it mounts the machine the config would become without the
-package. If a workflow would lose a [port](../concepts/glossary.md#port) it needs,
-it refuses and names the [action](../concepts/glossary.md#action) that would have
-nothing to run it. Otherwise it drops the entry and
-uninstalls the package from `~/.amy/plugins`, unless another profile still mounts
-it. [Records](../concepts/glossary.md#record), queue and log are kept.
+`amy remove` takes the package name the config carries. Before it changes
+anything, it mounts the machine the config would become without the package. If
+a workflow would lose a [port](../concepts/glossary.md#port) it needs, it
+refuses and names the [action](../concepts/glossary.md#action) that would have
+nothing to run it. Otherwise it drops the entry and uninstalls the package from
+`~/.amy/plugins`, unless another profile still mounts it. A plugin owns no
+[records](../concepts/glossary.md#record), so the profile's records, queue and
+log stay as they were.
+
+Given a profile name, `amy remove` takes the profile and its workflow away, and
+the profile's records and queue with them. It lists those directories and asks
+before deleting them; `--yes` deletes without asking, and `--keep-state` keeps
+them for a later `amy add` to pick up. The log is never deleted.
 
 For a fork, `amy remove <name>` points the profile back at the published package
 and leaves the fork's directory where it is.

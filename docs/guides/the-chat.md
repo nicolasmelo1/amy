@@ -15,9 +15,11 @@ terminal to answer it.
 ## Connecting a chat
 
 Each chat is a [plugin](../concepts/glossary.md#plugin) that fills the
-`conversation` [port](../concepts/glossary.md#port). Install the one you use
-and give it your user id: only that person is answered, and everybody else's
-messages are ignored.
+`conversation` [port](../concepts/glossary.md#port). A port has one plugin per
+[profile](../concepts/glossary.md#profile), so pick one chat for each profile, install it and give it your user
+id: only that person is answered, and everybody else's messages are ignored.
+
+For Telegram:
 
 ```sh
 amy add @amykit/plugin-telegram
@@ -27,6 +29,16 @@ amy add @amykit/plugin-telegram
 plugins:
   "@amykit/plugin-telegram":
     operator: "123456789"        # your Telegram user id; the token is TELEGRAM_BOT_TOKEN
+```
+
+Or for Slack:
+
+```sh
+amy add @amykit/plugin-slack
+```
+
+```yaml
+plugins:
   "@amykit/plugin-slack":
     channel: C0XXXXXXX           # a channel id, not a name
     token: env:SLACK_BOT_TOKEN
