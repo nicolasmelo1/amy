@@ -96,7 +96,7 @@ function directoriesOf(files: ReadonlySet<string>): Set<string> {
   return directories;
 }
 
-const PROOF = /\b(?:test|property):([^\s#,;"]+)/g;
+const PROOF = /\b(?:test|property):([^\s#,;"]*)/g;
 
 function proofProblems(file: string, criteria: Declaration["criteria"] & object, touches: readonly string[], baseFiles: ReadonlySet<string>): string[] {
   const problems: string[] = [];
@@ -120,6 +120,8 @@ interface Known {
   /** Each option, and whether a value follows it. */
   readonly options: ReadonlyMap<string, boolean>;
   readonly takesArguments: boolean;
+  /** Run when its parent is named alone: `amy brief <id>` is `amy brief show <id>`. */
+  readonly isDefault: boolean;
 }
 
 const SPAN = /`amy ([^`]+)`/g;
@@ -132,6 +134,7 @@ function commandProblems(file: string, text: string, criteria: Declaration["crit
     words: command.path.map((word) => word.split(" ")[0]!),
     options: new Map(command.options.flatMap((option) => flagsOf(option.flags).map((flag) => [flag, /[<[]/.test(option.flags)] as const))),
     takesArguments: command.arguments.length > 0 || command.path.some((word) => word.includes(" ")),
+    isDefault: command.isDefault,
   }));
   const problems: string[] = [];
   for (const [, span] of text.matchAll(SPAN)) {
@@ -164,7 +167,10 @@ function unknownIn(span: string, known: readonly Known[], globals: ReadonlyMap<s
   const found = commandIn(tokens, known, globals);
   if (found === undefined || "unknown" in found) return found?.unknown;
   const words = found.match.words.join(" ");
-  const flag = tokens.map((token) => /^(--?[a-zA-Z][\w-]*)/.exec(token)?.[1]).find((one) => one !== undefined && !found.match.options.has(one) && !globals.has(one) && one !== "--help" && one !== "-h");
+  // A group's options include those of the subcommand it runs by default.
+  const fallback = defaultUnder(found.match.words, known);
+  const declared = (flag: string) => found.match.options.has(flag) || fallback?.options.has(flag) === true || globals.has(flag);
+  const flag = tokens.map((token) => /^(--?[a-zA-Z][\w-]*)/.exec(token)?.[1]).find((one) => one !== undefined && !declared(one) && one !== "--help" && one !== "-h");
   return flag ? { command: words, why: `amy ${words} declares no ${flag}`, flag } : undefined;
 }
 
@@ -190,8 +196,7 @@ function commandIn(tokens: readonly string[], known: readonly Known[], globals: 
     const token = tokens[at]!;
     // An option between the words, and its value, is stepped over: the words around it still name the command.
     if (token.startsWith("-")) {
-      const [flag, inline] = token.split("=", 2) as [string, string | undefined];
-      if ((match?.options.get(flag) ?? globals.get(flag)) && inline === undefined) at += 1;
+      at += valueAfter(token, match, globals) ? 1 : 0;
       continue;
     }
     if (!/^[a-z][a-z0-9-]*$/.test(token)) break;
@@ -203,10 +208,27 @@ function commandIn(tokens: readonly string[], known: readonly Known[], globals: 
     }
     // Past a command, a word is its argument, unless the command only groups others.
     if (match && (match.takesArguments || !groups(words, known))) break;
+    // A group with a default subcommand hands it the word as its argument.
+    const fallback = defaultUnder(words, known);
+    if (fallback && match) {
+      match = fallback;
+      break;
+    }
     const command = [...words, token].join(" ");
     return { unknown: { command, why: `the CLI declares no amy ${command}` } };
   }
   return match ? { match } : undefined;
+}
+
+/** Whether an option is followed by its value as the next word, rather than given inline with `=`. */
+function valueAfter(token: string, match: Known | undefined, globals: ReadonlyMap<string, boolean>): boolean {
+  const [flag, inline] = token.split("=", 2) as [string, string | undefined];
+  return inline === undefined && (match?.options.get(flag) ?? globals.get(flag)) === true;
+}
+
+/** The subcommand a group runs when it is named alone, if it has one. */
+function defaultUnder(words: readonly string[], known: readonly Known[]): Known | undefined {
+  return known.find((one) => one.isDefault && one.words.length === words.length + 1 && same(one.words.slice(0, words.length), words));
 }
 
 function groups(words: readonly string[], known: readonly Known[]): boolean {

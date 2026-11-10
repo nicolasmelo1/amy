@@ -4,12 +4,12 @@ import { cliFactsOf } from "../../docs/sources/cli.js";
 import { authoredProblems } from "../authored.js";
 
 const option = (flags: string) => ({ flags, description: "", default: undefined });
-const command = (path: string[], options: string[] = [], args = 0) => ({
+const command = (path: string[], options: string[] = [], args = 0, isDefault = false) => ({
   path,
   description: "",
   arguments: Array.from({ length: args }, (_, at) => ({ name: `a${at}`, required: true, description: "" })),
   options: options.map(option),
-  isDefault: false,
+  isDefault,
   hidden: false,
 });
 
@@ -25,6 +25,9 @@ const cli: CliFacts = {
     command(["workflow", "add"], ["--into <name>"], 1),
     command(["config"]),
     command(["config", "explain [plugin]"]),
+    command(["brief"]),
+    command(["brief", "show"], ["--json"], 1, true),
+    command(["brief", "check"], [], 1),
   ],
 };
 
@@ -82,6 +85,10 @@ describe("a groomed plan's proofs", () => {
     expect(judge(plan({ proof: "deferred:test:tests/missing.test.ts" }))).toEqual(["plans/x.md A1 is proven by tests/missing.test.ts, which is neither at the base nor in its touches"]);
   });
 
+  it("refuse a proof whose file is empty", () => {
+    expect(judge(plan({ proof: "deferred:test:" }))).toEqual([expect.stringMatching(/A1 is proven by .*which names no file/)]);
+  });
+
   it("refuse a proof that names no file", () => {
     expect(judge(plan({ proof: "deferred:test:mutation fixture for x" }))).toEqual([expect.stringMatching(/A1 is proven by .*which names no file/)]);
   });
@@ -121,6 +128,11 @@ describe("the commands a groomed plan names", () => {
   it("are checked through an option between their words", () => {
     expect(judge(plan({ body: "`amy workflow --workflow mine nonexistent`" }))).toEqual([expect.stringMatching(/the CLI declares no amy workflow nonexistent/)]);
     expect(judge(plan({ body: "`amy workflow --workflow=mine add ./w --into mine`" }))).toEqual([]);
+  });
+
+  it("pass a group's default subcommand named by its group alone, with its options", () => {
+    expect(judge(plan({ body: "`amy brief invoice-currency`, `amy brief invoice-currency --json`, `amy brief --json` and `amy brief check x`" }))).toEqual([]);
+    expect(judge(plan({ body: "`amy brief invoice-currency --yaml`" }))).toEqual([expect.stringMatching(/declares no --yaml/)]);
   });
 
   it("refuse an option a criterion only names the command of", () => {
