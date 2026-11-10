@@ -105,7 +105,6 @@ interface LogLine {
 /** Everything one walkthrough observed. */
 interface State {
   root: string;
-  init: Said;
   version: Said;
   noted: Said;
   noteId: string | undefined;
@@ -272,7 +271,9 @@ function walkthrough(): State {
   try {
     build(root, { source });
 
-  const init = amy(root, ["init"]);
+  // The machine as the operator's `amy setup` left it: its state directory,
+  // with the config the run writes next.
+  fs.mkdirSync(path.join(root, "home", ".amy"), { recursive: true });
   configure(root);
   installPlugins(root);
 
@@ -342,7 +343,6 @@ function walkthrough(): State {
 
   const state: State = {
     root,
-    init,
     version,
     noted,
     noteId,

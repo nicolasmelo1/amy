@@ -141,8 +141,7 @@ function installing(entry: MountedFact): string[] {
     "## Install",
     "",
     "```sh",
-    `# Add ${entry.name} to amy.yaml, then install configured plugins:`,
-    "amy init --install",
+    `amy add ${entry.name}`,
     "```",
     "",
     mountLine(entry),
@@ -285,7 +284,7 @@ function bringsOf(brings: Brought): string {
   if (brings.files.length > 0) {
     brought.push(
       "",
-      "`amy init` and `amy add` write, once, into the profile's own directory:",
+      "`amy add` writes, once, into the profile's own directory:",
       "",
       brings.files.map((file) => `- \`${file}\``).join("\n"),
     );

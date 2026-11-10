@@ -65,7 +65,7 @@ export function loadRoster(state: string, root?: string): Roster {
     if (where) {
       throw new Error(`no roster at ${file}; the machine's old roster is ${where} — copy it here and run \`amy roster confirm\``);
     }
-    throw new Error(`no roster at ${file}; write one with amy init, or run \`amy roster confirm\` once it is there`);
+    throw new Error(`no roster at ${file}; \`amy add\` writes one when it mounts this workflow; write it by hand otherwise, then run \`amy roster confirm\``);
   }
 
   const parsed = YAML.parse(fs.readFileSync(file, "utf-8")) as Partial<Roster> | null;
@@ -90,7 +90,7 @@ export function confirmRoster(state: string, today: Date, root?: string): Roster
   return confirmed;
 }
 
-/** What a profile that mounts this workflow is given, once, by `amy init`. */
+/** What a profile that mounts this workflow is given, once, by `amy add`. */
 export const EXAMPLE_ROSTER = `# Who is reviewing today, and who owns QA.
 #
 # confirmedOn is checked against today's date on every workday. The machine

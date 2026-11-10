@@ -5,7 +5,7 @@ import path from "node:path";
 /**
  * A harness this machine has, and where it looks for skills.
  *
- * Not every harness has the same idea of what a skill is. The two here read
+ * Not every harness has the same idea of what a skill is. The three here read
  * a `SKILL.md` per directory; a harness that reads something else is a
  * translation rather than a copy, and it is left out until somebody writes
  * that translation rather than being half-supported.
@@ -20,6 +20,7 @@ export interface Harness {
 export function harnesses(home: string = os.homedir()): Harness[] {
   return [
     { name: "claude", marker: path.join(home, ".claude"), skills: path.join(home, ".claude", "skills") },
+    { name: "codex", marker: path.join(home, ".codex"), skills: path.join(home, ".codex", "skills") },
     { name: "hermes", marker: path.join(home, ".hermes"), skills: path.join(home, ".hermes", "skills") },
   ];
 }

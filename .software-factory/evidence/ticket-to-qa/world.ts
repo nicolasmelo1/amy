@@ -496,7 +496,7 @@ notify:
  * on tickets that name real people, and a working directory that is a
  * checkout is one `git add -A` away from publishing them.
  *
- * What it does not write is the config and the roster. Those are `amy init`'s
+ * What it does not write is the config and the roster. Those are the operator's
  * to write, and this run edits them the way an operator would.
  */
 export function build(root: string, { source }: { source: string }): void {
@@ -540,7 +540,7 @@ export function build(root: string, { source }: { source: string }): void {
 }
 
 /**
- * The edit an operator makes to the roster `amy init` wrote, before confirming
+ * The edit an operator makes to the roster the workflow's setup wrote, before confirming
  * it: two reviewers instead of the template's three, and nobody confirmed yet.
  *
  * The roster is the profile's — two teams on one machine do not share
@@ -552,7 +552,7 @@ export function editRoster(root: string): void {
   fs.writeFileSync(path.join(profile, "roster.yaml"), ROSTER, "utf-8");
 }
 
-/** Writes the config an operator would have edited, over the one `amy init` wrote. */
+/** Writes the config an operator would have edited, over the one `amy setup` wrote. */
 export function configure(root: string, endpoint: string, engine: EngineChoice = "serial", withSlack = false): void {
   const amyDir = path.join(root, "home", ".amy");
   fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine, withSlack), "utf-8");

@@ -70,8 +70,7 @@ handed back to you.
 ## Install
 
 ```sh
-# Add @amykit/workflow-errand to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/workflow-errand
 ```
 
 Then name it in `~/.amy/config.yaml`:

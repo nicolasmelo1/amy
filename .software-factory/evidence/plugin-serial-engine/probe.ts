@@ -79,7 +79,7 @@ const ROSTER = {
 };
 
 // The roster is the workflow's own file, beside the profile's records. Written
-// here the way `amy init` would: the probe mounts the workflow directly.
+// here the way `amy setup` would: the probe mounts the workflow directly.
 fs.mkdirSync(state, { recursive: true });
 fs.writeFileSync(
   // No profile here: the probe mounts the workflow directly, so the host's

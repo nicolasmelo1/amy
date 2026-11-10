@@ -16,6 +16,7 @@ else is found by two conventions rather than by a list somebody curates.
 
 | Package | Kind | What it is |  |
 | :-- | :-- | :-- | :-- |
+| `@amykit/workflow-setup` | workflow | Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time. | [npm](https://www.npmjs.com/package/@amykit/workflow-setup) |
 | `@amykit/plugin-agent-browser` | plugin | Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-browser) |
 | `@amykit/plugin-agent-desktop` | plugin | Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-desktop) |
 | `@amykit/plugin-agent-relay` | plugin | One agent made of several: swaps harness on a quota, escalates model on a failure. | [npm](https://www.npmjs.com/package/@amykit/plugin-agent-relay) |
@@ -43,6 +44,7 @@ else is found by two conventions rather than by a list somebody curates.
 | `@amykit/plugin-slack` | plugin | A Slack thread per piece of work, over the Web API, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-slack) |
 | `@amykit/plugin-telegram` | plugin | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | [npm](https://www.npmjs.com/package/@amykit/plugin-telegram) |
 | `@amykit/plugin-terminal` | plugin | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. | [npm](https://www.npmjs.com/package/@amykit/plugin-terminal) |
+| `@amykit/plugin-terminal-conversation` | plugin | The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number. | [npm](https://www.npmjs.com/package/@amykit/plugin-terminal-conversation) |
 | `@amykit/workflow-errand` | workflow | Something said in passing becomes work: capture it, do it, say what happened. | [npm](https://www.npmjs.com/package/@amykit/workflow-errand) |
 | `@amykit/workflow-feature-grooming` | workflow | Feature grooming against read-only base-branch source snapshots. | [npm](https://www.npmjs.com/package/@amykit/workflow-feature-grooming) |
 | `@amykit/workflow-note-to-plan` | workflow | The note-to-plan workflow: friction becomes a plan in the repository it is about. | [npm](https://www.npmjs.com/package/@amykit/workflow-note-to-plan) |
@@ -72,7 +74,7 @@ gh search repos --topic amy-plugin
 Anything either query returns is installable the same way everything else is:
 
 ```sh
-amy init --install
+amy add <package>
 ```
 
 ```yaml

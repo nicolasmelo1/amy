@@ -56,6 +56,9 @@
       "path": "../../plugins/serial-engine"
     },
     {
+      "path": "../../plugins/terminal-conversation"
+    },
+    {
       "path": "../core"
     },
     {
@@ -69,6 +72,9 @@
     },
     {
       "path": "../services"
+    },
+    {
+      "path": "../workflow-setup"
     }
   ]
 }

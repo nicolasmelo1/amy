@@ -70,8 +70,7 @@ A note about anything else is handed back to you.
 ## Install
 
 ```sh
-# Add @amykit/workflow-note-to-plan to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/workflow-note-to-plan
 ```
 
 Then name it in `~/.amy/config.yaml`:

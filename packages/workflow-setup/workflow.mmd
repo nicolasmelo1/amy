@@ -1,0 +1,35 @@
+stateDiagram-v2
+    %% Onboarding as an amy workflow: amy setup walks a fresh machine from its
+    %% first question to a machine that runs, one ask at a time, through the
+    %% same conversation port every workflow uses. The bold states wait on the
+    %% person; DETECTING, PLUGIN_INSTALLED, PINGED and CHECKED only work. A
+    %% record for `amy setup <plugin>` starts at PLUGIN_INSTALLED for that
+    %% plugin and joins the walk at CONFIGURING, so it asks no workflow and
+    %% no channels. STOPPED ends the walk naming what failed, and the flags
+    %% that would answer an ask nobody could.
+    classDef attention stroke-width:3px
+
+    [*] --> DETECTING
+    DETECTING --> HARNESS
+    HARNESS --> PLUGIN_INSTALLED
+    PLUGIN_INSTALLED --> PINGED
+    PINGED --> WORKFLOW
+    WORKFLOW --> CHANNELS
+    CHANNELS --> CONFIGURING
+    CONFIGURING --> CHECKED
+    CHECKED --> DONE
+    DONE --> [*]
+    STOPPED --> [*]
+
+    PINGED --> CONFIGURING: the record is scoped to one plugin
+
+    DETECTING --> STOPPED: config.yaml does not parse, cannot be read, or the setup profile cannot be written
+    HARNESS --> STOPPED: no conversation answers the ask, npm refuses the harness, or the ladder cannot be written
+    PLUGIN_INSTALLED --> STOPPED: the plugin cannot be installed, or its setup failed
+    PINGED --> STOPPED: a model the ladder names does not answer
+    WORKFLOW --> STOPPED: no conversation answers the ask, npm refuses the workflow, or it cannot be written
+    CHANNELS --> STOPPED: no conversation answers the ask
+    CONFIGURING --> STOPPED: a channel cannot be installed, its schema cannot be read, or its settings cannot be written
+    CHECKED --> STOPPED: a check failed
+
+    class HARNESS,WORKFLOW,CHANNELS,CONFIGURING attention

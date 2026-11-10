@@ -70,21 +70,28 @@ try {
     void (await fetch(`${bot}/operator/say`, { method: "POST", body: JSON.stringify({ text, ...where }) }));
   const telegramWorld = async () => (await (await fetch(`${bot}/operator/world`)).json()) as TelegramWorld;
 
-  const init = amy("init");
-  if (init.code !== 0) throw new Error(`amy init exited ${init.code}: ${init.out}`);
+  // The operator's machine, as their answers to `amy setup` left it: a
+  // harness on the ladder, a channel to reach them, nothing else. `amy
+  // setup` asks a person one question at a time, and a scenario has no
+  // person to answer it — the installed-plugins and bare-install scenarios
+  // are what prove the install path; this one drives the machine the
+  // answers leave behind.
   installPlugins();
+  fs.mkdirSync(amyHome, { recursive: true });
+  fs.appendFileSync(path.join(home, ".env"), `TELEGRAM_BOT_TOKEN=${TOKEN}\n`);
+  fs.writeFileSync(path.join(amyHome, "config.yaml"), [
+    "agent:",
+    "  ladder: [claude]",
+    "extraPlugins:",
+    '  - "@amykit/plugin-telegram"',
+    "plugins:",
+    '  "@amykit/plugin-telegram":',
+    `    operator: "${OPERATOR}"`,
+    `    server: ${bot}`,
+    "",
+  ].join("\n"));
   // The conversation first: the inbox asks for one, and `amy add` refuses a
   // machine that would not boot with the entry it wrote.
-  const initConfig = fs.readFileSync(path.join(amyHome, "config.yaml"), "utf-8");
-  fs.writeFileSync(path.join(amyHome, "config.yaml"), `${initConfig}
-extraPlugins:
-  - "@amykit/plugin-telegram"
-plugins:
-  "@amykit/plugin-telegram":
-    operator: "${OPERATOR}"
-    server: ${bot}
-`);
-  fs.appendFileSync(path.join(home, ".env"), `TELEGRAM_BOT_TOKEN=${TOKEN}\n`);
   const added = amy("add", path.join(root, "workflow-support-inbox"));
   if (added.code !== 0) throw new Error(`amy add exited ${added.code}: ${added.out}`);
   configure(bot);
@@ -176,7 +183,7 @@ for (const assertion of assertions) console.log(`${assertion.status === "passed"
 process.exit(failed.length === 0 ? 0 : 1);
 
 /**
- * The operator's edit to what `amy init` and `amy add` wrote: the inbox
+ * The operator's edit to what their answers and `amy add` wrote: the inbox
  * mounts what it asks for and nothing a code workflow would, Telegram is
  * the conversation, and nothing here reaches the internet.
  */

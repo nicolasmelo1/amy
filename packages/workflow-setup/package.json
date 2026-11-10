@@ -1,0 +1,40 @@
+{
+  "name": "@amykit/workflow-setup",
+  "version": "0.6.0",
+  "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Nicolas Melo",
+  "homepage": "https://github.com/nicolasmelo1/amy#readme",
+  "bugs": {
+    "url": "https://github.com/nicolasmelo1/amy/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicolasmelo1/amy.git",
+    "directory": "packages/workflow-setup"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "workflow.mmd"
+  ],
+  "dependencies": {
+    "@amykit/core": "^0.6.0"
+  },
+  "devDependencies": {
+    "@amykit/test-fixtures": "^0.1.0",
+    "@amykit/workflow-testkit": "^0.6.0"
+  }
+}

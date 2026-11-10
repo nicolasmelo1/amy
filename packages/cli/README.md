@@ -9,7 +9,7 @@ belongs to the workflow and every effect to a plugin.
 ## Start here
 
 ```sh
-amy init                 # write the config and roster templates
+amy setup                # set the machine up, one question at a time
 cp .env.example .env     # then put your tracker key in it
 amy roster confirm       # stamp today's date
 amy doctor               # check every dependency before it touches a ticket

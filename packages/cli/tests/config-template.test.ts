@@ -26,7 +26,7 @@ function surfacesOf(given: object | undefined): SettingsSurface[] {
   return [{ at: "", schema: machineSchema, given }];
 }
 
-describe("the config amy init writes", () => {
+describe("the annotated example config", () => {
   // The regression. `agent:` appeared twice, YAML refuses a duplicate key
   // rather than merging it, and every command after `amy init` threw.
   it("parses, so the first command after init is not the last", () => {
@@ -196,7 +196,7 @@ describe("checkConfigTemplate", () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("Map keys must be unique");
-    expect(problems[0]).toContain("amy init");
+    expect(problems[0]).toContain("example config");
   });
 
   it("gives nothing for a machine whose every setting is described", () => {

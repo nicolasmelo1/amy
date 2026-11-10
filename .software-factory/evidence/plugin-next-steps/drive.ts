@@ -94,7 +94,9 @@ try {
   fs.writeFileSync(path.join(standing, `plans/${HALF_WRITTEN}.md`), plan("A row somebody is still writing"));
   const standingHead = git(standing, "rev-parse", "HEAD");
 
-  amy("init");
+  // The machine as the operator's `amy setup` left it: its state directory,
+  // with the config the run writes next.
+  fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
   configure();
   installPlugins();
   editRoster(root);

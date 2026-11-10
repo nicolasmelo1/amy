@@ -90,8 +90,7 @@ make instead.
 ## Install
 
 ```sh
-# Add @amykit/workflow-ticket-to-qa to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/workflow-ticket-to-qa
 ```
 
 Then name it in `~/.amy/config.yaml`:
@@ -186,7 +185,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 - `roster confirmed for today`
 
-`amy init` and `amy add` write, once, into the profile's own directory:
+`amy add` writes, once, into the profile's own directory:
 
 - `roster.yaml`
 

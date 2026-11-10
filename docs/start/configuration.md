@@ -20,7 +20,7 @@ That is why adding a plugin nobody here has heard of costs no change to amy: it
 brings its own schema, and validation follows.
 
 ```sh
-amy init          # writes the template below
+amy setup         # asks, then writes the config
 amy doctor        # checks it, and exits non-zero when something is wrong
 ```
 
@@ -95,7 +95,7 @@ Three things this buys, and each one is a failure that used to be silent:
 - **A plugin with no schema takes no settings.** Giving one settings anyway is
   refused, because there is nothing that would read them.
 
-## The template `amy init` writes
+## The annotated example
 
 This is the file itself, taken from the constant the command writes it from — so
 it cannot drift from what you actually get.

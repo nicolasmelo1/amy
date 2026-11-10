@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `inbox` in 
 ## Install
 
 ```sh
-# Add @amykit/plugin-notify-inbox to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-notify-inbox
 ```
 
 Then name it in `~/.amy/config.yaml`:

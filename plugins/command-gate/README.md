@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `gate` 
 ## Install
 
 ```sh
-# Add @amykit/plugin-command-gate to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-command-gate
 ```
 
 Then name it in `~/.amy/config.yaml`:

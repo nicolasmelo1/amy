@@ -51,7 +51,7 @@ about code that no longer exists is not a proof.
 | Each workflow's states, waiting states, terminal states, actions | The built workflow | Its exported machine object |
 | Environment variables a package needs | Its `src` | Every `process.env.X` it names |
 | `config.yaml` keys and defaults | `packages/cli/src/config.ts` | AST over `AmyConfig` and `DEFAULT_CONFIG` |
-| The `amy init` templates | The same file | The constants the command writes them from |
+| The annotated example config | The same file | The constant that holds it |
 | Gates, rules, and why a rule is off | `.software-factory/policy.yaml` | Including the YAML comments, which is where the reasons live |
 | Releases | GitHub, cached | See below |
 | Pending changes | `.changeset/` | Front matter and body |
@@ -99,6 +99,7 @@ A page is markdown with markers in it:
 | `@amykit/plugin-slack` | A Slack thread per piece of work, over the Web API, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-telegram` | A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port. | `conversation` |  |
 | `@amykit/plugin-terminal` | Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen. |  |  |
+| `@amykit/plugin-terminal-conversation` | The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number. | `conversation` |  |
 
 <!-- amy:end plugin-index -->
 

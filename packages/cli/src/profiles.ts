@@ -118,9 +118,10 @@ const NEEDS: Record<string, readonly string[]> = {
   "@amykit/workflow-note-to-plan": ["@amykit/plugin-plan-check"],
   "@amykit/workflow-errand": ["@amykit/plugin-file-tasks"],
   "@amykit/workflow-feature-grooming": ["@amykit/plugin-linear"],
+  "@amykit/workflow-setup": ["@amykit/plugin-terminal-conversation"],
 };
 
-/** What `amy init` suggests installing for a profile that lists nothing. */
+/** What `amy add` installs for a profile that lists nothing. */
 export function recommendedFor(profile: Profile): readonly string[] {
   return recommendedPluginsFor(profile.workflow);
 }
