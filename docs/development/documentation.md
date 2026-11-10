@@ -1,6 +1,6 @@
 ---
 title: Documentation
-description: How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes.
+description: How half of this is generated from the code, how the other half is held to rules, why the gate goes red when either drifts, and what a site consumes.
 group: Development
 order: 4
 ---
@@ -13,17 +13,18 @@ The rule this documentation is built to is one sentence:
 
 Every table of commands, settings, ports, actions, events, states, gates and
 rules on this site was read out of the thing it describes. The prose between
-them is written by people. The gate goes red when the two disagree.
+them is written by people, and held to the [prose check](#the-prose-check). The
+gate goes red when the two disagree, and when the prose breaks a rule.
 
-## The two commands
+## Generating and checking
 
 ```sh
 npm run docs:generate      # rewrite everything derived from the code
 npm run docs:check         # write nothing; exit non-zero if anything would change
 ```
 
-`docs:check` is in `npm run gate`. Add a setting to a plugin, forget to
-regenerate, and:
+`docs:check` is in `npm run gate` and the pre-commit hook. Add a setting to a
+plugin, forget to regenerate, and:
 
 ```
 docs: the code moved and the documentation did not. These are out of date:
@@ -41,14 +42,16 @@ about code that no longer exists is not a proof.
 
 | Fact | Read from | How |
 | :-- | :-- | :-- |
-| Commands, arguments, options, defaults | `packages/cli/src/index.ts` | The commander chain, parsed as a TypeScript AST |
+| The host's commands, arguments, options, defaults | `packages/cli/src/index.ts` | The commander chain, parsed as a TypeScript AST |
 | Action catalogue | `packages/core/src/actions.ts` | AST, with each action's doc comment |
 | Port contracts and their methods | `packages/core/src/ports/*.ts` | AST, with signatures and doc comments |
 | Plan kinds | `packages/core/src/work.ts` | AST over the union |
-| Event kinds and every `detail` shape | `packages/core/events.json` | Read as data — it already is a contract |
+| Event kinds and every `detail` shape | `packages/core/events.json` | Read as data; it already is a contract |
 | **What each plugin mounts and contributes** | The built plugin | It is *registered*, against a registry that only takes notes |
+| The operations, commands and events a package brings | The built plugin | What it declares beside `register` |
 | Each plugin's settings | The built plugin | Its declared `configSchema` |
-| Each workflow's states, waiting states, terminal states, actions | The built workflow | Its exported machine object |
+| Each workflow's states, waiting states, terminal states, actions | The built workflow and its `workflow.mmd` | The machine it registers, shaped by the diagram beside it |
+| When to use a plugin | Its `package.json` | `amy.about`, the one paragraph written by hand |
 | Environment variables a package needs | Its `src` | Every `process.env.X` it names |
 | `config.yaml` keys and defaults | `packages/cli/src/config.ts` | AST over `AmyConfig` and `DEFAULT_CONFIG` |
 | The annotated example config | The same file | The constant that holds it |
@@ -56,8 +59,8 @@ about code that no longer exists is not a proof.
 | Releases | GitHub, cached | See below |
 | Pending changes | `.changeset/` | Front matter and body |
 
-The plugin row is the one worth pausing on. Nothing declares "this plugin mounts
-the `tracker` port" in a manifest somebody keeps in step — **the plugin is
+The plugin row is the unusual one. Nothing declares "this plugin mounts the
+`tracker` port" in a manifest somebody keeps in step: **the plugin is
 registered against a fake registry and asked**. A plugin that reads a credential
 at mount is given a placeholder for exactly the variables its own source names,
 for the length of one call, and never over a value already in the environment.
@@ -109,29 +112,34 @@ The reasoning about all this is prose, and it is mine.
 Everything **outside** the markers belongs to whoever wrote it and is never
 touched. Everything inside is replaced.
 
-Two things are errors rather than warnings:
+These are errors rather than warnings:
 
-- A page naming a block nothing produces. A reference section that quietly
-  renders nothing is worse than a build that fails.
+- A page naming a block nothing produces. A reference section that renders
+  nothing without saying so is worse than a build that fails.
 - A block nothing places. A fact the documentation has and does not show is the
   same failure as one that is out of date.
 
 ## What is written wholesale
 
 **Every package README.** `packages/*/README.md` and `plugins/*/README.md` are
-generated from the package itself and carry a banner saying so. Twenty
-hand-written READMEs is twenty things that quietly stop being true.
+generated from the package itself and carry a banner saying so. A plugin's
+README says what it extends (ports, actions, operations, commands, events,
+environment), read from the package, and opens with its `amy.about`; a plugin
+under `plugins/` with no `amy.about` fails the generator, naming it. A
+hand-written README per package is one more thing per package that stops being
+true without anybody noticing.
 
 **An example keeps its introduction as prose.** `examples/*/README.md` opens
 with what the workflow is for, written for somebody who has never seen amy,
 and the generator owns only the `reference` block below it: the states, the
 settings and what the package brings.
 
-**The root `README.md` keeps its pitch as prose.** Its command table, factory
-counts and Node requirement are generated blocks: the front door may persuade,
-but it must not hand-copy a fact the code already knows.
+**The root `README.md` is a summary, written by hand.** Its Node requirement is
+a generated block. The command table and the factory counts it used to carry
+live in the [CLI reference](../reference/cli.md) and [The gate](the-gate.md),
+and the prose check holds the rest. Why: [the README counts nothing by hand](../design/the-readme-counts-nothing-by-hand.md).
 
-**`docs/manifest.json`** — see below.
+**`docs/manifest.json`**: see below.
 
 ## The manifest
 
@@ -168,8 +176,8 @@ changes every time it is generated cannot be checked for drift.
 come from the directory, ordered by the `order` in each page's front matter.
 
 So adding a page puts it in the navigation, and there is no second list to
-forget. What is genuinely editorial — that "Start here" comes before "Reference"
-— is the only thing written down, because nothing in the file system says it.
+forget. What is editorial, such as "Start here" coming before "Reference", is the
+only thing written down, because nothing in the file system says it.
 
 ## The news cache
 
@@ -181,7 +189,7 @@ Its own command rather than part of generating, because the two answer to
 different masters. Fetching needs a network and a credential and changes when
 somebody publishes; generating has to be reproducible on any machine at any
 time. Keeping them apart is what lets `docs:check` be a check rather than a coin
-toss — and it means building the documentation works on an aeroplane.
+toss, and it means building the documentation works on an aeroplane.
 
 ## The part that uses an agent
 
@@ -190,8 +198,8 @@ npm run docs:draft
 ```
 
 Everything above is deterministic and is what the gate enforces. This is the
-other half: for a surface that is newly *undocumented* — a new port, a plugin
-with no page, a workflow nobody wrote prose for — it asks an agent to draft the
+other half: for a surface that is newly *undocumented* (a new port, a plugin
+with no page, a workflow nobody wrote prose for) it asks an agent to draft the
 prose and leaves it for a person to edit.
 
 It does not have an HTTP client of its own. It **mounts amy's own harness
@@ -205,6 +213,48 @@ does not work. See [`scripts/docs/draft.ts`](https://github.com/nicolasmelo1/amy
 
 **It never runs in the gate**, and nothing it writes is trusted without review.
 A generated table is a fact; generated prose is a draft.
+
+## The prose check
+
+The written half drifts the same few ways every time, so `scripts/docs/prose.ts`
+holds it to rules, and `npm run docs:check` fails naming the file, the line and
+the rule. It reads every page a user reads: `README.md`, `CONTRIBUTING.md`,
+`docs/` outside `docs/design/` and the changelog, and the READMEs under
+`examples/`, `plugins/` and `packages/`. Plans, changesets and design notes keep
+their prose as written. Prose is what is left once fenced code, inline code,
+link targets, HTML comments and generated blocks are blanked; front matter's
+`title` and `description` count as prose.
+
+- **No hand-written count.** A digit or a number-word directly before a plural
+  noun, in a heading or a sentence, is a count somebody will forget to change.
+  Say it with no number, or let a generated block say it.
+- **No listed slop.** The em dash, an en dash between spaces,
+  `not just`, `isn't just`, `not only` and `not merely`, and a list of words and phrases (`SLOP` in the file) taken from
+  [Wikipedia's signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+  and from amy's own taglines. Review still reads for what a list cannot catch.
+- **A prose limit.** The root README, a guide, a concept page and an example's
+  introduction each have a ceiling in characters (`LIMITS`); code and generated
+  blocks do not count.
+- **Code that compiles.** Every `ts` fence on a page under `docs/guides/` or
+  `docs/concepts/` is typechecked against the repository's source, by
+  `scripts/docs/tests/examples.test.ts` rather than the docs check, because it
+  compiles the core. A page there with no checked block fails, unless it is in
+  `PROSE_ONLY` with its reason. A block that cannot compile opts out only with
+  `<!-- amy:untyped REASON -->` on the line above it; relabelling the fence or
+  silencing it with `@ts-ignore` fails. `<!-- amy:file NAME -->` names a block
+  as a file, so another block on the page can import it, and
+  `<!-- amy:scaffold NAME -->` names a block as a file `amy workflow new`
+  writes, which the `workflow-new` scenario holds byte for byte to the scaffold.
+- **Glossary links in guides.** In `docs/guides/`, the first prose use of each
+  term the [glossary](../concepts/glossary.md) defines links to its anchor.
+- **Every design note is reachable.** A note in `docs/design/` is linked from a
+  page a user reads, or listed in `SUPERSEDED` naming what replaced it.
+- **The README stays a summary.** It links every nav group, each of its sections
+  ends in a link, its install block stays under the command ceiling the check
+  sets, it names Claude Code,
+  Codex and Hermes, it links the skills for agents, and it shows the logo.
+- **`amy.about` is prose too.** A plugin's `amy.about` is held to the count and
+  slop rules where it is written, in its `package.json`.
 
 ## Adding a generated block
 

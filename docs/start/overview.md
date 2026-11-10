@@ -1,40 +1,36 @@
 ---
 title: Overview
-description: What amy is, the one idea the rest follows from, and what it is not.
+description: What amy is, the idea the rest follows from, and what it is not.
 group: Start here
 order: 1
 ---
 
 # Overview
 
-amy is a state machine you leave running. It picks a piece of work up, makes
-**one move**, writes down what happened, and puts the next look on a queue. Then
-it does it again. That is the whole product.
+amy is an opinionated state machine framework where everything is a plugin,
+configured your way and left to run on Claude Code, Codex and Hermes
+subscriptions. It picks a piece of work up, makes **one move**, writes down what
+happened, and puts the next look on a queue. Then it does it again.
 
-Everything else in this documentation is about the two questions that follow
-from it: *what counts as a move*, and *who actually does it*.
+The rest of this documentation answers what counts as a move, and who makes it.
 
-## The one idea
+## The idea the rest follows from
 
-**The decision is a pure function, and it is the only thing that decides.**
+**The decision is pure, and it is the only thing that decides.**
+
+Each state a workflow draws has a decision. It reads the persisted record, a
+snapshot of the outside world and the workflow's policy, and returns one of:
+`act` (do work, stay, look again straight away), `advance` (move to another
+state, with its actions), `wait` (look again later) or `settled` (done).
 
 ```ts
-plan(record, observation, policy): Plan
+decide[record.state](record, observation, policy) // → act | advance | wait | settled
 ```
 
-It reads a persisted record and a snapshot of the outside world, and returns one
-of four things: `act` (do work, stay put, look again straight away), `advance`
-(move to another state, with one-shot effects), `wait` (back off), or `settled`
-(done, stop queueing).
-
-It touches no tracker, no code host, no repository and no agent. Effects are
-only ever *described* by the machine and *executed* by something else, so what
-the machine decided and what the world did stay separable — which is why a whole
-sixteen-state lifecycle can be walked end to end in a test with no I/O at all,
-including the paths where a review requests changes and where the agent
-disagrees with a reviewer.
-
-Everything hard in this repository is downstream of keeping that function pure.
+It touches no tracker, no code host, no repository and no agent. The machine
+describes what should happen and something else does it, so what it decided and
+what the world did stay apart. That is why the whole ticket-to-qa lifecycle,
+including a review that requests changes, can be walked in a test with no I/O.
 
 ## The pieces
 
@@ -56,50 +52,53 @@ Everything hard in this repository is downstream of keeping that function pure.
 
 | Piece | What it owns | Documented in |
 | :-- | :-- | :-- |
-| **The core** | The catalogue of actions, the port contracts, the generic work record, the plan, and the registry that mounts everything. It owns no domain. | [Architecture](../concepts/architecture.md) |
-| **A workflow** | The order actions happen in, and how each one runs. Three pieces: a `workflow.mmd` diagram, a pure decision per state, and its actions. | [Workflows](../concepts/workflows.md) |
-| **An engine** | Claiming from the queue, counting attempts, asking the budget, obeying the handbrake. Knows nothing about tickets. | [The engine](../concepts/the-engine.md) |
-| **A plugin** | Everything else: the tracker, the forge, the agents, the queue on disk, the notification channels. | [Plugins](../concepts/plugins.md) |
+| **The core** | The port contracts, the generic work record, the plan, and the registry that mounts everything. It owns no domain. | [Architecture](../concepts/architecture.md) |
+| **A workflow** | A `workflow.mmd` diagram of where work can go, a decision per state, and the actions, joined by one `defineWorkflow` call. | [Workflows](../concepts/workflows.md) |
+| **An engine** | Claiming from the queue, counting attempts, asking the budget, obeying the handbrake. It knows nothing about tickets. | [The engine](../concepts/the-engine.md) |
+| **A plugin** | Everything else: the tracker, the forge, the agents, the queue on disk, the chat, the notification channels. | [Plugins](../concepts/plugins.md) |
 
-## What "everything is a plugin" actually buys you
+Why a workflow has that shape: [a workflow is one declaration](../design/a-workflow-is-one-declaration.md)
+and [the workflow contract changes once](../design/the-workflow-contract-changes-once.md).
+[Project, workflow, plugin](../guides/project-workflow-plugin.md) tells the words apart.
 
-Three things, and it is worth being concrete about which.
+## What "everything is a plugin" buys
 
 **A process that is yours.** The lifecycle amy walks is a directory of yours or
 a package somebody published, and naming a different one in the config is the
-whole change — no fork, no flag, no case in a switch. `amy workflow new` writes
-the first one. See [Workflows and profiles](workflows-and-profiles.md).
+change. `amy workflow new` writes the first one. See
+[Workflows and profiles](workflows-and-profiles.md) and
+[Write a workflow](../guides/write-a-workflow.md).
 
 **An adapter for a tool nobody here has heard of.** Your tracker is not Linear,
-your forge is not GitHub, your agent is something internal. Each of those is one
-port with a handful of methods. See [Write a plugin](../build/write-a-plugin.md).
+your forge is not GitHub, your agent is something internal. Each of those is a
+port with a handful of methods. See [Write a plugin](../guides/write-a-plugin.md).
 
-**A machine that refuses early.** Because plugins are assembled rather than
-constructed, `mount()` can check the whole shape before a ticket is touched: a
-plugin that will not import, a setting that is not one it declared, two plugins
-both claiming to be the tracker, an action the workflow emits that nothing can
-run. Removing the agent plugin does not produce a crash three layers deep; it
-produces three lines naming the three actions that would have failed.
+**A machine that refuses early.** `mount()` checks the whole shape before a
+ticket is touched: a plugin that will not import, a setting it did not declare,
+a port claimed by more than one plugin, an action the workflow emits that nothing
+can run. Removing the agent plugin does not crash a tick later; the boot names
+each action that would have failed. Why it builds in one pass:
+[a mount builds once](../design/a-mount-builds-once.md).
 
 ## What it is not
 
 **It is not a coding agent.** It calls one. Claude Code, Codex and Hermes are
-plugins here, and the thing amy adds is everything around the call: what to do
-next, what it costs, what happens when it fails, and who to tell.
+plugins here, and amy adds what surrounds the call: what to do next, what it
+costs, what happens when it fails, and who to tell.
 
-**It is not a CI system.** It runs your gate and reads the result; it does not
-try to be the gate.
+**It is not a CI system.** It runs your gate and reads the result.
 
-**It is not a chat interface.** It has no conversation and no memory of one. It
-has a record per piece of work and an append-only log, and both survive the
-process that wrote them.
+**It is not a chat bot.** It answers in Slack or Telegram when a chat plugin is
+mounted, and asks there when it needs a person (see [the chat](../guides/the-chat.md)),
+but the work lives in a record per piece of work and an append-only log, and
+both survive the process that wrote them.
 
 **It is not multi-tenant.** One install, one machine, one operator, state in
 `~/.amy`. It works on tickets naming real colleagues and real customers, and
-that shape is deliberate — see [Security](security.md).
+that shape is deliberate. See [Security](security.md).
 
 ## Where to go next
 
-- Five minutes and one move: [Quickstart](quickstart.md).
-- The argument for each design decision: [How it works](../concepts/architecture.md).
-- Making it do your process: [Write a workflow](../build/write-a-workflow.md).
+- One move you can watch: [Quickstart](quickstart.md).
+- Why each piece is shaped the way it is: [How it works](../concepts/architecture.md).
+- Making it do your process: [Write a workflow](../guides/write-a-workflow.md).

@@ -6,6 +6,19 @@ Advances one work item by one move per tick.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the engine.
 
+Every install that runs work needs an engine, and this is the default: each tick it advances one work item by one move. It needs a workflow, a queue and a record store, so pair it with file-queue and file-store, and it asks the budget before anything expensive. Choose concurrent-engine instead when the lanes of a fork should move together.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `engine` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

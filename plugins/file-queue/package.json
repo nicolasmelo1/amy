@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Every install that runs an engine needs a queue, and this is the local one: each item is a file, claimed by renaming it so a loop never takes an item another one holds. Items are taken in id order or by priority. Pair it with file-store and an engine."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   }

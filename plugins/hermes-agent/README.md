@@ -6,6 +6,19 @@ Hermes as the agent, over its one-shot mode and usage report.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in the `harness` collection and `Hermes ()` in the `usage` collection.
 
+Use it when the agent should be Hermes, run in one-shot mode under a profile of its own so amy never touches your personal Hermes setup. It contributes a harness and a usage reader to agent-relay, so install the relay beside it. amy add prepares the profile and amy doctor checks it.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | `OLLAMA_API_KEY` |
+
 ## Install
 
 ```sh
@@ -61,7 +74,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

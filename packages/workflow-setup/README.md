@@ -4,9 +4,9 @@
 
 Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.
 
-A workflow for [amy](https://github.com/nicolasmelo1/amy): a pure `plan()` that says what
-happens next, and a runtime that says how each step is done. The engine drives it without
-knowing what any of its states mean.
+A workflow for [amy](https://github.com/nicolasmelo1/amy): a diagram of where work can go, a
+decision per state saying where it goes next, and the actions that happen in the world. The
+engine drives it without knowing what any of its states mean.
 
 ## Calling it
 
@@ -55,7 +55,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-workflow.md)
 - [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

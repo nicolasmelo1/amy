@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: Every command, argument, option and default — read out of the command itself.
+description: Every command the host declares, with its arguments, options and defaults, read out of the command itself.
 group: Reference
 order: 1
 ---
@@ -9,6 +9,13 @@ order: 1
 
 Everything on this page is read out of the CLI's own declaration on every build.
 If it is here, the command has it.
+
+These are the host's commands, the ones every install has. A mounted package
+brings more: an operation it declares with `cli` words is a command too, such
+as `amy prove record`, `amy note` or `amy btw`. They are listed by `amy --help`
+on the install that mounts them, marked with the package that brings them, and
+in that package's README. Why: [a plugin brings its own commands](../design/a-plugin-brings-its-own-commands.md),
+declared as [operations, not commands](../design/a-plugin-brings-operations-not-commands.md).
 
 ```sh
 amy [--workflow <name>] <command> [options]

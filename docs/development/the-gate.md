@@ -1,6 +1,6 @@
 ---
 title: The gate
-description: One command, thirty-three rules proven to fire, and ten gates whose proofs expire.
+description: One command, the rules proven to fire, and the gates whose proofs expire.
 group: Development
 order: 2
 ---
@@ -11,10 +11,13 @@ order: 2
 npm run gate
 ```
 
-That is the whole definition, in one place: build, typecheck, release config,
-tests with a coverage floor, lint, a dead-code detector, a dependency audit, the
-documentation drift check, `sf check` and `sf verify`. **If it is not in there
-it is not gated.**
+That is the whole definition, in one place in `package.json`: the build, the
+typecheck, the repository's own checks (release config, config template, plans,
+delivered plans, private references, toolchain, vendored contracts, registry
+items), the documentation check, the tests with a coverage floor, lint, a
+dead-code detector, a dependency audit, `sf check` and `sf verify`. **If it is
+not in there it is not gated.** CI runs the same steps; the scenarios run
+separately, with `npm run e2e`.
 
 ## The rules, and the thing that makes them worth having
 
@@ -22,7 +25,7 @@ This repository runs [software factory](https://github.com/nicolasmelo1/software
 on itself, and `sf verify` proves **every enabled rule fires** against a
 deliberately broken fixture.
 
-That second part is the point. A rule that cannot fail is a rule that is lying,
+That proof is what matters. A rule that cannot fail is a rule that is lying,
 and a repository full of them looks exactly like one that is well guarded. So
 the tool that refuses to open a pull request until a gate is green is itself
 held to a gate that is proven to work.
@@ -107,12 +110,13 @@ enforced.
 
 <!-- amy:end factory-disabled -->
 
-Two of the security linter's rules are off as well, in writing:
-`detect-non-literal-fs-filename` and `detect-object-injection`. This program is
-a file-backed queue, store and log whose every path is computed, and every
-object index is keyed by a union the compiler already checks. Left on they
-produced 105 warnings and buried the one real finding, which was a regular
-expression that could be made to backtrack forever.
+Some of the security linter's rules are off as well, in writing, in
+`eslint.config.ts`: `detect-non-literal-fs-filename` and
+`detect-object-injection`. This program is a file-backed queue, store and log
+whose every path is computed, and every object index is keyed by a union the
+compiler already checks. Left on they produced a flood of warnings that
+buried the one real finding, which was a regular expression that could be made
+to backtrack forever.
 
 ### The one worth naming
 
@@ -124,10 +128,10 @@ confirms the rule still catches it.
 
 ## The hazards nobody notices until the day they matter
 
-Six rules are the L6 layer, and none of them audits anything itself — the
-ecosystem tools are better than anything a rule could do. What each one checks is
-that **the tool is still wired in**, because a scanner somebody removed to make
-CI faster fails exactly like one that was never added.
+Some of the L6 rules audit nothing themselves, because the ecosystem tools are
+better than anything a rule could do. What each of them checks is that **the
+tool is still wired in**, because a scanner somebody removed to make CI faster
+fails exactly like one that was never added.
 
 | Hazard | Tool | Where it runs |
 | :-- | :-- | :-- |
@@ -140,14 +144,27 @@ CI faster fails exactly like one that was never added.
 
 ## The gates, and the thing that will surprise you
 
+Counted from the policy on every build:
+
+<!-- amy:generated factory-counts -->
+
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a broken fixture.
+
+**28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+
+<!-- amy:end factory-counts -->
+
 > The tests exercise classes. The gates exercise the artifact.
 
 Every unit test imports a source file from inside the workspace. A barrel that
 forgets an export, or a `dist` nobody built, passes the whole suite and is broken
-on the machine that installs it.
+on the machine that installs it. Why the gates exist:
+[every plugin is proven end to end](../design/every-plugin-is-proven-end-to-end.md),
+and [what runs is not this repo](../design/what-runs-is-not-this-repo.md).
 
-So each gate is a scenario that imports `dist/index.js` **from another process**,
-asserts what the thing promises, and writes a report sealed with a digest.
+So each gate is a scenario that drives the built artifact **from another
+process**, asserts what the thing promises, and writes a report sealed with a
+digest. A gate's `plan` in the policy names the design note that argues for it.
 
 <!-- amy:generated factory-gates -->
 
@@ -158,7 +175,7 @@ asserts what the thing promises, and writes a report sealed with a digest.
 | `a-private-workflow-composes` | `packages/core/src/git.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/ports/CodeHost.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/ports/Notifier.ts`<br>`packages/core/src/ports/Queue.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/operator.ts`<br>`packages/core/src/runtime.ts`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/linear/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`plugins/file-queue/src/**` | 53 |
 | `a-question-is-not-an-answer` | `packages/core/src/ports/Conversation.ts`<br>`packages/core/src/actions.ts`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd`<br>`plugins/slack/src/**`<br>`plugins/serial-engine/src/**` | 8 |
 | `a-workflow-calls-another` | `packages/core/src/calls.ts`<br>`packages/core/src/expand.ts`<br>`packages/core/src/define-workflow.ts`<br>`packages/core/src/diagram.ts`<br>`examples/workflow-pull-request/src/**`<br>`examples/workflow-pull-request/workflow.mmd`<br>`packages/cli/src/workflow-add.ts`<br>`packages/cli/src/workflow.ts`<br>`packages/cli/src/status-page.tsx` | 7 |
-| `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md`<br>`packages/cli/guardrails/**` | 11 |
+| `a-workflow-of-your-own` | `packages/cli/src/workflow.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/skills/amy-workflow/SKILL.md`<br>`packages/cli/guardrails/**`<br>`docs/guides/write-a-workflow.md` | 11 |
 | `a-workspace-is-a-capability` | `packages/core/src/checkouts.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/plugin.ts`<br>`packages/core/src/ports/Workspace.ts`<br>`packages/core/src/define-workflow.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/doctor.ts`<br>`plugins/file-worktree/src/**`<br>`plugins/command-gate/src/**`<br>`.software-factory/evidence/a-workspace-is-a-capability/**`<br>`.software-factory/evidence/a-workspace-is-a-capability-scenario.sh` | 6 |
 | `amy-add-remove` | `packages/cli/src/index.ts`<br>`packages/cli/src/spec.ts`<br>`packages/cli/src/add.ts`<br>`packages/cli/src/remove.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/config.ts` | 6 |
 | `amy-answers-in-the-chat` | `packages/core/src/chat/**`<br>`packages/core/src/ports/Conversation.ts`<br>`plugins/telegram/src/**`<br>`plugins/slack/src/**`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/assemble.ts`<br>`packages/cli/src/chat-action.ts`<br>`packages/cli/src/supervisor/**`<br>`.software-factory/evidence/amy-answers-in-the-chat/**`<br>`.software-factory/evidence/amy-answers-in-the-chat-scenario.sh` | 8 |
@@ -184,15 +201,15 @@ asserts what the thing promises, and writes a report sealed with a digest.
 
 <!-- amy:end factory-gates -->
 
-Each one exists for a reason worth stating:
+Some of them, and why each exists:
 
-- **`plugin-file-queue`** — because the engine cannot survive it handing one item out twice.
-- **`the-event-log-can-be-watched`** — because a window that misses a line, or reads half of one, shows a machine that is not the one running.
-- **`plugin-agent-relay`** — because it decides how money gets spent when something goes wrong.
-- **`plugin-serial-engine`** — because it decides whether a piece of work gets lost.
-- **`installed-binary`** — because every test in the suite imports from inside the workspace.
-- **`installed-plugins`** — because a plugin model nobody outside this repository can use is not one.
-- **`ticket-to-qa` and `note-to-plan`** — because none of the others answers the question somebody actually has.
+- **`plugin-file-queue`**: the engine cannot survive the queue handing one item out twice.
+- **[`the-event-log-can-be-watched`](../design/the-event-log-can-be-watched.md)**: a window that misses a line, or reads half of one, shows a machine that is not the one running.
+- **`plugin-agent-relay`**: it decides how money gets spent when something goes wrong ([the relay is proven end to end](../design/the-relay-is-proven-end-to-end.md)).
+- **`plugin-serial-engine`**: it decides whether a piece of work gets lost.
+- **`installed-binary`**: every test in the suite imports from inside the workspace.
+- **`installed-plugins`**: a plugin model nobody outside this repository can use is not one.
+- **`ticket-to-qa`, `note-to-plan` and `errand`**: none of the others answers whether a piece of work goes in one end and comes out the other ([the lifecycle is proven end to end](../design/the-lifecycle-is-proven-end-to-end.md), [the errand is proven end to end](../design/the-errand-is-proven-end-to-end.md)).
 
 ### A gate's proof expires
 
@@ -217,8 +234,8 @@ product's behaviour, not the gate's.
 
 ## Coverage and the ratchet
 
-Coverage thresholds sit just under what the suite achieves, so coverage can only
-be ratcheted up. Two complexity findings are frozen in
-`.software-factory/ratchet.yaml` with a note saying why, and
-`L2.NO_PERMANENT_EXCEPTION` makes sure each carries a review date — a permanent
-exception is a rule somebody turned off and called a decision.
+Coverage thresholds in `vitest.config.ts` sit just under what the suite
+achieves, so coverage can only be ratcheted up. A rule violation that cannot be
+fixed yet is frozen in `.software-factory/ratchet.yaml` with a note saying why,
+and `L2.NO_PERMANENT_EXCEPTION` makes sure each carries a review date: a
+permanent exception is a rule somebody turned off and called a decision.

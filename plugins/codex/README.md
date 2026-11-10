@@ -6,6 +6,19 @@ The codex CLI as the agent, over its JSONL event stream.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `harness` collection and `Codex` in the `usage` collection.
 
+Use it when the agent should be Codex, run through the codex CLI. It contributes a harness and a usage reader to agent-relay, which must be installed beside it. At mount it checks that the installed codex speaks the app-server protocol it was built against, and refuses to mount otherwise. Codex reports no cost of its own, so a ceiling in money needs the price table to carry the model.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | `CODEX_HOME` |
+
 ## Install
 
 ```sh
@@ -51,7 +64,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

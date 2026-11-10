@@ -127,6 +127,10 @@ export interface BroughtCommand {
 /** What a mounted package names in its own module, for the README to state. */
 export interface Brought {
   commands: BroughtCommand[];
+  /** Every operation's id, the command-line ones and the rest. */
+  operations: string[];
+  /** The events a streaming operation answers with, by name. */
+  events: string[];
   checks: string[];
   files: string[];
 }
@@ -136,6 +140,8 @@ export interface PackageFact {
   name: string;
   version: string;
   description: string;
+  /** `amy.about` in its package.json: when to reach for it, in a paragraph somebody wrote. */
+  about?: string;
   private: boolean;
   group: string;
   directory: string;

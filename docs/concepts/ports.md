@@ -1,22 +1,32 @@
 ---
 title: Ports
-description: Named slots one plugin fills, the contracts behind them, and which are not ports at all.
+description: Named slots one plugin fills, the contracts behind them, the checkouts the host lends, and what is not a port at all.
 group: How it works
-order: 4
+order: 5
 ---
 
 # Ports
 
 A **port** is a named slot in a mounted host. One plugin fills it, an action
-dispatches to it, and a workflow narrows it to whatever subset it needs.
+dispatches to it, and a workflow names the ones it uses in `needs`.
 
 ```ts
-registry.port("tracker", new LinearTracker(…));
+import { definePlugin, type Tracker } from "@amykit/core";
+
+declare function jira(site: string): Tracker;
+
+export const plugin = definePlugin({
+  name: "@acme/plugin-jira",
+  configSchema: { site: { type: "string", description: "the Jira site", required: true } },
+  register(registry, ctx) {
+    registry.port("tracker", jira(ctx.config.site));
+  },
+});
 ```
 
-The name is a string, and that is deliberate: the core owns the *catalogue of
-actions*, and each action declares the port it needs. A port kind nobody
-dispatches to is still a port — a workflow's runtime may reach one directly.
+The name is a string on purpose: the core owns the catalogue of actions, and
+each action says which port it needs. A port nothing dispatches to is still a
+port, and a workflow's actions may reach it directly.
 
 ## The ports that exist
 
@@ -44,20 +54,44 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 
 <!-- amy:end port-kinds -->
 
-Two things to read out of that table:
-
 **`agent` is filled by the relay, not by a harness.** The Claude, Codex and
-Hermes plugins *contribute themselves* to a collection; `@amykit/plugin-agent-relay`
-is the only thing that mounts the `agent` port. Dropping the relay from a config
-leaves every agent action without a port, and the mount is refused at boot.
+Hermes plugins contribute themselves to the `harness` collection;
+`@amykit/plugin-agent-relay` is what mounts the `agent` port. A config without
+the relay leaves every agent action without a port, and the mount is refused at
+boot.
 
 **A port with no shipped implementation is not a gap.** It is the slot your
-plugin fills.
+plugin fills. Swap `@amykit/plugin-linear` for yours in the profile's plugin
+list, and every action that dispatches to `tracker` reaches you.
 
 ## The contracts
 
-These are the interfaces `packages/core/src/ports` declares. Not all of them are
-mounted as ports — see the next section.
+These are the interfaces `packages/core/src/ports` declares. The ports belong
+to the core so a plugin never imports a workflow
+([the ports belong to the core](../design/the-ports-belong-to-the-core.md)).
+Not every one is mounted as a port; see the next sections.
+
+A gap in a contract is closed in the contract, so no workflow writes its own
+adapter beside the plugin that owns the service
+([the forge is asked, not run beside](../design/the-forge-is-asked-not-run-beside.md)).
+That is how these grew:
+
+- A `Ticket` carries its `body`, and `comments` returns what a person answered
+  ([the ticket body reaches the agent](../design/the-ticket-body-reaches-the-agent.md),
+  [an answer reaches the agent](../design/an-answer-reaches-the-agent.md)).
+- A `ReviewThread` carries its replies, and `resolveReviewThread` closes it
+  ([a reply inside a thread reaches the agent](../design/a-reply-inside-a-thread-reaches-the-agent.md),
+  [the threads close when they are answered](../design/the-threads-close-when-they-are-answered.md)).
+- `pullRequestAncestry` tells a stacked pull request where its parent went
+  ([a stack knows its parent](../design/a-stack-knows-its-parent.md)).
+- A brief lists the work it `explains`, and a ticket names it by its feature's
+  identifier in `briefId`
+  ([a brief reaches every ticket it explains](../design/a-brief-reaches-every-ticket-it-explains.md),
+  [a brief is named the way its feature is](../design/a-brief-is-named-the-way-its-feature-is.md)).
+- `BaseSource` lets grooming read, search and date the base branch at one
+  `revision`
+  ([grooming reads the code it is about](../design/grooming-reads-the-code-it-is-about.md),
+  [a snapshot is a commit](../design/a-snapshot-is-a-commit.md)).
 
 <!-- amy:generated core-contracts -->
 
@@ -343,80 +377,90 @@ Declared in `packages/core/src/ports/Worktree.ts`.
 
 <!-- amy:end core-contracts -->
 
+## Checkouts
+
+`ctx.checkouts()` is how a plugin or a workflow gets a repository's checkout.
+It returns a `Checkouts`: a `git` to work in and the `layout` behind it, for
+the question `Git` does not answer, which branch a pull request opens against
+(`baseBranchFor(layout, repo)`). Every workflow piece gets the same object as
+`checkouts`.
+
+```ts
+import { baseBranchFor, type PluginContext } from "@amykit/core";
+
+declare const ctx: PluginContext;
+
+const { git, layout } = ctx.checkouts();
+const tree = await git.acquire("acme/app", "TBO-1");
+const base = baseBranchFor(layout, "acme/app");
+```
+
+It reads the `workspace` port for where checkouts live (`workspaceRoot`, and a
+path per repository), the calling plugin's own `defaultBranch` and
+`baseBranch`, and the `worktree` port, read each time a path is asked for, so a
+worktree plugin listed later is still the one used. The workspace is looked up
+on first use: when nothing mounted one, the read is refused, naming who asked
+and that `@amykit/plugin-file-worktree` provides it. A plugin that takes the
+branch settings spreads `BRANCH_SETTINGS` into its schema. Nothing outside the
+core constructs a `Git`.
+
+Why: [the host lends the checkout](../design/the-host-lends-the-checkout.md),
+[a workspace is a capability](../design/a-workspace-is-a-capability.md),
+[a base branch per repository](../design/a-base-branch-per-repository.md) and
+[a checkout root per repository](../design/a-checkout-root-per-repository.md).
+
 ## What is a port, and what is lent to everybody
 
-Three of those contracts are **host services** rather than ports. Every plugin
-gets them in its context, and nothing mounts them:
+Some contracts are **host services**, not ports. Nothing mounts them:
 
 | Contract | Why it is not a port |
 | :-- | :-- |
-| `CommandRunner` | Every adapter that shells out needs it. Making it a port would mean every plugin declaring a dependency on the same thing. |
-| `EventLog` | One log, opened by the host, handed to everybody. Two logs would be two budgets. |
+| `CommandRunner` | Every adapter that shells out needs it, as `ctx.runner`. A port would make every plugin declare the same dependency. |
+| `EventLog` | One log, opened by the host and handed to everybody as `ctx.log`. A second log would mean a second budget. |
 | `StopSwitch` | **Deliberately not a plugin**: a handbrake that depends on plugins loading cannot stop a run whose plugins are what went wrong. |
-| `GraphQLClient` | A transport an adapter constructs for itself, kept behind an interface so the adapter's queries can be tested without a network. |
+| `GraphQLClient` | A transport an adapter builds for itself, behind an interface so its queries are tested without a network. |
 
-And one contract is mounted under a different name than it is called:
-**`Harness` mounts as `agent`**. The relay mounts `ask` and nothing else, so
-every workflow's prompts end up on the same ladder, in the same log and under
-the same ceiling, keyed by the step each names in its context. Neither
-workflow has to know the other exists, and no agent touches git: when work is
-committed and pushed is the workflow's decision
+**`Harness` mounts as `agent`.** The relay offers `ask` and nothing else, so
+every workflow's prompts go through the same ladder, the same log and the same
+ceiling, keyed by the step each names in its context. No agent touches git:
+when work is committed and pushed is the workflow's decision
 ([an agent only answers](../design/an-agent-only-answers.md)).
 
 ## Narrowing a port
 
-The core keeps its contracts domain-free, so a workflow narrows what it uses to
-what it needs:
+The core keeps its contracts domain-free, so a workflow narrows what it uses
+to what it needs, at its own boundary:
 
 ```ts
-// The ticket workflow's view of the git half: only what it drives
-export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush">;
+import type { Git } from "@amykit/core";
 
-// Its steps are prompts on the one agent method, read into its own types
-const { value } = await judgeStep(agent, {
-  prompt: triagePrompt(ticket),
-  cwd,
-  context: { workId: ticket.id, step: "triage" },
-  read: (answer) => readTriage(answer, at),
-  fallback: unreadTriage(at),
+/** The ticket workflow's view of git: only what it drives. */
+export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush">;
+```
+
+A port you write needs the methods the workflows you run call, and the
+compiler checks that at your end.
+
+## A port the core has never heard of
+
+A plugin may add an action, and then it brings the port that runs it:
+
+```ts
+import { acceptsAction, definePlugin, type Action, type ActionContext } from "@amykit/core";
+
+const pager = {
+  page: acceptsAction(async (action: Action, _context: ActionContext) => ({ paged: String(action.who) })),
+};
+
+export const plugin = definePlugin({
+  name: "@acme/plugin-pager",
+  configSchema: {},
+  register(registry) {
+    registry.action("page-oncall", { port: "pager", method: "page" }, pager);
+  },
 });
 ```
 
-The port says nothing about tickets; the workflow narrows it to its own
-vocabulary at its own boundary. This is what "the core is generic so type
-safety comes from the other side" means in practice.
-
-## Filling a port from your own plugin
-
-```ts
-export const plugin: Plugin = {
-  name: "@acme/plugin-jira",
-  configSchema,
-  register(registry, ctx) {
-    registry.port("tracker", new JiraTracker(ctx.runner, ctx.config));
-  },
-};
-```
-
-Nothing else changes. `@amykit/plugin-linear` comes out of the profile's plugin
-list, yours goes in, and every action that dispatches to `tracker` now reaches
-you.
-
-The methods you have to provide are the ones the *workflow* calls, not the ones
-the core declares — a workflow narrows the port, so implementing its narrowed
-interface is sufficient and is checked by the compiler at your end.
-
-## Registering a port the core has never heard of
-
-A plugin may add an action, and when it does it brings the port that runs it:
-
-```ts
-registry.action("check-plan", { port: "plan-check", method: "check" }, new PlanCommandCheck(…));
-```
-
-Both halves in one package, deliberately. An action nobody can execute is a
-promise the machine cannot keep. If your action turns out to be general, the way
-it graduates into the core is evidence — a second workflow that wants it —
-rather than a guess.
-
-See [Actions](actions.md) and [Write a plugin](../build/write-a-plugin.md).
+Both halves live in one package. If the action turns out to be general, it
+graduates into the core when a second workflow wants it. See
+[Actions](actions.md) and [Write a plugin](../guides/write-a-plugin.md).

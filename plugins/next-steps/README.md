@@ -6,6 +6,19 @@ A next-steps table as the tracker: a row is a work item, its plan the body, read
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tracker` port.
 
+Use it when the list of work is an ordered table of plans kept in a repository instead of a ticket tracker. It mounts a tracker port that only reads: each row is a work item with its plan as the body, and only the top rows count as work at once. The table is read from the base branch, so the order is what was merged, and a workflow on it hands every tracker write to the operator.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `tracker` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -49,7 +62,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

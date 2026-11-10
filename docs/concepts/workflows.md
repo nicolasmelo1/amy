@@ -1,48 +1,116 @@
 ---
 title: Workflows
-description: Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration.
+description: A diagram of where work can go, a pure decision per state, and the actions that touch the world, joined by one declaration.
 group: How it works
-order: 2
+order: 3
 ---
 
 # Workflows
 
-A workflow is **the order in which actions happen, plus how each one runs**. It
-is three pieces, always in the same place, and keeping the decision apart from
-the world is the single most important thing about this codebase.
+A workflow is **the order in which actions happen, plus how each one runs**.
+It has a diagram, a decision per state and the actions, always in the same
+place, and one `defineWorkflow` call joins them. Keeping the decision apart from
+the world is the most important thing about this codebase.
 
 ```text
    workflow.mmd          decide                         actions
    ────────────          ──────                         ───────
    where work can go     where this work goes next      what happens in the world
    a Mermaid diagram     pure, synchronous, per state   async, through the ports
-                         (record, observation, policy)  discover, observe, remember
-                              → Plan
 ```
 
 ## The diagram
 
 The states, where work starts, where it waits and where it ends are read from
 the `workflow.mmd` beside the workflow's entry, or at its package root, and from
-nowhere else. A workflow declares no list of states. One whose host finds no
-diagram beside it is refused when it mounts, naming the workflow and the file it
-needs; so is a declaration that still passes `states`, `waiting` or `terminal`.
-See [a workflow is a Mermaid diagram](../design/a-workflow-is-a-mermaid-diagram.md)
-for the subset amy reads.
+nowhere else. A workflow declares no list of states. One with no diagram beside
+it is refused when it mounts, naming the workflow and the file it needs; so is a
+declaration that still passes `states`, `waiting` or `terminal`.
+
+`[*] --> S` names the initial state and `S --> [*]` a terminal one. Classes say
+what an arrow cannot: `waiting`, `attention`, `anywhere`, `returns` and `call`.
+Why, and the exact subset amy reads: [a workflow is a Mermaid
+diagram](../design/a-workflow-is-a-mermaid-diagram.md).
+
+## One declaration
+
+```ts
+import { act, advance, defineWorkflow, port, settled, wait, type Harness, type WorkRecord } from "@amykit/core";
+
+/** The workflow's own port: the core has never heard of a task. */
+interface Tasks {
+  all(): string[];
+  read(id: string): string | undefined;
+}
+
+type Run = { type: "run-errand"; prompt: string };
+interface ErrandRecord extends WorkRecord {
+  answer: string;
+}
+
+export const plugin = defineWorkflow({
+  name: "errand",
+  configSchema: {},
+  policy: { maxAttempts: 2 },
+  needs: { tasks: port<Tasks>(), agent: port<Harness>() },
+  record: () => ({ answer: "" }),
+  discover: async ({ ports }) => ports.tasks.all(),
+  observe: async ({ ports }, record: ErrandRecord) => ({ task: ports.tasks.read(record.id) }),
+  decide: {
+    QUEUED: (_record, world) =>
+      world.task === undefined ? wait(60_000, "the task is not written yet") : advance("WORKING", "a task is there"),
+    WORKING: (record: ErrandRecord, world, policy) =>
+      record.answer !== "" ? advance("DONE", "the agent answered")
+        : (record.attempts.WORKING ?? 0) >= policy.maxAttempts ? advance("DONE", "out of attempts")
+          : act<Run>("ask the agent", { type: "run-errand", prompt: world.task ?? "" }),
+    DONE: () => settled("the errand is done"),
+  },
+  actions: {
+    "run-errand": async ({ ports, checkouts }, _work, effect) => {
+      await ports.agent.ask(String(effect.prompt), checkouts.git.pathFor("errand", "app"));
+    },
+  },
+  remember: (_scope, record: ErrandRecord, outcomes) => ({ ...record, answer: String(outcomes["run-errand"] ?? record.answer) }),
+});
+```
+
+`defineWorkflow` registers the workflow and contributes its runtime under the
+same name, so the pair cannot be half mounted. The runtime is built once every
+plugin has registered ([a mount builds once](../design/a-mount-builds-once.md)),
+so plugin order does not matter.
+
+- **`needs`** is the port list, typed. A required port nothing mounted is
+  refused at boot naming the workflow and the port; an `optional<T>()` one
+  arrives as `T | undefined`.
+- **`policy`** is the defaults. The config's `policy` mapping goes over them at
+  boot, and a key the defaults do not have is refused by name.
+- **`record`** returns only the workflow's own fields. The core writes `id`,
+  `state`, `updatedAt`, `attempts`, `looks` and `history`.
+- **`configSchema`** types `config` in every piece
+  ([a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md)).
+- Every piece gets the ports, the config, the policy and `checkouts`, the
+  repository checkouts the host lends ([Ports](ports.md#checkouts)).
+
+Only this form mounts. A declaration that still passes a single `plan()` or a
+`runtime()` factory is refused at boot, naming each and where it moved. A
+plugin that registers a workflow by hand with `registry.workflow(...)` is the
+core's own contract for its unit tests; amy refuses one from an install or from
+`~/.amy/workflows`, naming the plugin. Why it is one call: [a workflow is one
+declaration](../design/a-workflow-is-one-declaration.md) and [the note on decide and
+actions](../design/a-workflow-is-three-pieces.md).
 
 ## The decision half
 
-`decide` has one key per state the diagram draws, each a pure function of the
-record, a snapshot of the outside world and the policy. A state the diagram
-draws with no key, or a key for a state it does not draw, is refused at boot by
-name. `before` answers ahead of every state's decision and `after` sees every
-decision; the three compose into the one pure function the engine calls:
+`decide` has one key per state the diagram draws, except a call state and a
+fork, whose callee and lanes decide for them. Each is a pure function of the
+record, a snapshot of the world and the policy. A missing key, or one for a
+state the diagram does not draw, is refused at boot by name. `notWritten()`
+stands in for a decision not written yet: it mounts, and settles the record
+saying so.
 
-```ts
-plan(record, observation, policy): Plan
-```
-
-It returns one of four things:
+`before` answers ahead of every state's decision and `after` sees every
+decision, for the rules that hold in every state. Together they compose into
+the one pure function the engine calls. It returns one of these:
 
 <!-- amy:generated plan-kinds -->
 
@@ -55,161 +123,51 @@ It returns one of four things:
 
 <!-- amy:end plan-kinds -->
 
-It touches no tracker, no code host, no repository and no agent. If you find
-yourself wanting to `await` something inside a decision, the thing you want
-belongs in an action.
+A decision touches no tracker, no code host, no repository and no agent. If you
+want to `await` something inside one, it belongs in an action. That is what
+lets the whole ticket-to-qa lifecycle, review rounds included, be walked in a
+test in milliseconds with no I/O.
 
-**What purity buys.** A sixteen-state lifecycle, including the paths where a
-review requests changes and where the agent disagrees with a reviewer, is walked
-end to end in a test in milliseconds with no I/O. That test is the one that
-finds the bugs, and it only exists because the function is pure.
+**Looks and attempts.** Every `act` and `wait` adds a look in its state. Only an
+`act` adds an attempt, and not one marked `act(why, { attempt: false }, ...)` or
+whose action answered `notATry`. An `advance` adds neither: its actions are
+one-shot. So a ceiling on attempts counts real tries, and waiting for a checkout
+never spends one ([waiting is not trying](../design/waiting-is-not-trying.md)).
 
 ## The world half
 
-The rest of the declaration says what the engine cannot know. Each piece
-receives the ports `needs` asked for, the config, the policy and the checkouts,
-and the core builds them into the workflow's runtime after every plugin has
-registered:
+- **`discover`** returns work that is not on the queue yet.
+- **`observe(scope, record)`** says what the world looks like for this record
+  now.
+- **`actions`** is one entry per action the decisions may emit: the key is the
+  name, the value is a handler or `{ port, method }`. An action with nothing
+  behind it, or a plan naming one the map does not have, is refused. See
+  [Actions](actions.md).
+- **`remember(scope, record, outcomes, observation, moved, decision, now)`**
+  folds what happened back into the record. The record has already moved: where
+  it came from is `moved.from`, never `record.state`. It is given the
+  observation too, because an answer somebody left on a ticket arrives as one. A
+  workflow that keeps nothing beyond the core's fields leaves it out.
 
-| Member | What it answers |
-| :-- | :-- |
-| `discover` | What work exists that is not on the queue yet |
-| `observe(scope, record)` | What the outside world looks like, for this record, right now |
-| `actions` | Every action this workflow can emit, each beside what runs it |
-| `remember(scope, record, outcomes, observation, moved, decision, now)` | How what happened folds back into the record |
-| `policy` | The numbers the decisions are given — attempt ceilings, backoffs, how many open reviews one person may carry |
+A handler gets its ports bound to the work. Every reply from `agent` writes an
+`agent.run` line, which is what the budget adds up. `announce(text)` says a word
+to the operator, and a channel that fails becomes a `notify.failed` line rather
+than a failed action. `ports.notifier` stays strict, for a message the work
+depends on.
 
-`remember` is the subtle one. The engine has already folded the state, the
-attempt count and the history through `applyPlan`; it cannot fold the rest,
-because it does not know what a triage result or a gate result is. The
-**observation** is passed to it too, because not everything a record learns
-comes from an action — an answer somebody left on a ticket arrives as an
-observation, and a fold that could not see one would leave the record waiting
-on it forever. A workflow that keeps nothing beyond the core's fields leaves it
-out.
+`extend(registry, ctx)` is the rest of a plugin, for a workflow that also mounts
+a queue, a port of its own or a harness.
 
-The **record** `remember` is handed has already moved: its `state` is where the
-work is going, not where the look started. Where it came from is `moved.from`,
-and `moved` is `null` when the plan did not advance. A fold that remembers where
-an escalation interrupted the work reads `moved`, never `record.state` — a guard
-written against `record.state` on a move into `ESCALATED` sees `ESCALATED` every
-time, and excludes every escalation there is.
+## Calls and lanes
 
-**`actions`** is one declaration per action: the key is the name the plan
-emits, the value is what runs it.
+A state marked `call` runs another workflow as a child record, bound in `calls`
+with `call(workflow, { input, config, ports, output })`. Its edges out are named
+for the callee's terminal states. A workflow declares what a caller passes in
+`input` and what it returns at each end in `output`. Calls nest, and a cycle is
+refused at boot. See [a workflow calls another](../design/a-workflow-calls-another.md).
 
-```ts
-actions: {
-  "hand-off-to-qa": async (scope, work, effect) => { /* scope.ports, scope.announce */ },
-  "merge": { port: "forge", method: "merge" },
-}
-```
-
-A value is a handler the workflow wrote, or a port and a method the host wires:
-it calls the method with the action and its context, and puts what comes back in
-`outcomes` under the action's name. Only a method its port marked with
-`acceptsAction` can be wired that way — a method written for its own arguments,
-`check(repo, workId)` say, would be handed an action where it expects a
-repository, so the mount refuses it and a handler calls it instead. Because the name and the implementation are
-the same entry, an action cannot be declared without something behind it, nor
-planned without being declared. The mount refuses at boot, by name, a key whose
-value is neither, a port nothing mounted, or a method the port does not have.
-The engine refuses a plan that carries a name the map does not, before any of
-that plan's actions run.
-
-A handler receives its ports from the host, bound to the work. Every reply from
-`agent` writes an `agent.run` line against the work and its state, which is
-what the budget adds up, so an action never writes one itself. The agent's own
-failures are not swallowed, and still fail the action.
-
-Beside the ports, an action gets `announce(text)`: a word to the operator that
-is only worth saying. A channel that fails becomes a `notify.failed` line
-rather than a failed action, because a channel somebody misconfigured must
-never cost a move. `ports.notifier` stays strict, for a message the work
-depends on: a write handed to the operator that nobody heard has to fail the
-action, so the look is tried again rather than recorded as said.
-
-## One declaration joins the pieces
-
-```ts
-export const plugin = defineWorkflow({
-  name: "errand",
-  configSchema,
-  policy: DEFAULT_POLICY,
-  needs: { tasks: port<Tasks>(), agent: port<Harness>(), notifier: port<Notifier>() },
-  decide,
-  record: () => ({}),
-  // Each piece is a function of the scope the host hands it: the ports
-  // `needs` asked for, the settings, the policy and the checkouts.
-  discover: ({ ports }) => Promise.resolve(ports.tasks.all().map((task) => task.id)),
-  observe,
-  actions: {
-    "run-errand": runErrand,
-    announce: (scope, _work, effect) => scope.announce(effect.text),
-  },
-  remember,
-});
-```
-
-`defineWorkflow` registers the pure workflow and contributes its runtime under
-the same name. The runtime is built after every plugin has registered, so a
-required port nobody mounted is refused at boot and an `optional<T>()` port is
-handed to it as `T | undefined`.
-
-The diagram's `[*]` arrow names the initial state. The core constructs each new
-record with `id`, `state`, `updatedAt`, `attempts` and `history`;
-`record(workId)` returns only the workflow's own fields. Policy defaults are
-merged with the configured `policy` mapping at boot, and an override whose key
-is not in the defaults is refused by name.
-
-The keys of **`actions`** declare the workflow's *reach*, which the host checks
-at boot: an action with nothing behind it refuses the mount by name.
-
-Only this form mounts. A declaration that still passes a single `plan()` or a
-`runtime()` factory is refused at boot, naming each and where it moved: `plan`
-onto `decide`, `runtime` onto `discover`, `observe`, `actions` and `remember`.
-A plugin that registers a workflow by hand, with `registry.workflow(...)`, is
-the core's own contract for its unit tests; amy never mounts one from an
-install or from `~/.amy/workflows`, and refuses it naming the plugin.
-
-## Effects are described, never performed
-
-The machine emits an effect; what the workflow's `actions` declared for it performs it. Nothing about
-that is a formality — it is what keeps "what was decided" and "what the world
-did" separable, and therefore separately testable.
-
-A workflow declares its own typed view of the actions it composes:
-
-```ts
-export type Effect =
-  | { type: "triage" }
-  | { type: "ask-question"; questions: string[] }
-  | { type: "implement"; retryContext?: string }
-  | { type: "run-gate" }
-  | { type: "announce"; text: string };
-```
-
-The core owns the *names* and how each one is dispatched. The *payload* each one
-carries in this workflow lives here, which is what lets the decision function
-stay type-checked while the core stays ignorant.
-
-## Attempts, and why `advance` does not count
-
-`applyPlan` counts an attempt for `act` and `wait`, and not for `advance`.
-
-Work done *inside* a state is counted, so every retry loop is bounded. Actions
-carried by an `advance` are one-shot transition actions and are not retried, so
-counting them would make a lifecycle that moves forward look like one that is
-stuck.
-
-This is also where the second-workflow defect showed up: every runtime was
-folding the plan into the record twice, so every retry counted as two, and the
-`maxAttempts` ceiling fired at half its configured value.
-
-## Lanes: work that runs side by side
-
-A record is in one state at a time, and that stays true. Work that can run side
-by side is drawn as a `<<fork>>`, and every line out of it is a lane:
+Work that runs side by side is drawn as a `<<fork>>`, and every line out of it
+is a lane:
 
 ```mermaid
 stateDiagram-v2
@@ -227,21 +185,13 @@ stateDiagram-v2
     class GATE, SELF_REVIEW call
 ```
 
-Every lane is a call, so every lane is a record of its own, and each takes its
-input from its own binding. The caller waits in the fork while they run and
-moves to the join when every one has ended; `record.lanes` then holds where
-each ended and what it returned, keyed by lane, for the join's `decide` to
-read. A lane that escalates leaves its siblings running, and the fork says
-which lane needs the person. Each lane's end has an edge into the join, named
-for it, as every call's end does.
-
-There is no setting for how many lanes there are: draw four and there are
-four. The serial engine moves them one look at a time, in turn;
-`@amykit/plugin-concurrent-engine` moves every lane that has a move at once.
-A lane takes a lease on the branch it writes before it checks it out, so two
-lanes never write one branch, and a binding's `revision` lends a lane a tree
-detached at the caller's commit, read-only. See
-[a workflow runs on lanes](../design/a-workflow-runs-on-lanes.md).
+Every lane is a call, so a record stays in one state. The caller waits in the
+fork and moves to the join when every lane has ended; `record.lanes` holds
+where each ended and what it returned, for the join's `decide`. Draw more lines
+for more lanes. The serial engine moves them in turn and
+`@amykit/plugin-concurrent-engine` moves them at once. A lane leases the branch
+it writes, so no branch has a second writer. See [a workflow runs on
+lanes](../design/a-workflow-runs-on-lanes.md).
 
 ## The shipped workflows
 
@@ -415,13 +365,11 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 
 ## Writing one
 
-A workflow of yours is a directory under `~/.amy/workflows`, and it is a package
-only if you decide to share it later. `amy workflow new <name>` writes its three
-pieces — `workflow.mmd`, `decide.ts` and `actions.ts`, joined by the one call in
-`index.ts` — and it already moves a piece of work;
-`amy workflow check <name>` drives it against a stub world and reports what it
-got wrong.
+A workflow of yours is a directory under `~/.amy/workflows`, and a package only
+if you decide to share it. `amy workflow new <name>` writes `workflow.mmd`,
+`decide.ts` and `actions.ts`, joined by the call in `index.ts`, and it moves a
+piece of work before you edit it. `amy workflow check <name>` drives it against
+a stub world and reports what it got wrong.
 
-[Write a workflow](../build/write-a-workflow.md) is the full walkthrough, from
-what the scaffold wrote to a walkthrough test. `/amy-workflow` designs one by
-interrogating you a question at a time.
+[Write a workflow](../guides/write-a-workflow.md) is the walkthrough, and
+`/amy-workflow` designs one by asking you a question at a time.

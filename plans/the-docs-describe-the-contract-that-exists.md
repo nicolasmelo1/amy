@@ -56,6 +56,8 @@ touches:
   - docs/start/*.md
   - docs/concepts/*.md
   - docs/concepts/glossary.md
+  - docs/design/a-mount-builds-once.md
+  - docs/design/a-workflow-is-one-declaration.md
   - docs/build/*.md
   - docs/guides/project-workflow-plugin.md
   - docs/guides/install-a-plugin.md
@@ -71,10 +73,12 @@ touches:
   - examples/*/README.md
   - plugins/*/README.md
   - plugins/*/package.json
+  - plugins/prove/tests/resources.test.ts
   - packages/*/README.md
   - registry/*.json
   - scripts/docs/blocks.ts
   - scripts/docs/generate.ts
+  - scripts/docs/lib/facts.ts
   - scripts/docs/prose.ts
   - scripts/docs/sources/packages.ts
   - scripts/docs/render/readme.ts

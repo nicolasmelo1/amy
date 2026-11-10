@@ -6,6 +6,19 @@ Advances one work item per tick, moving every lane of a fork at once.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the engine.
 
+Use it in place of serial-engine when a workflow forks into lanes that should move together, such as ticket-to-qa running its gate and its self-review side by side. Everything else is the serial engine's, settings included: the same claim on a queue item and the same budget check before each lane's call. An install mounts one engine, so pick this one or serial-engine, with file-queue and file-store beside it.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `engine` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

@@ -6,6 +6,19 @@ GitHub as the code host, through the gh CLI.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `code-host` port.
 
+Use it when the code lives on GitHub. It mounts the code-host port that ticket-to-qa and pull-request need to open pull requests, request reviews and read review threads, and that errand and note-to-plan reach when they open their drafts. It talks to GitHub through the gh CLI, so gh must be installed and logged in.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `code-host` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -39,7 +52,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

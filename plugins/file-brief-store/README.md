@@ -6,6 +6,19 @@ Briefs kept as one file per item.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `brief` port.
 
+Use it when a workflow reads or writes briefs: feature-grooming waits on the brief port it mounts, prove reads the scenario a brief settled from it, and ticket-to-qa uses it when it is there. Each brief is a JSON file, kept under the project's artifact directory when there is one. It is the local default, and another adapter for the brief port can replace it.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `brief` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -39,7 +52,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

@@ -1,6 +1,6 @@
 ---
 title: Plugins
-description: Every shipped plugin — what it mounts, what it contributes, and every setting it declares.
+description: Every shipped plugin, what it mounts and contributes, and every setting it declares.
 group: Reference
 order: 2
 ---
@@ -50,9 +50,10 @@ maintains.
 
 ## Settings, plugin by plugin
 
-Every field below is validated at boot. A key that is not one a plugin declared
-is a refusal naming the plugin and the key — see
-[Plugins and the registry](../concepts/plugins.md).
+Every field below is validated at boot against the schema the plugin declares.
+A key it did not declare is a refusal naming the plugin and the key. See
+[Plugins and the registry](../concepts/plugins.md), and for how a plugin reads
+its settings back typed: [a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md).
 
 <!-- amy:generated plugin-settings -->
 

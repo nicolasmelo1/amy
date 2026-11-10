@@ -1,8 +1,8 @@
 # @amykit/ui-conformance
 
 The frame's conformance script. It drives a renderer through a fixed script
-over a fixed world — by the default keys, by a remapped keymap and by the
-mouse, and the default way twice — and reads back what the renderer laid out,
+over a fixed world (by the default keys, by a remapped keymap, by the mouse,
+and the default way twice) and reads back what the renderer laid out,
 never what it says it did ([the frame is closed](../../docs/design/the-frame-is-closed.md)).
 
 The frame, the approved golden and the conformance config are not here: they
@@ -12,17 +12,17 @@ ship with [`@amykit/ui`](../ui/README.md), which this package reads them from.
 
 Per step, a **projection**: the regions in the frame's order, what each holds,
 whether each spans the full height, and how every pair sits relative to each
-other — `left-of`, `above`, `overlaps` — never a box. So a pixel and a cell
+other (`left-of`, `above`, `overlaps`), never a box. So a pixel and a cell
 compare the same way and a font changes nothing.
 
-Eleven assertions, each failing by name:
+The assertions, each failing by name (`ASSERTIONS` exports them):
 
 | Assertion | Fails when |
 | --- | --- |
 | `frame.every_region_sits_where_declared` | a region is missing, drawn while closed, or breaks the relation its place promises |
 | `frame.no_region_is_invented` | a region or a hold the frame does not declare is drawn |
 | `frame.every_key_does_what_it_is_declared_to` | a key or a gesture asks for anything but the action the keymap or the frame's mouse gives it |
-| `frame.renderers_agree_on_every_region` | two renderers' projections differ, naming the first node |
+| `frame.renderers_agree_on_every_region` | the renderers' projections differ, naming the first node |
 | `frame.nothing_moved_since_it_was_approved` | a projection differs from the locked golden |
 | `frame.a_slot_takes_only_what_it_declares` | a plugin's contribution is drawn outside its slot, or its tab before the fixed ones |
 | `frame.the_fixed_sections_come_first` | nav 1's sections are not the config's order and then the plugin's |

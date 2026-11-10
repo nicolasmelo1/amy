@@ -6,6 +6,19 @@ Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `tasks` port.
 
+Use it with the errand workflow, which reads its work from the tasks port this plugin mounts. A task is a file in a directory, written by amy btw, by an editor or by a hook, and a task that names no repository is about the configured default.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `tasks` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -41,7 +54,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

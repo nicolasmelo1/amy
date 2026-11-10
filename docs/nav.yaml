@@ -9,13 +9,17 @@
   dir: start
   description: Install it, point it at your work, and watch it make one move.
 
+- group: Guides
+  dir: guides
+  description: Tell a project, a workflow and a plugin apart, then install, compose and write them.
+
 - group: How it works
   dir: concepts
   description: The pieces, and why each one is shaped the way it is.
 
 - group: Build your own
   dir: build
-  description: Write a plugin or a workflow, prove it, and publish it.
+  description: Test what you wrote, prove a phase, and publish it.
 
 - group: Reference
   dir: reference

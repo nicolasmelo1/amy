@@ -6,6 +6,19 @@ Drives a web page through agent-browser: open, snapshot, act on refs, diff, and 
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy).
 
+Use it when a proof has to look at a web page. It adds browser operations a prove scenario can call: open a URL, read the accessibility tree, click or type on a ref, and compare the page with a baseline. Its UI check settles on structure and pixels first and asks the mounted agent only when those disagree, so mount agent-relay beside it for that last step. It needs the agent-browser CLI on the machine.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | `browser.act`, `browser.diff-screenshot`, `browser.diff-snapshot`, `browser.open`, `browser.snapshot`, `browser.ui-check` |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

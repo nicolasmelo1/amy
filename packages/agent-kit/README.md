@@ -8,7 +8,7 @@ means writing a **prompt**.
 
 ## What is here
 
-**`Harness`** is the whole surface a harness has to implement:
+A harness implements `Harness` from `@amykit/core`, which is one method:
 
 ```ts
 interface Harness {
@@ -17,7 +17,7 @@ interface Harness {
 }
 ```
 
-One method, and the `agent` port is the same one method. A harness answers in
+The `agent` port is the same one method. A harness answers in
 the directory it is handed and never touches git: when work is committed and
 pushed is the workflow's decision
 ([an agent only answers](../../docs/design/an-agent-only-answers.md)).
@@ -45,13 +45,22 @@ should do a step and a harness ladder for what to do when the one asked ran
 out of quota or was not up to it, both keyed by the `step` in the context.
 
 **`contributeTiers`** adds one `NamedHarness` per model tier to the collection
-the relay reads. The naming lives here rather than in each plugin because it
-is a contract: `claude:opus` is what an operator writes in a ladder, so three
-plugins inventing three conventions would make the config unlearnable.
+the relay reads (`tierName` builds the name). The naming lives here rather
+than in each plugin because it is a contract: `claude:opus` is what an
+operator writes in a ladder, so a convention per plugin would make the config
+unlearnable.
+
+**`contributeUsage`** adds a harness's reader of what its subscription has
+left, which `amy status` shows. Why: [a harness shows what is
+left](../../docs/design/a-harness-shows-what-is-left.md).
+
+`extractJson`, the ladder helpers (`nextRung`, `rungsFor`, `everyRung`,
+`oneLadder`) and the handoff log (`recordHandoff`, `handoffNote`) are the
+pieces the relay is built from.
 
 ## Why a harness contributes instead of mounting
 
-A port has exactly one owner. Three harnesses that each mounted `agent` would
+A port has exactly one owner. Harnesses that each mounted `agent` would
 refuse to mount together, which is the correct behaviour for a port and the
 wrong outcome here.
 

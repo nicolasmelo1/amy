@@ -2,7 +2,7 @@
 title: Architecture
 description: What owns what, the one rule everything else follows from, and where the types live.
 group: How it works
-order: 1
+order: 2
 ---
 
 # Architecture
@@ -12,59 +12,49 @@ order: 1
 **The core knows no workflow and no plugin.**
 
 `packages/core` owns the catalogue of actions, the port contracts, the generic
-work record, the plan and the registry. It does not know what a ticket is, what
-a reviewer is, or what a pull request is. A state is a string to it and an
+work record, the plan, the registry and the mount. It does not know what a
+ticket, a reviewer or a pull request is. A state is a string to it and an
 action is a name.
 
-Everything else follows from that, and it is one import away from being lost, so
-it is a check that fails the build:
+One import would break that, so it is a check that fails the build:
 
-```
+```text
 ✗ critical L0.CORE_STAYS_IGNORANT
     nothing under packages/core/src imports an @amykit/workflow-* or @amykit/plugin-*
 ```
 
 Its mutation fixture is a core file that imports a workflow's type, and
-`sf verify` confirms the rule still catches it. Before it was a check, it rested
-on nobody making a single wrong import.
+`sf verify` confirms the rule still catches it.
 
 ## The layers
 
 ```text
 @amykit/core
-  actions:  triage, implement, run-gate, draft-plan, open-pull-request,
-            address-threads, assign-reviewer, request-rereview, escalate,
-            hand-off-to-qa, announce    each declares the port it needs
-  ports:    Queue, Store, Notifier, EventLog, Budget, StopSwitch,
-            CodeHost, Harness           none of them names a domain
-  contract: Workflow + WorkflowRuntime  what an engine drives, generically
-      ▲                                          ▲
-      │ composes actions                         │ implements ports
-      │                                          │
-@amykit/workflow-ticket-to-qa              @amykit/plugin-linear       tracker
-  the sixteen states, a pure plan(),    @amykit/plugin-github       code-host
-  its typed port contracts, and the     @amykit/plugin-claude       harness
-  runtime that runs its actions         @amykit/plugin-agent-relay  agent
-      │                                 @amykit/plugin-command-gate gate
-@amykit/workflow-note-to-plan              @amykit/plugin-plan-check   plan-check
-  five states and one refusal, over     @amykit/plugin-file-notes   notes
-  work that never was a ticket          @amykit/plugin-notify-*     notifier
-      │                                 @amykit/plugin-file-queue   queue
-      │ each contributes a runtime      @amykit/plugin-file-store   store
-      ▼
+  the action catalogue      each action names the port it needs
+  the port contracts        Tracker, CodeHost, Harness, Queue, Store, ...; none names a domain
+  defineWorkflow, mount     what a workflow declares, and what the host assembles
+      ▲                                       ▲
+      │ declares a workflow                   │ fills a port, contributes
+      │                                       │
+workflows                                plugins
+  workflow.mmd, decide, actions            @amykit/plugin-linear       tracker
+  e.g. examples/workflow-ticket-to-qa      @amykit/plugin-github       code-host
+       examples/workflow-errand            @amykit/plugin-agent-relay  agent
+                                           @amykit/plugin-file-queue   queue
+      │                                       │
+      └──────────── mounted together ─────────┘
+                          ▼
 @amykit/plugin-serial-engine
-  a queue, a budget, a retry count and a stop switch — and no idea what a
-  ticket or a plan is
+  a queue, a budget, attempt counts and a stop switch, and no idea what a ticket is
 ```
 
-The dependency direction is the whole point:
+Which way the dependencies point is what keeps it working:
 
 - **`core` depends on no other package here.**
-- **A workflow depends only on `core`.**
-- **An adapter depends on `core` for infrastructure, and on a workflow only for
-  the types that workflow declares** — which is why the GitHub plugin depends on
-  neither workflow: `CodeHost` is the core's, and one mounted adapter serves all
-  of them.
+- **A workflow depends on `core`**, and otherwise only on a workflow it calls
+  or a plugin it mounts itself through `extend`.
+- **A plugin depends on `core`.** The GitHub plugin depends on no workflow:
+  `CodeHost` is the core's, and one mounted adapter serves every workflow.
 - **Nothing depends on the CLI.**
 
 ## The workspace
@@ -127,9 +117,8 @@ examples/
 <!-- amy:end workspace-layout -->
 
 A plugin's directory drops the prefix its package name keeps: `plugins/github`
-publishes as `@amykit/plugin-github`. The folder says where it lives, the package
-name says what it is, and only the second one is a promise to anybody outside
-this repository.
+publishes as `@amykit/plugin-github`. Only the package name is a promise to
+anybody outside this repository.
 
 <!-- amy:generated workspace-dependencies -->
 
@@ -183,64 +172,60 @@ this repository.
 
 <!-- amy:end workspace-dependencies -->
 
-## A workflow is only the order
+## The host assembles, the engine drives
 
-**A workflow does not define actions.** It composes the ones the core ships. A
-second workflow that needs `implement` reuses that one rather than dragging a
-whole domain along with it. A genuinely new action goes into the core.
+The CLI reads the config, imports each plugin it names and mounts them
+together. Mounting is where every refusal happens, by name, before any work is
+touched:
 
-That sounds like a small constraint and it is the reason a third workflow costs
-a package rather than a fork. See [Actions](actions.md).
+```ts
+import os from "node:os";
+import { mount, type CommandRunner, type Plugin } from "@amykit/core";
 
-## The engine drives a workflow it does not know
+declare const plugins: Plugin[];
+declare const runner: CommandRunner;
 
-The engine asks the workflow what to do next, asks the *runtime the workflow
-contributed* to do it, and holds the queue, the attempt counts, the budget and
-the handbrake in between. Every noun in the engine is one of those; a ticket, a
-pull request and a reviewer appear nowhere in it.
+const outcome = await mount(plugins, { "@amykit/plugin-file-queue": { directory: "queue" } }, {
+  runner,
+  now: () => new Date(),
+  paths: { state: os.tmpdir() },
+});
+if (!outcome.ok) throw new Error(outcome.problems.join("\n"));
+```
 
-So a second workflow over a different domain costs a `plan()` and a runtime, not
-a fork of the engine. Building the second one found a real defect in that seam —
-every runtime was folding the plan into the record twice, which counted every
-retry as two. That is what a real second user is for.
+The engine asks the workflow what to do next, runs the actions its declaration
+names, and holds the queue, the attempt counts, the budget and the handbrake in
+between. A ticket, a pull request and a reviewer appear nowhere in it, so a
+workflow over a new domain costs a `workflow.mmd` and one
+[`defineWorkflow`](workflows.md) call, not a fork of the engine.
 
 ## The logic is code, the reach is data
 
-`plan()` is a pure function, so a predicate like "the bot reviewed this head and
-no thread is outstanding" is written directly instead of encoded in some
-condition language.
+A decision is a pure function, so a predicate like "the bot reviewed this head
+and no thread is outstanding" is written in TypeScript instead of a condition
+language.
 
-What is declared as *data* is the workflow's **reach**: the keys of its
-runtime's `actions`, where each action is declared beside what runs it. That is what lets the host answer, before touching anything, whether every
-action the workflow can emit has something that runs it:
-
-```ts
-unmetNeeds(mounted, workflow)   // [] or the names that would fail
-```
-
-An action name that nothing handles is a boot-time error, not a surprise halfway
-through somebody's ticket.
+What is data is the workflow's **reach**: the keys of its `actions`, each
+beside what runs it. That lets the host answer at boot whether every action the
+workflow can emit has something to run it. An action nothing handles is a boot
+refusal, not a surprise halfway through somebody's ticket. See
+[Actions](actions.md).
 
 ## Where the types live
 
-The core is generic on purpose, so type safety comes from the other side. A
-workflow package declares and exports its own vocabulary — `Ticket`, `Roster`,
-`Note`, its own record — and narrows the ports it uses to what it needs of them.
+The core is generic, so type safety comes from the other side. A workflow
+declares its own vocabulary (`Ticket`, `Roster`, `Note`, its own record and
+effects) and narrows the ports it uses to what it needs of them. Every workflow
+shares the one mounted `agent` port without knowing the others exist.
 
-Two workflows share one mounted `agent` port and type it differently: one as an
-`Agent` with `triage` and `implement`, the other as a `Harness` with nothing in
-it but `ask`. Neither has to know the other exists.
-
-The cast between a typed record and the core's generic one lives at **one
-boundary per workflow**, in its `Workflow` object, rather than being spread
-around.
-
-What is genuinely domain-free lives in the core: `CodeHost` and the pull request
-it returns name a repository, a branch and a login; `Harness` is a prompt, a
+What is domain-free lives in the core: `CodeHost` and the pull request it
+returns name a repository, a branch and a login; `Harness` is a prompt, a
 directory and an account of what the answer cost.
 
-## Nothing reaches the world except through two ports
+## The world is reached through interfaces
 
-Every adapter goes through `CommandRunner` or `GraphQLClient`, which is why
-every one of them is tested against a scripted answer instead of the real `gh`,
-`claude`, `git` or API — and why the list of places to audit is two files long.
+An adapter reaches the world through the host's `CommandRunner` or through a
+transport it takes behind an interface (`GraphQLClient`, an HTTP transport for
+Slack and Telegram). So every adapter is tested against scripted answers
+instead of the real `gh`, `claude`, `git` or API, and the places to audit are
+few and named.

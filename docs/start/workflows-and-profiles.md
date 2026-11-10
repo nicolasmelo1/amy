@@ -1,6 +1,6 @@
 ---
 title: Workflows and profiles
-description: A profile is a name in a config, not a case in a switch — and what that costs.
+description: A profile is a name in your config that points at a workflow, and what mounts under it.
 group: Start here
 order: 6
 ---
@@ -9,6 +9,8 @@ order: 6
 
 A **workflow** is what happens next, and how each step is done. A **profile** is
 a name in your config that points at one, plus what mounts under it.
+[Project, workflow, plugin](../guides/project-workflow-plugin.md) sets these
+words beside each other.
 
 ```yaml
 workflows:
@@ -23,34 +25,34 @@ defaultWorkflow: ticket-to-qa
 amy --workflow oncall tick
 ```
 
-Nothing in amy's own code enumerates what is allowed. `--workflow oncall` works
-the moment a config declares `oncall`, because the shipped list is a *default*
-rather than an inventory.
+Nothing in amy's own code lists what is allowed, and a fresh install declares no
+profile at all. `--workflow oncall` works the moment the config declares
+`oncall`.
 
 ## Where a workflow lives
 
-Two places, and the config entry tells them apart by its shape:
+The config entry's shape says where to look:
 
 | What `workflow:` says | Where it is looked for |
 | :-- | :-- |
-| A bare name — `oncall` | `~/.amy/workflows/oncall/index.js`, this machine's own directory, first |
-| A package name — `@acme/workflow-oncall` | Resolved as an import, like any other package |
+| A bare name, `oncall` | `~/.amy/workflows/oncall/index.ts` (or `index.js`) first |
+| A package name, `@acme/workflow-oncall` | Resolved as an import from `~/.amy/plugins` |
 
-A bare name that has no directory falls through to the same import, so a
-workflow can start as yours and become a package later without the profile
-changing.
+A bare name with no directory falls through to the same import, so a workflow
+can start as yours and become a package later without the profile changing.
+Why: [a workflow is yours, not a package](../design/a-workflow-is-yours-not-a-package.md).
 
 ```sh
 amy workflow new oncall      # writes the directory, and the profile above
-amy workflow check oncall    # drives its lifecycle before it drives real work
+amy workflow check oncall    # drives its lifecycle against a stub world
 ```
 
-That is the shorter road, and the one to take first: what `new` writes already
-runs, so the editing starts from a workflow that moves rather than from an empty
-file. [Write a workflow](../build/write-a-workflow.md) goes through what it
-wrote and what to change.
+What `new` writes already runs, so editing starts from a workflow that moves.
+[Write a workflow](../guides/write-a-workflow.md) goes through it, and
+[compose workflows](../guides/compose-workflows.md) covers a workflow that calls
+another.
 
-## What ships in the box
+## What is published
 
 <!-- amy:generated workflow-index -->
 
@@ -66,15 +68,16 @@ wrote and what to change.
 
 <!-- amy:end workflow-index -->
 
-A config that names one of those replaces it. A config that names a fourth gets
-a fourth.
+None of these is installed until you choose it. `amy add <package>` installs
+one and writes its profile; the profile name is the package name without
+`workflow-`. Why: [amy add and amy remove](../design/amy-add-and-amy-remove.md).
 
 ## What is shared, and what is not
 
 ```text
 ~/.amy/
-├── events.jsonl          shared — one log, therefore one budget
-├── stop                  shared — one handbrake stops whichever is running
+├── log/                  shared: one log, therefore one budget
+├── PAUSED                shared: one handbrake for the machine
 ├── ticket-to-qa/
 │   ├── records/          per profile
 │   └── queue/            per profile
@@ -83,43 +86,39 @@ a fourth.
     └── queue/
 ```
 
-**Records and the queue are per profile.** Swapping which workflow you drive
-never costs you the other one's state.
+**Records and the queue are per profile.** Switching the workflow you drive
+never costs the other one's state.
 
-**Everything else is shared**, and that is deliberate. One event log means one
-budget: two workflows spending the same subscription cannot each believe they
-have the whole ceiling. One handbrake means `amy pause` means what it says.
+**The rest is shared.** One event log means one budget: workflows spending
+the same subscription cannot each believe they have the whole ceiling. One
+handbrake means `amy stop --all` stops the machine.
 
-## One workflow per invocation
+## One workflow per process
 
-`mount()` claims a single workflow, so `--workflow` chooses which. That is a
-real constraint and worth understanding: it is not that amy can only drive one
-workflow, it is that one *process* drives one. The loop for a second profile is
-a second `amy start --workflow other`.
-
-What is *not* duplicated is everything underneath. The same engine, the same
-relay, the same forge, the same queue implementation, the same log. Adding the
-third shipped workflow cost a package and changed nothing the first two use.
+A process drives one profile, so `--workflow` chooses which. The loop for a
+second profile is a second `amy --workflow other start`. What sits underneath
+is not duplicated: the same engine, relay, forge, queue implementation and log
+serve every profile.
 
 ## Managing profiles
 
 ```sh
-amy workflow list                 # every workflow this install can drive, and what each holds
-amy workflow rm oncall --yes      # forget one: records, queue, config entry
-amy plugin list                   # what is installed, and what this profile mounts
-amy plugin add @acme/plugin-jira
-amy plugin remove @amykit/plugin-codex
+amy workflow list                 # every workflow this install can drive
+amy plugin list                   # what this profile mounts, and what it assembled into
+amy add @acme/plugin-jira         # install a plugin and mount it
+amy remove @amykit/plugin-codex   # unmount it, refusing what the machine would not survive
+amy remove oncall                 # forget a profile: its config entry, records and queue
 ```
 
-`amy workflow rm` needs `--yes` because it deletes records. Without it, it says
-what would go.
+`amy remove` of a profile asks before it deletes records; `--yes` skips the
+question and `--keep-state` keeps them. Every option is in the
+[CLI reference](../reference/cli.md).
 
 ## What a profile mounts
 
-Leaving `plugins:` out of a profile mounts the recommended set for that
-workflow: the shared infrastructure every profile needs, plus whatever that
-workflow depends on. Listing plugins explicitly replaces the whole set, in the
-order given.
+Leaving `plugins:` out of a profile mounts the recommended set for its workflow:
+the shared infrastructure every profile needs, plus what that workflow depends
+on. Listing plugins replaces the whole set:
 
 ```yaml
 workflows:
@@ -132,72 +131,36 @@ workflows:
       - "@acme/plugin-pagerduty"
 ```
 
-Order does not matter for collections — a plugin that composes others reads them
-when it is used, not when it is mounted — but a missing one is refused at boot
-with the list of what would have failed. See
+The order of that list does not matter: the mount builds once, after every
+plugin has registered ([a mount builds once](../design/a-mount-builds-once.md)).
+A missing one is refused at boot with the list of what would have failed. See
 [Plugins and the registry](../concepts/plugins.md).
 
-## A plugin of your own
+## A fork of a plugin
 
-A workflow publishes the ports it needs; which plugin answers each one is the
-installation's choice, and two profiles can choose differently. `amy add` takes
-a plugin into the selected profile in one of two ways:
+A workflow says which ports it needs; which plugin answers each one is the
+profile's choice, and each profile can choose differently. `amy add --fork`
+takes a plugin's source instead of the published package, as code the profile
+owns:
 
 ```sh
-amy add @amykit/plugin-linear              # the published package (the default)
-amy --workflow oncall add @amykit/plugin-linear --fork   # its source, yours to edit
-amy add 'git+https://github.com/acme/tools.git#v2&path:plugins/jira' --fork
+amy --workflow oncall add @amykit/plugin-linear --fork
 ```
 
-A **fork** is the package's source, fetched from the repository its
-`package.json` names (`repository.url` and `repository.directory`), at the tag
-its installed version was released under, `<name>@<version>`. A git URL that
-names a directory with `#path:` forks the same way without asking the registry.
-A package with no `repository`, or a tag that is not there, is refused before
-anything is written.
-
-The fork keeps the package's name, so nothing names where it lives: the config
-still says `@amykit/plugin-linear`, and the profile's own npm root under
-`~/.amy/plugins/profiles/<profile>` maps that name to the fork — under
-`dependencies`, and under `overrides` for any installed workflow that imports
-it itself. Every other profile keeps the published package. The core and the
-command are never forked: every profile resolves them from amy's own root.
-
-| The profile drives | Where the fork goes |
-| :-- | :-- |
-| A workflow of your own | Inside its project, under `forks/`, outside what it publishes |
-| A workflow somebody published | `~/.amy/profiles/<profile>/forks/`, moved by `AMY_HOME` |
-
-`--to <dir>` puts one fork somewhere else, and two settings in `config.yaml`
-change the defaults:
-
-```yaml
-add: fork          # what `amy add <package>` does with no flag: fork | package
-forks: ~/forks     # where forks go, one directory per profile
-```
-
-Edit the fork and the next boot builds it with its own build script, and a
-running loop remounts it between two ticks — never during one. A build that
-fails refuses the boot by name, and a running loop keeps the mount it had.
-
-`amy update` merges the plugin's new release into the fork three ways — the
-version it was taken from, your fork, and the new one — so your edits stay and
-the release's changes arrive. A line you both changed stops the update for the
-whole machine before anything moves: the fork is left exactly as it was, and
-the marked merge is written beside it, at `<fork>.merge`. `amy remove` of a
-forked name gives the profile the published package back and leaves the fork's
-directory where it is.
-
-Every published package also carries a [shadcn](https://ui.shadcn.com)
-registry item under `registry/`, so `npx shadcn add` can copy the same source.
-It only copies: recording a base and merging the next release is amy's.
+The fork keeps the package's name, so the config does not change. The next boot
+builds it, a running loop remounts it between ticks, and `amy update` merges the
+plugin's next release into it, keeping your edits. Where forks go, how the
+merge works and what `--to` and the `add`/`forks` settings change are in
+[Install a plugin](../guides/install-a-plugin.md). Why: [a plugin is installed into a workflow](../design/a-plugin-is-installed-into-a-workflow.md),
+[amy update](../design/amy-update.md) and
+[an update keeps the workflow current](../design/an-update-keeps-the-workflow-current.md).
 
 ## Writing your own
 
-The point is the workflows that cannot be shared: a process that names your
-employer's tooling, a private feedback step, an on-call rota. Those live in a
-package of yours, versioned wherever you like, and amy mounts them exactly the
-way it mounts its own.
+The workflows nobody else can share are the reason for all this: a process that
+names your employer's tooling, a private feedback step, an on-call rota. They
+live in a directory or a package of yours, and amy mounts them the way it mounts
+its own.
 
-- [Write a workflow](../build/write-a-workflow.md) — the full walkthrough.
-- `/amy-workflow` designs one by interrogating you a question at a time.
+- [Write a workflow](../guides/write-a-workflow.md), the walkthrough.
+- `/amy-workflow` designs one by asking you a question at a time.

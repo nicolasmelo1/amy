@@ -1,23 +1,24 @@
 ---
 title: Configuration
-description: One file, two halves — what the host needs to know, and one slice per plugin.
+description: One file, split between what the host needs to know and one slice per plugin.
 group: Start here
 order: 4
 ---
 
 # Configuration
 
-`~/.amy/config.yaml` has two halves, and the split is the whole design.
+`~/.amy/config.yaml` is split in a way the rest of the design depends on.
 
 The **top level** is what the host itself needs: which workflows exist, which
-repositories the team works in, what the tracker's status names are, what the
-agents may spend. The **`plugins:` block** is one slice per plugin, keyed by
-package name, and *the host never reads inside a slice*. Each plugin declares
-what its own looks like, and a key that is not one it declared is refused at
-boot naming the plugin and the key.
+one runs by default, what the agents may spend, where you are told. The
+**`plugins:` block** is one slice per plugin, keyed by package name, and *the
+host never reads inside a slice*. Each plugin declares what its own looks like,
+and a key it did not declare is refused at boot, naming the plugin and the key.
+A workflow's own settings sit under its profile's `settings:`, checked the same
+way.
 
-That is why adding a plugin nobody here has heard of costs no change to amy: it
-brings its own schema, and validation follows.
+So a plugin nobody here has heard of costs no change to amy: it brings its own
+schema, and validation follows. Why: [a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md).
 
 ```sh
 amy setup         # asks, then writes the config
@@ -68,15 +69,16 @@ Each entry under `workflows:` is a **profile**: a name you type after
 
 <!-- amy:end config-profile -->
 
-Naming a profile that matches a shipped one replaces it; naming a new one adds
-it. Nothing in amy's own code enumerates what is allowed. See
+A fresh install declares no profile; `amy add` and `amy workflow new` write
+one. Nothing in amy's own code lists what is allowed. See
 [Workflows and profiles](workflows-and-profiles.md).
 
 ## Plugin settings
 
-Every plugin declares its own schema, and every field below is checked at boot.
-The full table, one section per plugin, is in
-[Reference → Plugins](../reference/plugins.md).
+Every plugin declares its own schema, and every field is checked at boot. The
+full table, one section per plugin, is in
+[Reference → Plugins](../reference/plugins.md), and `amy config explain [plugin]`
+prints the same for this machine.
 
 ```yaml
 plugins:
@@ -85,7 +87,7 @@ plugins:
     retentionDays: 7
 ```
 
-Three things this buys, and each one is a failure that used to be silent:
+What that catches, each a failure that used to pass without a word:
 
 - **A typo is refused, not ignored.** `retentionDay: 7` is `` `retentionDay` is
   not a setting this plugin has ``, at boot. A setting that silently never
@@ -97,8 +99,10 @@ Three things this buys, and each one is a failure that used to be silent:
 
 ## The annotated example
 
-This is the file itself, taken from the constant the command writes it from — so
-it cannot drift from what you actually get.
+This is the file itself, taken from the constant the command writes it from, so
+it cannot drift from what you get. The commented blocks are written by what is
+mounted: `amy add` fills in a workflow's profile and the slices its plugins ask
+for ([the config is written by what is mounted](../design/the-config-is-written-by-what-is-mounted.md)).
 
 <!-- amy:generated config-example -->
 
@@ -261,18 +265,22 @@ notify:
 
 ## The roster
 
-`~/.amy/roster.yaml` says who is reviewing and who owns QA. It carries a
-`confirmedOn` date, and on a workday the machine **refuses to assign anybody
-while it is not today**.
+The ticket-to-qa workflow keeps a `roster.yaml` in its profile's directory
+(`~/.amy/ticket-to-qa/roster.yaml`): who is reviewing and who owns QA. `amy add`
+writes it when it mounts the workflow. It carries a `confirmedOn` date, and on a
+workday the workflow **refuses to assign anybody while it is not today**.
 
-That is not bureaucracy. People go on leave without editing a config file, and a
-review assigned to somebody who is away stalls for days with nothing looking
-broken. It does not ask at the weekend, because nobody is there to answer.
+People go on leave without editing a file, and a review assigned to somebody who
+is away stalls for days with nothing looking broken. It does not ask at the
+weekend, because nobody is there to answer.
 
 ```sh
 amy roster confirm     # stamp today's date
 amy roster show        # print it, and whether it is current
 ```
+
+Both commands come with the workflow and exist only where a profile mounts it.
+Why: [the roster belongs to its workflow](../design/the-roster-belongs-to-its-workflow.md).
 
 <!-- amy:generated roster-example -->
 
@@ -311,14 +319,18 @@ qa:
 Never in `config.yaml`. They go in `~/.amy/.env`, and the environment wins over
 the file. See [Installation → Credentials](installation.md#credentials).
 
-## Two ceilings
+## Ceilings
 
-An overnight run spends two things that are not yours to spend: quota, and your
-colleagues' attention.
+An overnight run spends what is shared with others: the subscription's quota,
+and your colleagues' attention.
 
 ```yaml
-policy:
-  maxOpenReviewsPerReviewer: 2
+workflows:
+  ticket-to-qa:
+    workflow: "@amykit/workflow-ticket-to-qa"
+    settings:
+      policy:
+        maxOpenReviewsPerReviewer: 2
 agent:
   budget:
     perFiveHours: { tokens: 2000000, costUsd: 20 }

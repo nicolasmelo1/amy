@@ -1,13 +1,13 @@
 ---
 title: Publishing a package
-description: The two conventions that make a package findable, and what a listing should say.
+description: The keyword and the topic that make a package findable, and what a listing should say.
 group: Packages
 order: 2
 ---
 
 # Publishing a package
 
-## The two conventions
+## A keyword and a topic
 
 ```json
 // package.json
@@ -21,17 +21,17 @@ gh repo edit --add-topic amy-plugin
 ```
 
 That is the whole listing mechanism. There is nothing to submit and nobody to
-ask, because a directory that requires permission is a directory that is missing
-the packages it most needs to have.
+ask, because a directory that requires permission is a directory missing the
+packages it most needs to have.
 
-Use `amy-plugin` for both plugins and workflows. A workflow *is* a plugin — it
-registers through the same `register(registry, ctx)` — and splitting the keyword
-would mean somebody looking for "things I can mount" having to know the
-distinction first.
+Use `amy-plugin` for plugins and workflows alike. A workflow *is* a plugin:
+`defineWorkflow` returns one, mounted through the same registry, and `amy add`
+installs either. Splitting the keyword would make somebody looking for "things
+I can mount" learn the distinction first.
 
 ## What a good listing says
 
-The three things somebody needs before they will install anything:
+What somebody needs before they will install anything:
 
 **What port it fills, or what workflow it is.** `tracker`, `code-host`, `gate`,
 or "a lifecycle for an on-call week". One line, at the top.
@@ -53,36 +53,41 @@ refuses at three in the morning is the worst way to find out.
 **Do not claim compatibility you have not run.** `@amykit/core` is pre-1.0 and its
 contracts still move. Say which version you built against.
 
-**Do not vendor a workflow's types you do not need.** An adapter depends on a
-workflow package only for the types that workflow declares — never for its
-logic, and never at all if the port you fill is one the core owns.
+**Do not depend on a workflow you do not need.** An adapter depends on a
+workflow package only for the port types that workflow declares, as
+`@amykit/plugin-file-tasks` does on the errand's `tasks` port. Never for its
+logic, and never at all if the port it fills is one the core owns. Which ports
+those are, and why: [the ports belong to the core](../design/the-ports-belong-to-the-core.md).
 
 ## Private packages
 
-The whole point of the plugin model is the packages that cannot be shared: a
-process that names your employer's tooling, an adapter for something internal,
-an on-call rota that is nobody else's business.
+The plugin model exists for the packages that cannot be shared: a process that
+names your employer's tooling, an adapter for something internal, an on-call
+rota that is nobody else's business.
 
-None of that needs npm. amy imports by name, and a name can be:
+None of that needs npm. `amy add` takes a spec, and a spec can be:
 
 - a package on a private registry,
-- a package in a private GitHub repository (`npm install github:acme/private-plugin`),
-- **a path on disk** — `amy plugin add ./local-plugin` works, and so does a
-  `file:` dependency.
+- a package in a private GitHub repository (`amy add github:acme/private-plugin`),
+- a URL to a tarball,
+- **a path on disk**: `amy add ./local-plugin`, or a `file:` spec.
+
+How a spec is read: [a spec is a name, a URL or a path](../design/a-spec-is-a-name-a-url-or-a-path.md).
 
 The only thing that changes is where the package manager finds it. amy's side is
-identical, and the `installed-plugins` gate proves exactly this: four packages
-installed onto a machine with no checkout on it, driving a workflow this
-repository never shipped.
+identical, and the `installed-plugins` gate proves it: packages installed onto a
+machine with no checkout on it, driving a workflow this repository never
+shipped. The decision behind it:
+[plugins are installed, not compiled in](../design/plugins-are-installed-not-compiled-in.md).
 
 ## Keeping it working as amy moves
 
-Two things will tell you before your users do:
+What tells you before your users do:
 
-**Run the artifact check in your CI.** Ten lines, and it catches the whole class
-of failure unit tests structurally cannot — see
+**Run the artifact check in your CI.** It is a short script, and it catches the
+whole class of failure unit tests cannot reach. See
 [Testing](../build/testing.md#artifact-tests-and-why-unit-tests-are-not-enough).
 
 **Watch [the news](../changelog/index.md).** Contract changes are what a changeset is for,
-and they are written for somebody reading it six months later: what changed, and
-why it was wrong before.
+and each is written for somebody reading it long after: what changed, and why it
+was wrong before.

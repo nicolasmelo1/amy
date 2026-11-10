@@ -29,6 +29,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when a workflow reads or writes briefs: feature-grooming waits on the brief port it mounts, prove reads the scenario a brief settled from it, and ticket-to-qa uses it when it is there. Each brief is a JSON file, kept under the project's artifact directory when there is one. It is the local default, and another adapter for the brief port can replace it."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "fs-ext": "^2.1.1"

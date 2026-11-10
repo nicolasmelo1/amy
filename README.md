@@ -1,11 +1,10 @@
 <div align="center">
 
-<img alt="amy" src="assets/amy-mark.png" width="128">
+<img alt="amy" src="assets/logo.png" width="128">
 
 <h1>amy</h1>
 
-<p><strong>Leave it running.</strong><br>
-<em><strong>A</strong>utomate <strong>MY</strong> work</em></p>
+<p><em><strong>A</strong>utomate <strong>MY</strong> work</em></p>
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/nicolasmelo1/amy?style=flat-square&color=E424CC&labelColor=1B0A19"></a>
@@ -15,120 +14,50 @@
 <img alt="Node 22.18+" src="https://img.shields.io/badge/node-22.18+-E424CC?style=flat-square&labelColor=1B0A19">
 
 <!-- amy:end readme-node-badge -->
-  <img alt="Everything is a plugin" src="https://img.shields.io/badge/everything-a%20plugin-E424CC?style=flat-square&labelColor=1B0A19">
   <img alt="Status: pre-release" src="https://img.shields.io/badge/status-pre--release-9DA0AE?style=flat-square&labelColor=1B0A19">
-</p>
-
-<p>
-  <a href="#install"><strong>Install</strong></a> ·
-  <a href="docs/start/quickstart.md">Quickstart</a> ·
-  <a href="docs/">Documentation</a> ·
-  <a href="docs/build/write-a-workflow.md">Write a workflow</a> ·
-  <a href="docs/build/write-a-plugin.md">Write a plugin</a>
 </p>
 
 </div>
 
----
-
-**Leave it running, and it does the long part of your work while you are
-somewhere else — built the way *you* work, not the way somebody else does.**
+amy is an opinionated state machine framework where everything is a plugin. You
+draw your process as a workflow as a Mermaid diagram, so it's easy for us, humans, and machine to understand. We then connect the logic through code, and pick the plugins it depends on (the tracker, the
+code host, the chat, the agent), configure it your way and start it. It is left
+running from then on, moving each piece of work one step at a time, on the
+Claude Code, Codex and Hermes subscriptions you already pay for (more coming soon, or [you can also create a plugin for it yourself](docs/guides/write-a-plugin.md)).
 
 ## Install
 
 ```sh
 npm install -g @amykit/cli
 amy setup
-amy doctor
-amy discover && amy tick
 ```
 
-One install per machine. `amy setup` asks which harness, workflow and channels
-you want and installs only those; `doctor` checks them before a ticket moves.
-Run `tick` until you trust it, then `amy start --every 60` leaves the loop
-running in the background.
+`amy setup` asks which harness, workflow and channels you want, installs only
+those ([setup is a workflow](docs/design/setup-is-a-workflow.md) itself, so amy runs on amy itself), and
+checks them. `amy start` then runs the loop in the background.
+More in [Installation](docs/start/installation.md) and the [Quickstart](docs/start/quickstart.md).
 
-→ [Quickstart](docs/start/quickstart.md) · [Installation](docs/start/installation.md) · [Configuration](docs/start/configuration.md)
+## For agents
 
-## What it is
+If you are an agent setting amy up or driving it, read amy's skills first:
+[packages/cli/skills/](packages/cli/skills/). `amy skills` installs them into the harnesses on this machine.
 
-Writing code is not the long part of a ticket. Reading it, clarifying it,
-running checks, opening the pull request, answering review, and handing it on
-are the work that waits on people. amy is a small machine that keeps that work
-moving one step at a time.
+## Documentation
 
-The process is yours: a workflow is a small directory that says what happens
-next and how each step runs. Plugins connect the tracker, code host, agent,
-state, notifications and the tools that are already in your environment.
-
-→ [Overview](docs/start/overview.md) · [Workflows and profiles](docs/start/workflows-and-profiles.md) · [Plugins and the registry](docs/concepts/plugins.md)
-
-## The one idea
-
-```ts
-plan(record, observation, policy): Plan
-```
-
-The decision is pure. It returns `act`, `advance`, `wait` or `settled`; a worker
-performs the effect afterwards. The decision and the world stay separate, so a
-workflow is testable before it touches a tracker, repository or agent.
-
-→ [Workflows](docs/concepts/workflows.md) · [The engine](docs/concepts/the-engine.md) · [Actions](docs/concepts/actions.md) · [Ports](docs/concepts/ports.md)
-
-## Commands
-
-`--workflow <name>` chooses the profile to drive. The full reference carries
-arguments, options and defaults.
-
-<!-- amy:generated readme-commands -->
-
-| Command | What it does |
-| :-- | :-- |
-| `amy add` | Add a workflow or a plugin: install it, mount it, and check the machine boots |
-| `amy brief` | The current statement of a feature, the sections its workflow asks for, and whether it is ready |
-| `amy budget` | What the agents have spent, and how close that is to the ceiling |
-| `amy config` | What this machine would read, if it mounted |
-| `amy contract` | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
-| `amy doctor` | Check everything the machine depends on before it touches a ticket |
-| `amy look` | Look at one piece of work now, rather than when it was next due |
-| `amy plugin` | What is mounted, and what is not |
-| `amy queue` | Inspect and tidy the queue |
-| `amy remove` | Remove a workflow profile or a plugin, refusing what the machine would not survive |
-| `amy run` | Keep advancing until nothing is due |
-| `amy setup` | Set the machine up: the harness, the workflow, the channels, one question at a time |
-| `amy skills` | Install amy's skills into the harnesses on this machine |
-| `amy start` | Start the loop under the machine's supervisor, which keeps it running |
-| `amy status` | Show where every piece of work stands and what the queue holds |
-| `amy stop` | Stop the background loop; --all pulls the machine's handbrake |
-| `amy tick` | Advance one piece of work by one move, discovering first |
-| `amy update` | Move this install forward: both roots, refusing to leave the machine half-updated |
-| `amy workflow` | What this install can drive, and what it keeps |
-
-<!-- amy:end readme-commands -->
-
-→ [CLI reference](docs/reference/cli.md)
-
-## The gate
-
-```sh
-npm run gate
-```
-
-<!-- amy:generated readme-factory -->
-
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a deliberately broken fixture.
-
-**28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
-
-<!-- amy:end readme-factory -->
-
-→ [The gate](docs/development/the-gate.md) · [Testing](docs/build/testing.md) · [How the documentation generates itself](docs/development/documentation.md)
+- **Start here:** [Overview](docs/start/overview.md), [Quickstart](docs/start/quickstart.md), [Configuration](docs/start/configuration.md)
+- **Guides:** [Project, workflow or plugin](docs/guides/project-workflow-plugin.md), [Install a plugin](docs/guides/install-a-plugin.md), [Compose workflows](docs/guides/compose-workflows.md), [Write a workflow](docs/guides/write-a-workflow.md), [Write a plugin](docs/guides/write-a-plugin.md), [What a project is](docs/guides/what-a-project-is.md), [The chat](docs/guides/the-chat.md)
+- **How it works:** [Workflows](docs/concepts/workflows.md), [Plugins](docs/concepts/plugins.md), [The engine](docs/concepts/the-engine.md), [Ports](docs/concepts/ports.md)
+- **Build your own:** [Testing](docs/build/testing.md), [Prove a phase](docs/build/prove-a-phase.md), [Publishing](docs/build/publishing.md)
+- **Reference:** [CLI](docs/reference/cli.md), [Configuration](docs/reference/configuration.md), [Plugins](docs/reference/plugins.md), [Workflows](docs/reference/workflows.md)
+- **Packages:** [What is in the box](docs/catalog/index.md), and the runnable [examples](examples/README.md)
+- **News:** [What shipped](docs/changelog/index.md)
+- **Design notes:** why each decision was made, for instance [nothing is installed by default](docs/design/nothing-is-installed-by-default.md)
+- **Development:** [Contributing](docs/development/contributing.md), [The gate](docs/development/the-gate.md)
 
 ## Contributing
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) is the short path from clone to a green
-gate. The longer reasoning lives in [the development docs](docs/development/contributing.md).
+[CONTRIBUTING.md](CONTRIBUTING.md) is the short path from a clone to a green gate.
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).

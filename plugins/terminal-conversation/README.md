@@ -6,6 +6,19 @@ The person's terminal as an amy conversation: asks post to stdout, and answers c
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `conversation` port.
 
+Use it when a workflow should ask its questions in the terminal amy runs in. It mounts the conversation port on stdin and stdout: an ask is printed, and the answer is a line or a number typed back. amy setup mounts it for the setup workflow, so the questions arrive where you typed the command.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `conversation` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -28,7 +41,7 @@ because a setting nobody reads is one somebody believes is working.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

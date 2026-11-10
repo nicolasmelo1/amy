@@ -1,40 +1,55 @@
 # @amykit/core
 
-The kernel. It knows no domain.
-
-What lives here is the catalogue of **actions** that can be taken, how each one
-is dispatched, the generic work record, the plan, the plugin contracts, the
-registry that assembles them, and the process-level infrastructure everything
-shares.
+The kernel every workflow and plugin is written against. It knows no domain.
 
 To this package a state is a `string` and an action is an open name. It cannot
-tell a ticket from a deploy, and that is the point: a workflow is only the
-order in which actions happen, so a second workflow reuses `implement` rather
-than dragging a whole domain along with it.
+tell a ticket from a deploy: a workflow is the order in which actions happen,
+so a second workflow reuses `implement` rather than dragging a whole domain
+along with it.
 
-## The action catalogue
+## What it exports
 
-Each action names the **port** that must be mounted for it to run, and the
-method on that port it invokes. A plugin may add an action the core does not
-have, and when it does it has to bring the port that runs it in the same
-package: an action nobody can execute is a promise the machine cannot keep.
+- **Declaring:** `defineWorkflow` (with `act`, `advance`, `wait`, `settled`,
+  `port`, `optional`, `call` and `notWritten`) and `definePlugin`, whose
+  config is typed by its schema. Why: [a workflow is one
+  declaration](../../docs/design/a-workflow-is-one-declaration.md), [a config
+  is typed by its schema](../../docs/design/a-config-is-typed-by-its-schema.md).
+- **The diagram:** `readDiagram`, `withDiagram` and `withDiagramBeside`, which
+  read the states from a `workflow.mmd`.
+- **Mounting:** `mount`, `unmetNeeds` and `validateConfig`, which assemble the
+  plugins once and refuse what cannot run. Why: [a mount builds
+  once](../../docs/design/a-mount-builds-once.md).
+- **The ports:** the types every adapter implements (`Tracker`, `CodeHost`,
+  `Harness`, `Notifier`, `Conversation`, `Store`, `Queue`, `BriefStore`,
+  `Worktree`, `EventLog` and more), and `Git` with the checkouts the host
+  lends. Why: [the ports belong to the
+  core](../../docs/design/the-ports-belong-to-the-core.md).
+- **Actions:** `CORE_ACTIONS`, the catalogue of actions and the port each one
+  dispatches to, and `runAction`.
+- **Operations:** `defineOperation` and `defineContract`, how a plugin offers
+  typed operations the host serves and documents as OpenAPI. Why: [amy speaks
+  in domains](../../docs/design/amy-speaks-in-domains.md).
+- **Process infrastructure:** `NodeCommandRunner`, `FileStopSwitch`, leases,
+  budgets, the event contract, and `takeLock`, the one process lock the daemon,
+  the chat and the proof all take. Why: [a lock is taken one
+  way](../../docs/design/a-lock-is-taken-one-way.md).
+
+`src/index.ts` is the whole list.
 
 ## What it refuses, and when
 
 Everything at mount, by name, before a ticket is touched:
 
 - a setting that is not one the plugin declared, because that is a typo and
-  ignoring it means the setting silently never applied
-- two plugins claiming the same port, or the same action, or the same
-  observation
-- an action the workflow says it emits that nothing can run
+  ignoring it means the setting never applied
+- a port, action or observation claimed by more than one plugin
+- an action a workflow emits that nothing can run
 
-`unmetNeeds` is where the price of an open action name gets paid.
+## The rule that holds this together
 
-## The one rule that holds this together
-
-`L0.CORE_STAYS_IGNORANT`, a local rule in `.software-factory/rules/`: nothing
-under `src/` may import an `@amykit/workflow-*` or `@amykit/plugin-*` package. One
-such import and the core learns a domain, and every workflow after the first
-becomes a fork. It has a mutation fixture, and `sf verify` proves it still
-fires.
+`L0.CORE_STAYS_IGNORANT`, a local rule in
+[`.software-factory/rules/`](../../.software-factory/rules/core-stays-ignorant.yaml):
+nothing under `src/` may import an `@amykit/workflow-*` or `@amykit/plugin-*`
+package. One such import and the core learns a domain, and every workflow
+after the first becomes a fork. `sf verify` proves the rule still fires. More
+in [Plugins](../../docs/concepts/plugins.md) and [Ports](../../docs/concepts/ports.md).

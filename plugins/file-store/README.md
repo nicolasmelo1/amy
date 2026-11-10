@@ -6,6 +6,19 @@ Work records kept as one file per item.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `store` port.
 
+Every install that runs an engine needs a record store, and this is the local one: each work record is a JSON file under the state directory. It keeps records only, and briefs go through file-brief-store. Pair it with file-queue and an engine.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `store` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -41,7 +54,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

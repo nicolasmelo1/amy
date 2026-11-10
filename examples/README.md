@@ -2,8 +2,8 @@
 
 amy itself lives in [`packages/`](../packages): the engine, the command line,
 and what they need to run. The engine knows nothing about tickets, pull
-requests or notes. Everything that says "first do this, then that" is a **workflow**, and
-the workflows here are examples of what you can build on top of it.
+requests or notes. Everything that says "first do this, then that" is a
+**workflow**, and the workflows here are examples of what you can build on it.
 
 They are real, published packages, so you can install any of them as they are:
 
@@ -27,20 +27,23 @@ they are here for.
 
 ## What a workflow is made of
 
-Every example has the same shape:
+A workflow is a diagram, the decisions, the actions, and one `defineWorkflow`
+call joining them. `amy workflow new <name>` writes exactly that into
+`~/.amy/workflows/<name>`, and it runs before you edit it:
 
 ```text
-workflow-errand/
-├── workflow.mmd     the states and the arrows between them, as a diagram
-├── src/
-│   ├── decide.ts    given where the work is, what happens next
-│   └── plugin.ts    how each step is done, and what it needs mounted
-└── tests/           the workflow walked from start to end, with nothing real touched
+<name>/
+├── workflow.mmd     where work can go: the states and the arrows between them
+├── decide.ts        where it goes next, given where the work is
+├── actions.ts       what happens in the world
+├── index.ts         the one defineWorkflow call that joins them
+└── index.test.ts    the workflow walked from start to end, with nothing real touched
 ```
 
-The diagram is the source of truth: amy takes the states from `workflow.mmd`
-when it mounts the workflow, and refuses one it cannot read. `amy workflow new
-<name>` writes a workflow that already runs, so you start by changing something
-that works instead of filling an empty file.
+The examples split the same pieces across more files under `src/` because they
+do more. The diagram is the source of truth: amy reads the states from
+`workflow.mmd` when it mounts the workflow, and refuses one it cannot read.
+Why it is split this way: [the design note](../docs/design/a-workflow-is-three-pieces.md),
+and [a workflow is yours, not a package](../docs/design/a-workflow-is-yours-not-a-package.md).
 
-→ [Write a workflow](../docs/build/write-a-workflow.md) · [Workflows and profiles](../docs/start/workflows-and-profiles.md)
+→ [Write a workflow](../docs/guides/write-a-workflow.md) · [Workflows and profiles](../docs/start/workflows-and-profiles.md)

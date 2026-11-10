@@ -33,8 +33,7 @@ export function blocksFrom(facts: Facts): Record<string, string> {
     "cli-commands": cliCommands(facts.cli),
     "readme-node-badge": readmeNodeBadge(facts.runtime),
     "readme-node-version": readmeNodeVersion(facts.runtime),
-    "readme-commands": readmeCommands(facts.cli),
-    "readme-factory": readmeFactory(facts.factory),
+    "factory-counts": factoryCounts(facts.factory),
     "cli-index": cliIndex(facts.cli),
     "core-actions": coreActions(facts.core, facts.packages),
     "core-contracts": coreContracts(facts.core),
@@ -75,20 +74,10 @@ export function readmeNodeVersion(runtime: RuntimeFacts): string {
   return `Node ${runtime.node.replace(/^>=/, "").replace(/\.0$/, "")} or later runs the command.`;
 }
 
-/** The front door shows only top-level commands; the reference holds syntax. */
-export function readmeCommands(cli: CliFacts): string {
-  return table(
-    ["Command", "What it does"],
-    cli.commands
-      .filter((command) => command.path.length === 1 && !command.hidden)
-      .map((command) => [`\`amy ${command.path[0]}\``, command.description]),
-  );
-}
-
-/** Counts are rendered from the policy that the factory actually enforces. */
-export function readmeFactory(factory: FactoryFacts): string {
+/** The counts, rendered from the policy the factory enforces, on the page about the gate. */
+function factoryCounts(factory: FactoryFacts): string {
   return [
-    `This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **${factory.rules.filter((rule) => rule.enabled).length} rules**, and \`sf verify\` proves every one fires against a deliberately broken fixture.`,
+    `This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **${factory.rules.filter((rule) => rule.enabled).length} rules**, and \`sf verify\` proves every one fires against a broken fixture.`,
     "",
     `**${factory.gates.length} gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.`,
   ].join("\n");

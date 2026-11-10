@@ -6,6 +6,19 @@ A Slack thread per piece of work, over the Web API, as the conversation port.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `conversation` port.
 
+Use it when you want to follow and answer amy from Slack. It mounts the conversation port: each piece of work gets a thread in one channel, and only the operator's replies count as answers. It can also hold amy's chat. It needs a bot token, read from the environment or a file.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `conversation` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -55,7 +68,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

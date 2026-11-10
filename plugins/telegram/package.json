@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when you want to follow and answer amy from Telegram. It mounts the conversation port: each piece of work gets a topic in your private chat with a bot, and it can also hold amy's chat. It needs the bot token in TELEGRAM_BOT_TOKEN and your numeric Telegram user id."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   },

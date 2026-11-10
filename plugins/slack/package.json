@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when you want to follow and answer amy from Slack. It mounts the conversation port: each piece of work gets a thread in one channel, and only the operator's replies count as answers. It can also hold amy's chat. It needs a bot token, read from the environment or a file."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   },

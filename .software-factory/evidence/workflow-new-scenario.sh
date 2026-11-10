@@ -21,8 +21,28 @@ record() {
 }
 
 "$amy" workflow new oncall >/dev/null
-"$amy" workflow check oncall >/dev/null 2>&1
-record mine.the_scaffold_runs_before_it_is_edited "$?"
+if "$amy" workflow check oncall >/dev/null 2>&1; then runs=0; else runs=1; fi
+
+# What Write a workflow builds is what the command just wrote: each block the
+# guide marks `<!-- amy:scaffold FILE -->` is that file, byte for byte, and
+# the guide shows all four, so the page and the scaffold cannot drift apart.
+if python3 - "$repo/docs/guides/write-a-workflow.md" "$work/home/.amy/workflows/oncall" <<'PY'
+import pathlib, re, sys
+page = pathlib.Path(sys.argv[1]).read_text()
+written = pathlib.Path(sys.argv[2])
+shown = {}
+for name, code in re.findall(r"<!-- amy:scaffold (\S+) -->\s*\n```[a-z]*\n(.*?)\n```", page, re.S):
+    shown[name] = code + "\n"
+missing = {"workflow.mmd", "decide.ts", "actions.ts", "index.ts"} - shown.keys()
+if missing:
+    sys.exit(f"the guide does not show {sorted(missing)} as the scaffold writes it")
+for name, code in shown.items():
+    if (written / name).read_text() != code:
+        sys.exit(f"the guide's {name} is not the one amy workflow new writes")
+PY
+then matches=0; else matches=1; fi
+if [ "$runs" = 0 ] && [ "$matches" = 0 ]; then built=0; else built=1; fi
+record mine.the_scaffold_runs_before_it_is_edited "$built"
 
 test -f "$work/home/.amy/workflows/oncall/index.ts" && \
   grep -q 'workflow: oncall' "$work/home/.amy/config.yaml"

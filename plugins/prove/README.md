@@ -4,9 +4,22 @@
 
 Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.
 
-A workflow for [amy](https://github.com/nicolasmelo1/amy): a pure `plan()` that says what
-happens next, and a runtime that says how each step is done. The engine drives it without
-knowing what any of its states mean.
+A workflow for [amy](https://github.com/nicolasmelo1/amy): a diagram of where work can go, a
+decision per state saying where it goes next, and the actions that happen in the world. The
+engine drives it without knowing what any of its states mean.
+
+Use it as the proving phase of a project, once a brief has settled the scenario the work must pass. It is a workflow that walks that scenario against the real system through the operations mounted plugins offer, such as agent-browser, agent-desktop and terminal, and records a proof. It needs file-brief-store and a notifier; mount command for the resources a scenario runs against and the code digest, and a conversation so it can ask a person to make a fixture hold.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | `prove.record`, `prove.show` |
+| Commands | `amy prove record`, `amy prove show` |
+| Events | _none_ |
+| Environment | _none_ |
 
 ## Calling it
 
@@ -67,7 +80,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-workflow.md)
 - [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

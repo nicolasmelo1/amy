@@ -6,6 +6,19 @@ Drives an interactive terminal program through terminal-use: run it, type, press
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy).
 
+Use it when a proof has to drive an interactive terminal program, such as an editor or a CLI that prompts. It adds terminal operations a prove scenario can call: run a program, type, press keys, wait for text and read the screen. It needs the terminal-use CLI on the machine.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | `terminal.kill`, `terminal.press`, `terminal.run`, `terminal.screen`, `terminal.type`, `terminal.wait` |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

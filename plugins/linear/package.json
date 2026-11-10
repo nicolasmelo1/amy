@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when your tickets live in Linear. Over Linear's GraphQL API it mounts the tracker port ticket-to-qa reads its work from, and the read-only feature port feature-grooming uses. It needs a personal API key in LINEAR_API_KEY, and maps each team or label to the repository its tickets change."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   },

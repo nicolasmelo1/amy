@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it with ticket-to-qa, which needs a gate port to decide whether a change is ready for review. It runs the target repository's own commands, listed per repository with a default fallback, and refuses a repository that has neither. With file-worktree mounted, the commands run in the work item's own checkout."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   },

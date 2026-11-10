@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when the agent should be Hermes, run in one-shot mode under a profile of its own so amy never touches your personal Hermes setup. It contributes a harness and a usage reader to agent-relay, so install the relay beside it. amy add prepares the profile and amy doctor checks it."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/agent-kit": "^0.6.0",

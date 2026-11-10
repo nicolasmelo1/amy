@@ -18,37 +18,37 @@
         {
           "title": "Overview",
           "path": "/start/overview",
-          "description": "What amy is, the one idea the rest follows from, and what it is not."
+          "description": "What amy is, the idea the rest follows from, and what it is not."
         },
         {
           "title": "Quickstart",
           "path": "/start/quickstart",
-          "description": "Five minutes from nothing to one move you can watch."
+          "description": "From nothing to one move you can watch, then the loop."
         },
         {
           "title": "Installation",
           "path": "/start/installation",
-          "description": "One install per machine, where its state lives, and how to carry only the plugins you use."
+          "description": "One install per machine, where its state lives, and how it carries only the plugins you use."
         },
         {
           "title": "Configuration",
           "path": "/start/configuration",
-          "description": "One file, two halves — what the host needs to know, and one slice per plugin."
+          "description": "One file, split between what the host needs to know and one slice per plugin."
         },
         {
           "title": "Running it",
           "path": "/start/running",
-          "description": "One move at a time, the loop, and the difference between pause and stop."
+          "description": "One move at a time, the loop, and the handbrake."
         },
         {
           "title": "Workflows and profiles",
           "path": "/start/workflows-and-profiles",
-          "description": "A profile is a name in a config, not a case in a switch — and what that costs."
+          "description": "A profile is a name in your config that points at a workflow, and what mounts under it."
         },
         {
           "title": "Status and doctor",
           "path": "/start/status-and-doctor",
-          "description": "Reading where things stand, and finding out what is wrong before it touches a ticket."
+          "description": "Where things stand, and what is wrong before it touches a ticket."
         },
         {
           "title": "Security",
@@ -58,96 +58,133 @@
       ]
     },
     {
+      "group": "Guides",
+      "directory": "guides",
+      "description": "Tell a project, a workflow and a plugin apart, then install, compose and write them.",
+      "items": [
+        {
+          "title": "Project, workflow or plugin",
+          "path": "/guides/project-workflow-plugin",
+          "description": "How to tell a project, a workflow and a plugin apart, and which one your job needs."
+        },
+        {
+          "title": "Install a plugin",
+          "path": "/guides/install-a-plugin",
+          "description": "Add a package with amy add, by its npm name or by the path of a fork you hold, configure it, and take it out again."
+        },
+        {
+          "title": "Compose workflows",
+          "path": "/guides/compose-workflows",
+          "description": "Call one workflow from a state of another, run calls side by side on lanes, and drive several workflows from one machine with profiles."
+        },
+        {
+          "title": "Write a workflow",
+          "path": "/guides/write-a-workflow",
+          "description": "Draw where work can go, decide where it goes next, say what happens in the world, and prove it with the walkthrough test."
+        },
+        {
+          "title": "Write a plugin",
+          "path": "/guides/write-a-plugin",
+          "description": "One definePlugin call with a typed config, the things it can register, and how to keep it once it ships."
+        },
+        {
+          "title": "What a project is",
+          "path": "/guides/what-a-project-is",
+          "description": "A project is brief, work and proof, read from the folders you give it."
+        },
+        {
+          "title": "The chat",
+          "path": "/guides/the-chat",
+          "description": "Driving amy from Slack or Telegram, where it asks, offers the answers, takes yours, and tells you about the work."
+        }
+      ]
+    },
+    {
       "group": "How it works",
       "directory": "concepts",
       "description": "The pieces, and why each one is shaped the way it is.",
       "items": [
+        {
+          "title": "Glossary",
+          "path": "/concepts/glossary",
+          "description": "The words amy uses, each in a few sentences, with the page that says more."
+        },
         {
           "title": "Architecture",
           "path": "/concepts/architecture",
           "description": "What owns what, the one rule everything else follows from, and where the types live."
         },
         {
-          "title": "MAD and BEP",
-          "path": "/concepts/mad-and-bep",
-          "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof."
-        },
-        {
           "title": "Workflows",
           "path": "/concepts/workflows",
-          "description": "Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration."
+          "description": "A diagram of where work can go, a pure decision per state, and the actions that touch the world, joined by one declaration."
         },
         {
           "title": "Plugins and the registry",
           "path": "/concepts/plugins",
-          "description": "How a plugin is assembled rather than constructed, and every way mount() refuses."
+          "description": "What a plugin is, what it can register, and how the host mounts it or refuses it at boot."
         },
         {
           "title": "Ports",
           "path": "/concepts/ports",
-          "description": "Named slots one plugin fills, the contracts behind them, and which are not ports at all."
+          "description": "Named slots one plugin fills, the contracts behind them, the checkouts the host lends, and what is not a port at all."
         },
         {
           "title": "Actions",
           "path": "/concepts/actions",
-          "description": "The catalogue the core owns, why a workflow composes rather than defines, and when to add one."
+          "description": "The catalogue the core owns, what a workflow declares for each action it emits, and when to add one."
+        },
+        {
+          "title": "MAD and BEP",
+          "path": "/concepts/mad-and-bep",
+          "description": "The opinions amy does not negotiate, how one workflow is built and how a piece of work is carried from a brief to its proof."
         },
         {
           "title": "The queue",
           "path": "/concepts/the-queue",
-          "description": "Why there is no interval anywhere, and how two workers cannot take the same item."
+          "description": "Why amy has no schedule, how a claim is a rename, and which counter says the machine is failing."
         },
         {
           "title": "The engine",
           "path": "/concepts/the-engine",
-          "description": "What one tick does, in order, and why the engine knows nothing about tickets."
+          "description": "What one tick does, in order, how a look differs from a try, and why the engine knows nothing about tickets."
         },
         {
           "title": "Harnesses, the ladder and skills",
           "path": "/concepts/harnesses",
-          "description": "Which agent does a step, what happens when it runs out of quota, and how a named skill answers instead."
+          "description": "Which agent CLI does a step, where a step goes when that one fails or hits its limit, and how a named skill answers instead."
         },
         {
           "title": "Budgets and ceilings",
           "path": "/concepts/budgets",
-          "description": "Two currencies, read from the log rather than a tally, and asked before the call."
+          "description": "What the agents may spend, read from the event log and asked before the call, and the ceilings that ration people's attention."
         },
         {
           "title": "Events",
           "path": "/concepts/events",
-          "description": "One append-only log, a versioned contract, and why it is hash-locked."
+          "description": "The append-only log every part of amy writes to and reads from, and how its kinds are held to a contract."
         }
       ]
     },
     {
       "group": "Build your own",
       "directory": "build",
-      "description": "Write a plugin or a workflow, prove it, and publish it.",
+      "description": "Test what you wrote, prove a phase, and publish it.",
       "items": [
-        {
-          "title": "Write a plugin",
-          "path": "/build/write-a-plugin",
-          "description": "From an empty package to a mounted, validated, published adapter — with the failure modes named."
-        },
-        {
-          "title": "Write a workflow",
-          "path": "/build/write-a-workflow",
-          "description": "Your process, as a directory of yours — the diagram, the pure decisions, the actions, and the walkthrough test that is the only real proof."
-        },
         {
           "title": "Testing",
           "path": "/build/testing",
-          "description": "The three levels, what each one can and cannot prove, and the one every workflow owes."
+          "description": "Unit, walkthrough, conformance and artifact tests, what each one can and cannot prove, and the ones every workflow owes."
+        },
+        {
+          "title": "Prove a phase",
+          "path": "/build/prove-a-phase",
+          "description": "Write the scenario that proves a unit of work, the resources it runs against and the fixtures it starts from, then read the proof it leaves."
         },
         {
           "title": "Publishing",
           "path": "/build/publishing",
           "description": "Getting your package installable, findable, and listed in the catalogue."
-        },
-        {
-          "title": "Prove a phase",
-          "path": "/build/prove-a-phase",
-          "description": "Write the scenario that proves a unit of work, the resources it runs against, and the fixtures it starts from — and read the proof it leaves."
         }
       ]
     },
@@ -159,32 +196,32 @@
         {
           "title": "CLI",
           "path": "/reference/cli",
-          "description": "Every command, argument, option and default — read out of the command itself."
+          "description": "Every command the host declares, with its arguments, options and defaults, read out of the command itself."
         },
         {
           "title": "Plugins",
           "path": "/reference/plugins",
-          "description": "Every shipped plugin — what it mounts, what it contributes, and every setting it declares."
+          "description": "Every shipped plugin, what it mounts and contributes, and every setting it declares."
         },
         {
           "title": "Workflows",
           "path": "/reference/workflows",
-          "description": "Every shipped workflow — its states, where it waits, and what it emits."
+          "description": "Every shipped workflow, its states, where it waits, and what it emits."
         },
         {
           "title": "Contracts",
           "path": "/reference/contracts",
-          "description": "Every interface in the core — the ports, and the services lent to every plugin."
+          "description": "Every interface in the core, the ports and the services lent to every plugin, read out of the source."
         },
         {
           "title": "Events",
           "path": "/reference/events",
-          "description": "Every event kind and the exact shape of its detail — from the contract the log is validated against."
+          "description": "Every event kind and the exact shape of its detail, read from the contract the log is validated against."
         },
         {
           "title": "Configuration",
           "path": "/reference/configuration",
-          "description": "Every key in config.yaml, its type and its default — from the interface that defines it."
+          "description": "Every key in config.yaml, its type and its default, read from the interface that defines it."
         }
       ]
     },
@@ -201,7 +238,7 @@
         {
           "title": "Publishing a package",
           "path": "/catalog/publishing-a-package",
-          "description": "The two conventions that make a package findable, and what a listing should say."
+          "description": "The keyword and the topic that make a package findable, and what a listing should say."
         }
       ]
     },
@@ -617,22 +654,22 @@
         {
           "title": "Contributing",
           "path": "/development/contributing",
-          "description": "The five minutes before your first change, and the one rule everything follows from."
+          "description": "What to set up before your first change, and the one rule everything follows from."
         },
         {
           "title": "The gate",
           "path": "/development/the-gate",
-          "description": "One command, thirty-three rules proven to fire, and ten gates whose proofs expire."
+          "description": "One command, the rules proven to fire, and the gates whose proofs expire."
         },
         {
           "title": "Releasing",
           "path": "/development/releasing",
-          "description": "Changesets, the version pull request, and why the release job is dormant."
+          "description": "Changesets, the version pull request, the switch that arms the release job, and what the version bump regenerates."
         },
         {
           "title": "Documentation",
           "path": "/development/documentation",
-          "description": "How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes."
+          "description": "How half of this is generated from the code, how the other half is held to rules, why the gate goes red when either drifts, and what a site consumes."
         },
         {
           "title": "The factory itself",
@@ -648,7 +685,7 @@
       "file": "docs/index.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/index.md",
       "title": "amy",
-      "description": "A state machine you leave running. Everything in it is a plugin, and the workflow is yours.",
+      "description": "An opinionated state machine framework where everything is a plugin, configured your way and left to run.",
       "group": "",
       "order": 0,
       "generated": false,
@@ -660,23 +697,43 @@
         },
         {
           "depth": 2,
-          "title": "The two things people come here to do",
-          "slug": "the-two-things-people-come-here-to-do"
+          "title": "Guides",
+          "slug": "guides"
         },
         {
           "depth": 2,
-          "title": "Why the process is not baked in",
-          "slug": "why-the-process-is-not-baked-in"
+          "title": "How it works",
+          "slug": "how-it-works"
         },
         {
           "depth": 2,
-          "title": "It lives *under* your tools, not inside one",
-          "slug": "it-lives-under-your-tools-not-inside-one"
+          "title": "Build your own",
+          "slug": "build-your-own"
         },
         {
           "depth": 2,
-          "title": "About this documentation",
-          "slug": "about-this-documentation"
+          "title": "Reference",
+          "slug": "reference"
+        },
+        {
+          "depth": 2,
+          "title": "Packages",
+          "slug": "packages"
+        },
+        {
+          "depth": 2,
+          "title": "News",
+          "slug": "news"
+        },
+        {
+          "depth": 2,
+          "title": "Design notes",
+          "slug": "design-notes"
+        },
+        {
+          "depth": 2,
+          "title": "Development",
+          "slug": "development"
         }
       ]
     },
@@ -685,9 +742,9 @@
       "file": "docs/build/prove-a-phase.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/prove-a-phase.md",
       "title": "Prove a phase",
-      "description": "Write the scenario that proves a unit of work, the resources it runs against, and the fixtures it starts from — and read the proof it leaves.",
+      "description": "Write the scenario that proves a unit of work, the resources it runs against and the fixtures it starts from, then read the proof it leaves.",
       "group": "Build your own",
-      "order": 5,
+      "order": 2,
       "generated": false,
       "headings": [
         {
@@ -702,8 +759,8 @@
         },
         {
           "depth": 3,
-          "title": "Two worktrees side by side, with portless",
-          "slug": "two-worktrees-side-by-side-with-portless"
+          "title": "Worktrees side by side, with portless",
+          "slug": "worktrees-side-by-side-with-portless"
         },
         {
           "depth": 2,
@@ -724,7 +781,7 @@
       "title": "Publishing",
       "description": "Getting your package installable, findable, and listed in the catalogue.",
       "group": "Build your own",
-      "order": 4,
+      "order": 3,
       "generated": false,
       "headings": [
         {
@@ -749,8 +806,8 @@
         },
         {
           "depth": 2,
-          "title": "Install",
-          "slug": "install"
+          "title": "What it extends",
+          "slug": "what-it-extends"
         },
         {
           "depth": 2,
@@ -779,9 +836,9 @@
       "file": "docs/build/testing.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/testing.md",
       "title": "Testing",
-      "description": "The three levels, what each one can and cannot prove, and the one every workflow owes.",
+      "description": "Unit, walkthrough, conformance and artifact tests, what each one can and cannot prove, and the ones every workflow owes.",
       "group": "Build your own",
-      "order": 3,
+      "order": 1,
       "generated": false,
       "headings": [
         {
@@ -806,8 +863,8 @@
         },
         {
           "depth": 3,
-          "title": "The shelf life is the point",
-          "slug": "the-shelf-life-is-the-point"
+          "title": "A proof expires",
+          "slug": "a-proof-expires"
         },
         {
           "depth": 2,
@@ -816,182 +873,13 @@
         },
         {
           "depth": 3,
-          "title": "The one thing it cannot make deterministic",
-          "slug": "the-one-thing-it-cannot-make-deterministic"
+          "title": "What it cannot make deterministic",
+          "slug": "what-it-cannot-make-deterministic"
         },
         {
           "depth": 2,
           "title": "Testing your own plugin or workflow",
           "slug": "testing-your-own-plugin-or-workflow"
-        }
-      ]
-    },
-    {
-      "path": "/build/write-a-plugin",
-      "file": "docs/build/write-a-plugin.md",
-      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-plugin.md",
-      "title": "Write a plugin",
-      "description": "From an empty package to a mounted, validated, published adapter — with the failure modes named.",
-      "group": "Build your own",
-      "order": 1,
-      "generated": false,
-      "headings": [
-        {
-          "depth": 2,
-          "title": "1. The smallest thing that mounts",
-          "slug": "1-the-smallest-thing-that-mounts"
-        },
-        {
-          "depth": 2,
-          "title": "2. Declare your settings",
-          "slug": "2-declare-your-settings"
-        },
-        {
-          "depth": 2,
-          "title": "3. Fill a port",
-          "slug": "3-fill-a-port"
-        },
-        {
-          "depth": 3,
-          "title": "Reach the world through the runner",
-          "slug": "reach-the-world-through-the-runner"
-        },
-        {
-          "depth": 3,
-          "title": "Never call new Date()",
-          "slug": "never-call-new-date"
-        },
-        {
-          "depth": 2,
-          "title": "4. The other things you can register",
-          "slug": "4-the-other-things-you-can-register"
-        },
-        {
-          "depth": 3,
-          "title": "Contribute to a collection",
-          "slug": "contribute-to-a-collection"
-        },
-        {
-          "depth": 3,
-          "title": "Add an action the core does not have",
-          "slug": "add-an-action-the-core-does-not-have"
-        },
-        {
-          "depth": 3,
-          "title": "Mount an engine, a queue or a store",
-          "slug": "mount-an-engine-a-queue-or-a-store"
-        },
-        {
-          "depth": 3,
-          "title": "Bring an operation to every door",
-          "slug": "bring-an-operation-to-every-door"
-        },
-        {
-          "depth": 2,
-          "title": "5. Validate what you cannot judge alone",
-          "slug": "5-validate-what-you-cannot-judge-alone"
-        },
-        {
-          "depth": 2,
-          "title": "6. Do not put state on the plugin object",
-          "slug": "6-do-not-put-state-on-the-plugin-object"
-        },
-        {
-          "depth": 2,
-          "title": "7. Test it",
-          "slug": "7-test-it"
-        },
-        {
-          "depth": 2,
-          "title": "8. Publish it",
-          "slug": "8-publish-it"
-        },
-        {
-          "depth": 2,
-          "title": "The failure modes, in one place",
-          "slug": "the-failure-modes-in-one-place"
-        },
-        {
-          "depth": 2,
-          "title": "Worth reading next",
-          "slug": "worth-reading-next"
-        }
-      ]
-    },
-    {
-      "path": "/build/write-a-workflow",
-      "file": "docs/build/write-a-workflow.md",
-      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/build/write-a-workflow.md",
-      "title": "Write a workflow",
-      "description": "Your process, as a directory of yours — the diagram, the pure decisions, the actions, and the walkthrough test that is the only real proof.",
-      "group": "Build your own",
-      "order": 2,
-      "generated": true,
-      "headings": [
-        {
-          "depth": 2,
-          "title": "Start from one that already runs",
-          "slug": "start-from-one-that-already-runs"
-        },
-        {
-          "depth": 2,
-          "title": "Before you write anything: answer five questions",
-          "slug": "before-you-write-anything-answer-five-questions"
-        },
-        {
-          "depth": 2,
-          "title": "1. The states",
-          "slug": "1-the-states"
-        },
-        {
-          "depth": 2,
-          "title": "2. The record",
-          "slug": "2-the-record"
-        },
-        {
-          "depth": 2,
-          "title": "3. The typed effects",
-          "slug": "3-the-typed-effects"
-        },
-        {
-          "depth": 2,
-          "title": "4. The observation and the policy",
-          "slug": "4-the-observation-and-the-policy"
-        },
-        {
-          "depth": 2,
-          "title": "5. The decision — and it must stay pure",
-          "slug": "5-the-decision-and-it-must-stay-pure"
-        },
-        {
-          "depth": 2,
-          "title": "6. The actions — the half that touches the world",
-          "slug": "6-the-actions-the-half-that-touches-the-world"
-        },
-        {
-          "depth": 2,
-          "title": "7. Wire it up as a plugin",
-          "slug": "7-wire-it-up-as-a-plugin"
-        },
-        {
-          "depth": 2,
-          "title": "8. The walkthrough test — the only real proof",
-          "slug": "8-the-walkthrough-test-the-only-real-proof"
-        },
-        {
-          "depth": 2,
-          "title": "9. Drive it",
-          "slug": "9-drive-it"
-        },
-        {
-          "depth": 2,
-          "title": "The mistakes worth naming",
-          "slug": "the-mistakes-worth-naming"
-        },
-        {
-          "depth": 2,
-          "title": "Worth reading next",
-          "slug": "worth-reading-next"
         }
       ]
     },
@@ -1032,15 +920,15 @@
       "file": "docs/catalog/publishing-a-package.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/catalog/publishing-a-package.md",
       "title": "Publishing a package",
-      "description": "The two conventions that make a package findable, and what a listing should say.",
+      "description": "The keyword and the topic that make a package findable, and what a listing should say.",
       "group": "Packages",
       "order": 2,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "The two conventions",
-          "slug": "the-two-conventions"
+          "title": "A keyword and a topic",
+          "slug": "a-keyword-and-a-topic"
         },
         {
           "depth": 2,
@@ -1281,6 +1169,11 @@
         },
         {
           "depth": 3,
+          "title": "The docs describe the contract that exists. Every README is rewritten against the code: a plugin's README lists the ports, actions, operations, commands, events and environment its package registers, and opens with amy.about, a new field in its package.json saying when to use it.",
+          "slug": "the-docs-describe-the-contract-that-exists-every-readme-is-rewritten-against-the-code-a-plugins-readme-lists-the-ports-actions-operations-commands-events-and-environment-its-package-registers-and-opens-with-amyabout-a-new-field-in-its-packagejson-saying-when-to-use-it"
+        },
+        {
+          "depth": 3,
           "title": "**An errand that answered a question is not delivered as an empty pull request.**",
           "slug": "an-errand-that-answered-a-question-is-not-delivered-as-an-empty-pull-request"
         },
@@ -1346,15 +1239,15 @@
       "file": "docs/concepts/actions.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/actions.md",
       "title": "Actions",
-      "description": "The catalogue the core owns, why a workflow composes rather than defines, and when to add one.",
+      "description": "The catalogue the core owns, what a workflow declares for each action it emits, and when to add one.",
       "group": "How it works",
-      "order": 5,
+      "order": 6,
       "generated": true,
       "headings": [
         {
           "depth": 2,
-          "title": "Why composing and not defining",
-          "slug": "why-composing-and-not-defining"
+          "title": "Why a shared catalogue",
+          "slug": "why-a-shared-catalogue"
         },
         {
           "depth": 2,
@@ -1390,7 +1283,7 @@
       "title": "Architecture",
       "description": "What owns what, the one rule everything else follows from, and where the types live.",
       "group": "How it works",
-      "order": 1,
+      "order": 2,
       "generated": true,
       "headings": [
         {
@@ -1410,13 +1303,8 @@
         },
         {
           "depth": 2,
-          "title": "A workflow is only the order",
-          "slug": "a-workflow-is-only-the-order"
-        },
-        {
-          "depth": 2,
-          "title": "The engine drives a workflow it does not know",
-          "slug": "the-engine-drives-a-workflow-it-does-not-know"
+          "title": "The host assembles, the engine drives",
+          "slug": "the-host-assembles-the-engine-drives"
         },
         {
           "depth": 2,
@@ -1430,8 +1318,8 @@
         },
         {
           "depth": 2,
-          "title": "Nothing reaches the world except through two ports",
-          "slug": "nothing-reaches-the-world-except-through-two-ports"
+          "title": "The world is reached through interfaces",
+          "slug": "the-world-is-reached-through-interfaces"
         }
       ]
     },
@@ -1440,9 +1328,9 @@
       "file": "docs/concepts/budgets.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/budgets.md",
       "title": "Budgets and ceilings",
-      "description": "Two currencies, read from the log rather than a tally, and asked before the call.",
+      "description": "What the agents may spend, read from the event log and asked before the call, and the ceilings that ration people's attention.",
       "group": "How it works",
-      "order": 9,
+      "order": 11,
       "generated": false,
       "headings": [
         {
@@ -1452,18 +1340,23 @@
         },
         {
           "depth": 3,
-          "title": "Read from the log, never from a tally of its own",
-          "slug": "read-from-the-log-never-from-a-tally-of-its-own"
+          "title": "Read from the log",
+          "slug": "read-from-the-log"
         },
         {
           "depth": 3,
-          "title": "Asked before the call, not after",
-          "slug": "asked-before-the-call-not-after"
+          "title": "Asked before the call",
+          "slug": "asked-before-the-call"
         },
         {
           "depth": 3,
-          "title": "It only mounts when it can refuse",
-          "slug": "it-only-mounts-when-it-can-refuse"
+          "title": "Mounted only when it can refuse",
+          "slug": "mounted-only-when-it-can-refuse"
+        },
+        {
+          "depth": 2,
+          "title": "Runs that add nothing",
+          "slug": "runs-that-add-nothing"
         },
         {
           "depth": 2,
@@ -1492,9 +1385,9 @@
       "file": "docs/concepts/events.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/events.md",
       "title": "Events",
-      "description": "One append-only log, a versioned contract, and why it is hash-locked.",
+      "description": "The append-only log every part of amy writes to and reads from, and how its kinds are held to a contract.",
       "group": "How it works",
-      "order": 10,
+      "order": 12,
       "generated": true,
       "headings": [
         {
@@ -1509,23 +1402,23 @@
         },
         {
           "depth": 2,
-          "title": "It is a contract, and it is enforced twice",
-          "slug": "it-is-a-contract-and-it-is-enforced-twice"
+          "title": "The kinds are a contract",
+          "slug": "the-kinds-are-a-contract"
         },
         {
           "depth": 2,
-          "title": "Reading a log written by a newer build",
-          "slug": "reading-a-log-written-by-a-newer-build"
+          "title": "Reading it",
+          "slug": "reading-it"
         },
         {
           "depth": 2,
-          "title": "The log is local, and may name real work",
-          "slug": "the-log-is-local-and-may-name-real-work"
+          "title": "The log is local, and names real work",
+          "slug": "the-log-is-local-and-names-real-work"
         },
         {
           "depth": 2,
-          "title": "Failing to log never costs a move",
-          "slug": "failing-to-log-never-costs-a-move"
+          "title": "Failing to write a line never costs a move",
+          "slug": "failing-to-write-a-line-never-costs-a-move"
         },
         {
           "depth": 2,
@@ -1535,19 +1428,91 @@
       ]
     },
     {
+      "path": "/concepts/glossary",
+      "file": "docs/concepts/glossary.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/glossary.md",
+      "title": "Glossary",
+      "description": "The words amy uses, each in a few sentences, with the page that says more.",
+      "group": "How it works",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Action",
+          "slug": "action"
+        },
+        {
+          "depth": 2,
+          "title": "Diagram",
+          "slug": "diagram"
+        },
+        {
+          "depth": 2,
+          "title": "Engine",
+          "slug": "engine"
+        },
+        {
+          "depth": 2,
+          "title": "Harness",
+          "slug": "harness"
+        },
+        {
+          "depth": 2,
+          "title": "Plugin",
+          "slug": "plugin"
+        },
+        {
+          "depth": 2,
+          "title": "Port",
+          "slug": "port"
+        },
+        {
+          "depth": 2,
+          "title": "Profile",
+          "slug": "profile"
+        },
+        {
+          "depth": 2,
+          "title": "Project",
+          "slug": "project"
+        },
+        {
+          "depth": 2,
+          "title": "Record",
+          "slug": "record"
+        },
+        {
+          "depth": 2,
+          "title": "State",
+          "slug": "state"
+        },
+        {
+          "depth": 2,
+          "title": "Workflow",
+          "slug": "workflow"
+        }
+      ]
+    },
+    {
       "path": "/concepts/harnesses",
       "file": "docs/concepts/harnesses.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/harnesses.md",
       "title": "Harnesses, the ladder and skills",
-      "description": "Which agent does a step, what happens when it runs out of quota, and how a named skill answers instead.",
+      "description": "Which agent CLI does a step, where a step goes when that one fails or hits its limit, and how a named skill answers instead.",
       "group": "How it works",
-      "order": 8,
+      "order": 10,
       "generated": true,
       "headings": [
         {
           "depth": 2,
-          "title": "Harnesses contribute; the relay mounts",
+          "title": "Harnesses contribute, the relay mounts",
           "slug": "harnesses-contribute-the-relay-mounts"
+        },
+        {
+          "depth": 2,
+          "title": "Writing a harness plugin",
+          "slug": "writing-a-harness-plugin"
         },
         {
           "depth": 2,
@@ -1556,33 +1521,23 @@
         },
         {
           "depth": 3,
-          "title": "What happens after a rung does not work out",
-          "slug": "what-happens-after-a-rung-does-not-work-out"
+          "title": "After a rung does not work out",
+          "slug": "after-a-rung-does-not-work-out"
         },
         {
           "depth": 2,
-          "title": "Skills: who should do the step",
-          "slug": "skills-who-should-do-the-step"
+          "title": "A run carries only what amy hands it",
+          "slug": "a-run-carries-only-what-amy-hands-it"
         },
         {
-          "depth": 3,
-          "title": "Two ladders, and they answer different questions",
-          "slug": "two-ladders-and-they-answer-different-questions"
-        },
-        {
-          "depth": 3,
-          "title": "A skill named here has to be installed",
-          "slug": "a-skill-named-here-has-to-be-installed"
+          "depth": 2,
+          "title": "Skills: who does the step",
+          "slug": "skills-who-does-the-step"
         },
         {
           "depth": 2,
           "title": "amy's own skills",
           "slug": "amys-own-skills"
-        },
-        {
-          "depth": 2,
-          "title": "Writing a harness plugin",
-          "slug": "writing-a-harness-plugin"
         }
       ]
     },
@@ -1591,9 +1546,9 @@
       "file": "docs/concepts/mad-and-bep.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/mad-and-bep.md",
       "title": "MAD and BEP",
-      "description": "The two opinions amy does not negotiate — how one workflow is built, and how a piece of work is carried from a brief to its proof.",
+      "description": "The opinions amy does not negotiate, how one workflow is built and how a piece of work is carried from a brief to its proof.",
       "group": "How it works",
-      "order": 1.5,
+      "order": 7,
       "generated": false,
       "headings": [
         {
@@ -1613,20 +1568,25 @@
       "file": "docs/concepts/plugins.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/plugins.md",
       "title": "Plugins and the registry",
-      "description": "How a plugin is assembled rather than constructed, and every way mount() refuses.",
+      "description": "What a plugin is, what it can register, and how the host mounts it or refuses it at boot.",
       "group": "How it works",
-      "order": 3,
+      "order": 4,
       "generated": true,
       "headings": [
         {
           "depth": 2,
-          "title": "Assembled, not constructed",
-          "slug": "assembled-not-constructed"
+          "title": "Loaded, then mounted",
+          "slug": "loaded-then-mounted"
         },
         {
           "depth": 2,
-          "title": "Every way mount() refuses",
-          "slug": "every-way-mount-refuses"
+          "title": "Every way the mount refuses",
+          "slug": "every-way-the-mount-refuses"
+        },
+        {
+          "depth": 2,
+          "title": "Config schemas",
+          "slug": "config-schemas"
         },
         {
           "depth": 2,
@@ -1640,28 +1600,8 @@
         },
         {
           "depth": 2,
-          "title": "Collections",
-          "slug": "collections"
-        },
-        {
-          "depth": 2,
-          "title": "ready(), and why it exists",
-          "slug": "ready-and-why-it-exists"
-        },
-        {
-          "depth": 2,
-          "title": "deferred(), and the order plugins are listed in",
-          "slug": "deferred-and-the-order-plugins-are-listed-in"
-        },
-        {
-          "depth": 2,
-          "title": "Config schemas",
-          "slug": "config-schemas"
-        },
-        {
-          "depth": 2,
-          "title": "Singletons, and the trap in them",
-          "slug": "singletons-and-the-trap-in-them"
+          "title": "Deferred, and why plugin order does not matter",
+          "slug": "deferred-and-why-plugin-order-does-not-matter"
         },
         {
           "depth": 2,
@@ -1680,9 +1620,9 @@
       "file": "docs/concepts/ports.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/ports.md",
       "title": "Ports",
-      "description": "Named slots one plugin fills, the contracts behind them, and which are not ports at all.",
+      "description": "Named slots one plugin fills, the contracts behind them, the checkouts the host lends, and what is not a port at all.",
       "group": "How it works",
-      "order": 4,
+      "order": 5,
       "generated": true,
       "headings": [
         {
@@ -1807,6 +1747,11 @@
         },
         {
           "depth": 2,
+          "title": "Checkouts",
+          "slug": "checkouts"
+        },
+        {
+          "depth": 2,
           "title": "What is a port, and what is lent to everybody",
           "slug": "what-is-a-port-and-what-is-lent-to-everybody"
         },
@@ -1817,13 +1762,8 @@
         },
         {
           "depth": 2,
-          "title": "Filling a port from your own plugin",
-          "slug": "filling-a-port-from-your-own-plugin"
-        },
-        {
-          "depth": 2,
-          "title": "Registering a port the core has never heard of",
-          "slug": "registering-a-port-the-core-has-never-heard-of"
+          "title": "A port the core has never heard of",
+          "slug": "a-port-the-core-has-never-heard-of"
         }
       ]
     },
@@ -1832,11 +1772,16 @@
       "file": "docs/concepts/the-engine.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/the-engine.md",
       "title": "The engine",
-      "description": "What one tick does, in order, and why the engine knows nothing about tickets.",
+      "description": "What one tick does, in order, how a look differs from a try, and why the engine knows nothing about tickets.",
       "group": "How it works",
-      "order": 7,
+      "order": 9,
       "generated": false,
       "headings": [
+        {
+          "depth": 2,
+          "title": "Discovery",
+          "slug": "discovery"
+        },
         {
           "depth": 2,
           "title": "What one tick does",
@@ -1844,8 +1789,8 @@
         },
         {
           "depth": 2,
-          "title": "Every noun in it",
-          "slug": "every-noun-in-it"
+          "title": "Plans, looks and attempts",
+          "slug": "plans-looks-and-attempts"
         },
         {
           "depth": 2,
@@ -1854,18 +1799,23 @@
         },
         {
           "depth": 2,
+          "title": "Parked before the call",
+          "slug": "parked-before-the-call"
+        },
+        {
+          "depth": 2,
           "title": "It fails out loud",
           "slug": "it-fails-out-loud"
         },
         {
           "depth": 3,
-          "title": "The one rule about swallowing a failure",
-          "slug": "the-one-rule-about-swallowing-a-failure"
+          "title": "Which failures may be swallowed",
+          "slug": "which-failures-may-be-swallowed"
         },
         {
           "depth": 2,
-          "title": "Serial, and replaceable",
-          "slug": "serial-and-replaceable"
+          "title": "Serial, or lanes at once",
+          "slug": "serial-or-lanes-at-once"
         }
       ]
     },
@@ -1874,20 +1824,25 @@
       "file": "docs/concepts/the-queue.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/the-queue.md",
       "title": "The queue",
-      "description": "Why there is no interval anywhere, and how two workers cannot take the same item.",
+      "description": "Why amy has no schedule, how a claim is a rename, and which counter says the machine is failing.",
       "group": "How it works",
-      "order": 6,
+      "order": 8,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "What --every actually is",
-          "slug": "what---every-actually-is"
+          "title": "What --every is",
+          "slug": "what---every-is"
         },
         {
           "depth": 2,
           "title": "One file per item",
           "slug": "one-file-per-item"
+        },
+        {
+          "depth": 2,
+          "title": "Bringing a look forward",
+          "slug": "bringing-a-look-forward"
         },
         {
           "depth": 2,
@@ -1901,8 +1856,8 @@
         },
         {
           "depth": 2,
-          "title": "Attempts and giving up",
-          "slug": "attempts-and-giving-up"
+          "title": "Which counter is which",
+          "slug": "which-counter-is-which"
         },
         {
           "depth": 2,
@@ -1916,15 +1871,20 @@
       "file": "docs/concepts/workflows.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/concepts/workflows.md",
       "title": "Workflows",
-      "description": "Three pieces — a diagram, a pure decision per state, and the actions — joined by one declaration.",
+      "description": "A diagram of where work can go, a pure decision per state, and the actions that touch the world, joined by one declaration.",
       "group": "How it works",
-      "order": 2,
+      "order": 3,
       "generated": true,
       "headings": [
         {
           "depth": 2,
           "title": "The diagram",
           "slug": "the-diagram"
+        },
+        {
+          "depth": 2,
+          "title": "One declaration",
+          "slug": "one-declaration"
         },
         {
           "depth": 2,
@@ -1938,23 +1898,8 @@
         },
         {
           "depth": 2,
-          "title": "One declaration joins the pieces",
-          "slug": "one-declaration-joins-the-pieces"
-        },
-        {
-          "depth": 2,
-          "title": "Effects are described, never performed",
-          "slug": "effects-are-described-never-performed"
-        },
-        {
-          "depth": 2,
-          "title": "Attempts, and why advance does not count",
-          "slug": "attempts-and-why-advance-does-not-count"
-        },
-        {
-          "depth": 2,
-          "title": "Lanes: work that runs side by side",
-          "slug": "lanes-work-that-runs-side-by-side"
+          "title": "Calls and lanes",
+          "slug": "calls-and-lanes"
         },
         {
           "depth": 2,
@@ -4158,15 +4103,15 @@
       "file": "docs/development/contributing.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/contributing.md",
       "title": "Contributing",
-      "description": "The five minutes before your first change, and the one rule everything follows from.",
+      "description": "What to set up before your first change, and the one rule everything follows from.",
       "group": "Development",
       "order": 1,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "The five minutes before your first change",
-          "slug": "the-five-minutes-before-your-first-change"
+          "title": "Before your first change",
+          "slug": "before-your-first-change"
         },
         {
           "depth": 2,
@@ -4205,15 +4150,15 @@
       "file": "docs/development/documentation.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/documentation.md",
       "title": "Documentation",
-      "description": "How half of this is generated from the code, why the gate goes red when it drifts, and what a site consumes.",
+      "description": "How half of this is generated from the code, how the other half is held to rules, why the gate goes red when either drifts, and what a site consumes.",
       "group": "Development",
       "order": 4,
       "generated": true,
       "headings": [
         {
           "depth": 2,
-          "title": "The two commands",
-          "slug": "the-two-commands"
+          "title": "Generating and checking",
+          "slug": "generating-and-checking"
         },
         {
           "depth": 2,
@@ -4257,6 +4202,11 @@
         },
         {
           "depth": 2,
+          "title": "The prose check",
+          "slug": "the-prose-check"
+        },
+        {
+          "depth": 2,
           "title": "Adding a generated block",
           "slug": "adding-a-generated-block"
         },
@@ -4272,7 +4222,7 @@
       "file": "docs/development/releasing.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/releasing.md",
       "title": "Releasing",
-      "description": "Changesets, the version pull request, and why the release job is dormant.",
+      "description": "Changesets, the version pull request, the switch that arms the release job, and what the version bump regenerates.",
       "group": "Development",
       "order": 3,
       "generated": false,
@@ -4289,8 +4239,8 @@
         },
         {
           "depth": 2,
-          "title": "It is dormant until somebody arms it",
-          "slug": "it-is-dormant-until-somebody-arms-it"
+          "title": "The switch that arms it",
+          "slug": "the-switch-that-arms-it"
         },
         {
           "depth": 2,
@@ -4299,8 +4249,8 @@
         },
         {
           "depth": 2,
-          "title": "The version bump regenerates the documentation",
-          "slug": "the-version-bump-regenerates-the-documentation"
+          "title": "The version bump regenerates what it moves",
+          "slug": "the-version-bump-regenerates-what-it-moves"
         },
         {
           "depth": 2,
@@ -4491,7 +4441,7 @@
       "file": "docs/development/the-gate.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/development/the-gate.md",
       "title": "The gate",
-      "description": "One command, thirty-three rules proven to fire, and ten gates whose proofs expire.",
+      "description": "One command, the rules proven to fire, and the gates whose proofs expire.",
       "group": "Development",
       "order": 2,
       "generated": true,
@@ -4534,11 +4484,280 @@
       ]
     },
     {
+      "path": "/guides/compose-workflows",
+      "file": "docs/guides/compose-workflows.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/compose-workflows.md",
+      "title": "Compose workflows",
+      "description": "Call one workflow from a state of another, run calls side by side on lanes, and drive several workflows from one machine with profiles.",
+      "group": "Guides",
+      "order": 3,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Draw the call",
+          "slug": "draw-the-call"
+        },
+        {
+          "depth": 2,
+          "title": "Bind it",
+          "slug": "bind-it"
+        },
+        {
+          "depth": 2,
+          "title": "Run calls side by side",
+          "slug": "run-calls-side-by-side"
+        },
+        {
+          "depth": 2,
+          "title": "Mount several workflows",
+          "slug": "mount-several-workflows"
+        },
+        {
+          "depth": 2,
+          "title": "Next",
+          "slug": "next"
+        }
+      ]
+    },
+    {
+      "path": "/guides/install-a-plugin",
+      "file": "docs/guides/install-a-plugin.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/install-a-plugin.md",
+      "title": "Install a plugin",
+      "description": "Add a package with amy add, by its npm name or by the path of a fork you hold, configure it, and take it out again.",
+      "group": "Guides",
+      "order": 2,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "By name",
+          "slug": "by-name"
+        },
+        {
+          "depth": 2,
+          "title": "By a fork's path",
+          "slug": "by-a-forks-path"
+        },
+        {
+          "depth": 2,
+          "title": "What amy add does",
+          "slug": "what-amy-add-does"
+        },
+        {
+          "depth": 2,
+          "title": "Configure it",
+          "slug": "configure-it"
+        },
+        {
+          "depth": 2,
+          "title": "Check it",
+          "slug": "check-it"
+        },
+        {
+          "depth": 2,
+          "title": "Remove it",
+          "slug": "remove-it"
+        }
+      ]
+    },
+    {
+      "path": "/guides/project-workflow-plugin",
+      "file": "docs/guides/project-workflow-plugin.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/project-workflow-plugin.md",
+      "title": "Project, workflow or plugin",
+      "description": "How to tell a project, a workflow and a plugin apart, and which one your job needs.",
+      "group": "Guides",
+      "order": 1,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Plugin: amy can reach something new",
+          "slug": "plugin-amy-can-reach-something-new"
+        },
+        {
+          "depth": 2,
+          "title": "Workflow: amy should drive a routine",
+          "slug": "workflow-amy-should-drive-a-routine"
+        },
+        {
+          "depth": 2,
+          "title": "Project: the work must be briefed and proven",
+          "slug": "project-the-work-must-be-briefed-and-proven"
+        },
+        {
+          "depth": 2,
+          "title": "Choosing",
+          "slug": "choosing"
+        }
+      ]
+    },
+    {
+      "path": "/guides/the-chat",
+      "file": "docs/guides/the-chat.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/the-chat.md",
+      "title": "The chat",
+      "description": "Driving amy from Slack or Telegram, where it asks, offers the answers, takes yours, and tells you about the work.",
+      "group": "Guides",
+      "order": 7,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Connecting a chat",
+          "slug": "connecting-a-chat"
+        },
+        {
+          "depth": 2,
+          "title": "amy asks, with the options",
+          "slug": "amy-asks-with-the-options"
+        },
+        {
+          "depth": 2,
+          "title": "amy takes the answer",
+          "slug": "amy-takes-the-answer"
+        },
+        {
+          "depth": 2,
+          "title": "Ask amy about the work",
+          "slug": "ask-amy-about-the-work"
+        },
+        {
+          "depth": 2,
+          "title": "Act with /action",
+          "slug": "act-with-action"
+        }
+      ]
+    },
+    {
+      "path": "/guides/what-a-project-is",
+      "file": "docs/guides/what-a-project-is.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/what-a-project-is.md",
+      "title": "What a project is",
+      "description": "A project is brief, work and proof, read from the folders you give it.",
+      "group": "Guides",
+      "order": 6,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The walk",
+          "slug": "the-walk"
+        },
+        {
+          "depth": 2,
+          "title": "What the brief settles is what the proof shows",
+          "slug": "what-the-brief-settles-is-what-the-proof-shows"
+        },
+        {
+          "depth": 2,
+          "title": "A phase that is not there",
+          "slug": "a-phase-that-is-not-there"
+        },
+        {
+          "depth": 2,
+          "title": "Configuring one",
+          "slug": "configuring-one"
+        }
+      ]
+    },
+    {
+      "path": "/guides/write-a-plugin",
+      "file": "docs/guides/write-a-plugin.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/write-a-plugin.md",
+      "title": "Write a plugin",
+      "description": "One definePlugin call with a typed config, the things it can register, and how to keep it once it ships.",
+      "group": "Guides",
+      "order": 5,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "Start from definePlugin",
+          "slug": "start-from-defineplugin"
+        },
+        {
+          "depth": 2,
+          "title": "What a plugin can register",
+          "slug": "what-a-plugin-can-register"
+        },
+        {
+          "depth": 2,
+          "title": "Why plugin order does not matter",
+          "slug": "why-plugin-order-does-not-matter"
+        },
+        {
+          "depth": 2,
+          "title": "Operations become commands",
+          "slug": "operations-become-commands"
+        },
+        {
+          "depth": 2,
+          "title": "Environment and checks",
+          "slug": "environment-and-checks"
+        },
+        {
+          "depth": 2,
+          "title": "Keep a plugin",
+          "slug": "keep-a-plugin"
+        }
+      ]
+    },
+    {
+      "path": "/guides/write-a-workflow",
+      "file": "docs/guides/write-a-workflow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/guides/write-a-workflow.md",
+      "title": "Write a workflow",
+      "description": "Draw where work can go, decide where it goes next, say what happens in the world, and prove it with the walkthrough test.",
+      "group": "Guides",
+      "order": 4,
+      "generated": false,
+      "headings": [
+        {
+          "depth": 2,
+          "title": "The diagram: where work can go",
+          "slug": "the-diagram-where-work-can-go"
+        },
+        {
+          "depth": 2,
+          "title": "decide: where it goes next",
+          "slug": "decide-where-it-goes-next"
+        },
+        {
+          "depth": 2,
+          "title": "actions: what happens in the world",
+          "slug": "actions-what-happens-in-the-world"
+        },
+        {
+          "depth": 2,
+          "title": "The walkthrough test",
+          "slug": "the-walkthrough-test"
+        },
+        {
+          "depth": 2,
+          "title": "Mistakes the host cannot catch",
+          "slug": "mistakes-the-host-cannot-catch"
+        },
+        {
+          "depth": 2,
+          "title": "When to split it into more files",
+          "slug": "when-to-split-it-into-more-files"
+        },
+        {
+          "depth": 2,
+          "title": "Next",
+          "slug": "next"
+        }
+      ]
+    },
+    {
       "path": "/reference/cli",
       "file": "docs/reference/cli.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/cli.md",
       "title": "CLI",
-      "description": "Every command, argument, option and default — read out of the command itself.",
+      "description": "Every command the host declares, with its arguments, options and defaults, read out of the command itself.",
       "group": "Reference",
       "order": 1,
       "generated": true,
@@ -4725,7 +4944,7 @@
       "file": "docs/reference/configuration.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/configuration.md",
       "title": "Configuration",
-      "description": "Every key in config.yaml, its type and its default — from the interface that defines it.",
+      "description": "Every key in config.yaml, its type and its default, read from the interface that defines it.",
       "group": "Reference",
       "order": 6,
       "generated": true,
@@ -4762,7 +4981,7 @@
       "file": "docs/reference/contracts.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/contracts.md",
       "title": "Contracts",
-      "description": "Every interface in the core — the ports, and the services lent to every plugin.",
+      "description": "Every interface in the core, the ports and the services lent to every plugin, read out of the source.",
       "group": "Reference",
       "order": 4,
       "generated": true,
@@ -4904,7 +5123,7 @@
       "file": "docs/reference/events.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/events.md",
       "title": "Events",
-      "description": "Every event kind and the exact shape of its detail — from the contract the log is validated against.",
+      "description": "Every event kind and the exact shape of its detail, read from the contract the log is validated against.",
       "group": "Reference",
       "order": 5,
       "generated": true,
@@ -4926,7 +5145,7 @@
       "file": "docs/reference/plugins.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/plugins.md",
       "title": "Plugins",
-      "description": "Every shipped plugin — what it mounts, what it contributes, and every setting it declares.",
+      "description": "Every shipped plugin, what it mounts and contributes, and every setting it declares.",
       "group": "Reference",
       "order": 2,
       "generated": true,
@@ -5088,7 +5307,7 @@
       "file": "docs/reference/workflows.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/reference/workflows.md",
       "title": "Workflows",
-      "description": "Every shipped workflow — its states, where it waits, and what it emits.",
+      "description": "Every shipped workflow, its states, where it waits, and what it emits.",
       "group": "Reference",
       "order": 3,
       "generated": true,
@@ -5477,7 +5696,7 @@
       "file": "docs/start/configuration.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/configuration.md",
       "title": "Configuration",
-      "description": "One file, two halves — what the host needs to know, and one slice per plugin.",
+      "description": "One file, split between what the host needs to know and one slice per plugin.",
       "group": "Start here",
       "order": 4,
       "generated": true,
@@ -5514,8 +5733,8 @@
         },
         {
           "depth": 2,
-          "title": "Two ceilings",
-          "slug": "two-ceilings"
+          "title": "Ceilings",
+          "slug": "ceilings"
         }
       ]
     },
@@ -5524,7 +5743,7 @@
       "file": "docs/start/installation.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/installation.md",
       "title": "Installation",
-      "description": "One install per machine, where its state lives, and how to carry only the plugins you use.",
+      "description": "One install per machine, where its state lives, and how it carries only the plugins you use.",
       "group": "Start here",
       "order": 3,
       "generated": true,
@@ -5546,8 +5765,8 @@
         },
         {
           "depth": 3,
-          "title": "A plugin a config names and nothing installed",
-          "slug": "a-plugin-a-config-names-and-nothing-installed"
+          "title": "A plugin the config names and nothing installed",
+          "slug": "a-plugin-the-config-names-and-nothing-installed"
         },
         {
           "depth": 3,
@@ -5591,15 +5810,15 @@
       "file": "docs/start/overview.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/overview.md",
       "title": "Overview",
-      "description": "What amy is, the one idea the rest follows from, and what it is not.",
+      "description": "What amy is, the idea the rest follows from, and what it is not.",
       "group": "Start here",
       "order": 1,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "The one idea",
-          "slug": "the-one-idea"
+          "title": "The idea the rest follows from",
+          "slug": "the-idea-the-rest-follows-from"
         },
         {
           "depth": 2,
@@ -5608,8 +5827,8 @@
         },
         {
           "depth": 2,
-          "title": "What \"everything is a plugin\" actually buys you",
-          "slug": "what-everything-is-a-plugin-actually-buys-you"
+          "title": "What \"everything is a plugin\" buys",
+          "slug": "what-everything-is-a-plugin-buys"
         },
         {
           "depth": 2,
@@ -5628,35 +5847,35 @@
       "file": "docs/start/quickstart.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/quickstart.md",
       "title": "Quickstart",
-      "description": "Five minutes from nothing to one move you can watch.",
+      "description": "From nothing to one move you can watch, then the loop.",
       "group": "Start here",
       "order": 2,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "1. Install — 1 min",
-          "slug": "1-install-1-min"
+          "title": "1. Install",
+          "slug": "1-install"
         },
         {
           "depth": 2,
-          "title": "2. Set it up — 2 min",
-          "slug": "2-set-it-up-2-min"
+          "title": "2. Set it up",
+          "slug": "2-set-it-up"
         },
         {
           "depth": 2,
-          "title": "3. Watch it make one move — 1 min",
-          "slug": "3-watch-it-make-one-move-1-min"
+          "title": "3. Watch it make one move",
+          "slug": "3-watch-it-make-one-move"
         },
         {
           "depth": 2,
-          "title": "4. Leave it running — 1 min",
-          "slug": "4-leave-it-running-1-min"
+          "title": "4. Start the loop",
+          "slug": "4-start-the-loop"
         },
         {
           "depth": 2,
-          "title": "5. Put the skills in your harnesses — 30 sec",
-          "slug": "5-put-the-skills-in-your-harnesses-30-sec"
+          "title": "5. Put the skills in your harnesses",
+          "slug": "5-put-the-skills-in-your-harnesses"
         },
         {
           "depth": 2,
@@ -5670,30 +5889,25 @@
       "file": "docs/start/running.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/running.md",
       "title": "Running it",
-      "description": "One move at a time, the loop, and the difference between pause and stop.",
+      "description": "One move at a time, the loop, and the handbrake.",
       "group": "Start here",
       "order": 5,
       "generated": false,
       "headings": [
         {
           "depth": 2,
-          "title": "The one command that matters",
-          "slug": "the-one-command-that-matters"
+          "title": "One move",
+          "slug": "one-move"
         },
         {
           "depth": 2,
-          "title": "The four ways to drive",
-          "slug": "the-four-ways-to-drive"
+          "title": "The ways to drive",
+          "slug": "the-ways-to-drive"
         },
         {
           "depth": 2,
-          "title": "The queue is the schedule",
-          "slug": "the-queue-is-the-schedule"
-        },
-        {
-          "depth": 2,
-          "title": "Pause and stop are different things",
-          "slug": "pause-and-stop-are-different-things"
+          "title": "Stop and the handbrake",
+          "slug": "stop-and-the-handbrake"
         },
         {
           "depth": 2,
@@ -5724,13 +5938,18 @@
       "headings": [
         {
           "depth": 2,
-          "title": "The threat that actually matters",
-          "slug": "the-threat-that-actually-matters"
+          "title": "The threat that matters most",
+          "slug": "the-threat-that-matters-most"
         },
         {
           "depth": 2,
-          "title": "Nothing reaches the outside world except through two ports",
-          "slug": "nothing-reaches-the-outside-world-except-through-two-ports"
+          "title": "Where amy reaches outside",
+          "slug": "where-amy-reaches-outside"
+        },
+        {
+          "depth": 2,
+          "title": "What a workflow may write",
+          "slug": "what-a-workflow-may-write"
         },
         {
           "depth": 2,
@@ -5744,8 +5963,8 @@
         },
         {
           "depth": 2,
-          "title": "The log is local, and stays local",
-          "slug": "the-log-is-local-and-stays-local"
+          "title": "The log is local",
+          "slug": "the-log-is-local"
         },
         {
           "depth": 2,
@@ -5769,7 +5988,7 @@
       "file": "docs/start/status-and-doctor.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/status-and-doctor.md",
       "title": "Status and doctor",
-      "description": "Reading where things stand, and finding out what is wrong before it touches a ticket.",
+      "description": "Where things stand, and what is wrong before it touches a ticket.",
       "group": "Start here",
       "order": 7,
       "generated": false,
@@ -5791,8 +6010,8 @@
         },
         {
           "depth": 2,
-          "title": "The log is the third answer",
-          "slug": "the-log-is-the-third-answer"
+          "title": "The log",
+          "slug": "the-log"
         },
         {
           "depth": 2,
@@ -5806,7 +6025,7 @@
       "file": "docs/start/workflows-and-profiles.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/start/workflows-and-profiles.md",
       "title": "Workflows and profiles",
-      "description": "A profile is a name in a config, not a case in a switch — and what that costs.",
+      "description": "A profile is a name in your config that points at a workflow, and what mounts under it.",
       "group": "Start here",
       "order": 6,
       "generated": true,
@@ -5818,8 +6037,8 @@
         },
         {
           "depth": 2,
-          "title": "What ships in the box",
-          "slug": "what-ships-in-the-box"
+          "title": "What is published",
+          "slug": "what-is-published"
         },
         {
           "depth": 2,
@@ -5828,8 +6047,8 @@
         },
         {
           "depth": 2,
-          "title": "One workflow per invocation",
-          "slug": "one-workflow-per-invocation"
+          "title": "One workflow per process",
+          "slug": "one-workflow-per-process"
         },
         {
           "depth": 2,
@@ -5843,8 +6062,8 @@
         },
         {
           "depth": 2,
-          "title": "A plugin of your own",
-          "slug": "a-plugin-of-your-own"
+          "title": "A fork of a plugin",
+          "slug": "a-fork-of-a-plugin"
         },
         {
           "depth": 2,
@@ -10095,7 +10314,8 @@
           "packages/cli/src/index.ts",
           "packages/cli/src/config.ts",
           "packages/cli/skills/amy-workflow/SKILL.md",
-          "packages/cli/guardrails/**"
+          "packages/cli/guardrails/**",
+          "docs/guides/write-a-workflow.md"
         ],
         "evidence": ".software-factory/evidence/workflow-new.json",
         "plan": "docs/design/a-workflow-is-yours-not-a-package.md",
@@ -12396,6 +12616,182 @@
         "level": "minor"
       },
       {
+        "id": "the-docs-describe-the-contract-that-exists",
+        "title": "The docs describe the contract that exists. Every README is rewritten against the code: a plugin's README lists the ports, actions, operations, commands, events and environment its package registers, and opens with `amy.about`, a new field in its package.json saying when to use it.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/model-specs",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-browser",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-desktop",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-command",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-concurrent-engine",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-log",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-notes",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-queue",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-tasks",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-next-steps",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-notify-fanout",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-notify-hermes",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-notify-inbox",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-plan-check",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-prove",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-serial-engine",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-telegram",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-terminal",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-terminal-conversation",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/ui",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/ui-conformance",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-feature-grooming",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-pull-request",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-setup",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-testkit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
         "id": "the-errand-is-proven",
         "title": "**An errand that answered a question is not delivered as an empty pull request.**",
         "body": "`run-errand` decided whether the errand had changed something by asking\nwhether the push had moved the remote. `prepareBranch` has already created\nthe branch, so publishing it for the first time is a new remote ref whether\nor not it carries a commit — a question reached `PR_OPEN` with no diff in it.\n`Git` grows `commitsAhead(repo, of, workId)`, and the errand commits, asks\nthat question and only pushes when there is something to review; the branch\nof an errand that changed nothing stays local.\n\n**An errand the agent refuses is declined at once, with its reason.** The\nprompt already asked the agent to say so plainly when a sentence could not be\ndone as asked, but nothing read it. A refusal that changed nothing landed in\n`DONE` as if it were an answer, and one that came back as an error was retried\nuntil the attempts ran out. A refusal now ends with one line,\n`{\"declined\": \"why\"}`. The errand reads that line and goes from `WORKING` to\n`DECLINED` without another attempt, telling the operator the reason.\nNothing the agent left in the tree is published. It is stashed under the\ntask's id, with no commit, no branch and no hook involved, so a shared checkout\nreaches the next errand clean. `Git` grows `setAside(repo, label, workId)` for\nthis.",
@@ -12730,6 +13126,7 @@
     "environment",
     "event-detail",
     "event-kinds",
+    "factory-counts",
     "factory-disabled",
     "factory-gates",
     "factory-rules",
@@ -12737,8 +13134,6 @@
     "plugin-index",
     "plugin-settings",
     "port-kinds",
-    "readme-commands",
-    "readme-factory",
     "readme-node-badge",
     "readme-node-version",
     "roster-example",

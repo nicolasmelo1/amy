@@ -22,12 +22,21 @@ omitted rather than guessed, and the token ceiling still stops the work. A
 guessed rate would be spent against a dollar ceiling as though it had been
 measured.
 
+## What it exports
+
+`specTable` reads the table in force, `specFor` and `aliasFor` look a model up,
+`costOf` prices a run, and `refreshFrom` folds a models.dev catalogue into a
+table. `OVERRIDE_FILE` names the local table a refresh writes.
+
 ## Refreshing is not replacing
+
+The refresh is `@amykit/plugin-agent-relay`'s, so these commands exist on a
+machine that mounted it:
 
 ```sh
 amy models show
 amy models refresh --dry-run    # what would change
-amy models refresh              # writes .amy/model-specs.json
+amy models refresh              # writes model-specs.json in amy's state directory
 ```
 
 models.dev publishes one rate per token kind. It does **not** publish
@@ -40,14 +49,14 @@ The refresh writes a local override rather than the vendored file, because in
 a published install the vendored file lives inside `node_modules` and
 rewriting somebody's dependency in place is not a refresh.
 
-## Two things about the arithmetic that are easy to get wrong
+## The arithmetic that is easy to get wrong
 
 Both taken from [CodexBar](https://github.com/steipete/CodexBar), which is
 also where the vendored numbers come from.
 
-**The threshold is measured on the whole input side** — input plus cache reads
-plus cache writes — not on input alone. And crossing it **re-rates the entire
-request**, not merely the excess.
+**The threshold is measured on the whole input side**: input plus cache reads
+plus cache writes, where input alone would undercount. Crossing it **re-rates
+the entire request**, the part below the threshold included.
 
-**A one-hour cache write is billed at twice the input rate**, which none of
-the four rate fields expresses on its own.
+**A one-hour cache write is billed at twice the input rate**, which no rate
+field expresses on its own.

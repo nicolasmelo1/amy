@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when you already message through Hermes and want amy's announcements to arrive the same way, without handing amy the messaging credentials. It adds a channel to notify-fanout that sends to the Hermes delivery target you configure, and it can answer whether that target is reachable."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/plugin-notify-fanout": "^0.6.0"

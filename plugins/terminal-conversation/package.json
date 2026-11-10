@@ -29,6 +29,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when a workflow should ask its questions in the terminal amy runs in. It mounts the conversation port on stdin and stdout: an ask is printed, and the answer is a line or a number typed back. amy setup mounts it for the setup workflow, so the questions arrive where you typed the command."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   }

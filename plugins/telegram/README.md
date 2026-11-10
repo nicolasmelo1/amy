@@ -6,6 +6,19 @@ A topic per piece of work in the operator's private chat with a Telegram bot, as
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `conversation` port.
 
+Use it when you want to follow and answer amy from Telegram. It mounts the conversation port: each piece of work gets a topic in your private chat with a bot, and it can also hold amy's chat. It needs the bot token in TELEGRAM_BOT_TOKEN and your numeric Telegram user id.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `conversation` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | `TELEGRAM_BOT_TOKEN` |
+
 ## Install
 
 ```sh
@@ -53,7 +66,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

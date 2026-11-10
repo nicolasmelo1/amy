@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Every install that runs work needs an engine, and this is the default: each tick it advances one work item by one move. It needs a workflow, a queue and a record store, so pair it with file-queue and file-store, and it asks the budget before anything expensive. Choose concurrent-engine instead when the lanes of a fork should move together."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   },

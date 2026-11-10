@@ -6,6 +6,19 @@ A gate that runs the target repository's own commands.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `gate` port.
 
+Use it with ticket-to-qa, which needs a gate port to decide whether a change is ready for review. It runs the target repository's own commands, listed per repository with a default fallback, and refuses a repository that has neither. With file-worktree mounted, the commands run in the work item's own checkout.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `gate` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

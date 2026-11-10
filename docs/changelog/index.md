@@ -627,6 +627,12 @@ engine's retry between failed items is its own setting now, no longer
 borrowed from whichever workflow's poll happened to be at the top of the
 config.
 
+### The docs describe the contract that exists. Every README is rewritten against the code: a plugin's README lists the ports, actions, operations, commands, events and environment its package registers, and opens with `amy.about`, a new field in its package.json saying when to use it.
+
+`patch` · `@amykit/agent-kit`, `@amykit/cli`, `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-agent-browser`, `@amykit/plugin-agent-desktop`, `@amykit/plugin-agent-relay`, `@amykit/plugin-claude`, `@amykit/plugin-codex`, `@amykit/plugin-command`, `@amykit/plugin-command-gate`, `@amykit/plugin-concurrent-engine`, `@amykit/plugin-file-brief-store`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-file-worktree`, `@amykit/plugin-github`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-linear`, `@amykit/plugin-next-steps`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-notify-hermes`, `@amykit/plugin-notify-inbox`, `@amykit/plugin-plan-check`, `@amykit/plugin-prove`, `@amykit/plugin-serial-engine`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/plugin-terminal`, `@amykit/plugin-terminal-conversation`, `@amykit/ui`, `@amykit/ui-conformance`, `@amykit/workflow-errand`, `@amykit/workflow-feature-grooming`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-pull-request`, `@amykit/workflow-setup`, `@amykit/workflow-testkit`, `@amykit/workflow-ticket-to-qa`
+
+
+
 ### **An errand that answered a question is not delivered as an empty pull request.**
 
 `minor` · `@amykit/core`, `@amykit/workflow-errand`

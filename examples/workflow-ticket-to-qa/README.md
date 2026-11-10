@@ -1,18 +1,11 @@
 # ticket-to-qa
 
-**Move a ticket from "in progress" to "ready for QA" while you do something
-else.**
+This workflow walks a ticket from your tracker's working status to a QA handoff: clarify, implement, check, open the pull request, get it reviewed, hand it on.
 
-Writing the code is rarely the long part of a ticket. Reading it, asking what
-it means, running the checks, opening the pull request, waiting for review,
-answering the comments and handing it to QA are the parts that wait on people.
-
-This workflow does that walk for you. You move a ticket to your tracker's
-working status, and amy picks it up: it reads the ticket, asks you when
-something is unclear, has an agent write the code, runs your checks, opens the
-pull request, asks a reviewer, fixes what the review asks for, and moves the
-ticket to QA once it is approved. When it gets stuck, it tells you and waits,
-instead of guessing.
+Move a ticket to the working status and amy picks it up. It asks you when the
+ticket is unclear, has an agent write and review the change, runs your checks,
+answers automated and human review, and moves the ticket to QA once it is
+approved. When it is stuck, it tells you and waits.
 
 ## How it moves
 
@@ -30,60 +23,34 @@ PR_OPEN ──> COPILOT_WAIT <──> COPILOT_FIX
                                 APPROVED ──> QA_HANDOFF ──> DONE
 ```
 
-1. **DISCOVERED, CLARIFYING, READY.** An agent reads the ticket. If it leaves
-   questions open, amy asks you in the ticket's thread and waits for the answer.
-2. **IMPLEMENTING.** An agent writes the change on its own branch.
-3. **GATE and SELF_REVIEW.** Two things run side by side: your checks (tests,
-   lint, whatever you configured) and a review of the change by an agent. If either
-   finds something, the work goes back to IMPLEMENTING.
-4. **PR_OPEN, COPILOT_WAIT, COPILOT_FIX.** amy opens the pull request and deals
-   with automated review comments first, so a person never reviews something a
-   bot already flagged.
-5. **REVIEWER_ASSIGNED, HUMAN_REVIEW, HUMAN_FIX, RE_REVIEW.** amy picks a
-   reviewer from today's roster, waits for the review, fixes what was asked and
-   asks for another look.
-6. **APPROVED, QA_HANDOFF, DONE.** The ticket moves to your QA status.
-
-At any point it can go to **ESCALATED**: the agent failed every attempt, the
-checks stayed red, the pull request got too big, or a comment needs the owner
-of the ticket. amy tells you, waits, and goes back to where it stopped once you
-answer.
-
-## What it needs
-
-This is the largest example, so it needs the most pieces:
-
-- **A tracker** for the tickets, like `@amykit/plugin-linear`.
-- **A code host** for branches and pull requests, like `@amykit/plugin-github`.
-- **An agent** to read, write and review code, like `@amykit/plugin-claude`.
-- **A gate** that runs your checks, like `@amykit/plugin-command-gate`.
-- **A notifier** to ask you things and tell you how it went, like
-  `@amykit/plugin-slack`.
-
-`amy add` installs these for you, and `amy doctor` tells you what is still
-missing.
-
-It also keeps a **roster**: a `roster.yaml` file with the people who can
-review today. `amy roster confirm` stamps it each morning, and `amy doctor`
-complains when it is out of date, so nobody gets a review request on their day
-off.
+- **CLARIFYING** asks in the ticket's thread and waits for your answer.
+- **GATE** and **SELF_REVIEW** run side by side as lanes and meet at one
+  verdict; either finding something sends the work back to IMPLEMENTING. Why:
+  [a workflow runs on lanes](../../docs/design/a-workflow-runs-on-lanes.md).
+- **COPILOT_WAIT** settles automated comments before a person is asked.
+- **REVIEWER_ASSIGNED** picks a reviewer from today's roster.
+- **ESCALATED** is reachable from several states: every agent attempt failed,
+  the checks stayed red, the change grew too large, or a comment needs the
+  ticket's owner. Once you answer, it returns to where it stopped.
 
 ## Try it
 
 ```sh
 amy add @amykit/workflow-ticket-to-qa
-amy roster show
 amy roster confirm
-amy doctor
-amy tick        # one move at a time, so you can watch it
-amy status
+amy doctor        # names what is still missing
+amy tick          # one move at a time, so you can watch it
 ```
 
-Two settings are required: `qaStatusName`, the tracker status a ticket moves
-to when it is handed to QA, and `repos`, the repositories amy counts review
-load across. If you would rather amy did not write to the tracker or the code
-host at all, set `policy.writes: operator` and it will tell you each move to
-make instead.
+It needs a tracker such as `@amykit/plugin-linear`, a code host such as
+`@amykit/plugin-github`, an agent such as `@amykit/plugin-claude`, a gate such
+as `@amykit/plugin-command-gate`, and a notifier. `qaStatusName` and `repos` are
+required. The roster in `roster.yaml` is confirmed each day, so nobody is asked
+to review on a day off: [the roster belongs to its
+workflow](../../docs/design/the-roster-belongs-to-its-workflow.md). With
+`policy.writes: operator`, amy writes nothing to the tracker or code host and
+tells you each move to make instead. Why: [a private workflow composes the
+shipped one](../../docs/design/a-private-workflow-composes-the-shipped-one.md).
 
 <!-- amy:generated reference -->
 
@@ -191,7 +158,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-workflow.md)
 - [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

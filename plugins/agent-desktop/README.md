@@ -6,6 +6,19 @@ Drives a desktop app through agent-desktop: snapshot its accessibility tree and 
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy).
 
+Use it when a proof has to drive a native desktop app. It adds desktop operations a prove scenario can call: read an app's accessibility tree, click or type on a ref, and press a key combination. A click that succeeds only says it was delivered, so a scenario reads a snapshot after it. It needs the agent-desktop CLI on the machine.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | `desktop.click`, `desktop.press`, `desktop.snapshot`, `desktop.type` |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -43,7 +56,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 
