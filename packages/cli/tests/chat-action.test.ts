@@ -245,6 +245,13 @@ describe("a config lock left behind", () => {
     await answerTheChat(dead.desk);
     expect(dead.said.at(-1)).toMatch(/config apply: written/);
 
+    const recovering = setup(change, "/action add x");
+    fs.writeFileSync(`${recovering.config}.applying`, "999999999");
+    fs.writeFileSync(`${recovering.config}.applying.recovering`, String(process.pid));
+    await answerTheChat(recovering.desk);
+    // Another process is recovering it: this one leaves it to that one.
+    expect(recovering.said.at(-1)).toMatch(/another config change is being applied/);
+
     const held = setup(change, "/action add x");
     fs.writeFileSync(`${held.config}.applying`, String(process.pid));
     await answerTheChat(held.desk);

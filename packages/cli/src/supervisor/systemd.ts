@@ -42,9 +42,12 @@ export function systemd(machine: MachineFacts): Supervisor {
       if (!enabled.ok) throw new Error(`systemctl --user enable --now ${unit(spec.label)} failed: ${enabled.stderr || enabled.stdout}`);
     },
     async stop(label: string) {
-      await systemctl("disable", "--now", unit(label));
+      // Deregistered before it is stopped: a stop asked from the chat runs in
+      // the unit's own cgroup, and stopping the unit may end it right there.
+      await systemctl("disable", unit(label));
       fs.rmSync(path.join(units, unit(label)), { force: true });
       await systemctl("daemon-reload");
+      await systemctl("stop", unit(label));
       await systemctl("reset-failed", unit(label));
     },
     async installed(label: string) {

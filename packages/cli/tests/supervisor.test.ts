@@ -126,6 +126,24 @@ describe("what each supervisor is handed", () => {
   });
 });
 
+describe("a stop deregisters before it stops", () => {
+  it("on systemd, disables and removes the unit before stopping it, which may end the stopper itself", async () => {
+    const calls: string[] = [];
+    const machine = { ...machineWith("linux", {}), home: fs.mkdtempSync(path.join(os.tmpdir(), "amy-systemd-")) };
+    const runner: CommandRunner = { run: async (command, args) => (calls.push(`${command} ${args.join(" ")}`), { ok: true, exitCode: 0, stdout: "", stderr: "" }) };
+    const { systemd } = await import("../src/supervisor/systemd.js");
+
+    await systemd({ ...machine, runner }).stop("amy.billing.0a1b2c3d");
+
+    expect(calls).toEqual([
+      "systemctl --user disable amy.billing.0a1b2c3d.service",
+      "systemctl --user daemon-reload",
+      "systemctl --user stop amy.billing.0a1b2c3d.service",
+      "systemctl --user reset-failed amy.billing.0a1b2c3d.service",
+    ]);
+  });
+});
+
 describe("with no working systemd, a restart is refused and the chat still answers (A17)", () => {
   it("refuses /action restart naming why, keeping the loop's pid, and answers the next ask", async () => {
     const found = await findSupervisor(machineWith("linux", { "systemctl --user is-system-running": { ok: false, exitCode: 1, stdout: "offline\n", stderr: "Failed to connect to bus: No medium found" } }));
