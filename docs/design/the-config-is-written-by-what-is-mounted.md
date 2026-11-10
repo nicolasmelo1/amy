@@ -41,7 +41,7 @@ touches:
   - packages/workflow-note-to-plan/src/plugin.ts
   - .software-factory/policy.yaml
 criteria:
-  - { id: A1, statement: "amy init on an empty machine writes a config with no workflow's settings, and amy add @amykit/workflow-errand appends a profile block that boots without being edited", proof: "assertion:errand.init_and_add_write_a_config_that_boots", sources: [S1, S7, S8, S9, S12, S13], done: true }
+  - { id: A1, statement: "amy setup on an empty machine writes a config with no workflow's settings, and amy add @amykit/workflow-errand appends a profile block that boots without being edited", proof: "assertion:errand.setup_and_add_write_a_config_that_boots", sources: [S1, S7, S8, S9, S12, S13], done: true }
   - { id: A2, statement: "amy config explain lists every mounted plugin's setting with default and description, the errand's policy.maxAttempts default 2 among them; a schema setting without a description fails the build naming it", proof: "test:packages/cli/tests/config-explain.test.ts", sources: [S2, S14, S15, S17], done: true }
   - { id: A3, statement: "a workflow whose policy defaults carry a key its schema does not declare, or a default the schema states differently, is refused at mount, naming the key", proof: "test:packages/core/tests/define-workflow.test.ts", sources: [S15, S16], done: true }
   - { id: A4, statement: "the serial engine's retry delay does not change when the ticket workflow's pollBackoffMs does", proof: "assertion:lifecycle.the_engine_retries_on_its_own_delay", sources: [S5, S10], done: true }
@@ -52,7 +52,7 @@ crosses:
   - { mechanism: hooks, answer: n/a, why: "before, after and interrupt are untouched; only policy defaults are checked at mount" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "repoByTeam moves into the Linear plugin's slice; no tracker write changes" }
   - { mechanism: engines, answer: n/a, why: "only where the serial engine reads retryDelayMs from changes; its default and the record it ends in do not" }
-  - { mechanism: install-and-update, answer: works, proof: "assertion:update.the_settings_move_under_their_workflow (A5), assertion:errand.init_and_add_write_a_config_that_boots (A1)" }
+  - { mechanism: install-and-update, answer: works, proof: "assertion:update.the_settings_move_under_their_workflow (A5), assertion:errand.setup_and_add_write_a_config_that_boots (A1)" }
   - { mechanism: config, answer: works, proof: "assertion:update.a_moved_key_named_at_its_new_place (A5), test:packages/cli/tests/config-explain.test.ts (A2)" }
 guarantee:
   - { holds: "a moved key is never read from its old place without a word" }

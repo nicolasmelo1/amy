@@ -1,4 +1,4 @@
-import { ConfigSchema, Conversation, Reply, WorkflowActionScope, WorkflowPieceContext } from "@amykit/core";
+import { ConfigSchema, Conversation, Reply, WorkflowPieceContext } from "@amykit/core";
 import { answerTo } from "./asks.js";
 import { green } from "./ports/result.js";
 import type { Harness } from "./ports/Harnesses.js";
@@ -10,7 +10,6 @@ import type { configSchema, needs } from "./plugin.js";
 
 /** What the declaration hands every piece: the mounted ports, the settings and the policy. */
 export type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
-export type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
 
 /**
  * A snapshot of the world for one look, gathered before deciding.

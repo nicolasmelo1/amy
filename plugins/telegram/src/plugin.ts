@@ -22,7 +22,7 @@ export const plugin = definePlugin<typeof configSchema>({
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
       throw new Error(
-        `${TOKEN_VARIABLE} is not set. Create a bot with @BotFather, turn on its topics, and put its token in .env`,
+        `${TOKEN_VARIABLE} is not set. Create a bot with @BotFather, turn on its topics (or set topics: false), and put its token in .env`,
       );
     }
     // What is kept belongs to one bot and one chat: switching either starts
@@ -40,6 +40,7 @@ export const plugin = definePlugin<typeof configSchema>({
         // The bot's updates are the bot's, whoever the operator: one reader, routing them by chat.
         shared: path.join(ctx.paths.state, "telegram-bot", bot),
         readOnly: ctx.readOnly,
+        topics: ctx.config.topics !== false,
       }),
     );
   },

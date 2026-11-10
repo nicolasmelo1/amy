@@ -50,9 +50,9 @@ export async function prepareProfile(runner: CommandRunner, profile: string): Pr
 export async function checkProfile(runner: CommandRunner, profile: string): Promise<Check> {
   const label = `hermes profile ${profile}`;
   if (!(await exists(runner, profile))) {
-    // Only `amy init`: a bare clone copies the active profile's settings, so
+    // Only the plugin's own setup: a bare clone copies the active profile's settings, so
     // it would come back remembering and curating, and the doctor still red.
-    return { label, ok: false, detail: "missing: run `amy init`, which creates it with memory, unasked skill writes and the curator off" };
+    return { label, ok: false, detail: "missing: run `amy setup hermes`, which creates it with memory, unasked skill writes and the curator off" };
   }
 
   const drifted: string[] = [];

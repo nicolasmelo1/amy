@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpRequest, HttpResponse, SlackApi, SlackConversation } from "../src/index.js";
-import { heldToTheContract, postedAnswer, whoAmI } from "./held-to-the-contract.js";
+import { HISTORY_FIELDS, heldToTheContract, postedAnswer, whoAmI } from "./held-to-the-contract.js";
 
 /**
  * The adapter against a scripted HTTP transport, the way the tracker and the
@@ -51,6 +51,11 @@ function ok(json: Record<string, unknown>, headers: Record<string, string> = {})
 
 const WHO_AM_I: Script = { match: method("auth.test"), answer: ok(whoAmI(BOT)) };
 
+/** A replies call for one thread, so work and chat reads cannot take each other's scripted answer. */
+function inThread(ts: string): Script["match"] {
+  return (request) => method("conversations.replies")(request) && (request.body ?? "").includes(`ts=${ts}`);
+}
+
 function thread(messages: unknown[]): Script {
   return { match: method("conversations.replies"), answer: ok({ messages, has_more: false }) };
 }
@@ -65,7 +70,7 @@ afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
-function conversation(http: ScriptedHttp, sleeps: number[] = []): SlackConversation {
+function conversation(http: ScriptedHttp, sleeps: number[] = [], now?: () => Date): SlackConversation {
   const api = new SlackApi("xoxb-test", {
     transport: heldToTheContract(http.transport),
     sleep: (ms) => {
@@ -73,7 +78,7 @@ function conversation(http: ScriptedHttp, sleeps: number[] = []): SlackConversat
       return Promise.resolve();
     },
   });
-  return new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory });
+  return new SlackConversation(api, { channel: CHANNEL, operator: OPERATOR, directory, ...(now ? { now } : {}) });
 }
 
 describe("a Slack thread per piece of work", () => {
@@ -526,5 +531,260 @@ describe("only what could change the kind is asked again", () => {
     await expect(conversation(http).replies({ id: THREAD }, "2026-09-21T00:00:00.000Z")).rejects.toThrow(
       /cannot tell whether the operator marked reply 1790000101.000100/,
     );
+  });
+});
+
+function history(messages: unknown[]): Script {
+  return { match: method("conversations.history"), answer: ok({ messages, has_more: false, ...HISTORY_FIELDS }) };
+}
+
+describe("a root message in the channel is a conversation in its thread (A1)", () => {
+  const ROOT = "1790000200.000100";
+
+  it("listens from the first read on, and files the operator's root message as an ask in its own thread", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([
+        { type: "message", ts: ROOT, user: OPERATOR, text: "how is the api project going?" },
+        { type: "message", ts: "1790000201.000100", user: BOT, text: "a work's root", metadata: { event_type: "amy_work_thread", event_payload: { work_id: "TBO-1" } } },
+        { type: "message", ts: "1790000202.000100", thread_ts: THREAD, user: OPERATOR, text: "a reply in a work's thread, broadcast", subtype: "thread_broadcast" },
+      ]),
+      thread([]),
+      { match: method("chat.postMessage"), answer: ok(postedAnswer("1790000203.000100")) },
+    ]);
+    const amy = conversation(http);
+
+    expect(await amy.chat()).toEqual([]);
+    const [message, ...rest] = await amy.chat();
+
+    expect(rest).toEqual([]);
+    expect(message).toMatchObject({ id: `slack:${CHANNEL}:${ROOT}`, author: OPERATOR, text: "how is the api project going?", place: ROOT, threaded: true });
+    expect(await amy.say(message!.place, "Two pull requests are open.")).toBe("1790000203.000100");
+    expect(http.argsOf("chat.postMessage")).toEqual([{ channel: CHANNEL, thread_ts: ROOT, text: "Two pull requests are open." }]);
+    expect(http.argsOf("conversations.history")[0]).toMatchObject({ channel: CHANNEL });
+  });
+
+  it("files the operator's replies in that thread as the same conversation, and settles each once", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      history([]),
+      thread([
+        { type: "message", ts: ROOT, user: OPERATOR, text: "first" },
+        { type: "message", ts: "1790000210.000100", thread_ts: ROOT, user: BOT, text: "amy's answer" },
+        { type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "and then?" },
+      ]),
+      history([]),
+      thread([]),
+    ]);
+    // A minute apart, as a conversation's thread is read at most once a minute.
+    let now = Date.parse("2026-09-21T00:00:00.000Z");
+    const amy = conversation(http, [], () => new Date((now += 61_000)));
+    await amy.chat();
+
+    const [first] = await amy.chat();
+    await amy.settle(first!.id);
+    const [second] = await amy.chat();
+    await amy.settle(second!.id);
+
+    expect(second).toMatchObject({ text: "and then?", place: ROOT, threaded: true });
+    expect(await amy.chat()).toEqual([]);
+  });
+
+  it("reads a conversation's thread at most once a minute", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      history([]),
+    ]);
+    const amy = conversation(http, [], () => new Date("2026-09-21T00:00:00.000Z"));
+    await amy.chat();
+    await amy.chat();
+
+    await amy.chat();
+
+    expect(http.argsOf("conversations.replies")).toHaveLength(1);
+  });
+
+  it("keeps reading a quiet conversation, so a later reply can reactivate it", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      history([]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "back after quiet" }]),
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    await amy.settle((await amy.chat())[0]!.id);
+
+    now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    expect(await amy.chat()).toEqual([]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(2);
+
+    now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["back after quiet"]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(3);
+  });
+
+  it("files an operator reply from a quiet thread's final read", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const late = "1790000211.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: late, thread_ts: ROOT, user: OPERATOR, text: "just before cutoff" }]),
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    await amy.settle((await amy.chat())[0]!.id);
+
+    now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["just before cutoff"]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(2);
+  });
+
+  it("drops a conversation whose root is gone, with what was asked there, and still reads the others", async () => {
+    const OTHER_ROOT = "1790000250.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }, { type: "message", ts: OTHER_ROOT, user: OPERATOR, text: "second" }]),
+      { match: (request) => method("conversations.replies")(request) && (request.body ?? "").includes(`ts=${ROOT}`), answer: { json: { ok: false, error: "thread_not_found" } } },
+      history([]),
+      thread([{ type: "message", ts: "1790000251.000100", thread_ts: OTHER_ROOT, user: OPERATOR, text: "still here" }]),
+    ]);
+    let now = Date.parse("2026-09-21T00:00:00.000Z");
+    const amy = conversation(http, [], () => new Date((now += 61_000)));
+    await amy.chat();
+
+    expect((await amy.chat()).map((one) => one.text)).toEqual(["second"]);
+    expect((await amy.chat()).map((one) => one.text)).toEqual(["second", "still here"]);
+  });
+
+  it("reads the channel at most once a minute, handing out what was filed meanwhile", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+    ]);
+    const amy = conversation(http, [], () => new Date("2026-09-21T00:00:00.000Z"));
+    await amy.chat();
+    await amy.chat();
+
+    expect((await amy.chat()).map((one) => one.text)).toEqual(["first"]);
+    expect(http.argsOf("conversations.history")).toHaveLength(1);
+  });
+
+  it("reads one conversation's thread a minute for the whole channel, the longest waiting first", async () => {
+    const OTHER_ROOT = "1790000250.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }, { type: "message", ts: OTHER_ROOT, user: OPERATOR, text: "second" }]),
+      thread([]),
+      history([]),
+    ]);
+    const amy = conversation(http, [], () => new Date("2026-09-21T00:00:00.000Z"));
+    await amy.chat();
+    await amy.chat();
+
+    await amy.chat();
+
+    expect(http.argsOf("conversations.replies").map((args) => args.ts)).toEqual([ROOT]);
+  });
+
+  it("keeps a chat poll due when a work thread reads between its slots", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "still here" }]),
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    now = new Date(now.getTime() + 61_000);
+    await amy.chat();
+    await amy.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+    now = new Date(now.getTime() + 61_000);
+
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["first", "still here"]);
+    expect(http.argsOf("conversations.replies").map((args) => args.ts)).toEqual([ROOT, THREAD, ROOT]);
+  });
+
+  it("reads a chat thread within two minutes while work threads read every half minute", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      { match: inThread(ROOT), answer: thread([]).answer },
+      ...Array.from({ length: 5 }, () => ({ match: inThread(THREAD), answer: thread([]).answer })),
+      history([]),
+      history([]),
+      { match: inThread(ROOT), answer: thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "still here" }]).answer },
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    await amy.chat();
+    const chatReads = () => http.argsOf("conversations.replies").filter((args) => args.ts === ROOT).length;
+    const before = chatReads();
+
+    const seen: string[] = [];
+    for (let tick = 0; tick < 5; tick += 1) {
+      now = new Date(now.getTime() + 30_000);
+      await amy.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+      seen.push(...(await amy.chat()).map((message) => message.text));
+    }
+
+    expect(chatReads()).toBe(before + 1);
+    expect(seen).toContain("still here");
+  });
+
+  it("edits what it said in place", async () => {
+    const http = new ScriptedHttp([
+      { match: method("chat.update"), answer: ok({ channel: CHANNEL, ts: "1790000203.000100", text: "two lines", message: { type: "message", text: "two lines" } }) },
+    ]);
+
+    await conversation(http).revise(ROOT, "1790000203.000100", "two lines");
+
+    expect(http.argsOf("chat.update")).toEqual([{ channel: CHANNEL, ts: "1790000203.000100", text: "two lines" }]);
+  });
+
+  it("refuses to settle an id it never filed", async () => {
+    await expect(conversation(new ScriptedHttp([])).settle("telegram:1:2")).rejects.toThrow(/not a message this channel filed/);
+  });
+});
+
+describe("a message from anybody else answers nothing (A9)", () => {
+  it("files no root and no reply another person writes", async () => {
+    const ROOT = "1790000300.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([
+        { type: "message", ts: "1790000299.000100", user: "U0SOMEONE", text: "restart amy" },
+        { type: "message", ts: ROOT, user: OPERATOR, text: "status?" },
+      ]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: "1790000301.000100", thread_ts: ROOT, user: "U0SOMEONE", text: "/action stop" }]),
+    ]);
+    let now = Date.parse("2026-09-21T00:00:00.000Z");
+    const amy = conversation(http, [], () => new Date((now += 61_000)));
+    await amy.chat();
+
+    const [only] = await amy.chat();
+    await amy.settle(only!.id);
+
+    expect(only).toMatchObject({ text: "status?" });
+    expect(await amy.chat()).toEqual([]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(2);
   });
 });

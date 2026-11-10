@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { Console } from "node:console";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
@@ -17,6 +19,9 @@ import {
   NodeCommandRunner,
   WorkRecord,
   Workflow,
+  answerTheChat,
+  type Budget,
+  type ChatDesk,
   callPath,
   callStanding,
   laneStanding,
@@ -34,12 +39,15 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
+import { specTable } from "@amykit/model-specs";
 import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/agent-kit";
 import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
   configuredAutoUpdateProblems,
+  configuredChatProblems,
   loadConfig,
+  loadConfigFrom,
   addModeFor,
   profileSettingsFrom,
   removeExtraPlugin,
@@ -50,11 +58,14 @@ import {
 } from "./config.js";
 import { budgetReport } from "./budget.js";
 import { loadEnv } from "./env.js";
-import { diagnose } from "./doctor.js";
+import { diagnose, supervisorCheck } from "./doctor.js";
+import { CHAT_COMMANDS, chatAct } from "./chat-action.js";
+import { LoopSpec, MachineFacts, RESTART_EXIT, findSupervisor, labelFor } from "./supervisor/index.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
-import { Assembled, assembleProfile } from "./assemble.js";
+import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf } from "./assemble.js";
+import { pricedForTheCeiling } from "./chat-pricing.js";
 import { parseSetupFlags, resolveSetupPlugin, runSetupWalk } from "./setup.js";
 import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
 import { installedStamp } from "./stamp.js";
@@ -120,6 +131,9 @@ const stopSwitch = new FileStopSwitch(paths(home).stop);
 // project's own key beats the machine's, which is what a `.env` is for.
 loadEnv(home);
 loadEnv(process.cwd());
+// A supervised loop runs in the state directory: the project it was started
+// from is named, never its secrets, and its .env is read from there.
+if (process.env.AMY_PROJECT_ENV) loadEnv(process.env.AMY_PROJECT_ENV);
 
 /**
  * Every load resolves the same way, or a workflow of your own exists only for
@@ -142,8 +156,7 @@ function loadMountable(specs: readonly string[], profile?: string): Promise<Load
  * root refreshed, so what mounts is what the fork says now; a fork that does
  * not build refuses the boot by name.
  */
-async function assemble(profile: Profile): Promise<Assembled> {
-  const config = loadConfig(home);
+async function assemble(profile: Profile, config: AmyConfig = loadConfig(home)): Promise<Assembled> {
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) return prepared;
   return assembleLoaded(profile, config);
@@ -278,21 +291,24 @@ program
   .version(describeBuild(stamp));
 
 /**
- * One action behind both commands (S1): `amy setup` is the walk, and
- * `amy init` is its alias, so there is one way to set a machine up and the
- * walk behind both is the same by construction, not by coincidence.
+ * The one way to set a machine up: `amy setup` is the walk. The `amy init`
+ * that wrote a template and left the person to it is gone, alias included.
  */
 const setTheMachineUp = async (
   plugin: string | undefined,
   options: { harness?: string; workflow?: string; channels?: string },
 ): Promise<void> => {
   const settings = parseSetupFlags(process.argv).settings;
+  // `--workflow` is also the program's own option, and commander hands a
+  // name both declare to the program: read there, the answer still reaches
+  // the walk instead of leaving the workflow ask open.
+  const workflow = options.workflow ?? program.opts<{ workflow?: string }>().workflow;
   process.exitCode = await runSetupWalk(
     home,
     {
       ...(plugin !== undefined ? { plugin: resolveSetupPlugin(plugin) } : {}),
       ...(options.harness !== undefined ? { harness: options.harness } : {}),
-      ...(options.workflow !== undefined ? { workflow: options.workflow } : {}),
+      ...(workflow !== undefined ? { workflow } : {}),
       ...(options.channels !== undefined
         ? { channels: options.channels.split(",").map((one) => one.trim()).filter(Boolean) }
         : {}),
@@ -312,16 +328,6 @@ program
   // The setting flags are the walk's own spelling — `--slack.token …` — and
   // no commander option can name them before the plugin's schema is read,
   // so they are allowed through here and parsed by the walk's own parser.
-  .allowUnknownOption(true)
-  .action(setTheMachineUp);
-
-program
-  .command("init")
-  .description("Set the machine up, as `amy setup` does: the same walk, asked the same way")
-  .argument("[plugin]", "configure this one plugin, and skip the machine's questions")
-  .option("--harness <name>", "answer the harness ask before it is asked")
-  .option("--workflow <name>", "answer the workflow ask; `none` sets up no workflow")
-  .option("--channels <a,b>", "answer the channels ask, by name, comma-separated")
   .allowUnknownOption(true)
   .action(setTheMachineUp);
 
@@ -405,6 +411,8 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
   // workflow brought is the workflow's knowledge, and a red one fails the
   // doctor by the same count as any other.
   if (!problem) checks.push(...await pluginChecks(home, config, profile, contributions, commandOut));
+  // Which supervisor keeps the loop running, if any (S38, S39).
+  checks.push(supervisorCheck(await findSupervisor(machine())));
 
   reportDoctor(checks, assembled, problem);
 }
@@ -473,8 +481,9 @@ async function stopEverything(): Promise<void> {
   const ended: string[] = [];
   for (const profile of Object.values(profiles(config, home))) {
     const live = runningProfileDaemon(profile);
+    await unsupervise(profile);
     if (!live) continue;
-    process.kill(live.record.pid, "SIGTERM");
+    if (isAliveNow(live.record.pid)) process.kill(live.record.pid, "SIGTERM");
     await waitForDaemonExit(live.record.pid);
     if (!hasDaemonUpdate(home, live.record.workflow)) clearDaemon(live.file);
     ended.push(`${live.record.workflow} (pid ${live.record.pid})`);
@@ -495,9 +504,10 @@ async function stopEverything(): Promise<void> {
 
 program
   .command("start")
-  .description("Start the loop in the background, and keep it running")
+  .description("Start the loop under the machine's supervisor, which keeps it running")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
-  .action(async (options: { every: string }) => {
+  .option("--detached", "start it detached instead: nothing brings it back if it stops")
+  .action(async (options: { every: string; detached?: boolean }) => {
     const config = loadConfig(home);
     const profile = selected(config);
     const place = profilePaths(home, profile);
@@ -517,6 +527,12 @@ program
 
     const problems = configuredAutoUpdateProblems(config);
     if (problems.length > 0) throw new Error(problems.join("; "));
+
+    // Under the machine's supervisor unless asked otherwise (S27): the loop
+    // claims its own record and settles its own scheduled update, as a
+    // foreground loop does, and the supervisor starts it again when it dies.
+    if (!options.detached && await startedUnderSupervisor(profile, options.every)) return;
+
     // A detached reaper still owns the dead record and its after-timed
     // update. Starting another loop must not clear that record before the
     // reaper can claim it, or silently lose the scheduled maintenance.
@@ -598,11 +614,18 @@ program
 
     const selectedProfile = selected();
     const live = runningProfileDaemon(selectedProfile);
+    // Removed from its supervisor first, so the loop that exits is not started again.
+    const supervised = await unsupervise(selectedProfile);
     if (!live) {
-      console.log("nothing running");
+      console.log(supervised ? `stopped ${selectedProfile.name} under ${supervised}` : "nothing running");
       return;
     }
     const { file, record } = live;
+    if (!isAliveNow(record.pid)) {
+      if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(file);
+      console.log(`stopped ${record.workflow}: pid ${record.pid}`);
+      return;
+    }
 
     // Only the selected daemon is signalled. Its SIGTERM handler ends its own
     // agent children; the machine-wide handbrake is `--all`, which also ends
@@ -640,10 +663,16 @@ program
   .description("The loop itself, in the foreground. `amy start` runs this for you")
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
   .option("--scheduled", "internal: the parent start command already scheduled this lifecycle")
-  .action(async (options: { every: string; scheduled?: boolean }) => {
-    const profile = selected();
+  .option("--supervised", "internal: the machine's supervisor runs this loop and starts it again when it dies")
+  .option("--log <file>", "internal: append the loop's output to this file")
+  .action(async (options: { every: string; scheduled?: boolean; supervised?: boolean; log?: string }) => {
+    if (options.log) appendOutputTo(options.log);
+    const current = loadConfig(home);
+    let profile = selected(current);
+    const config = restartingConfig(profile) ?? current;
+    profile = selected(config);
+    let exit: "restart" | "stop" | undefined;
     const drive = async () => {
-      const engine = await engineOrExit();
       const idleMs = Math.max(1, Number(options.every)) * 1000;
       let stopping = false;
 
@@ -654,14 +683,39 @@ program
         });
       }
 
-      console.log(`${new Date().toISOString()} loop up, looking every ${idleMs / 1000}s`);
+      // The chat does not depend on the workflow mounting (S29): a loop whose
+      // mount fails still answers in the chat, says what failed, and takes
+      // `/action`, so a broken config is fixed from the phone.
+      const mounted = await mountForLoop(profile, config, options.supervised === true);
+      if (!mounted) {
+        // Nothing to drive and nobody to answer: as before, a refusal.
+        process.exitCode = 1;
+        return;
+      }
+      const { engine, mountProblem, parts } = mounted;
+      const reader = chatReader(profile, mounted, options.supervised === true, (how) => {
+        exit = how;
+        stopping = true;
+      });
+      const chat = async () => {
+        if (!stopping) await reader();
+      };
 
-      let mountedAt = sourceDigest(profile);
+      console.log(`${new Date().toISOString()} loop up as pid ${process.pid}${engine ? `, looking every ${idleMs / 1000}s` : ""}${parts.conversation?.chat ? ", reading the chat" : ""}`);
+      await sayRestarted(parts.conversation, profile, mountProblem);
+
+      // A workflow that did not mount may not be there to digest at all.
+      let mountedAt = engine ? sourceDigest(profile) : "";
+      const brokenAt = brokenMountDigest(profile);
       await runLoop({
         idleMs,
         stopping: () => stopping,
         paused: () => stopSwitch.isRequested(),
         turn: async () => {
+          // The chat first, then the work: a message that arrives mid-turn
+          // waits for the next one (S20).
+          await chat();
+          if (stopping || !engine) return { idle: true };
           // Discovery every pass, because work appears in the world rather than
           // being handed over: a ticket moved into the working status while
           // nothing was due is exactly what this loop exists to notice.
@@ -670,19 +724,320 @@ program
           report(result);
           return { idle: result.kind === "idle" || result.kind === "stopped" };
         },
-        changed: () => sourceDigest(profile) !== mountedAt,
+        changed: () => engine === undefined
+          ? options.supervised === true && brokenMountDigest(profile) !== brokenAt
+          : sourceDigest(profile) !== mountedAt,
         remount: async () => {
+          if (!engine) {
+            exit = "restart";
+            stopping = true;
+            return;
+          }
           mountedAt = sourceDigest(profile);
-          if (await remountedElsewhere(profile, options)) stopping = true;
+          if (await remountedElsewhere(profile, options)) {
+            stopping = true;
+            if (options.supervised) exit = "restart";
+          }
         },
-        sleep,
+        // The chat is read while the loop waits too, so a person is answered
+        // in seconds rather than when the next look is due.
+        sleep: async (ms) => {
+          const until = Date.now() + ms;
+          while (!stopping && Date.now() < until) {
+            await sleep(Math.min(CHAT_EVERY_MS, until - Date.now()));
+            await chat();
+          }
+        },
       });
 
-      console.log(`${new Date().toISOString()} loop down`);
+      console.log(`${new Date().toISOString()} loop down${exit === "restart" ? ", for its supervisor to start the new one" : ""}`);
     };
     if (options.scheduled) await drive();
     else await visibleForegroundDaemon(profile, drive);
+    // A restart exits as a failure, which is what makes a supervisor start
+    // it again; a stop asks amy stop to remove it from the supervisor, which
+    // ends this process cleanly.
+    if (exit === "restart") process.exitCode = RESTART_EXIT;
+    if (exit === "stop") stopFromTheChat(profile);
   });
+
+/**
+ * What the loop runs on: the engine and the chat, or the chat alone when the
+ * workflow does not mount (S29), which says what failed. Nothing when there
+ * is neither and no supervisor would only start it again.
+ */
+async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
+  const assembled = await assembleOrSay(profile, config);
+  if (assembled.ok) {
+    return { engine: assembled.engine, ...chargedTo(config, profile, chatPartsOf(assembled.mounted)) };
+  }
+  const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
+  const chat = parts.conversation?.chat !== undefined;
+  if (!chat && !supervised) return undefined;
+  // Under a supervisor, exiting would only be started again, and again: the
+  // loop waits instead, and a change to the config or the workflow is the
+  // restart that mounts it.
+  console.error(`${new Date().toISOString()} ${chat ? "only the chat runs" : "nothing runs"} until the workflow mounts${supervised ? "; a change to the config or the workflow restarts the loop" : ""}`);
+  return { mountProblem: assembled.problems.join("; "), ...chargedTo(config, profile, parts) };
+}
+
+/**
+ * Where the chat is charged, only when the person asked for it (chat.budget).
+ * Asked for and with no budget mounted to hold it to, a turn is refused rather
+ * than spent outside the ceiling the person meant it to count against.
+ */
+function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { parts: ChatParts; spend?: ChatDesk["spend"] } {
+  const chatProblems = configuredChatProblems(config);
+  // A degraded loop keeps its chat available to explain a broken workflow,
+  // but malformed chat policy must not silently turn its budget ceiling off.
+  // Treat it as a denied budget until the operator repairs the config.
+  if (chatProblems.length > 0) {
+    const reason = chatProblems.join("; ");
+    return {
+      parts,
+      spend: {
+        budget: { mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason }) },
+        log: new FileEventLog(profilePaths(home, profile).log, undefined, build),
+      },
+    };
+  }
+  if (!config.chat.budget) return { parts };
+  const budget: Budget = parts.budget ?? {
+    mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason: "chat.budget is on and no agent budget is mounted to count this turn against" }),
+  };
+  // A dollar ceiling holds only harnesses whose turns arrive with a price. A
+  // slice that will not resolve mounted no relay, so no budget lets a turn start.
+  let setting: unknown;
+  try {
+    setting = configuredBudget(config, profile);
+  } catch {
+    setting = undefined;
+  }
+  const priced = pricedForTheCeiling(parts, setting, specTable(home));
+  if (priced.unpriced.length > 0) {
+    console.error(`${new Date().toISOString()} the chat does not offer ${priced.unpriced.join(", ")}: chat.budget charges a costUsd ceiling and nothing can price their turns`);
+  }
+  return { parts: priced.parts, spend: { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } };
+}
+
+/** One pass over the chat, as this loop answers it; a failure to read it is said and waits for the next pass. */
+function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] }, supervised: boolean, exit: (how: "restart" | "stop") => void): () => Promise<void> {
+  const conversation = mounted.parts.conversation;
+  // Only a supervisor starts a loop with --supervised, so the flag is what
+  // says the next loop will be started; a detached loop says why not.
+  const unsupervised = supervised ? undefined : "this loop was started without one: amy start --detached, amy start on a machine with none, or amy daemon";
+  const act = chatAct({
+    runner,
+    amy: [process.execPath, process.argv[1]!],
+    workflow: profile.name,
+    config: paths(home).config,
+    restartMarker: restartMarkerOf(profile),
+    ...(unsupervised ? { unsupervised } : {}),
+    pid: process.pid,
+    exit: async (how) => exit(how),
+  });
+  return async () => {
+    if (!conversation?.chat) return;
+    try {
+      const pass = await answerTheChat({
+        conversation,
+        harnesses: mounted.parts.harnesses,
+        cwd: profile.project?.root ?? home,
+        directory: path.join(home, "chat"),
+        commands: CHAT_COMMANDS,
+        act,
+        ...(mounted.mountProblem ? { mountProblem: mounted.mountProblem } : {}),
+        ...(mounted.spend ? { spend: mounted.spend } : {}),
+        about: `This amy drives the workflow \`${profile.name}\` (${profile.workflow}); its state is in ${home}.`,
+      });
+      for (const after of pass.after) await after();
+    } catch (error) {
+      console.error(`${new Date().toISOString()} the chat could not be read: ${(error as Error).message}`);
+    }
+  };
+}
+
+/** What a loop whose workflow did not mount waits to see change: the config, and the workflow's source. */
+function brokenMountDigest(profile: Profile): string {
+  let config: string;
+  try {
+    config = fs.readFileSync(paths(home).config, "utf-8");
+  } catch {
+    config = "";
+  }
+  let source: string;
+  try {
+    source = sourceDigest(profile);
+  } catch {
+    source = "";
+  }
+  return `${config}\0${source}`;
+}
+
+/** How often the chat is read while the loop waits. */
+const CHAT_EVERY_MS = 5_000;
+
+/** Assembles the loop's mount, saying why when it does not come up. */
+async function assembleOrSay(profile: Profile, config: AmyConfig): Promise<Assembled> {
+  const scheduleProblems = [...configuredAutoUpdateProblems(config), ...configuredChatProblems(config)];
+  if (scheduleProblems.length > 0) {
+    console.error("amy could not start:");
+    for (const problem of scheduleProblems) console.error(`  ${problem}`);
+    return { ok: false, problems: scheduleProblems };
+  }
+  const outcome = await assemble(profile, config);
+  if (outcome.ok) return outcome;
+  console.error("amy could not start:");
+  for (const problem of outcome.problems) console.error(`  ${problem}`);
+  if (outcome.problems.some((problem) => problem.includes(NOT_INSTALLED))) console.error(`\nInstalled: ${installed()}`);
+  return outcome;
+}
+
+/** Where a restart asked from the chat leaves its promise to say the new pid. */
+function restartMarkerOf(profile: Profile): string {
+  // A profile may switch between a packaged workflow (whose daemon is at the
+  // machine root) and a project workflow (whose daemon is under profiles/).
+  // The handoff belongs to the profile, not either daemon layout.
+  return path.join(home, "profiles", profile.name, "restart.json");
+}
+
+/** The config bytes a chat restart already proved mount, until that restart announces itself. */
+function restartingConfig(profile: Profile): AmyConfig | undefined {
+  try {
+    const marker = JSON.parse(fs.readFileSync(restartMarkerOf(profile), "utf-8")) as { config?: unknown };
+    return typeof marker.config === "string" ? loadConfigFrom(home, marker.config) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A loop a restart started says so where the restart was asked, with its new pid (S28). */
+async function sayRestarted(conversation: ChatParts["conversation"], profile: Profile, mountProblem: string | undefined): Promise<void> {
+  const marker = restartMarkerOf(profile);
+  let asked: { place: string; source?: string; pid: number } | undefined;
+  try {
+    asked = JSON.parse(fs.readFileSync(marker, "utf-8")) as { place: string; source?: string; pid: number };
+  } catch {
+    return;
+  }
+  // Asked in a chat this loop no longer reads (a channel changed with the restart): there is nowhere to say it.
+  if (!conversation?.say || asked.source !== conversation.source) {
+    console.log(`${new Date().toISOString()} restarted as pid ${process.pid}, was ${asked.pid}; the chat it was asked in is not this one`);
+    fs.rmSync(marker, { force: true });
+    return;
+  }
+  const warning = mountProblem ? ` The workflow did not mount, so only the chat runs: ${mountProblem}` : "";
+  try {
+    await conversation.say(asked.place, `Restarted: pid ${process.pid}, was ${asked.pid}.${warning}`);
+    fs.rmSync(marker, { force: true });
+  } catch (error) {
+    // Kept, so the next loop to come up says it: the restart was promised there.
+    console.error(`${new Date().toISOString()} could not say the restart in the chat: ${(error as Error).message}`);
+  }
+}
+
+/** `/action stop`: amy stop removes this loop from its supervisor and ends it, from another process. */
+function stopFromTheChat(profile: Profile): void {
+  const child = spawn(process.execPath, [process.argv[1]!, "--workflow", profile.name, "stop"], { detached: true, stdio: "ignore", env: process.env });
+  child.unref();
+}
+
+/**
+ * Starts a workflow's loop under the machine's supervisor, saying its pid;
+ * answers false, having said why, when the machine has none.
+ */
+async function startedUnderSupervisor(profile: Profile, every: string): Promise<boolean> {
+  const found = await findSupervisor(machine());
+  if (!found.ok) {
+    console.log(`no supervisor: ${found.why}. The loop runs detached, and nothing brings it back if it stops.`);
+    return false;
+  }
+  if (found.refuse) console.error(`warning: ${found.refuse}`);
+  const spec = loopSpecFor(profile, every);
+  await found.supervisor.start(spec);
+  const pid = await recordedPid(profile, 30_000);
+  if (pid === undefined) {
+    console.error(`${found.supervisor.name} took ${profile.name} but no loop said its pid; read ${spec.log}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`started ${profile.name} under ${found.supervisor.name}: pid ${pid}`);
+    console.log(`Watch it: tail -f ${spec.log}`);
+  }
+  return true;
+}
+
+/** What finding a supervisor reads of this machine. */
+function machine(): MachineFacts {
+  let procVersion: string | undefined;
+  try {
+    procVersion = fs.readFileSync("/proc/version", "utf-8");
+  } catch {
+    procVersion = undefined;
+  }
+  return { platform: process.platform, runner, home: os.homedir(), user: os.userInfo().username, uid: process.getuid?.() ?? 0, env: process.env, ...(procVersion ? { procVersion } : {}) };
+}
+
+/** The loop as a supervisor runs it: this amy, its state directory, and the PATH its harnesses are found on. */
+function loopSpecFor(profile: Profile, every: string): LoopSpec {
+  const log = path.join(path.dirname(profilePaths(home, profile).pid), "daemon.log");
+  return {
+    label: labelFor(home, profile.name),
+    description: `amy, driving ${profile.name}`,
+    program: process.execPath,
+    args: [process.argv[1]!, "--workflow", profile.name, "daemon", "--supervised", "--every", every, "--log", log],
+    env: {
+      AMY_HOME: home,
+      HOME: os.homedir(),
+      PATH: process.env.PATH ?? "",
+      ...(process.env.LANG ? { LANG: process.env.LANG } : {}),
+      ...(process.env.AMY_SUPERVISOR ? { AMY_SUPERVISOR: process.env.AMY_SUPERVISOR } : {}),
+      AMY_PROJECT_ENV: process.cwd(),
+    },
+    workingDirectory: home,
+    log,
+    directory: path.join(home, "supervisor"),
+  };
+}
+
+/** Removes a workflow's loop from the supervisor that runs it, naming that supervisor, or nothing when none does. */
+async function unsupervise(profile: Profile): Promise<string | undefined> {
+  const found = await findSupervisor(machine());
+  if (!found.ok) return undefined;
+  const label = labelFor(home, profile.name);
+  if (!await found.supervisor.installed(label)) return undefined;
+  await found.supervisor.stop(label);
+  return found.supervisor.name;
+}
+
+/** The pid a workflow's loop wrote, once it has, within a wait. */
+async function recordedPid(profile: Profile, waitMs: number): Promise<number | undefined> {
+  const until = Date.now() + waitMs;
+  while (Date.now() < until) {
+    const live = runningProfileDaemon(profile);
+    if (live) return live.record.pid;
+    await sleep(200);
+  }
+  return undefined;
+}
+
+function isAliveNow(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** Everything the loop prints goes to its log, which every supervisor then agrees on. */
+function appendOutputTo(file: string): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const stream = fs.createWriteStream(file, { flags: "a" });
+  const logged = new Console(stream, stream);
+  console.log = logged.log.bind(logged);
+  console.error = logged.error.bind(logged);
+  console.warn = logged.warn.bind(logged);
+}
 
 /** One digest over what a profile mounts from source: its forks, and a workflow of your own. */
 function sourceDigest(profile: Profile): string {
@@ -704,7 +1059,7 @@ function sourceDigest(profile: Profile): string {
  * cached for the life of a process, so a new mount is a new process; a
  * failing build or mount leaves this one on the mount it had.
  */
-async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean }): Promise<boolean> {
+async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean; supervised?: boolean }): Promise<boolean> {
   const config = loadConfig(home);
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) {
@@ -712,7 +1067,7 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
     for (const problem of prepared.problems) console.error(`  ${problem}`);
     return false;
   }
-  if (!options.scheduled) {
+  if (!options.scheduled && !options.supervised) {
     console.log(`${new Date().toISOString()} the source changed and is built; restart this loop to mount it`);
     return false;
   }
@@ -721,6 +1076,12 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
     console.error(`${new Date().toISOString()} the source changed and does not mount; the loop keeps the mount it had:`);
     console.error(checked.stdout || checked.stderr);
     return false;
+  }
+  // A supervised loop exits for its supervisor to start the new mount; only a
+  // detached one starts its own replacement.
+  if (options.supervised) {
+    console.log(`${new Date().toISOString()} the source changed and mounts: exiting for the supervisor to start it`);
+    return true;
   }
   const place = profilePaths(home, profile);
   const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
@@ -738,11 +1099,30 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
 program
   .command("mount-check", { hidden: true })
   .description("Internal: whether the selected profile assembles, for a daemon about to remount")
-  .action(async () => {
-    const assembled = await assemble(selected());
-    if (assembled.ok) return;
-    for (const problem of assembled.problems) console.log(problem);
-    process.exitCode = 1;
+  .option("--config <file>", "assemble this config instead of config.yaml, as a change asked from the chat would be")
+  .option("--all", "assemble every profile in the config, before replacing the shared config.yaml")
+  .action(async (options: { config?: string; all?: boolean }) => {
+    // A config asked for in the chat is mounted from its own file first, and
+    // only one that mounts replaces config.yaml (S30).
+    const config = options.config ? loadConfigFrom(home, fs.readFileSync(options.config, "utf-8")) : undefined;
+    // What the loop refuses before it mounts anything, refused here too: a
+    // config that passed this and then stopped the loop at boot would not boot.
+    const schedule = [...configuredAutoUpdateProblems(config ?? loadConfig(home)), ...configuredChatProblems(config ?? loadConfig(home))];
+    if (schedule.length > 0) {
+      for (const problem of schedule) console.log(problem);
+      process.exitCode = 1;
+      return;
+    }
+    // This must take the same path as daemon startup. In particular, an
+    // edited fork is rebuilt before assembly; assembling its installed copy
+    // would approve a candidate that the replacement daemon cannot boot.
+    const selectedProfiles = options.all ? Object.values(profiles(config ?? loadConfig(home), home)) : [selected(config)];
+    for (const profile of selectedProfiles) {
+      const assembled = config ? await assemble(profile, config) : await assemble(profile);
+      if (assembled.ok) continue;
+      for (const problem of assembled.problems) console.log(`${profile.name}: ${problem}`);
+      process.exitCode = 1;
+    }
   });
 
 /** Makes a directly invoked foreground daemon visible to concurrent update. */
@@ -1306,8 +1686,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
 
   // The rest of the machine. A workflow's recommended set is derived at
   // every read, so a bare machine now names plugins it has never seen —
-  // installed here, by the same command, the way `amy init --install`
-  // installs what a config names. A plugin add installs nothing extra: it
+  // installed here, by the same command. A plugin add installs nothing extra: it
   // joined a set that already boots.
   if (outcome.workflow) {
     const fresh = loadConfig(home);
@@ -1809,9 +2188,8 @@ function pickedIsInstalled(root: string, name: string): boolean {
 type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
 
 /** The `budget` setting, from the plugin slice the relay is given. */
-function configuredBudget(): unknown {
-  const config = loadConfig(home);
-  const slice = pluginSlices(config, selected(config))["@amykit/plugin-agent-relay"];
+function configuredBudget(config: AmyConfig = loadConfig(home), profile: Profile = selected(config)): unknown {
+  const slice = pluginSlices(config, profile)["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 
@@ -2939,7 +3317,7 @@ program.parseAsync(process.argv).catch((error: unknown) => {
   const unknown = /^error: unknown command '([^']+)'/.exec(message);
   if (unknown) {
     console.error(`unknown command '${unknown[1]}': nothing on this machine provides it.`);
-    console.error("`amy init` writes a config that names the workflows and what each provides — uncomment one, or run `amy add`.");
+    console.error("`amy add <workflow>` mounts a workflow and the commands it provides; `amy setup` walks you through choosing one.");
     process.exitCode = 1;
     return;
   }

@@ -1,5 +1,6 @@
 import path from "node:path";
-import { CommandRunner, Engine, EventLog, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
+import { HARNESS_COLLECTION, NamedHarness, Rung } from "@amykit/agent-kit";
+import { Budget, CommandRunner, Conversation, Engine, EventLog, Harness, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 import { isFilesystemWorkflow, LoadResult } from "./loader.js";
 import { profilePaths } from "./paths.js";
@@ -94,6 +95,94 @@ async function assemble(
   if (unmet.length > 0) return { ok: false, problems: unmet };
 
   return { ok: true, engine: mounted.engine, mounted, ...(requirements ? { workflowPlugin: requirements.workflowPlugin } : {}) };
+}
+
+/** What the chat needs of a mount: where it is held, and the harnesses that answer in it. */
+export interface ChatParts {
+  readonly conversation?: Conversation;
+  /** By the name `/harness` takes: `claude`, `claude:opus`. */
+  readonly harnesses: ReadonlyMap<string, Harness>;
+  /** The same names' rungs, which say what model each runs and whether it prices its own runs. */
+  readonly rungs: ReadonlyMap<string, Rung>;
+  /** The agents' budget, when the mount has one: the chat is charged to it only under chat.budget. */
+  readonly budget?: Budget;
+}
+
+/** The chat's parts of a mount that came up. */
+export function chatPartsOf(mounted: Mounted): ChatParts {
+  const conversation = mounted.ports.get("conversation") as Conversation | undefined;
+  const contributed = mounted.contributions.get(HARNESS_COLLECTION) ?? new Map<string, object>();
+  const rungs = new Map([...contributed].map(([name, rung]) => [name, rung as NamedHarness]));
+  const harnesses = new Map([...rungs].map(([name, rung]) => [name, rung.cli]));
+  const budget = mounted.ports.get("budget") as Budget | undefined;
+  return { ...(conversation ? { conversation } : {}), harnesses, rungs, ...(budget ? { budget } : {}) };
+}
+
+/**
+ * The chat's parts when the workflow does not mount (S29): every configured
+ * plugin but the workflow, loaded one by one so one that will not import
+ * costs only itself, mounted together, and failing that grown into the
+ * largest group that still mounts and can answer.
+ * The chat outlives a broken mount because it never needed the workflow.
+ */
+export async function assembleChat(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  services: AssemblyServices,
+): Promise<ChatParts> {
+  const place = profilePaths(home, profile);
+  const plugins: Plugin[] = [];
+  for (const spec of pluginList(config, profile).filter((one) => keyOf(one) !== keyOf(profile.workflow))) {
+    const loaded = await services.load([spec]).catch(() => undefined);
+    if (loaded && loaded.problems.length === 0) plugins.push(...loaded.plugins.filter((plugin) => !(plugin as WorkflowPlugin).workflow));
+  }
+  let slices: Record<string, unknown>;
+  try {
+    slices = pluginSlices(config, profile, home, new Map([[profile.workflow, profile.workflow]]));
+  } catch {
+    return { harnesses: new Map(), rungs: new Map() };
+  }
+  const host = { runner: services.runner, now: () => new Date(), log: services.log(place.log), paths: hostPaths(place.base, profile), readOnly: services.readOnly };
+  const together = await mount(plugins, slices, host).catch(() => undefined);
+  if (together?.ok) return chatPartsOf(together.mounted);
+  return await recoverChatParts(plugins, slices, host);
+}
+
+/**
+ * Grows one recovery group a plugin at a time, in config order, keeping a
+ * plugin only when the group still mounts with it and it brings no
+ * conversation that cannot hold the chat. A thread-only adapter would take
+ * the conversation port and leave the chat with nowhere to answer, so it
+ * stays out and a later adapter that can answer gets the port instead.
+ *
+ * Passes repeat until nothing more joins, so a plugin that needs one written
+ * after it still gets in on a later pass: at most n passes of n mounts, and
+ * never every subset of the config.
+ */
+export async function recoverChatParts(plugins: readonly Plugin[], slices: Record<string, unknown>, host: Parameters<typeof mount>[2]): Promise<ChatParts> {
+  let group: readonly Plugin[] = [];
+  let parts: ChatParts = { harnesses: new Map(), rungs: new Map() };
+  let pending: readonly Plugin[] = plugins;
+  for (let grew = true; grew && pending.length > 0;) {
+    grew = false;
+    for (const plugin of pending) {
+      const tried = await mount([...group, plugin], slices, host).catch(() => undefined);
+      if (!tried?.ok) continue;
+      const candidate = chatPartsOf(tried.mounted);
+      if (candidate.conversation && !holdsTheChat(candidate.conversation)) continue;
+      group = [...group, plugin];
+      parts = candidate;
+      grew = true;
+    }
+    pending = pending.filter((plugin) => !group.includes(plugin));
+  }
+  return parts;
+}
+
+/** Whether a conversation can read the chat and answer in it. */
+function holdsTheChat(conversation: Conversation): boolean {
+  return conversation.chat !== undefined && conversation.say !== undefined && conversation.settle !== undefined;
 }
 
 /**

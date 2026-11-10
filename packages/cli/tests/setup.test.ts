@@ -85,13 +85,14 @@ export const plugin = definePlugin({
  * published workflow ships, so the walk installs it the way it installs the
  * real thing and refuses it for the same reasons.
  */
-const workflowPlugin = (spec: string, name: string): StandIn => ({
+const workflowPlugin = (spec: string, name: string, files: readonly { path: string; content: string }[] = []): StandIn => ({
   index: `
 import { defineWorkflow, settled } from ${JSON.stringify(CORE)};
 
 export const plugin = defineWorkflow({
   name: ${JSON.stringify(name)},
   pluginName: ${JSON.stringify(spec)},
+  files: ${JSON.stringify(files)},
   configSchema: {},
   policy: {},
   needs: {},
@@ -472,7 +473,54 @@ describe("amy setup", () => {
     fs.rmSync(machine.home, { recursive: true, force: true });
   });
 
-  it("runs the same walk from both commands' answers (A1)", async () => {
+  it("writes a workflow's own files into the profile that mounts it, never over an edited one", async () => {
+    const machine = freshMachine();
+    fs.writeFileSync(
+      path.join(machine.home, "config.yaml"),
+      [
+        "workflows:",
+        "  setup:",
+        "    workflow: \"@amykit/workflow-setup\"",
+        "    settings:",
+        "      policy:",
+        "        askBackoffMs: 1",
+        "  tickets:",
+        "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+        "  edited:",
+        "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+        "  errands:",
+        "    workflow: \"@amykit/workflow-errand\"",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    fs.mkdirSync(path.join(machine.home, "edited"), { recursive: true });
+    fs.writeFileSync(path.join(machine.home, "edited", "roster.yaml"), "edited by hand\n", "utf-8");
+
+    // Already installed and named by the config, the way an operator who
+    // edited the config by hand has it: the walk fetches nothing.
+    const standIn = standIns();
+    standIn.set("@amykit/workflow-ticket-to-qa", workflowPlugin("@amykit/workflow-ticket-to-qa", "ticket-to-qa", [{ path: "roster.yaml", content: "the template\n" }]));
+    const runner = handInstallingRunner(machine.pluginsRoot, standIn);
+    await runner.run("npm", ["install", "--", "@amykit/workflow-ticket-to-qa", "@amykit/workflow-errand"]);
+
+    const code = await runSetupWalk(
+      machine.home,
+      { plugin: "@amykit/workflow-ticket-to-qa", settings: {} },
+      runner,
+      () => undefined,
+      { terminal: false, maxMoves: 200 },
+    );
+
+    expect(code).toBe(0);
+    expect(fs.readFileSync(path.join(machine.home, "tickets", "roster.yaml"), "utf-8")).toBe("the template\n");
+    expect(fs.readFileSync(path.join(machine.home, "edited", "roster.yaml"), "utf-8")).toBe("edited by hand\n");
+    // Only the profiles that mount it: the errand's profile gets no roster.
+    expect(fs.existsSync(path.join(machine.home, "errands", "roster.yaml"))).toBe(false);
+    fs.rmSync(machine.home, { recursive: true, force: true });
+  });
+
+  it("writes the same config for the same answers on two machines (A1)", async () => {
     const standIn = standIns();
     const results: Record<string, ReturnType<typeof loadConfig>> = {};
     for (const machine of [freshMachine(), freshMachine()]) {

@@ -8,7 +8,7 @@ import type { Result } from "./ports/result.js";
 import type { Configuring, PendingAsk, SettingValue, SetupRecord } from "./record.js";
 
 /** The package that contributes this workflow, which the setup profile names. */
-export const SETUP_WORKFLOW = "@amykit/workflow-setup";
+const SETUP_WORKFLOW = "@amykit/workflow-setup";
 
 export type SetupState =
   | "DETECTING"

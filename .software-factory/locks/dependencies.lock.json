@@ -13,9 +13,9 @@
     "examples/workflow-note-to-plan/package.json": "f0c75dab7d7f14cb349bba37ba18ee7f210d21ee1df521225eaaebd2f33bb2f8",
     "examples/workflow-pull-request/package.json": "f4b2b01feac31ad24587e56014b66d10f9a68b864fce52ff8f2b6a228345ad26",
     "examples/workflow-ticket-to-qa/package.json": "ac6c46f9ebf1aa0996184b668924042ea5ac175854a8ebc7b7f34dd5e0b61620",
-    "package.json": "7784702dd1b9f7aa93877a0814f4d6c878af78dac8de1da13889030172560801",
+    "package.json": "61f8fbd88105ea6a857427fbe2d94335b5da4b69947d61614653e646f2e53be2",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
-    "packages/cli/package.json": "79f0f446efef14f966b3d362a53ca54dc5859abf4bb403ee98093354d6e92336",
+    "packages/cli/package.json": "dd4c8bbf699131fe0e8557b39680c0c4e4fa696d92380006f05a1a5912142f3e",
     "packages/core/package.json": "3c7f26da90f9263db1e922f91ef1660ddedfb19c37451d34b4841167ee5e16d3",
     "packages/model-specs/package.json": "d6afcd448edab15754b7e1859f942492a247b0cea14014a6e57bd58145a274bf",
     "packages/services/package.json": "bcfa01357e3b1efa732602f395281cd0a33e4919a3160a3ee3c8c6ab260425e0",
@@ -51,7 +51,7 @@
     "plugins/serial-engine/package.json": "ed01f7194d54924c2371d1d536a376caddcc993b7ee259383a67dea512fd7528",
     "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c",
     "plugins/telegram/package.json": "f2b670e32bbdb3c30c5b2368feb20c4dbf54730b55bb1643b117da7ade494164",
-    "plugins/terminal-conversation/package.json": "003e082c9df43ed9be5a00845f70ff3d23f382bec0630ede83a3b1c1239f52de",
+    "plugins/terminal-conversation/package.json": "7681bb35a4c003aa1921aaa49135cf5227278ef9de7811055466b73412b7bd34",
     "plugins/terminal/package.json": "f7037e24d8f7b575309b182daa9c5be773f544e3ff6548da97d1861d65433d8d",
     "plugins/ui-stub/package.json": "6a01970fbf137313290ed26f4a979776eb49c5d9776a54916cf96fece1c8e06c"
   }

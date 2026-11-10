@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Ask, Conversation, Reply, ThreadRef } from "@amykit/core";
+import { addressed, Ask, ChatMessage, Conversation, Reply, ThreadRef } from "@amykit/core";
 import { BotApi, BotApiRefusal, TooLarge } from "./BotApi.js";
 
 export interface TelegramConversationOptions {
@@ -25,6 +25,12 @@ export interface TelegramConversationOptions {
   leaseMs?: number;
   /** An inspection may read existing state but must not initialize it. */
   readOnly?: boolean;
+  /**
+   * Whether each piece of work opens a topic of its own. Off, works share the
+   * private chat, and a reply reaches one only when it quotes amy's message
+   * for it or starts with its id (S15).
+   */
+  topics?: boolean;
 }
 
 /** What `amy doctor` prints for this plugin, one line per question. */
@@ -82,6 +88,8 @@ interface TelegramMessage {
   message_id: number;
   message_thread_id?: number;
   is_topic_message?: boolean;
+  /** The message this one quotes, when it is a reply. */
+  reply_to_message?: { message_id: number };
   from?: TelegramUser;
   chat: { id: number; type: string };
   date: number;
@@ -143,6 +151,10 @@ interface Filed {
  */
 export class TelegramConversation implements Conversation {
   readonly asks = true as const;
+  readonly edit = true as const;
+  readonly threads?: true;
+  /** The bot: its directory is named for it, so two bots never share a conversation. */
+  readonly source: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   /** Who this profile's directory is: a directory removed and made again is somebody else. */
   private readonly identity: string;
@@ -159,15 +171,18 @@ export class TelegramConversation implements Conversation {
     }
     this.operator = normalisedId(options.operator);
     this.identity = options.readOnly ? readIdentity(options.directory) ?? "" : identityOf(options.directory);
+    if (this.topics()) this.threads = true;
+    this.source = `telegram:${path.basename(this.shared())}`;
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {
     const known = this.topicOfWork(workId);
     if (known !== undefined) {
       // An opener that stopped between recording the topic and adopting its early replies left them waiting.
-      this.adopt(`${this.chat()}-${known}`);
-      return Promise.resolve({ id: String(known) });
+      this.adopt(`${this.chatId()}-${known}`);
+      return Promise.resolve({ id: known });
     }
+    if (!this.topics()) return this.openInTheChat(workId);
     // Two looks at the same work in one process must not open two topics.
     const pending = this.opening.get(workId);
     if (pending) return pending;
@@ -176,12 +191,12 @@ export class TelegramConversation implements Conversation {
       const already = this.topicOfWork(workId);
       if (already !== undefined) return { id: String(already) };
       // Said before asking, so a reply in a topic Telegram creates now is kept until its owner is recorded.
-      const opening = path.join(this.shared(), "opening", String(this.chat()), `${randomUUID()}.json`);
+      const opening = path.join(this.shared(), "opening", String(this.chatId()), `${randomUUID()}.json`);
       createOnce(opening, { workId }, this.shared());
       let topic: { message_thread_id: number };
       try {
         topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
-          chat_id: this.chat(),
+          chat_id: this.chatId(),
           name: topicName(title, workId),
         });
       } catch (error) {
@@ -194,26 +209,57 @@ export class TelegramConversation implements Conversation {
       if (readIdentity(this.options.directory) !== this.identity) {
         throw new Error(`${this.options.directory} was removed while its topic was being opened`);
       }
-      const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
-      const key = `${this.chat()}-${topic.message_thread_id}`;
-      createOnce(path.join(this.shared(), "owners", `${key}.json`), owner, this.shared());
-      // Created once: if another process recorded a topic for this work first, that one is the work's.
-      createOnce(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`), { topic: topic.message_thread_id }, this.options.directory);
+      const key = this.record(workId, String(topic.message_thread_id));
       this.adopt(key);
       closeOpening(opening);
-      return { id: String(this.topicOfWork(workId)) };
+      return { id: this.topicOfWork(workId)! };
     }).finally(() => this.opening.delete(workId));
     this.opening.set(workId, opened);
     return opened;
   }
 
-  async post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string> {
-    if (message.files?.length) throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
-    const topic = topicOf(thread);
-    return message.ask ? this.postAsk(topic, message.text, message.ask) : this.sendParts(topic, message.text);
+  /**
+   * A work in a chat without topics: nothing to ask Telegram for, only its
+   * thread to name and record, so a reply addressed to it is filed under it.
+   */
+  private openInTheChat(workId: string): Promise<ThreadRef> {
+    if (readIdentity(this.options.directory) !== this.identity) {
+      return Promise.reject(new Error(`${this.options.directory} was removed while its work was being opened`));
+    }
+    // The profile is in it too: two phases of one project open the same work id, each a thread of its own.
+    this.record(workId, `w${fileNameOf(`${this.identity}\0${workId}`).slice(0, 16)}`);
+    return Promise.resolve({ id: this.topicOfWork(workId)! });
   }
 
-  private async postAsk(topic: number, text: string, ask: Ask): Promise<string> {
+  /**
+   * Records who owns a work's thread, the thread by work id, and the work by
+   * its id for the whole bot, so a message addressed to it from outside every
+   * thread finds it. Owner first: a reply that arrives before the work knows
+   * its thread is still filed here. The directory is kept relative to the
+   * bot's, so a state root moved or mounted elsewhere still finds it.
+   */
+  private record(workId: string, thread: string): string {
+    const owner: Owner = { directory: path.relative(this.shared(), this.options.directory), identity: this.identity };
+    const key = `${this.chatId()}-${thread}`;
+    createOnce(path.join(this.shared(), "owners", `${key}.json`), owner, this.shared());
+    // Created once: if another process recorded a thread for this work first, that one is the work's.
+    createOnce(path.join(this.threadsDirectory(), `${fileNameOf(workId)}.json`), { topic: this.topics() ? Number(thread) : thread, workId }, this.options.directory);
+    // Replaced, not created once: a project's phases open one work id each, and
+    // the phase that opened it last is the one an addressed message reaches.
+    durableDirectory(path.join(this.shared(), "works"), this.shared());
+    writeJson(path.join(this.shared(), "works", `${this.chatId()}-${fileNameOf(workId)}.json`), { thread: this.topicOfWork(workId), workId });
+    return `${this.chatId()}-${this.topicOfWork(workId)}`;
+  }
+
+  async post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string> {
+    if (message.files?.length) throw new Error("@amykit/plugin-telegram does not upload files; post their paths as text");
+    const topic = this.threadOf(thread);
+    // Works share the chat without topics, so each message says whose it is.
+    const text = this.topics() ? message.text : `${this.workOfThread(topic) ?? topic}: ${message.text}`;
+    return message.ask ? this.postAsk(topic, text, message.ask) : this.sendParts(topic, text);
+  }
+
+  private async postAsk(topic: string, text: string, ask: Ask): Promise<string> {
     const usable = validAsk(ask);
     const body = [text === ask.prompt ? "" : text, ask.prompt, usable ? "" : numberedAnswers(ask)].filter(Boolean).join("\n");
     if (!usable) return this.sendParts(topic, body);
@@ -227,16 +273,18 @@ export class TelegramConversation implements Conversation {
     });
   }
 
-  private async sendParts(topic: number, text: string, ask?: Ask): Promise<string> {
+  private async sendParts(topic: string, text: string, ask?: Ask): Promise<string> {
     let sent = "";
     const rendered = parts(text);
     for (const [index, part] of rendered.entries()) {
       const result = await this.api.call<{ message_id: number }>("sendMessage", {
-        chat_id: this.chat(), message_thread_id: topic, text: part,
+        chat_id: this.chatId(), ...this.inThread(topic), text: part,
         ...(ask && index === rendered.length - 1 ? { reply_markup: keyboardFor(ask, askKey(ask.id), []) } : {}),
       });
       sent = String(result.message_id);
-      createOnce(path.join(this.options.directory, "posted", String(topic), `${result.message_id}.json`), { at: new Date().toISOString() }, this.options.directory);
+      createOnce(path.join(this.options.directory, "posted", topic, `${result.message_id}.json`), { at: new Date().toISOString() }, this.options.directory);
+      // Filed under its work for the whole bot, so a reply quoting it reaches that work.
+      if (!this.topics()) createOnce(path.join(this.shared(), "filed", `${this.chatId()}-${result.message_id}.json`), { thread: topic }, this.shared());
       if (ask && index === rendered.length - 1) {
         createOnce(this.askFile(topic, ask.id), { ask, messageId: result.message_id, at: new Date().toISOString(), selected: [], callbacks: [] } satisfies FiledAsk, this.options.directory);
       }
@@ -247,9 +295,9 @@ export class TelegramConversation implements Conversation {
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
     const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
-    const topic = topicOf(thread);
+    const topic = this.threadOf(thread);
     await this.held(async () => {
-      this.adopt(`${this.chat()}-${topic}`);
+      this.adopt(`${this.chatId()}-${topic}`);
       await this.fileUpdates();
     });
 
@@ -284,12 +332,14 @@ export class TelegramConversation implements Conversation {
     }
     const name = `@${me.username ?? me.id}`;
     const checks: TelegramCheck[] = [
-      me.has_topics_enabled === true
-        ? { label: "telegram bot", ok: true, detail: `${name}, with topics in private chats` }
-        : { label: "telegram bot", ok: false, detail: `${name} has topic mode off; turn on topics for it in @BotFather, so each piece of work gets its own topic` },
+      !this.topics()
+        ? { label: "telegram bot", ok: true, detail: `${name}, with every work in the private chat, addressed by a quote or its id` }
+        : me.has_topics_enabled === true
+          ? { label: "telegram bot", ok: true, detail: `${name}, with topics in private chats` }
+          : { label: "telegram bot", ok: false, detail: `${name} has topic mode off; turn on topics for it in @BotFather, so each piece of work gets its own topic, or set topics: false` },
     ];
     try {
-      const chat = await this.api.call<{ type?: string }>("getChat", { chat_id: this.chat() });
+      const chat = await this.api.call<{ type?: string }>("getChat", { chat_id: this.chatId() });
       checks.push(chat.type === "private"
         ? { label: "telegram chat", ok: true, detail: `private chat with ${this.operator}` }
         : { label: "telegram chat", ok: false, detail: `${this.operator} is a ${chat.type ?? "chat"}, not a person; set operator to your own user id` });
@@ -313,16 +363,95 @@ export class TelegramConversation implements Conversation {
     return checks;
   }
 
-  private chat(): number {
+  /**
+   * The messages in the private chat that reached no work, oldest first,
+   * until they are settled. Telegram is read for them first, so the chat is
+   * read all the time and not only when a work is looked at (S20).
+   */
+  async chat(): Promise<ChatMessage[]> {
+    await this.held(() => this.fileUpdates());
+    const directory = path.join(this.shared(), "chat", String(this.chatId()));
+    return jsonFilesIn(directory)
+      .flatMap((name) => {
+        const filed = readJson<ChatMessage>(path.join(directory, name), true);
+        // Only the operator's: a message filed for another reader of the same bot is not this one's to act on.
+        return filed && filed.author === this.operator ? [filed] : [];
+      })
+      .sort((a, b) => a.at.localeCompare(b.at));
+  }
+
+  async settle(id: string): Promise<void> {
+    const message = /^telegram:(-?\d+):(\d+)$/.exec(id);
+    if (!message) throw new Error(`${id} is not a message this chat filed`);
+    fs.rmSync(path.join(this.shared(), "chat", message[1]!, `${message[2]}.json`), { force: true });
+  }
+
+  /** Says something in the private chat, outside every topic, in as many messages as it takes. */
+  async say(place: string, text: string): Promise<string> {
+    let sent = "";
+    for (const part of parts(text)) {
+      const result = await this.api.call<{ message_id: number }>("sendMessage", { chat_id: Number(place), text: part });
+      sent = String(result.message_id);
+      // A reply quoting what amy said in the chat continues the conversation; it is not a work's.
+      createOnce(path.join(this.shared(), "said", `${place}-${sent}.json`), {}, this.shared());
+    }
+    return sent;
+  }
+
+  /** Replaces what a message amy said reads, as much of it as one message holds. */
+  async revise(place: string, id: string, text: string): Promise<void> {
+    try {
+      await this.api.call("editMessageText", { chat_id: Number(place), message_id: Number(id), text: parts(text)[0]! });
+    } catch (error) {
+      // The same text again, or a message gone: there is nothing to redraw.
+      if (!(error instanceof BotApiRefusal && /message is not modified|message to edit not found/i.test(error.description))) throw error;
+    }
+  }
+
+  private chatId(): number {
     return Number(this.operator);
+  }
+
+  private topics(): boolean {
+    return this.options.topics !== false;
+  }
+
+  /**
+   * Where each work's thread is remembered, one place per mode: a topic is no
+   * thread in a chat without topics, nor the other way round, so turning
+   * topics on or off opens each work afresh rather than reusing an id the
+   * new mode cannot post to.
+   */
+  private threadsDirectory(): string {
+    return path.join(this.options.directory, this.topics() ? "topics" : "addressed");
+  }
+
+  /** Where a work's message goes: its topic, or the chat itself when works share it. */
+  private inThread(thread: string): { message_thread_id?: number } {
+    return this.topics() ? { message_thread_id: Number(thread) } : {};
+  }
+
+  private threadOf(thread: ThreadRef): string {
+    if (this.topics() ? !/^\d+$/.test(thread.id) : !/^w[0-9a-f]{16}$/.test(thread.id)) {
+      throw new Error(`${thread.id} is not a telegram ${this.topics() ? "topic" : "work thread"}`);
+    }
+    return thread.id;
+  }
+
+  private workOfThread(thread: string): string | undefined {
+    for (const name of jsonFilesIn(this.threadsDirectory())) {
+      const known = readJson<{ topic: number | string; workId?: string }>(path.join(this.threadsDirectory(), name), true);
+      if (known && String(known.topic) === thread) return known.workId;
+    }
+    return undefined;
   }
 
   private shared(): string {
     return this.options.shared ?? this.options.directory;
   }
 
-  private inbox(directory: string, identity: string, topic: number): string {
-    return path.join(directory, `inbox-${identity}`, String(topic));
+  private inbox(directory: string, identity: string, topic: string): string {
+    return path.join(directory, `inbox-${identity}`, topic);
   }
 
   /**
@@ -344,7 +473,8 @@ export class TelegramConversation implements Conversation {
       if (updates.length === 0) return;
       for (const update of updates) {
         const message = update.message;
-        if (message && isAnAnswer(message)) this.file(message);
+        if (message && isAnAnswer(message)) this.file(message, String(message.message_thread_id));
+        else if (message && isOutsideEveryTopic(message)) this.fileOutside(message);
         if (update.callback_query) await this.fileCallback(update.callback_query);
       }
       this.confirm(Math.max(...updates.map((update) => update.update_id)) + 1);
@@ -368,16 +498,19 @@ export class TelegramConversation implements Conversation {
     }
   }
 
-  private callbackContext(callback: TelegramCallbackQuery): { message: TelegramMessage; topic: number; directory: string } | undefined {
+  private callbackContext(callback: TelegramCallbackQuery): { message: TelegramMessage; topic: string; directory: string } | undefined {
     const message = callback.message;
-    const topic = message?.message_thread_id;
-    if (!message || topic === undefined) return undefined;
+    if (!message) return undefined;
+    const topic = this.topics()
+      ? message.message_thread_id === undefined ? undefined : String(message.message_thread_id)
+      : readJson<{ thread: string }>(path.join(this.shared(), "filed", `${message.chat.id}-${message.message_id}.json`))?.thread;
+    if (topic === undefined) return undefined;
     const owner = readJson<Owner>(path.join(this.shared(), "owners", `${message.chat.id}-${topic}.json`));
     const place = owner ? this.inboxOf(owner, topic) : undefined;
     return place ? { message, topic, directory: place.directory } : undefined;
   }
 
-  private async applyCallback(context: { message: TelegramMessage; topic: number; directory: string }, data: string | undefined, callbackId: string): Promise<string | undefined> {
+  private async applyCallback(context: { message: TelegramMessage; topic: string; directory: string }, data: string | undefined, callbackId: string): Promise<string | undefined> {
     const parsed = data ? parseCallback(data) : undefined;
     const state = parsed ? this.askByKey(context.directory, context.topic, parsed.key) : undefined;
     if (!parsed || !state || state.messageId !== context.message.message_id) return "this question is no longer open";
@@ -391,7 +524,7 @@ export class TelegramConversation implements Conversation {
     return this.choose(context, state, parsed.index, parsed.key, callbackId);
   }
 
-  private async sendChoices(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
+  private async sendChoices(context: { message: TelegramMessage; topic: string; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
     if (state.ask.form !== "choices") return "this question is no longer open";
     state.accepted = { at: new Date().toISOString(), chosen: state.selected.map((index) => state.ask.answers[index]!).filter(Boolean) };
     state.callbacks = [...(state.callbacks ?? []), callbackId];
@@ -400,7 +533,7 @@ export class TelegramConversation implements Conversation {
     return undefined;
   }
 
-  private async choose(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, index: number, key: string, callbackId: string): Promise<string | undefined> {
+  private async choose(context: { message: TelegramMessage; topic: string; directory: string }, state: FiledAsk, index: number, key: string, callbackId: string): Promise<string | undefined> {
     if (state.ask.form !== "choices") {
       state.accepted = { at: new Date().toISOString(), chosen: [state.ask.answers[index]!] };
       state.callbacks = [...(state.callbacks ?? []), callbackId];
@@ -415,10 +548,10 @@ export class TelegramConversation implements Conversation {
     return undefined;
   }
 
-  private async acknowledgeAccepted(context: { message: TelegramMessage; topic: number; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
+  private async acknowledgeAccepted(context: { message: TelegramMessage; topic: string; directory: string }, state: FiledAsk, callbackId: string): Promise<string | undefined> {
     state.callbacks = [...(state.callbacks ?? []), callbackId];
     if (!state.acknowledged) {
-      await this.api.call("sendMessage", { chat_id: context.message.chat.id, message_thread_id: context.topic, text: `Amy already took ${state.ask.id}: ${state.accepted!.chosen.join(", ")}.` });
+      await this.api.call("sendMessage", { chat_id: context.message.chat.id, ...this.inThread(context.topic), text: `Amy already took ${state.ask.id}: ${state.accepted!.chosen.join(", ")}.` });
       state.acknowledged = true;
     }
     this.writeAsk(context.directory, context.topic, state);
@@ -442,20 +575,20 @@ export class TelegramConversation implements Conversation {
     await this.api.call("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
   }
 
-  private askFile(topic: number, id: string): string {
-    return path.join(this.options.directory, "asks", String(topic), `${askKey(id)}.json`);
+  private askFile(topic: string, id: string): string {
+    return path.join(this.options.directory, "asks", topic, `${askKey(id)}.json`);
   }
 
-  private askByKey(directory: string, topic: number, key: string): FiledAsk | undefined {
-    return readJson<FiledAsk>(path.join(directory, "asks", String(topic), `${key}.json`));
+  private askByKey(directory: string, topic: string, key: string): FiledAsk | undefined {
+    return readJson<FiledAsk>(path.join(directory, "asks", topic, `${key}.json`));
   }
 
-  private writeAsk(directory: string, topic: number, state: FiledAsk): void {
-    writeJson(path.join(directory, "asks", String(topic), `${askKey(state.ask.id)}.json`), state);
+  private writeAsk(directory: string, topic: string, state: FiledAsk): void {
+    writeJson(path.join(directory, "asks", topic, `${askKey(state.ask.id)}.json`), state);
   }
 
-  protected askedUnder(topic: number): FiledAsk[] {
-    const directory = path.join(this.options.directory, "asks", String(topic));
+  protected askedUnder(topic: string): FiledAsk[] {
+    const directory = path.join(this.options.directory, "asks", topic);
     try {
       return fs.readdirSync(directory).filter((name) => name.endsWith(".json")).flatMap((name) => {
         const state = readJson<FiledAsk>(path.join(directory, name));
@@ -472,8 +605,9 @@ export class TelegramConversation implements Conversation {
    * file of its own. The inbox is named for the identity, so a write racing a
    * profile's removal lands where no later profile at that path reads.
    */
-  private file(message: TelegramMessage): void {
-    const topic = message.message_thread_id!;
+  private file(received: TelegramMessage, topic: string, said?: string): void {
+    // Addressed from the chat, it is filed as what it said to the work, the address taken off.
+    const message: TelegramMessage = said === undefined ? received : { ...received, text: said, caption: undefined };
     // Keyed by chat: one bot's topics in two operators' chats are two owners.
     const key = `${message.chat.id}-${topic}`;
     const ownerFile = path.join(this.shared(), "owners", `${key}.json`);
@@ -506,7 +640,7 @@ export class TelegramConversation implements Conversation {
    * Where a topic's replies are filed for its owner, if that owner's directory
    * still carries the identity that opened the topic; made if needed.
    */
-  private inboxOf(owner: Owner, topic: number): { directory: string; inbox: string } | undefined {
+  private inboxOf(owner: Owner, topic: string): { directory: string; inbox: string } | undefined {
     const directory = path.resolve(this.shared(), owner.directory);
     if (readIdentity(directory) !== owner.identity) return undefined;
     const inbox = this.inbox(directory, owner.identity, topic);
@@ -514,8 +648,8 @@ export class TelegramConversation implements Conversation {
   }
 
   /** The id of the last message amy posted in a topic by an instant, or 0 when none is known. */
-  private postedBy(topic: number, micros: number): number {
-    const directory = path.join(this.options.directory, "posted", String(topic));
+  private postedBy(topic: string, micros: number): number {
+    const directory = path.join(this.options.directory, "posted", topic);
     let names: string[];
     try {
       names = fs.readdirSync(directory).filter((name) => name.endsWith(".json"));
@@ -543,7 +677,7 @@ export class TelegramConversation implements Conversation {
     // In the order the operator wrote them, which a directory listing does not promise.
     for (const name of names.sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10))) {
       const message = readJson<TelegramMessage>(path.join(waiting, name), true);
-      if (message) this.file(message);
+      if (message) this.file(message, key.slice(key.indexOf("-", 1) + 1));
       fs.rmSync(path.join(waiting, name), { force: true });
     }
   }
@@ -608,12 +742,12 @@ export class TelegramConversation implements Conversation {
 
 
   /** The files as local paths, and a line naming each one too large to fetch. */
-  private async downloadAll(topic: number, files: Filed["files"]): Promise<{ paths: string[]; skipped: string[] }> {
+  private async downloadAll(topic: string, files: Filed["files"]): Promise<{ paths: string[]; skipped: string[] }> {
     const limit = this.options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
     const paths: string[] = [];
     const skipped: string[] = [];
     for (const one of files) {
-      const target = path.join(this.options.directory, "files", String(topic), safeName(one.unique), safeName(one.name));
+      const target = path.join(this.options.directory, "files", topic, safeName(one.unique), safeName(one.name));
       const kept = (one.size ?? 0) <= limit && (fs.existsSync(target) || (await this.download(one, target, limit)));
       if (kept) paths.push(target);
       else skipped.push(`[${one.name} was not downloaded: it is larger than ${limit} bytes]`);
@@ -654,8 +788,40 @@ export class TelegramConversation implements Conversation {
     return true;
   }
 
-  private topicOfWork(workId: string): number | undefined {
-    return readJson<{ topic: number }>(path.join(this.options.directory, "topics", `${fileNameOf(workId)}.json`))?.topic;
+  private topicOfWork(workId: string): string | undefined {
+    const topic = readJson<{ topic: number | string }>(path.join(this.threadsDirectory(), `${fileNameOf(workId)}.json`))?.topic;
+    return topic === undefined ? undefined : String(topic);
+  }
+
+  /**
+   * Files a message written outside every topic: under the work it is
+   * addressed to — a quote of amy's message for it, or its id at the start —
+   * and in the chat otherwise (S42). The rule is the core's; this only says
+   * what amy filed where (S16).
+   */
+  private fileOutside(message: TelegramMessage): void {
+    const chat = message.chat.id;
+    const quoted = message.reply_to_message?.message_id;
+    // Quoting what amy said in the chat continues that conversation.
+    const quotes = quoted === undefined || fs.existsSync(path.join(this.shared(), "said", `${chat}-${quoted}.json`)) ? undefined : String(quoted);
+    const routed = addressed({ text: message.text ?? message.caption ?? "", ...(quotes === undefined ? {} : { quotes }) }, {
+      threadOfMessage: (id) => readJson<{ thread: string }>(path.join(this.shared(), "filed", `${chat}-${id}.json`), true)?.thread,
+      threadOfWork: (workId) => readJson<{ thread: string }>(path.join(this.shared(), "works", `${chat}-${fileNameOf(workId)}.json`), true)?.thread,
+    });
+    if (routed.to === "work") {
+      this.file(message, routed.thread, routed.text);
+      return;
+    }
+    if (!(message.text ?? "").trim()) return;
+    const filed: ChatMessage = {
+      id: `telegram:${chat}:${message.message_id}`,
+      at: instantOf(message),
+      author: String(message.from!.id),
+      text: routed.text,
+      place: String(chat),
+      ...(routed.unaddressed ? { unaddressed: true as const } : {}),
+    };
+    createOnce(path.join(this.shared(), "chat", String(chat), `${message.message_id}.json`), filed, this.shared());
   }
 
   /**
@@ -728,6 +894,27 @@ function isAnAnswer(message: TelegramMessage): boolean {
   if (message.chat.type !== "private" || message.from?.id !== message.chat.id) return false;
   if (message.is_topic_message !== true || message.message_thread_id === undefined) return false;
   return Boolean(message.text?.trim() || message.caption?.trim() || message.document || message.photo?.length);
+}
+
+/**
+ * A message in the operator's private chat, outside every topic, from the
+ * operator: a work addressed from the chat, an ask, or an action. Anyone
+ * else answers nothing (S22).
+ */
+function isOutsideEveryTopic(message: TelegramMessage): boolean {
+  if (message.from?.is_bot) return false;
+  if (message.chat.type !== "private" || message.from?.id !== message.chat.id) return false;
+  return message.is_topic_message !== true && Boolean(message.text?.trim() || message.caption?.trim());
+}
+
+/** The JSON files in a directory, none when it is not there. */
+function jsonFilesIn(directory: string): string[] {
+  try {
+    return fs.readdirSync(directory).filter((name) => name.endsWith(".json"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
 }
 
 /** Takes the hold if nobody has it, writing who holds it inside. */
@@ -959,11 +1146,6 @@ function fileNameOf(workId: string): string {
   return createHash("sha256").update(workId).digest("hex");
 }
 
-function topicOf(thread: ThreadRef): number {
-  const topic = Number(thread.id);
-  if (!Number.isInteger(topic)) throw new Error(`${thread.id} is not a telegram topic`);
-  return topic;
-}
 
 /** The title, as much of it as a topic's name holds; the work id when there is none. */
 function topicName(title: string, workId: string): string {

@@ -44,6 +44,8 @@ export interface StandInOptions {
 export function botApiStandIn(options: StandInOptions = {}) {
   const topics = new Map<number, string>();
   const sent: { topic: number; text: string }[] = [];
+  /** What the bot said in the private chat, outside every topic, as it reads now. */
+  const inTheChat: { id: number; text: string }[] = [];
   const updates: { update_id: number; message?: Message; callback_query?: Record<string, unknown> }[] = [];
   const files = new Map<string, File>();
   const messages = new Map<number, Message>();
@@ -78,6 +80,13 @@ export function botApiStandIn(options: StandInOptions = {}) {
       return { message_thread_id: id, name: String(args.name), icon_color: 7322096 };
     },
     sendMessage: (args) => {
+      if (args.message_thread_id === undefined) {
+        if (!started(args)) return refuse(400, "Bad Request: chat not found");
+        const message: Message = { message_id: nextMessage++, from: user(BOT_ID, true), chat: chat(OPERATOR), date: clock, text: String(args.text) };
+        messages.set(message.message_id, message);
+        inTheChat.push({ id: message.message_id, text: String(args.text) });
+        return message;
+      }
       const topic = Number(args.message_thread_id);
       if (!topics.has(topic)) return refuse(400, "Bad Request: message thread not found");
       sent.push({ topic, text: String(args.text) });
@@ -86,6 +95,15 @@ export function botApiStandIn(options: StandInOptions = {}) {
       return message;
     },
     editMessageReplyMarkup: () => true,
+    editMessageText: (args) => {
+      const message = messages.get(Number(args.message_id));
+      if (!message || Number(args.chat_id) !== OPERATOR) return refuse(400, "Bad Request: message to edit not found");
+      if (message.text === args.text) return refuse(400, "Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message");
+      message.text = String(args.text);
+      const said = inTheChat.find((one) => one.id === message.message_id);
+      if (said) said.text = String(args.text);
+      return message;
+    },
     answerCallbackQuery: () => true,
     getUpdates: (args) => {
       if (options.polledElsewhere) return refuse(409, "Conflict: terminated by other getUpdates request; make sure that only one bot instance is running");
@@ -143,7 +161,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
   /** Somebody writes in the operator's chat with the bot: in a topic, or outside every one. */
   function say(
     text: string,
-    where: { topic?: number; from?: number; file?: { name: string; bytes: Uint8Array; size?: number; unsized?: boolean }; photo?: boolean; renamesTopic?: boolean } = {},
+    where: { topic?: number; from?: number; quotes?: number; file?: { name: string; bytes: Uint8Array; size?: number; unsized?: boolean }; photo?: boolean; renamesTopic?: boolean } = {},
   ): Message {
     clock = Math.max(clock + 1, Math.floor(Date.now() / 1000));
     const from = where.from ?? OPERATOR;
@@ -153,6 +171,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
       chat: chat(from),
       date: clock,
       ...(where.topic === undefined ? {} : { message_thread_id: where.topic, is_topic_message: true }),
+      ...(where.quotes === undefined ? {} : { reply_to_message: messages.get(where.quotes) ?? (() => { throw new Error(`the stand-in has no message ${where.quotes} to quote`); })() }),
       ...(where.file || where.renamesTopic ? {} : { text }),
       // A service message: the topic renamed, which says nothing.
       ...(where.renamesTopic ? { forum_topic_edited: { name: text } } : {}),
@@ -173,6 +192,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
       }
       else message.document = { file_id: file.id, file_unique_id: unique, file_name: where.file.name, ...(where.file.unsized ? {} : { file_size: file.size }) };
     }
+    messages.set(message.message_id, message);
     updates.push({ update_id: nextUpdate++, message });
     return message;
   }
@@ -200,6 +220,7 @@ export function botApiStandIn(options: StandInOptions = {}) {
     press,
     topics,
     sent,
+    inTheChat,
     calls,
     /** Updates Telegram still holds, unconfirmed. */
     pending: () => updates.filter((update) => update.update_id >= confirmed).length,

@@ -45,7 +45,6 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy config explain [plugin]`](#amy-config-explain [plugin]) | Every setting the machine and its mounted plugins carry, with its type, default and why |
 | [`amy contract`](#amy-contract) | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
-| [`amy init`](#amy-init) | Set the machine up, as `amy setup` does: the same walk, asked the same way |
 | [`amy look`](#amy-look) | Look at one piece of work now, rather than when it was next due |
 | [`amy plugin`](#amy-plugin) | What is mounted, and what is not |
 | [`amy plugin list`](#amy-plugin-list) | The plugins this install mounts, and what they assembled into |
@@ -56,7 +55,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy run`](#amy-run) | Keep advancing until nothing is due |
 | [`amy setup`](#amy-setup) | Set the machine up: the harness, the workflow, the channels, one question at a time |
 | [`amy skills`](#amy-skills) | Install amy's skills into the harnesses on this machine |
-| [`amy start`](#amy-start) | Start the loop in the background, and keep it running |
+| [`amy start`](#amy-start) | Start the loop under the machine's supervisor, which keeps it running |
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
 | [`amy stop`](#amy-stop) | Stop the background loop; --all pulls the machine's handbrake |
 | [`amy tick`](#amy-tick) | Advance one piece of work by one move, discovering first |
@@ -208,24 +207,6 @@ Check everything the machine depends on before it touches a ticket
 amy doctor
 ```
 
-### `amy init`
-
-Set the machine up, as `amy setup` does: the same walk, asked the same way
-
-```sh
-amy init [options] [plugin]
-```
-
-| Argument | Required | What it is |
-| :-- | :-- | :-- |
-| `[plugin]` | no | configure this one plugin, and skip the machine's questions |
-
-| Option | Default | What it does |
-| :-- | :-- | :-- |
-| `--harness <name>` |  | answer the harness ask before it is asked |
-| `--workflow <name>` |  | answer the workflow ask; `none` sets up no workflow |
-| `--channels <a,b>` |  | answer the channels ask, by name, comma-separated |
-
 ### `amy look`
 
 Look at one piece of work now, rather than when it was next due
@@ -346,7 +327,7 @@ amy skills [options]
 
 ### `amy start`
 
-Start the loop in the background, and keep it running
+Start the loop under the machine's supervisor, which keeps it running
 
 ```sh
 amy start [options]
@@ -355,6 +336,7 @@ amy start [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--every <seconds>` | `60` | how long to wait after finding nothing to do |
+| `--detached` |  | start it detached instead: nothing brings it back if it stops |
 
 ### `amy status`
 

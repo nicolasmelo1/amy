@@ -38,13 +38,13 @@ somewhere else — built the way *you* work, not the way somebody else does.**
 
 ```sh
 npm install -g @amykit/cli
-amy init
+amy setup
 amy doctor
 amy discover && amy tick
 ```
 
-One install per machine. `amy init` writes the config and installs only the
-packages that configuration names; `doctor` checks them before a ticket moves.
+One install per machine. `amy setup` asks which harness, workflow and channels
+you want and installs only those; `doctor` checks them before a ticket moves.
 Run `tick` until you trust it, then `amy start --every 60` leaves the loop
 running in the background.
 
@@ -90,7 +90,6 @@ arguments, options and defaults.
 | `amy config` | What this machine would read, if it mounted |
 | `amy contract` | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
 | `amy doctor` | Check everything the machine depends on before it touches a ticket |
-| `amy init` | Set the machine up, as `amy setup` does: the same walk, asked the same way |
 | `amy look` | Look at one piece of work now, rather than when it was next due |
 | `amy plugin` | What is mounted, and what is not |
 | `amy queue` | Inspect and tidy the queue |
@@ -98,7 +97,7 @@ arguments, options and defaults.
 | `amy run` | Keep advancing until nothing is due |
 | `amy setup` | Set the machine up: the harness, the workflow, the channels, one question at a time |
 | `amy skills` | Install amy's skills into the harnesses on this machine |
-| `amy start` | Start the loop in the background, and keep it running |
+| `amy start` | Start the loop under the machine's supervisor, which keeps it running |
 | `amy status` | Show where every piece of work stands and what the queue holds |
 | `amy stop` | Stop the background loop; --all pulls the machine's handbrake |
 | `amy tick` | Advance one piece of work by one move, discovering first |
@@ -119,7 +118,7 @@ npm run gate
 
 This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a deliberately broken fixture.
 
-**27 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end readme-factory -->
 

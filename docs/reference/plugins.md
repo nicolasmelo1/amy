@@ -480,7 +480,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
-| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
+| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot |
 | `provider` | `string` | no | `""` | the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
@@ -718,6 +718,7 @@ plugins:
     directory: telegram
     operator: …
     server: https://api.telegram.org
+    topics: true
 ```
 
 | Setting | Type | Required | Default | What it is |
@@ -725,6 +726,7 @@ plugins:
 | `directory` | `string` | no | `telegram` | where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot |
 | `operator` | `string` | **yes** |  | your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers |
 | `server` | `string` | no | `https://api.telegram.org` | the Bot API server, for a local one instead of Telegram's |
+| `topics` | `boolean` | no | `true` | whether each piece of work opens a topic of its own; off, works share the private chat and a reply reaches one by quoting amy's message for it or starting with its id |
 
 ### `@amykit/plugin-terminal`
 

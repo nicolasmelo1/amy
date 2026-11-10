@@ -20,7 +20,7 @@ That is why adding a plugin nobody here has heard of costs no change to amy: it
 brings its own schema, and validation follows.
 
 ```sh
-amy init          # writes the template below
+amy setup         # asks, then writes the config
 amy doctor        # checks it, and exits non-zero when something is wrong
 ```
 
@@ -37,6 +37,8 @@ amy doctor        # checks it, and exits non-zero when something is wrong
 | `forks` | `string` | `""` | Where forks go when `--to` names no place; empty means the default — the project of a workflow of your own, or the profile's directory in AMY_HOME. |
 | `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
 | `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
+| `chat` | `{ budget: boolean }` | `{ budget: false }` | The chat amy answers in. A conversation is not work: unless `budget` is on, its agent runs are held to no ceiling and kept out of the ledger the work is admitted against. |
+| `chatSource` | `unknown` |  | The `chat` block as written, kept so a malformed one is refused rather than defaulted. |
 | `retentionDays` | `number` | `7` |  |
 | `staleClaimMs` | `number` | `30 * 60 * 1000` |  |
 | `maxItemAttempts` | `number` | `5` |  |
@@ -93,7 +95,7 @@ Three things this buys, and each one is a failure that used to be silent:
 - **A plugin with no schema takes no settings.** Giving one settings anyway is
   refused, because there is nothing that would read them.
 
-## The template `amy init` writes
+## The annotated example
 
 This is the file itself, taken from the constant the command writes it from — so
 it cannot drift from what you actually get.

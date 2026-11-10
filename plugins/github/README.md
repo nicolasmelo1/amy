@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `code-h
 ## Install
 
 ```sh
-# Add @amykit/plugin-github to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-github
 ```
 
 Then name it in `~/.amy/config.yaml`:

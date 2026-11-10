@@ -240,3 +240,15 @@ describe("what `amy add` does by default", () => {
     expect(() => addModeFor(DEFAULT_CONFIG, { fork: true, package: true })).toThrow("`--fork` and `--package` ask for opposite things");
   });
 });
+
+describe("the chat block", () => {
+  it("charges the chat only for a boolean true, and refuses anything else by name", async () => {
+    const { configuredChatProblems, loadConfigFrom } = await import("../src/config.js");
+    expect(loadConfigFrom("/state", "chat:\n  budget: true\n").chat.budget).toBe(true);
+    const quoted = loadConfigFrom("/state", 'chat:\n  budget: "false"\n');
+    expect(quoted.chat.budget).toBe(false);
+    expect(configuredChatProblems(quoted)).toEqual(["`chat.budget` must be true or false"]);
+    expect(configuredChatProblems(loadConfigFrom("/state", "chat: yes\n"))).toEqual(["`chat` must be a mapping"]);
+    expect(configuredChatProblems(loadConfigFrom("/state", "retentionDays: 7\n"))).toEqual([]);
+  });
+});

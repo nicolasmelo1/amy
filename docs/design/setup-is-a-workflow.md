@@ -30,6 +30,8 @@ sources:
   - { id: S27, kind: code, ref: "packages/core/src/config-schema.ts", said: "a plugin's configSchema is amy's own closed format, not JSON Schema: five types, string, number, boolean, string[] and record, and a dotted key names a leaf of a group" }
   - { id: S28, kind: decision, said: "setup asks a string, number, boolean or string[] field; a plugin whose configSchema has a record field is refused by amy setup, naming the field, and no config for it is written. Decided 2026-11-08" }
   - { id: S29, kind: decision, said: "a failure is a success, a declared refusal or an internal error, and nothing reads as green unread: a config.yaml that cannot be read or written stops the walk at STOPPED naming it, never read as nothing set. Decided 2026-11-08" }
+  - { id: S31, kind: decision, said: "the old amy init is killed completely, alias included: nobody uses it, so amy setup is the one command. Decided 2026-11-10" }
+  - { id: S32, kind: decision, said: "the ticket-to-qa roster arrives through the workflow's own setup, run by amy setup <workflow>. Decided 2026-11-10" }
   - { id: S30, kind: decision, said: "the terminal conversation ships as @amykit/plugin-terminal-conversation at plugins/terminal-conversation; plugins/terminal is the terminal-use driver a-phase-is-proven-not-asserted landed" }
 touches:
   - packages/workflow-setup/**
@@ -46,8 +48,52 @@ touches:
   - docs/start/installation.md
   - docs/start/quickstart.md
   - docs/reference/cli.md
+  - docs/start/workflows-and-profiles.md
+  - docs/catalog/index.md
+  - docs/concepts/architecture.md
+  - docs/concepts/plugins.md
+  - docs/concepts/ports.md
+  - docs/concepts/workflows.md
+  - docs/development/documentation.md
+  - docs/reference/contracts.md
+  - docs/reference/plugins.md
+  - docs/reference/workflows.md
+  - README.md
+  - package.json
+  - package-lock.json
+  - tsconfig.json
+  - packages/cli/tsconfig.json
+  - packages/cli/src/profiles.ts
+  - packages/cli/tests/architecture.test.ts
+  - packages/cli/tests/harnesses.test.ts
+  - registry/cli.json
+  - registry/workflow-setup.json
+  - registry/plugin-terminal-conversation.json
+  - registry/**
+  - plugins/*/README.md
+  - examples/*/README.md
+  - examples/workflow-ticket-to-qa/src/roster.ts
+  - examples/workflow-ticket-to-qa/tests/roster.test.ts
+  - plugins/hermes-agent/src/config.ts
+  - plugins/hermes-agent/src/profile.ts
+  - plugins/hermes-agent/tests/setup.test.ts
+  - packages/cli/README.md
+  - packages/cli/src/config-template.ts
+  - packages/cli/src/doctor.ts
+  - packages/cli/src/plugin-commands.ts
+  - packages/cli/tests/config-template.test.ts
+  - scripts/check-config-template.ts
+  - scripts/docs/blocks.ts
+  - scripts/docs/render/readme.ts
+  - scripts/docs/sources/config.ts
+  - docs/design/nothing-is-installed-by-default.md
+  - docs/design/the-errand-is-proven-end-to-end.md
+  - docs/design/the-config-is-written-by-what-is-mounted.md
+  - docs/reference/configuration.md
+  - docs/start/configuration.md
+  - .github/workflows/software-factory.yml
 criteria:
-  - { id: A1, statement: "amy setup and amy init run the same walk, and the setup workflow's diagram mounts with every state drawn and decided", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts, test:packages/cli/tests/setup.test.ts", sources: [S1, S2, S5, S14, S17, S22], done: true }
+  - { id: A1, statement: "amy setup is the one walk, amy init is gone, and the setup workflow's diagram mounts with every state drawn and decided", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts, test:packages/cli/tests/setup.test.ts", sources: [S1, S2, S5, S14, S17, S22, S31], done: true }
   - { id: A2, statement: "on a fresh home the first ask is the harness, detected ones first; choosing codex installs only the codex plugin and writes a codex ladder", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S3, S7, S8, S18], done: true }
   - { id: A3, statement: "after the harness is installed its setup and its doctor ping run, and a failed ping stops the walk naming the model", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S12], done: true }
   - { id: A4, statement: "the channels ask lists conversation and notifier plugins grouped by kind, and each chosen one is configured from its configSchema", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S10, S19], done: true }
@@ -60,12 +106,15 @@ criteria:
   - { id: A11, statement: "choosing a plugin whose configSchema has a record field is refused by amy setup naming the field, and no config for it is written", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S27, S28], done: true }
   - { id: A12, statement: "a config.yaml that does not parse, or cannot be written, stops the walk at STOPPED naming the file; no ask offers an empty default because of it", proof: "test:packages/cli/tests/setup.test.ts", sources: [S21, S29], done: true }
   - { id: A13, statement: "an operation setup reaches takes only input inside the shared accepted set, and A6's property runs over that set alone", proof: "test:packages/cli/tests/setup.test.ts", sources: [S9, S26], done: true }
+  - { id: A14, statement: "amy setup <workflow> writes the workflow's own files, the ticket-to-qa roster among them, into each profile that mounts it, never over an edited one", proof: "test:packages/cli/tests/setup.test.ts", sources: [S4, S32], done: true }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A2), test:packages/cli/tests/setup.test.ts (A5); the walk installs through amy add's path" }
   - { mechanism: config, answer: works, proof: "property:packages/cli/tests/setup.test.ts#flags_skip_a_question (A6); every write goes through the typed config writers amy add uses" }
   - { mechanism: profiles-and-state, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A9); setup's record lives in its own setup profile and touches no other profile's state" }
   - { mechanism: diagram, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A1)" }
   - { mechanism: record-migration, answer: n/a, why: "a new workflow; no older setup record exists to read" }
+  - { mechanism: agent-replies, answer: n/a, why: "only the hermes profile setting's description changed, to name amy setup hermes; no reply is read or written differently" }
+  - { mechanism: rendering, answer: n/a, why: "the plugin READMEs are regenerated with amy add in place of the removed amy init --install; nothing renders differently" }
   - { mechanism: workflow-tooling, answer: works, proof: "test:packages/workflow-setup/tests/conformance.test.ts (A1); the testkit walks every drawn edge" }
 guarantee:
   - { holds: "only the harness, workflow and plugins the person chose are installed", not_against: "a chosen plugin's own dependencies, which npm installs with it" }
@@ -82,7 +131,8 @@ cut:
   - "setting up a workflow's own settings beyond amy add's block: that is amy setup <workflow>"
   - "drawing setup in the window: when the-work-is-listed-everywhere lands, its asks show there through the conversation port, with no change to the setup workflow"
 deviations:
-  - "A6's any set of answers is any complete set: the walk asks every field of a chosen plugin's schema (S19), so a set that answers them all is what both sides of the property can carry — a field left unanswered by flags stops the walk asking for it, which is A7's stop, not a config"
+  - "A6's any set of answers is any complete set: the walk asks every field of a chosen plugin's schema (S19), so only a set that answers them all is what both sides of the property can carry"
+  - "a field left unanswered by flags stops the walk asking for it, which is A7's stop, not a config"
   - "a scoped record's id flattens the spec's slash (@amykit/plugin-slack walks as @amykit-plugin-slack), because a record's id is the one file the store and the queue keep for it"
   - "the setup profile is written only once the walk is one the machine will answer: with no conversation mounted and no flag answered, the walk stops at its first ask having written no config.yaml at all (A7's writing nothing more)"
 exit: "on a machine with nothing configured, amy setup asks which harness, installs only Codex, pings its model, adds a workflow and Slack, and a second amy setup slack shows the saved values as defaults"

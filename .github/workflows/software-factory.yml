@@ -111,7 +111,7 @@ jobs:
       # installing a set that does not fit together.
       - run: npm run typecheck
       - run: npm run check:release
-      # The config `amy init` writes, parsed and compared against the settings
+      # The annotated example config, parsed and compared against the settings
       # this build reads. It shipped carrying `agent:` twice — which YAML
       # refuses rather than merges — so init wrote a file the next command
       # threw on, and no test had ever parsed it.
@@ -180,6 +180,43 @@ jobs:
       - run: npm ci
       - run: npx tsc --build plugins/file-brief-store
       - run: npx vitest run plugins/file-brief-store
+
+  # The loop under each machine's own supervisor (S41 of
+  # docs/design/amy-answers-in-the-chat.md): launchd, systemd --user and Task
+  # Scheduler, each real. A loop killed hard comes back with a new pid, one
+  # stopped with `amy stop` does not, and nothing of it is left installed.
+  supervisor:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      AMY_SUPERVISOR_TEST: "1"
+      # npm runs lifecycle scripts through cmd.exe on Windows by default, and
+      # the workspace's `prepare` is written for a POSIX shell.
+      NPM_CONFIG_SCRIPT_SHELL: ${{ matrix.os == 'windows-latest' && 'C:\Program Files\Git\bin\bash.exe' || '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --build packages/cli
+      # A runner has no login session, so its systemd --user is started by
+      # lingering, and found through the runtime directory it makes.
+      - name: Start systemd --user
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          runtime="/run/user/$(id -u)"
+          for _ in $(seq 1 30); do test -S "$runtime/bus" && break; sleep 1; done
+          echo "XDG_RUNTIME_DIR=$runtime" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=$runtime/bus" >> "$GITHUB_ENV"
+      - run: npx vitest run packages/cli/tests/supervisor.test.ts
 
   # The end-to-end runs, which are the ones that drive what somebody installs
   # rather than what a test imports. They need bun, because the single

@@ -28,14 +28,15 @@ import { load, pluginsRootResolver } from "./loader.js";
 import { paths } from "./paths.js";
 import { Profile, profiles } from "./profiles.js";
 import { installIntoPluginsRoot } from "./install.js";
+import { pluginList } from "./slices.js";
 import { Contribution, gather, runSetup as runPluginSetups, writeFiles } from "./plugin-commands.js";
 import { CheckFinding, Checks, Catalog, ChannelChoice, ConfigFile, Harnesses, Installer, Result, WorkflowChoice } from "@amykit/workflow-setup";
 
 /** The one profile the walk itself lives in, whatever else the machine drives. */
-export const SETUP_PROFILE = "setup";
+const SETUP_PROFILE = "setup";
 
 /** The workflow package that walks a machine from nothing to configured. */
-export const SETUP_WORKFLOW = "@amykit/workflow-setup";
+const SETUP_WORKFLOW = "@amykit/workflow-setup";
 
 /**
  * The plugins a machine with nothing installed still has to mount for the
@@ -174,7 +175,7 @@ export function resolveSetupPlugin(word: string): string {
  * config.yaml, and how it runs a plugin's setup and checks. The conversation
  * comes from the terminal plugin the profile mounts, not from here.
  */
-export function setupHost(home: string, runner: CommandRunner, out: (line: string) => void): { plugin: Plugin; runtime: () => WorkflowRuntime } {
+function setupHost(home: string, runner: CommandRunner, out: (line: string) => void): { plugin: Plugin; runtime: () => WorkflowRuntime } {
   let context: PluginContext | undefined;
 
   const plugin = definePlugin({
@@ -378,8 +379,10 @@ async function writeStep(file: string, write: () => void): Promise<Result<void>>
  * machine runs them for itself.
  *
  * A plugin's setup is its files and the setups it declares, which is what
- * `amy init` ran for the whole machine and what the walk runs for the setup
- * profile after an install brought something new; its checks are what those
+ * the machine runs for a profile when a package arrives. The walk runs it
+ * for the setup profile and for every profile that mounts the plugin, so a
+ * workflow's own files arrive in the profile that drives it, never over one
+ * already edited; its checks are what those
  * setups answered, folded into findings the walk can name. The harness model
  * ping the walk stops on is one of these findings: it is whatever the
  * plugin's own setup answered, said as it said it.
@@ -402,7 +405,11 @@ function checksPort(home: string, runner: CommandRunner, out: (line: string) => 
     try {
       const config = loadConfig(home);
       const { profile } = setupProfile(config, home, { terminal: true });
-      const checks = await prepare(config, profile);
+      const mounting = Object.values(profiles(config, home)).filter((other) =>
+        other.name !== SETUP_PROFILE && (other.workflow === plugin || pluginList(config, other).includes(plugin)),
+      );
+      const checks: Check[] = [];
+      for (const each of [profile, ...mounting]) checks.push(...(await prepare(config, each)));
       const named = plugin.replace(/^@.*\//, "").toLowerCase();
       const saidAboutIt = checks.filter((check) => check.label.toLowerCase().includes(named));
       return findings(saidAboutIt.length > 0 ? saidAboutIt : checks.filter((check) => !check.ok));
@@ -418,7 +425,7 @@ function checksPort(home: string, runner: CommandRunner, out: (line: string) => 
 }
 
 /** The profile the walk mounts in: the one the config names, or a fresh one. */
-export function setupProfile(config: AmyConfig, home: string, options: { terminal: boolean }): { profile: Profile; configured: boolean } {
+function setupProfile(config: AmyConfig, home: string, options: { terminal: boolean }): { profile: Profile; configured: boolean } {
   const named = profiles(config, home)[SETUP_PROFILE];
   if (named) return { profile: named, configured: true };
   return {
@@ -448,7 +455,7 @@ export function setupProfile(config: AmyConfig, home: string, options: { termina
  * own algorithm from here. Everything the person later chooses is installed
  * into the root by the walk itself, and takes that path first.
  */
-export function setupResolver(home: string): (spec: string) => string {
+function setupResolver(home: string): (spec: string) => string {
   const machine = pluginsRootResolver(home, paths(home).plugins);
   return (spec: string) => {
     try {

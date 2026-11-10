@@ -6,8 +6,8 @@
 //
 //   POST /bot<token>/<method>        what amy calls, as Telegram answers it
 //   GET  /file/bot<token>/<path>     a file's bytes
-//   POST /operator/say               {text, topic?, from?}: somebody writes in the chat
-//   GET  /operator/world             the topics, what amy sent, what Telegram still holds
+//   POST /operator/say               {text, topic?, from?, quotes?}: somebody writes in the chat
+//   GET  /operator/world             the topics, what amy sent in them and in the chat, what Telegram still holds
 import fs from "node:fs";
 import http from "node:http";
 import { botApiStandIn } from "../../../plugins/telegram/tests/stand-in.js";
@@ -31,12 +31,16 @@ const server = http.createServer((request, response) => {
       };
       try {
         if (request.url === "/operator/say") {
-          const said = JSON.parse(body) as { text: string; topic?: number; from?: number };
-          send(200, JSON.stringify(telegram.say(said.text, { ...(said.topic === undefined ? {} : { topic: said.topic }), ...(said.from === undefined ? {} : { from: said.from }) })));
+          const said = JSON.parse(body) as { text: string; topic?: number; from?: number; quotes?: number };
+          send(200, JSON.stringify(telegram.say(said.text, {
+            ...(said.topic === undefined ? {} : { topic: said.topic }),
+            ...(said.from === undefined ? {} : { from: said.from }),
+            ...(said.quotes === undefined ? {} : { quotes: said.quotes }),
+          })));
           return;
         }
         if (request.url === "/operator/world") {
-          send(200, JSON.stringify({ topics: Object.fromEntries(telegram.topics), sent: telegram.sent, pending: telegram.pending(), violations, calls: telegram.calls.map((call) => call.method) }));
+          send(200, JSON.stringify({ topics: Object.fromEntries(telegram.topics), sent: telegram.sent, inTheChat: telegram.inTheChat, pending: telegram.pending(), violations, calls: telegram.calls.map((call) => call.method) }));
           return;
         }
         const answered = await telegram.transport({ url: `http://stand-in${request.url}`, method: request.method === "GET" ? "GET" : "POST", headers: {}, ...(body ? { body } : {}) });

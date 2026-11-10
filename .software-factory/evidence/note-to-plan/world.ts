@@ -225,7 +225,7 @@ export function build(root: string, { source }: { source: string }): void {
   }
 }
 
-/** The edit an operator makes to what `amy init` wrote. */
+/** The edit an operator makes to the config `amy setup` wrote. */
 export function configure(root: string): void {
   fs.writeFileSync(path.join(root, "home", ".amy", "config.yaml"), config(root), "utf-8");
 }

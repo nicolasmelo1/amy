@@ -27,7 +27,7 @@ mkdir -p "$work/bin" "$work/home" "$work/global"
 npm_real=$(command -v npm)
 
 # Amy is installed alone; the plugins its config names arrive through
-# `amy init --install`, into its own root.
+# its own installer, into its own root.
 AMY_PACKAGES="@amykit/cli" \
   AMY_INSTALL_LIB="$work/lib" "$repo/scripts/install.sh" "$work/bin" >/dev/null
 amy="$work/bin/amy"

@@ -43,7 +43,7 @@ ones detected on this machine offered first — which workflow it should drive,
 and which channels should reach you. It installs only what you chose, asks
 each chosen plugin's settings one field at a time — offering the value the
 machine already holds as the default — and checks what it configured before
-it says it is done. `amy init` is the same walk under the name it had before.
+it says it is done.
 
 With no terminal to answer an ask — a script, a pipe, CI — the walk stops on
 the question and prints the flag that answers it, so a pipeline says it all
@@ -173,11 +173,15 @@ Which variables matter depends on which plugins you mount:
 
 | Variable | Read by |
 | :-- | :-- |
+| `AMY_PROJECT_ENV` | `@amykit/cli` |
+| `AMY_SUPERVISOR` | `@amykit/cli` |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
+| `LANG` | `@amykit/cli` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `NO_COLOR` | `@amykit/cli` |
 | `OLLAMA_API_KEY` | `@amykit/plugin-hermes-agent` |
+| `PATH` | `@amykit/cli` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 | `TERM` | `@amykit/cli` |
 | `VITEST` | `@amykit/test-fixtures` |

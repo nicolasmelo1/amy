@@ -42,6 +42,7 @@
   "dependencies": {
     "@amykit/agent-kit": "^0.6.0",
     "@amykit/core": "^0.6.0",
+    "@amykit/model-specs": "^0.6.0",
     "@amykit/plugin-file-log": "^0.6.0",
     "@amykit/plugin-file-notes": "^0.6.0",
     "@amykit/plugin-file-queue": "^0.6.0",
@@ -60,7 +61,6 @@
     "@amykit/plugin-agent-relay": "^0.6.0",
     "@amykit/plugin-command-gate": "^0.6.0",
     "@amykit/plugin-file-worktree": "^0.6.0",
-    "@amykit/plugin-serial-engine": "^0.6.0",
     "@amykit/test-fixtures": "^0.1.0",
     "@amykit/workflow-errand": "^0.6.0",
     "@amykit/workflow-note-to-plan": "^0.6.0",

@@ -37,7 +37,7 @@ amy doctor                # every dependency, checked before it touches a ticket
 `setup` asks rather than assuming — installing into Amy's private plugin root
 is a change to the machine, not to amy. With nothing to ask on it stops on the
 question and prints the flag that answers it, so a pipeline can say it all at
-once. `amy init` is the same walk under the name it had before.
+once.
 
 A fresh install drives nothing until a workflow is chosen — `setup` offers the
 published ones, or `amy add` adds one later. `amy add` is what a machine gains

@@ -61,4 +61,13 @@ describe("diagnose, with a conversation mounted", () => {
 
     expect(checks.some((check) => check.label === "conversation")).toBe(false);
   });
+
+  it("names malformed chat budget policy before daemon startup", async () => {
+    const checked = await diagnose({
+      ...deps(),
+      config: { ...DEFAULT_CONFIG, chat: { budget: false }, chatSource: { budget: "true" } },
+    });
+
+    expect(checked).toContainEqual({ label: "chat settings", ok: false, detail: "`chat.budget` must be true or false" });
+  });
 });

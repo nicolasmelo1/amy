@@ -51,7 +51,7 @@ about code that no longer exists is not a proof.
 | Each workflow's states, waiting states, terminal states, actions | The built workflow | Its exported machine object |
 | Environment variables a package needs | Its `src` | Every `process.env.X` it names |
 | `config.yaml` keys and defaults | `packages/cli/src/config.ts` | AST over `AmyConfig` and `DEFAULT_CONFIG` |
-| The `amy init` templates | The same file | The constants the command writes them from |
+| The annotated example config | The same file | The constant that holds it |
 | Gates, rules, and why a rule is off | `.software-factory/policy.yaml` | Including the YAML comments, which is where the reasons live |
 | Releases | GitHub, cached | See below |
 | Pending changes | `.changeset/` | Front matter and body |

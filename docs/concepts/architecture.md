@@ -136,7 +136,7 @@ this repository.
 | Package | Kind | Depends on, in this workspace |
 | :-- | :-- | :-- |
 | `@amykit/agent-kit` | library | `@amykit/core` |
-| `@amykit/cli` | cli | `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-serial-engine`, `@amykit/plugin-terminal-conversation`, `@amykit/services`, `@amykit/ui`, `@amykit/workflow-setup` |
+| `@amykit/cli` | cli | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs`, `@amykit/plugin-file-log`, `@amykit/plugin-file-notes`, `@amykit/plugin-file-queue`, `@amykit/plugin-file-store`, `@amykit/plugin-file-tasks`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-serial-engine`, `@amykit/plugin-terminal-conversation`, `@amykit/services`, `@amykit/ui`, `@amykit/workflow-setup` |
 | `@amykit/core` | library | _nothing_ |
 | `@amykit/model-specs` | library | `@amykit/core` |
 | `@amykit/services` | library | `@amykit/core` |

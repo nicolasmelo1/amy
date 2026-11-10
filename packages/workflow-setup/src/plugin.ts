@@ -1,5 +1,5 @@
 import { ConfigSchema, Conversation, defineWorkflow, optional, port } from "@amykit/core";
-import { SetupState, decide } from "./machine.js";
+import { decide } from "./machine.js";
 import { DEFAULT_POLICY, observe } from "./observation.js";
 import { actions, remember } from "./actions.js";
 
@@ -88,4 +88,3 @@ export const plugin = defineWorkflow({
   remember,
 });
 
-export type { SetupState };

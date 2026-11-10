@@ -3,8 +3,8 @@
   "files": {
     ".allowed-root-files": "3c024db409617cf619369c7e37fe503c92ce2b0cab9198100d473ee667a9fbde",
     ".githooks/pre-commit": "8aa502cf3d92ec6179baac5f52de14b30d878af81a9f99ba0f590ee921af08d5",
-    ".github/workflows/software-factory.yml": "b811ea08761e6c63f563ee10bb078fe4804f2188153ce02902bf8f7743d90c54",
-    ".software-factory/policy.yaml": "f207b58cfe4a03453ab0287f9113d1448877f6dc068c494c276df892c3f2d7ac",
+    ".github/workflows/software-factory.yml": "7de8fb06b80ea7de13105fb07fe0fbf3e35898c65ebe87394f9939ddd33a23bd",
+    ".software-factory/policy.yaml": "f5abee0c5f4efb040f5cdb89fce2677929a2162960009b058967dd781103697e",
     ".software-factory/ratchet.yaml": "c9f51fc29e8c172d4a91cd318554603984d23c8bb5d41af011a0a5d143969d6f",
     ".software-factory/rules/a-delivered-plan-keeps-no-promise.yaml": "79df6d01907a534d2d2c5a2e196ef1b6d4c2cc6f5d2150491e3e703d1600b0d4",
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",

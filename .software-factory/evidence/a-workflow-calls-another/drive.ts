@@ -197,7 +197,9 @@ function walkthrough(): State {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-calls-"));
   try {
     for (const dir of ["home", "world", "checkouts"]) fs.mkdirSync(path.join(root, dir), { recursive: true });
-    amy(root, ["init"]);
+    // The machine as the operator's `amy setup` left it: its state directory,
+    // with the config the run writes next.
+    fs.mkdirSync(path.join(root, "home", ".amy"), { recursive: true });
     installPlugins(root);
 
     // A workflow of one's own, drawn first, then given its decisions.

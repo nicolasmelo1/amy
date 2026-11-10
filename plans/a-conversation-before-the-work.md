@@ -73,7 +73,7 @@ failures:
   - { step: panel, when: "no conversation port is mounted anywhere", goes_to: "read-only panel naming the plugin that would give it one" }
   - { step: ask, when: "a harness tries to commit", goes_to: refused }
 cut:
-  - "the conversation from Slack and Telegram without the window: plans/amy-answers-in-the-chat.md"
+  - "the conversation from Slack and Telegram without the window: docs/design/amy-answers-in-the-chat.md"
   - "a thread the window keeps for itself: the daemon would never read it"
   - "message metadata as authentication"
   - "the decision as enter's default"
@@ -87,4 +87,4 @@ until done — and amy has no place for it: one thread whose replies are answers
 and one agent call that is one prompt and one reply.
 
 This row is the window's half only. The same conversation, straight from Slack
-and Telegram with no window, is [amy answers in the chat](amy-answers-in-the-chat.md).
+and Telegram with no window, is [amy answers in the chat](../docs/design/amy-answers-in-the-chat.md).

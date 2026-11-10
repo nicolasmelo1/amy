@@ -22,7 +22,7 @@ export const configSchema = {
   profile: {
     type: "string",
     description:
-      "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot",
+      "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot",
     default: "amy",
   },
   timeoutMs: {

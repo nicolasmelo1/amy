@@ -74,7 +74,7 @@ gh search repos --topic amy-plugin
 Anything either query returns is installable the same way everything else is:
 
 ```sh
-amy init --install
+amy add <package>
 ```
 
 ```yaml

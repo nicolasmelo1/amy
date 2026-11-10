@@ -420,6 +420,40 @@ already hands every action an agent that accounts for each reply and an
 from `budget` through the declaration's `progress(scope)`, and its roster is
 read from the profile when a look needs it, as before.
 
+### **amy answers in the chat.**
+
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`
+
+A message in the Telegram private chat outside every topic, or a root message
+in the Slack channel, is answered there. A plain message is an ask: the
+harness runs read-only, under its own sandbox or not at all, and nothing it
+names runs. A message starting with `/action` lets that turn act on amy: the
+commands its answer names in a fenced `amy` block run as amy with arguments,
+never a shell, and one off the fixed list refuses the whole block. `/new`
+starts another conversation in a chat without threads, `/harness <name>`
+switches the harness mid-conversation, and every turn sends the conversation
+whole. A long turn's progress is one message edited in place. A conversation
+is not work: its agent runs are held to no budget ceiling and kept out of the
+ledger, unless `chat.budget: true` asks for them to be counted.
+
+`config apply` writes a new `config.yaml` from the chat, shown as a diff,
+only when it mounts in a child first. `restart` lets a new mount through only
+when it boots, and the new loop says its pid in the chat. A loop whose
+workflow does not mount still answers in the chat and names the failure.
+
+`amy start` now starts the loop under the machine's supervisor — launchd on
+macOS, systemd --user on Linux, Task Scheduler on Windows — which starts it
+again when it dies; `amy stop` removes it so nothing does. `--detached` keeps
+the old behaviour, which is also what a machine with no supervisor gets.
+`amy doctor` names the supervisor in use and refuses a Linux user with
+lingering off.
+
+The core exports the chat's pieces (`answerTheChat`, `addressed`,
+`ChatProgress`, `Transcripts`, `commandsIn`) and `Conversation` gains optional
+`threads`, `edit`, `chat`, `settle`, `say` and `revise`. Telegram takes
+`topics: false`, where works share the private chat and a reply reaches one by
+quoting amy's message for it or starting with its id.
+
 ### An operation is declared once, and every door will run it the same way.
 
 `minor` · `@amykit/core`, `@amykit/services`
@@ -514,7 +548,7 @@ command to ask it, and the shipped skill asked questions of its own.
 
 ### **Setup is a workflow.**
 
-`minor` · `@amykit/cli`, `@amykit/plugin-terminal-conversation`, `@amykit/workflow-setup`
+`minor` · `@amykit/cli`, `@amykit/plugin-hermes-agent`, `@amykit/plugin-terminal-conversation`, `@amykit/workflow-setup`, `@amykit/workflow-ticket-to-qa`
 
 `amy init` wrote a template and left the person to it. `amy setup` asks, one
 question at a time, and is itself an amy workflow drawn in Mermaid: which
@@ -525,8 +559,9 @@ time with the value the machine already holds offered as the default, and
 checking what it configured before it says it is done. `amy setup <plugin>`
 goes straight to configuring that one plugin. With no terminal to answer an
 ask, the walk stops on the question and prints the flag that answers it, so a
-pipeline can say it all at once. `amy init` stays as an alias running the same
-walk, and the terminal it asks in ships as
+pipeline can say it all at once. The old `amy init` is gone, alias included, and
+`amy setup <workflow>` writes the workflow's own files — the ticket workflow's
+roster — into the profiles that mount it. The terminal it asks in ships as
 `@amykit/plugin-terminal-conversation`, so the window can draw the same asks
 later with no change to the workflow.
 
@@ -543,6 +578,20 @@ plugins:
 ```
 
 **Telegram's and Slack's contracts are vendored and kept fresh.** Telegram publishes its Bot API only as a reference page, so `npm run contracts:update` derives that page into its types and methods, and `check:contracts` fails when today's page derives to something else. Slack's served OpenAPI description joins GitHub's and Linear's. The test fixtures export `assertValidBotApiCall`, `assertValidBotApiResult`, `assertValidSlackCall` and `assertValidSlackAnswer`, and both plugins' stand-ins are held to them.
+
+### **The chat recovers, pays and reads fairly.**
+
+`patch` · `@amykit/cli`, `@amykit/plugin-slack`
+
+When the workflow does not mount, the chat's recovery grows one group of
+plugins a mount at a time instead of trying every subset, and keeps a
+thread-only adapter out of the way of one that can answer in the chat. Under
+`chat.budget` with a dollar ceiling, `/harness` no longer offers a harness
+whose turns nothing can price. A config lock left by a dead writer is cleared
+under a guard named after the owner that was seen dead, so a writer acting on
+an old look never removes a replacement. In Slack, work-thread reads no
+longer hold the chat's follow-ups unread: the chat reads by its second minute
+at the latest.
 
 ### **The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own `configSchema`. `amy init` writes a config that carries only the machine, and a commented example that teaches the shape; `amy add <workflow>` writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. `amy config explain` lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; `amy config explain <plugin>` narrows to one.
 

@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in
 ## Install
 
 ```sh
-# Add @amykit/plugin-hermes-agent to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-hermes-agent
 ```
 
 Then name it in `~/.amy/config.yaml`:
@@ -38,7 +37,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model. Empty leaves the choice to hermes |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `hermes:<model>`. Empty means a single agent named `hermes` |
-| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot |
+| `profile` | `string` | no | `amy` | the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot |
 | `provider` | `string` | no | `""` | the Hermes provider whose account windows amy reads. Use openai-codex, anthropic, openrouter, or ollama-cloud; empty leaves the account usage unavailable rather than guessing |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 

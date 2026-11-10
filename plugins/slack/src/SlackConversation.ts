@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { Ask, Conversation, Reply, ThreadRef } from "@amykit/core";
+import { Ask, ChatMessage, Conversation, Reply, ThreadRef } from "@amykit/core";
 import { SlackApi, TooLarge } from "./SlackApi.js";
 import { ThreadMap, privateDirectory } from "./ThreadMap.js";
 
@@ -108,9 +108,18 @@ const KEYCAPS = ["one", "two", "three", "four", "five", "six", "seven", "eight",
 const APPROVAL_REACTIONS = ["white_check_mark", "x"] as const;
 const SUBMIT_REACTION = "white_check_mark";
 
+/** A conversation's thread is read at most this often: Slack may allow conversations.replies once a minute. */
+const CHAT_THREAD_EVERY_MS = 60 * 1000;
+
 export class SlackConversation implements Conversation {
   readonly asks = true as const;
-  private readonly threads: ThreadMap;
+  readonly threads = true as const;
+  readonly edit = true as const;
+  /** The channel: its conversations and claims are its own. */
+  get source(): string {
+    return `slack:${this.options.channel}`;
+  }
+  private readonly threadMap: ThreadMap;
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   private botUser?: Promise<string>;
@@ -120,7 +129,7 @@ export class SlackConversation implements Conversation {
     private readonly api: SlackApi,
     private readonly options: SlackConversationOptions,
   ) {
-    this.threads = new ThreadMap(options.directory, {
+    this.threadMap = new ThreadMap(options.directory, {
       maxWaitMs: options.lockWaitMs,
       leaseMs: options.leaseMs,
       readOnly: options.readOnly,
@@ -136,7 +145,7 @@ export class SlackConversation implements Conversation {
     let known: string | undefined;
     try {
       // Known first, which marks it used, so the prune after it keeps it.
-      known = this.threads.known(workId, this.options.channel);
+      known = this.threadMap.known(workId, this.options.channel);
     } catch (error) {
       // A promise-returning method rejects; it does not throw at the caller.
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));
@@ -156,7 +165,7 @@ export class SlackConversation implements Conversation {
     if (message.files?.length) {
       throw new Error("@amykit/plugin-slack does not upload files; post their paths as text");
     }
-    this.threads.used(thread.id);
+    this.threadMap.used(thread.id);
     this.pruneNowAndThen();
     if (!message.ask) return this.postText(thread.id, message.text);
 
@@ -187,7 +196,7 @@ export class SlackConversation implements Conversation {
   async replies(thread: ThreadRef, since: string): Promise<Reply[]> {
     const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
-    this.threads.used(thread.id);
+    this.threadMap.used(thread.id);
     this.pruneNowAndThen();
     const bot = await this.botUserId();
     // A later copy of the same ask must see the earlier decision. Slack has
@@ -252,7 +261,7 @@ export class SlackConversation implements Conversation {
    * from it. The thread stays in Slack; the next `open` starts a new one.
    */
   forget(workId: string): void {
-    const ts = this.threads.forget(workId);
+    const ts = this.threadMap.forget(workId);
     if (ts) this.dropFiles(ts);
   }
 
@@ -269,9 +278,179 @@ export class SlackConversation implements Conversation {
     if (days <= 0) return { threads: 0, files: 0 };
     const cutoff = now.getTime() - days * DAY_MS;
 
-    const threads = this.threads.prune(cutoff);
+    const threads = this.threadMap.prune(cutoff);
     for (const ts of threads) this.dropFiles(ts);
     return { threads: threads.length, files: pruneFiles(this.filesDirectory, cutoff) };
+  }
+
+  /**
+   * The messages in the channel that reached no work, oldest first, until
+   * they are settled: a root message the operator posts, and the operator's
+   * replies in that root's thread, which is one conversation (S14). The
+   * channel is read for them first, so it is read all the time (S20).
+   */
+  async chat(): Promise<ChatMessage[]> {
+    if (!this.options.readOnly) await this.fileChat();
+    const directory = path.join(this.chatDirectory(), "inbox");
+    return jsonIn(directory)
+      .flatMap((name) => {
+        const filed = readJson<ChatMessage>(path.join(directory, name));
+        // Filed while somebody else was the operator: theirs to have said, not this operator's to act on.
+        return filed && filed.author === this.options.operator ? [filed] : [];
+      })
+      .sort((a, b) => a.at.localeCompare(b.at));
+  }
+
+  async settle(id: string): Promise<void> {
+    const message = /^slack:([^:]+):(\d+\.\d+)$/.exec(id);
+    if (!message || message[1] !== this.options.channel) throw new Error(`${id} is not a message this channel filed`);
+    fs.rmSync(path.join(this.chatDirectory(), "inbox", `${safeName(message[2]!)}.json`), { force: true });
+  }
+
+  /** Says something in a conversation's thread. */
+  async say(place: string, text: string): Promise<string> {
+    const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text });
+    return String(body.ts);
+  }
+
+  async revise(_place: string, id: string, text: string): Promise<void> {
+    await this.api.call("chat.update", { channel: this.options.channel, ts: id, text });
+  }
+
+  /**
+   * Files the operator's new root messages, and their replies in the
+   * threads of conversations still going, each once. The first read starts
+   * from now: what was said in the channel before amy listened is not asked
+   * of it. A thread goes quiet a day after the operator last wrote in it.
+   */
+  private async fileChat(): Promise<void> {
+    const bot = await this.botUserId();
+    const chat = this.chatDirectory();
+    privateDirectory(chat);
+    const cursorFile = path.join(chat, "cursor.json");
+    const cursor = readJson<{ oldest: string }>(cursorFile)?.oldest;
+    if (cursor === undefined) {
+      writeJsonFile(cursorFile, { oldest: msToTs(this.clock().getTime()) });
+      return;
+    }
+    // Slack may allow conversations.history once a minute too: the channel is
+    // read when that is due, and what was filed is handed out meanwhile.
+    const historyQuota = path.join(chat, "history.json");
+    if (this.clock().getTime() - (readJson<{ at: number }>(historyQuota)?.at ?? 0) >= CHAT_THREAD_EVERY_MS) {
+      writeJsonFile(historyQuota, { at: this.clock().getTime() });
+      writeJsonFile(cursorFile, { oldest: await this.fileRoots(cursor, bot) });
+    }
+    await this.fileDueReplies(chat, bot);
+  }
+
+  /** The chat's own state, by channel: a channel changed in the config starts afresh and never answers the old one's messages. */
+  private chatDirectory(): string {
+    return path.join(this.options.directory, "chat", safeName(this.options.channel));
+  }
+
+  /**
+   * One conversation's replies per minute, whichever has waited longest:
+   * Slack may allow conversations.replies once a minute for the whole app, not
+   * once per thread, so the chat shares that one call rather than queueing.
+   */
+  private async fileDueReplies(chat: string, bot: string): Promise<void> {
+    const now = this.clock().getTime();
+    // Work threads read whenever their work asks, and each read takes the
+    // shared allowance. The chat waits for it, but never past its own second
+    // slot: work reads under a minute apart would otherwise hold the chat's
+    // follow-ups unread for as long as the work goes on. A read Slack refuses
+    // for that is a 429, which the API waits out.
+    const free = now - (readJson<{ at: number }>(this.repliesQuota())?.at ?? 0) >= CHAT_THREAD_EVERY_MS;
+    const chatReads = path.join(chat, "chat-replies.json");
+    const owed = now - (readJson<{ at: number }>(chatReads)?.at ?? 0) >= 2 * CHAT_THREAD_EVERY_MS;
+    if (!free && !owed) return;
+    const threads = jsonIn(path.join(chat, "threads")).map((name) => {
+      const file = path.join(chat, "threads", name);
+      return { file, kept: readJson<{ read: string; last: number; checked?: number }>(file) };
+    });
+    const due = threads
+      .filter((one) => one.kept)
+      .sort((a, b) => (a.kept!.checked ?? 0) - (b.kept!.checked ?? 0))[0];
+    if (!due) return;
+    writeJsonFile(chatReads, { at: now });
+    await this.fileReplies(due.file, bot);
+  }
+
+  /** The operator's root messages since the cursor, each a conversation from now on; answers the new cursor. */
+  private async fileRoots(cursor: string, bot: string): Promise<string> {
+    let oldest = cursor;
+    for (const message of await this.pages("conversations.history", { channel: this.options.channel, oldest: cursor })) {
+      if (!message.ts) continue;
+      if (tsToMicros(message.ts) > tsToMicros(oldest)) oldest = message.ts;
+      const root = !message.thread_ts || message.thread_ts === message.ts;
+      if (!root || !this.isOperatorMessage(message, bot)) continue;
+      this.fileChatMessage(message, message.ts);
+      // A newly discovered root waits behind conversations already awaiting a
+      // reply; otherwise a steady stream of roots can starve their follow-ups.
+      const now = this.clock().getTime();
+      writeJsonFile(path.join(this.chatDirectory(), "threads", `${safeName(message.ts)}.json`), { read: message.ts, last: now, checked: now });
+    }
+    return oldest;
+  }
+
+  /** The operator's replies in one conversation's thread, at most once a minute, until it goes quiet. */
+  private async fileReplies(file: string, bot: string): Promise<void> {
+    const now = this.clock().getTime();
+    const kept = readJson<{ read: string; last: number; checked?: number }>(file);
+    if (!kept) return;
+    const root = path.basename(file, ".json");
+    let { read, last } = kept;
+    let messages: SlackMessage[];
+    try {
+      messages = await this.threadMessages(root, tsToMicros(kept.read));
+    } catch (error) {
+      // The root is gone: that conversation is over, and the others are still read.
+      if (/thread_not_found|message_not_found/.test(messageOf(error))) {
+        fs.rmSync(file, { force: true });
+        // What was asked there is gone with it: nothing is left to answer in.
+        const inbox = path.join(this.chatDirectory(), "inbox");
+        for (const name of jsonIn(inbox)) {
+          if (readJson<ChatMessage>(path.join(inbox, name))?.place === root) fs.rmSync(path.join(inbox, name), { force: true });
+        }
+        return;
+      }
+      throw error;
+    }
+    for (const message of messages) {
+      if (!message.ts || message.ts === root || !this.isOperatorMessage(message, bot)) continue;
+      this.fileChatMessage(message, root);
+      if (tsToMicros(message.ts) > tsToMicros(read)) read = message.ts;
+      last = now;
+    }
+    writeJsonFile(file, { read, last, checked: now });
+  }
+
+  /** One channel-wide conversations.replies allowance, shared by chat and work threads. */
+  private repliesQuota(): string {
+    return path.join(this.chatDirectory(), "replies.json");
+  }
+
+
+  private fileChatMessage(message: SlackMessage, root: string): void {
+    const text = (message.text ?? "").trim();
+    if (!text) return;
+    const target = path.join(this.chatDirectory(), "inbox", `${safeName(message.ts!)}.json`);
+    const filed: ChatMessage = {
+      id: `slack:${this.options.channel}:${message.ts}`,
+      at: microsToInstant(tsToMicros(message.ts!)),
+      author: message.user!,
+      text,
+      place: root,
+      threaded: true,
+    };
+    writeJsonFile(target, filed);
+  }
+
+  /** The operator, writing as themselves: no bot, no other person, no channel event. */
+  private isOperatorMessage(message: SlackMessage, bot: string): boolean {
+    if (message.bot_id || message.user === bot) return false;
+    if (message.subtype && message.subtype !== "file_share" && message.subtype !== "thread_broadcast") return false;
+    return message.user === this.options.operator;
   }
 
   private clock(): Date {
@@ -526,7 +705,7 @@ export class SlackConversation implements Conversation {
    */
   private async startThread(workId: string, title: string): Promise<ThreadRef> {
     const channel = this.options.channel;
-    const ts = await this.threads.open(workId, channel, async (recoverSince) => {
+    const ts = await this.threadMap.open(workId, channel, async (recoverSince) => {
       const recovered = recoverSince === undefined ? undefined : await this.findRoot(workId, recoverSince);
       if (recovered) return { ts: recovered, posted: false };
       const { body } = await this.api.call("chat.postMessage", {
@@ -565,7 +744,11 @@ export class SlackConversation implements Conversation {
   }
 
   /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
-  private threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+  private async threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+    // Work and chat consume Slack's same channel-wide replies allowance.
+    // Every request records it, so the next scheduled chat read never races a
+    // work-thread request under a one-call-per-minute installation.
+    writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
     return this.pages("conversations.replies", {
       channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
       ...(inclusive ? { inclusive: "true" } : {}),
@@ -810,6 +993,32 @@ function removeIfStale(file: string, cutoff: number): boolean {
   }
   fs.rmSync(aside, { force: true });
   return true;
+}
+
+function jsonIn(directory: string): string[] {
+  try {
+    return fs.readdirSync(directory).filter((name) => name.endsWith(".json"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+function readJson<T>(file: string): T | undefined {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf-8")) as T;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT" || error instanceof SyntaxError) return undefined;
+    throw error;
+  }
+}
+
+/** Written aside and renamed, so a reader never sees half of it. */
+function writeJsonFile(file: string, value: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const partial = path.join(path.dirname(file), `.${randomUUID()}.partial`);
+  fs.writeFileSync(partial, `${JSON.stringify(value)}\n`, { mode: 0o600 });
+  fs.renameSync(partial, file);
 }
 
 function mtimeOf(file: string): number | undefined {

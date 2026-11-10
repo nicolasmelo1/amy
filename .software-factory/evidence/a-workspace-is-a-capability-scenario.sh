@@ -6,7 +6,7 @@
 # Two halves. The first installs the executable and drives a workflow that
 # touches no code — a support inbox, added from a path — on an install whose
 # config names none of repos, workspaceRoot, checkouts, defaultBranch,
-# baseBranch, gate and worktrees and mounts no workspace: from `amy init` to
+# baseBranch, gate and worktrees and mounts no workspace: from `amy setup` to
 # an answer sent after the operator approved it in a Telegram topic. The
 # stand-ins are a `claude` on the PATH and Telegram's Bot API on the loopback.
 #

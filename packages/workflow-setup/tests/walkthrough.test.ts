@@ -21,17 +21,16 @@ function scopedTo(runtime: Awaited<ReturnType<SetupWorld["mounted"]>>["runtime"]
   return { ...runtime.newRecord(plugin, now), state: "PLUGIN_INSTALLED", input: { plugin } };
 }
 
-describe("the walk both commands enter", () => {
-  it("runs the same walk for amy setup and for amy init", async () => {
-    // `amy init` is an alias (S1): it starts the same record the same way,
-    // so the walk cannot tell which command started it — and this is that
-    // fact, walked twice.
-    const setup = await walked();
-    const init = await walked();
+describe("the one walk amy setup enters", () => {
+  it("walks the same way every time it starts", async () => {
+    // `amy setup` is the one way in (S1, S31): the record it starts carries
+    // nothing of the run before, so two starts walk the same edges.
+    const first = await walked();
+    const second = await walked();
 
-    expect(setup.looks.map((look) => `${look.from}>${look.to}`)).toEqual(init.looks.map((look) => `${look.from}>${look.to}`));
-    expect(setup.record.state).toBe("DONE");
-    expect(init.record.state).toBe("DONE");
+    expect(first.looks.map((look) => `${look.from}>${look.to}`)).toEqual(second.looks.map((look) => `${look.from}>${look.to}`));
+    expect(first.record.state).toBe("DONE");
+    expect(second.record.state).toBe("DONE");
   });
 
   it("mounts with every state the diagram draws, each decided", async () => {

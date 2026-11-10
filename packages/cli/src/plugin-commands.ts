@@ -27,7 +27,7 @@ import { pluginList, pluginSlices } from "./slices.js";
  * symptom would be a machine that stopped answering.
  */
 export const BUILT_IN_COMMANDS: readonly string[] = [
-  "init", "doctor", "add", "remove", "update", "start", "stop", "status",
+  "setup", "doctor", "add", "remove", "update", "start", "stop", "status",
   "tick", "run", "look", "queue", "budget", "brief", "skills", "workflow", "plugin",
   "contract", "config", "mount-check",
   // Hidden from `amy --help`, and still the host's: a script's way to queue
@@ -277,8 +277,8 @@ export function settingsFor(contribution: Contribution, profile: Profile, home: 
 /**
  * Writes the files a profile's plugins bring, and never one that is there.
  *
- * `amy init` and `amy add` are the two moments a machine gains a plugin, so
- * they are the two moments its files arrive. What is already on disk is
+ * `amy setup` and `amy add` are the two moments a machine gains a plugin,
+ * so they are the two moments its files arrive. What is already on disk is
  * somebody's edit, and an installer that overwrote it would be an installer
  * that loses work.
  */

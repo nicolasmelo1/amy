@@ -29,11 +29,11 @@ import { Result, internal, ok, refused } from "../src/ports/result.js";
 import { SetupRecord } from "../src/record.js";
 import { plugin as setup } from "./drawn.js";
 
-export const CLAUDE = "@amykit/plugin-claude";
+const CLAUDE = "@amykit/plugin-claude";
 export const CODEX = "@amykit/plugin-codex";
-export const HERMES = "@amykit/plugin-hermes-agent";
+const HERMES = "@amykit/plugin-hermes-agent";
 export const SLACK = "@amykit/plugin-slack";
-export const TELEGRAM = "@amykit/plugin-telegram";
+const TELEGRAM = "@amykit/plugin-telegram";
 export const NOTIFY_HERMES = "@amykit/plugin-notify-hermes";
 export const FANCY = "@amykit/plugin-fancy";
 

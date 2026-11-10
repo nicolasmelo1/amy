@@ -9,8 +9,7 @@ A plugin for [amy](https://github.com/nicolasmelo1/amy).
 ## Install
 
 ```sh
-# Add @amykit/plugin-agent-browser to amy.yaml, then install configured plugins:
-amy init --install
+amy add @amykit/plugin-agent-browser
 ```
 
 Then name it in `~/.amy/config.yaml`:

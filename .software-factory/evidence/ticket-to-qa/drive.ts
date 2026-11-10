@@ -565,19 +565,23 @@ interface World extends Morning, Settled, Concurrent, Pruned, NamedRoot, Held {
 /** The morning's commands, in the order the README gives them. */
 function morning(root: string, endpoint: string, engine: EngineChoice, trail: Look[]): Morning {
   const version = amy(root, ["--version"]);
-  const init = amy(root, ["init"]);
-
+  // The machine as an operator's answers to `amy setup` leave it, edited
+  // into the config below. `amy setup` asks a person, and installs the
+  // harness from a registry this scenario does not run; the errand
+  // scenario drives that half against its loopback registry.
+  fs.mkdirSync(path.join(root, "home", ".amy"), { recursive: true });
   configure(root, endpoint, engine, true);
   installPlugins(root);
 
-  // The files the workflow brings arrive once the config names it: `init`
-  // materialises them, and never over one that is already edited.
-  const again = amy(root, ["init"]);
-  // What `amy init` wrote, edited the way an operator would before confirming.
+  // The files the workflow brings arrive once the config names it: `amy
+  // setup <plugin>` materialises them, and never over one already edited.
+  // The package is already installed and named, so nothing is fetched.
+  const init = amy(root, ["setup", "@amykit/workflow-ticket-to-qa"]);
+  // What setup wrote, edited the way an operator would before confirming.
   editRoster(root);
   const initWrote = fs.existsSync(path.join(root, "home", ".amy", "config.yaml")) &&
     fs.existsSync(path.join(root, "home", ".amy", "tickets", "roster.yaml")) &&
-    again.out.includes("roster.yaml");
+    init.out.includes("roster.yaml");
 
   // A table written just now, so nothing this run does asks the network for
   // prices: `amy start` refreshes one older than a week, and this scenario
@@ -871,13 +875,13 @@ async function heldUntilStarted(root: string): Promise<Held> {
   // A loop that is really running when the brake is pulled. `--max 0` runs
   // would tick nothing and let a brake that only writes a file look correct;
   // this one is a daemon the scenario started, and its death is the claim.
-  const running = amy(root, ["start", "--every", "1"]);
+  const running = amy(root, ["start", "--detached", "--every", "1"]);
   const pid = await daemonPid(root);
   const stopped = amy(root, ["stop", "--all"]);
   const ended = pid !== undefined && (await gone(pid));
 
   const heldRun = amy(root, ["run", "--max", "0"]);
-  const started = amy(root, ["start", "--every", "1"]);
+  const started = amy(root, ["start", "--detached", "--every", "1"]);
   const releasedRun = amy(root, ["run", "--max", "0"]);
   const stoppedAgain = amy(root, ["stop"]);
   void running;
@@ -1498,8 +1502,8 @@ function extraChecks(first: World): Check[] {
   return [
     // Extras: true every day, and reported rather than required.
     [
-      "lifecycle.init_writes_the_config_and_the_roster",
-      first.initWrote && first.init.out.includes("wrote"),
+      "lifecycle.setup_writes_the_config_and_the_roster",
+      first.initWrote && first.init.code === 0,
     ],
     [
       "lifecycle.confirming_the_roster_says_who_is_in",

@@ -413,6 +413,11 @@
           "description": ""
         },
         {
+          "title": "amy answers in the chat",
+          "path": "/design/amy-answers-in-the-chat",
+          "description": ""
+        },
+        {
           "title": "amy speaks in domains",
           "path": "/design/amy-speaks-in-domains",
           "description": ""
@@ -1196,6 +1201,11 @@
         },
         {
           "depth": 3,
+          "title": "**amy answers in the chat.**",
+          "slug": "amy-answers-in-the-chat"
+        },
+        {
+          "depth": 3,
           "title": "An operation is declared once, and every door will run it the same way.",
           "slug": "an-operation-is-declared-once-and-every-door-will-run-it-the-same-way"
         },
@@ -1243,6 +1253,11 @@
           "depth": 3,
           "title": "**A Telegram topic is a work item's thread.** @amykit/plugin-telegram is the conversation port over the Bot API: each piece of work gets its own topic in the operator's private chat with a bot (topics in private chats, Bot API 9.4), opened once and found again after a restart. Only the operator's replies in that topic are answers; anybody else's, and anything outside every topic, are ignored. Replies are filed on disk before Telegram's update offset moves, so no restart and no second process loses one. A file in a reply arrives as a local path, and one past the Bot API's 20 MB is named instead. The token is TELEGRAM_BOT_TOKEN in amy's environment and is written nowhere. amy doctor refuses, by name, a bot with topic mode off, an operator who never started a chat with it, and a token whose updates something else reads (409 Conflict).",
           "slug": "a-telegram-topic-is-a-work-items-thread-amykitplugin-telegram-is-the-conversation-port-over-the-bot-api-each-piece-of-work-gets-its-own-topic-in-the-operators-private-chat-with-a-bot-topics-in-private-chats-bot-api-94-opened-once-and-found-again-after-a-restart-only-the-operators-replies-in-that-topic-are-answers-anybody-elses-and-anything-outside-every-topic-are-ignored-replies-are-filed-on-disk-before-telegrams-update-offset-moves-so-no-restart-and-no-second-process-loses-one-a-file-in-a-reply-arrives-as-a-local-path-and-one-past-the-bot-apis-20-mb-is-named-instead-the-token-is-telegrambottoken-in-amys-environment-and-is-written-nowhere-amy-doctor-refuses-by-name-a-bot-with-topic-mode-off-an-operator-who-never-started-a-chat-with-it-and-a-token-whose-updates-something-else-reads-409-conflict"
+        },
+        {
+          "depth": 3,
+          "title": "**The chat recovers, pays and reads fairly.**",
+          "slug": "the-chat-recovers-pays-and-reads-fairly"
         },
         {
           "depth": 3,
@@ -2937,6 +2952,17 @@
       ]
     },
     {
+      "path": "/design/amy-answers-in-the-chat",
+      "file": "docs/design/amy-answers-in-the-chat.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-answers-in-the-chat.md",
+      "title": "amy answers in the chat",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/amy-speaks-in-domains",
       "file": "docs/design/amy-speaks-in-domains.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/amy-speaks-in-domains.md",
@@ -4552,11 +4578,6 @@
         },
         {
           "depth": 3,
-          "title": "amy init",
-          "slug": "amy-init"
-        },
-        {
-          "depth": 3,
           "title": "amy look",
           "slug": "amy-look"
         },
@@ -4689,8 +4710,8 @@
         },
         {
           "depth": 2,
-          "title": "The template amy init writes",
-          "slug": "the-template-amy-init-writes"
+          "title": "The annotated example",
+          "slug": "the-annotated-example"
         },
         {
           "depth": 2,
@@ -5441,8 +5462,8 @@
         },
         {
           "depth": 2,
-          "title": "The template amy init writes",
-          "slug": "the-template-amy-init-writes"
+          "title": "The annotated example",
+          "slug": "the-annotated-example"
         },
         {
           "depth": 2,
@@ -6124,6 +6145,26 @@
         "file": "packages/core/src/ports/Conversation.ts",
         "doc": "Where an operator and one piece of work talk without using the tracker.",
         "methods": [
+          {
+            "name": "chat",
+            "signature": "chat(): Promise<ChatMessage[]>",
+            "doc": "The messages that reached no work, filed and not yet settled, oldest first. Present only on adapters that answer in the chat; the daemon reads it all the time, and one arriving mid-turn waits for the next turn."
+          },
+          {
+            "name": "settle",
+            "signature": "settle(id: string): Promise<void>",
+            "doc": "The message is answered: it is not handed out again."
+          },
+          {
+            "name": "say",
+            "signature": "say(place: string, text: string): Promise<string>",
+            "doc": "Says something in a chat place, and answers the message's id."
+          },
+          {
+            "name": "revise",
+            "signature": "revise(place: string, id: string, text: string): Promise<void>",
+            "doc": "Replaces what a said message reads; only where `edit` is declared."
+          },
           {
             "name": "open",
             "signature": "open(workId: string, title: string): Promise<ThreadRef>",
@@ -7150,6 +7191,14 @@
             {
               "flags": "--scheduled",
               "description": "internal: the parent start command already scheduled this lifecycle"
+            },
+            {
+              "flags": "--supervised",
+              "description": "internal: the machine's supervisor runs this loop and starts it again when it dies"
+            },
+            {
+              "flags": "--log <file>",
+              "description": "internal: append the loop's output to this file"
             }
           ],
           "isDefault": false,
@@ -7177,35 +7226,6 @@
         },
         {
           "path": [
-            "init"
-          ],
-          "description": "Set the machine up, as `amy setup` does: the same walk, asked the same way",
-          "arguments": [
-            {
-              "name": "[plugin]",
-              "required": false,
-              "description": "configure this one plugin, and skip the machine's questions"
-            }
-          ],
-          "options": [
-            {
-              "flags": "--harness <name>",
-              "description": "answer the harness ask before it is asked"
-            },
-            {
-              "flags": "--workflow <name>",
-              "description": "answer the workflow ask; `none` sets up no workflow"
-            },
-            {
-              "flags": "--channels <a,b>",
-              "description": "answer the channels ask, by name, comma-separated"
-            }
-          ],
-          "isDefault": false,
-          "hidden": false
-        },
-        {
-          "path": [
             "look"
           ],
           "description": "Look at one piece of work now, rather than when it was next due",
@@ -7226,7 +7246,16 @@
           ],
           "description": "Internal: whether the selected profile assembles, for a daemon about to remount",
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "flags": "--config <file>",
+              "description": "assemble this config instead of config.yaml, as a change asked from the chat would be"
+            },
+            {
+              "flags": "--all",
+              "description": "assemble every profile in the config, before replacing the shared config.yaml"
+            }
+          ],
           "isDefault": false,
           "hidden": true
         },
@@ -7389,13 +7418,17 @@
           "path": [
             "start"
           ],
-          "description": "Start the loop in the background, and keep it running",
+          "description": "Start the loop under the machine's supervisor, which keeps it running",
           "arguments": [],
           "options": [
             {
               "flags": "--every <seconds>",
               "description": "how long to wait after finding nothing to do",
               "default": "60"
+            },
+            {
+              "flags": "--detached",
+              "description": "start it detached instead: nothing brings it back if it stops"
             }
           ],
           "isDefault": false,
@@ -7851,12 +7884,24 @@
     ],
     "environment": [
       {
+        "variable": "AMY_PROJECT_ENV",
+        "package": "@amykit/cli"
+      },
+      {
+        "variable": "AMY_SUPERVISOR",
+        "package": "@amykit/cli"
+      },
+      {
         "variable": "CLAUDE_CODE_OAUTH_TOKEN",
         "package": "@amykit/plugin-claude"
       },
       {
         "variable": "CODEX_HOME",
         "package": "@amykit/plugin-codex"
+      },
+      {
+        "variable": "LANG",
+        "package": "@amykit/cli"
       },
       {
         "variable": "LINEAR_API_KEY",
@@ -7869,6 +7914,10 @@
       {
         "variable": "OLLAMA_API_KEY",
         "package": "@amykit/plugin-hermes-agent"
+      },
+      {
+        "variable": "PATH",
+        "package": "@amykit/cli"
       },
       {
         "variable": "TELEGRAM_BOT_TOKEN",
@@ -7918,7 +7967,11 @@
         "contributes": [],
         "settings": [],
         "environment": [
+          "AMY_PROJECT_ENV",
+          "AMY_SUPERVISOR",
+          "LANG",
           "NO_COLOR",
+          "PATH",
           "TERM"
         ]
       },
@@ -8613,7 +8666,7 @@
             "type": "string",
             "required": false,
             "default": "amy",
-            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy init` creates it from the active profile when it is missing. A blank one is refused at boot"
+            "description": "the Hermes profile amy's runs use, so they read and write nothing of the operator's own Hermes. `amy setup hermes` creates it from the active profile when it is missing. A blank one is refused at boot"
           },
           {
             "name": "provider",
@@ -9089,6 +9142,13 @@
             "required": false,
             "default": "https://api.telegram.org",
             "description": "the Bot API server, for a local one instead of Telegram's"
+          },
+          {
+            "name": "topics",
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "description": "whether each piece of work opens a topic of its own; off, works share the private chat and a reply reaches one by quoting amy's message for it or starting with its id"
           }
         ],
         "environment": [
@@ -10068,6 +10128,34 @@
         "scenario": ".software-factory/evidence/amy-add-remove-scenario.sh"
       },
       {
+        "name": "amy-answers-in-the-chat",
+        "activation": [
+          "packages/core/src/chat/**",
+          "packages/core/src/ports/Conversation.ts",
+          "plugins/telegram/src/**",
+          "plugins/slack/src/**",
+          "packages/cli/src/index.ts",
+          "packages/cli/src/assemble.ts",
+          "packages/cli/src/chat-action.ts",
+          "packages/cli/src/supervisor/**",
+          ".software-factory/evidence/amy-answers-in-the-chat/**",
+          ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+        ],
+        "evidence": ".software-factory/evidence/amy-answers-in-the-chat.json",
+        "plan": "docs/design/amy-answers-in-the-chat.md",
+        "assertions": [
+          "chat.an_ask_writes_nothing",
+          "chat.only_an_action_acts",
+          "chat.a_conversation_carries_its_turns",
+          "chat.a_chat_without_threads_is_addressed_not_guessed",
+          "chat.grooming_writes_what_its_workflow_claims",
+          "chat.the_work_thread_still_decides",
+          "chat.a_restart_lets_only_a_booting_mount_through",
+          "chat.the_chat_outlives_a_broken_mount"
+        ],
+        "scenario": ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+      },
+      {
         "name": "amy-update",
         "activation": [
           "packages/cli/src/plugin-commands.ts",
@@ -10153,10 +10241,10 @@
           "bare.it_says_what_to_do_instead_of_failing",
           "bare.it_names_the_other_way_to_add_one",
           "bare.a_note_without_a_workflow_is_refused_with_the_fix",
-          "bare.init_installs_nothing",
-          "bare.init_writes_its_files",
-          "bare.init_added_no_package",
-          "bare.init_writes_no_declared_workflow",
+          "bare.setup_stops_on_its_first_question",
+          "bare.setup_writes_nothing_unanswered",
+          "bare.setup_added_no_package",
+          "bare.the_example_declares_no_workflow",
           "bare.doctor_asks_the_port_not_the_package",
           "bare.doctor_still_reports_what_it_found",
           "bare.no_workflow_mounts_so_nothing_assembles"
@@ -10199,7 +10287,7 @@
           "errand.help_lists_only_the_machines_commands",
           "errand.a_tick_discovers_before_it_moves",
           "errand.doctor_is_green_without_a_roster",
-          "errand.init_and_add_write_a_config_that_boots"
+          "errand.setup_and_add_write_a_config_that_boots"
         ],
         "scenario": ".software-factory/evidence/errand-scenario.sh"
       },
@@ -11876,6 +11964,30 @@
         "level": "minor"
       },
       {
+        "id": "amy-answers-in-the-chat-delivered",
+        "title": "**amy answers in the chat.**",
+        "body": "A message in the Telegram private chat outside every topic, or a root message\nin the Slack channel, is answered there. A plain message is an ask: the\nharness runs read-only, under its own sandbox or not at all, and nothing it\nnames runs. A message starting with `/action` lets that turn act on amy: the\ncommands its answer names in a fenced `amy` block run as amy with arguments,\nnever a shell, and one off the fixed list refuses the whole block. `/new`\nstarts another conversation in a chat without threads, `/harness <name>`\nswitches the harness mid-conversation, and every turn sends the conversation\nwhole. A long turn's progress is one message edited in place. A conversation\nis not work: its agent runs are held to no budget ceiling and kept out of the\nledger, unless `chat.budget: true` asks for them to be counted.\n\n`config apply` writes a new `config.yaml` from the chat, shown as a diff,\nonly when it mounts in a child first. `restart` lets a new mount through only\nwhen it boots, and the new loop says its pid in the chat. A loop whose\nworkflow does not mount still answers in the chat and names the failure.\n\n`amy start` now starts the loop under the machine's supervisor — launchd on\nmacOS, systemd --user on Linux, Task Scheduler on Windows — which starts it\nagain when it dies; `amy stop` removes it so nothing does. `--detached` keeps\nthe old behaviour, which is also what a machine with no supervisor gets.\n`amy doctor` names the supervisor in use and refuses a Linux user with\nlingering off.\n\nThe core exports the chat's pieces (`answerTheChat`, `addressed`,\n`ChatProgress`, `Transcripts`, `commandsIn`) and `Conversation` gains optional\n`threads`, `edit`, `chat`, `settle`, `say` and `revise`. Telegram takes\n`topics: false`, where works share the private chat and a reply reaches one by\nquoting amy's message for it or starting with its id.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-telegram",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
         "id": "amy-speaks-in-domains",
         "title": "An operation is declared once, and every door will run it the same way.",
         "body": "`defineOperation` in `@amykit/core` declares one operation: its id and domain,\nits summary and description, its input and output (or the named events it\nstreams), the errors it can return, its examples, whether it is local-only,\nwhat it writes, and how HTTP and the command line reach it. Input, output and\nevents are any schema implementing Standard Schema and Standard JSON Schema —\nZod 4.2+, ArkType, Valibot — whose interfaces the core copies, so the core\nstill installs no dependency. `invoke(contract, id, input, context)` is the one\nroad every door takes: it validates the input before the handler and the\noutput after it, answers a declared error as itself, and answers a throw, an\nundeclared code or an output the schema refuses as `amy.internal`, naming the\noperation. `contractDocument` writes the contract as OpenAPI 3.1.\n\n`@amykit/services` is the new home of amy's own domains. It ships none yet:\n`npm run build` writes its empty `openapi.json`, and five rules hold every\ndomain to come — a domain keeps its layout and reads no other, only a\nrepository reaches a port, no database or filesystem bypasses the ports, every\noperation and property is documented, every declared error is produced by a\ntest, and the document only breaks when `API_MAJOR` is raised (checked with\noasdiff, which `./scripts/setup-dev.sh` now installs).\n\nBefore, amy's rules lived inside 2844 lines of command-line handlers, so a\nserver or an SDK would have had to call into the CLI or copy it.",
@@ -12129,10 +12241,14 @@
       {
         "id": "setup-is-a-workflow",
         "title": "**Setup is a workflow.**",
-        "body": "`amy init` wrote a template and left the person to it. `amy setup` asks, one\nquestion at a time, and is itself an amy workflow drawn in Mermaid: which\nharness should do the work (the ones detected on this machine offered first),\nwhich workflow it should drive, which channels should reach you — installing\nonly what was chosen, asking each chosen plugin's settings one field at a\ntime with the value the machine already holds offered as the default, and\nchecking what it configured before it says it is done. `amy setup <plugin>`\ngoes straight to configuring that one plugin. With no terminal to answer an\nask, the walk stops on the question and prints the flag that answers it, so a\npipeline can say it all at once. `amy init` stays as an alias running the same\nwalk, and the terminal it asks in ships as\n`@amykit/plugin-terminal-conversation`, so the window can draw the same asks\nlater with no change to the workflow.",
+        "body": "`amy init` wrote a template and left the person to it. `amy setup` asks, one\nquestion at a time, and is itself an amy workflow drawn in Mermaid: which\nharness should do the work (the ones detected on this machine offered first),\nwhich workflow it should drive, which channels should reach you — installing\nonly what was chosen, asking each chosen plugin's settings one field at a\ntime with the value the machine already holds offered as the default, and\nchecking what it configured before it says it is done. `amy setup <plugin>`\ngoes straight to configuring that one plugin. With no terminal to answer an\nask, the walk stops on the question and prints the flag that answers it, so a\npipeline can say it all at once. The old `amy init` is gone, alias included, and\n`amy setup <workflow>` writes the workflow's own files — the ticket workflow's\nroster — into the profiles that mount it. The terminal it asks in ships as\n`@amykit/plugin-terminal-conversation`, so the window can draw the same asks\nlater with no change to the workflow.",
         "bumps": [
           {
             "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
           },
           {
@@ -12141,6 +12257,10 @@
           },
           {
             "package": "@amykit/workflow-setup",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],
@@ -12157,6 +12277,22 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "the-chat-recovers-fairly",
+        "title": "**The chat recovers, pays and reads fairly.**",
+        "body": "When the workflow does not mount, the chat's recovery grows one group of\nplugins a mount at a time instead of trying every subset, and keeps a\nthread-only adapter out of the way of one that can answer in the chat. Under\n`chat.budget` with a dollar ceiling, `/harness` no longer offers a harness\nwhose turns nothing can price. A config lock left by a dead writer is cleared\nunder a guard named after the owner that was seen dead, so a writer acting on\nan old look never removes a replacement. In Slack, work-thread reads no\nlonger hold the chat's follow-ups unread: the chat reads by its second minute\nat the latest.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       },
       {
         "id": "the-config-is-written-by-what-is-mounted",

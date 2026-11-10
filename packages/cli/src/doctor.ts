@@ -2,11 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
-import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
+import { AmyConfig, configuredAutoUpdateProblems, configuredChatProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
 import { type PhaseBrief, uncheckedBrief } from "./project.js";
+import type { Found } from "./supervisor/index.js";
 
 export type { Check } from "@amykit/core";
 
@@ -84,6 +85,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     configFile(deps),
     ...configContents(deps),
     autoUpdateSettings(deps.config),
+    chatSettings(deps.config),
     ...pluginSettings(deps),
     workflowWrites(deps.workflow),
     ...briefCheck(deps.briefs ?? []),
@@ -190,6 +192,16 @@ function autoUpdateSettings(config: AmyConfig): Check {
   };
 }
 
+/** The loop refuses malformed chat policy before it starts, so doctor must too. */
+function chatSettings(config: AmyConfig): Check {
+  const problems = configuredChatProblems(config);
+  return {
+    label: "chat settings",
+    ok: problems.length === 0,
+    detail: problems.join("; "),
+  };
+}
+
 function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
   const checks: Check[] = [];
 
@@ -245,7 +257,7 @@ function leftBehind({ home, cwd, config }: DoctorDeps): Check[] {
       .map(([old, now]) => ({
         label: `state left in ${old}`,
         ok: false,
-        detail: `run \`amy init\`, then: mv ${path.join(base, old)} ${path.join(base, now)}`,
+        detail: `move it where the profile reads it: mv ${path.join(base, old)} ${path.join(base, now)}`,
       })),
   );
 }
@@ -433,4 +445,16 @@ function expandHome(value: string): string {
   if (value === "~") return os.homedir();
   if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
   return value;
+}
+
+/**
+ * Which supervisor keeps the loop running (S38): named when there is one,
+ * refused when it would let the loop die at logout — a Linux user who does
+ * not linger — and said plainly when there is none, which is not a fault of
+ * the machine but means nothing brings a dead loop back (S39).
+ */
+export function supervisorCheck(found: Found): Check {
+  if (!found.ok) return { label: "supervisor", ok: true, detail: `none — ${found.why}; amy start runs the loop detached, and nothing brings it back if it stops` };
+  if (found.refuse) return { label: "supervisor", ok: false, detail: `${found.detail}, but ${found.refuse}` };
+  return { label: "supervisor", ok: true, detail: found.detail };
 }
