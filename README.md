@@ -20,7 +20,7 @@
 </div>
 
 amy is an opinionated state machine framework where everything is a plugin. You
-draw your process as a workflow, pick the plugins it runs on (the tracker, the
+draw your process as a workflow as a Mermaid diagram, so it's easy for us, humans, and machine to understand. We then connect the logic through code, and pick the plugins it depends on (the tracker, the
 code host, the chat, the agent), configure it your way and start it. It is left
 running from then on, moving each piece of work one step at a time, on the
 Claude Code, Codex and Hermes subscriptions you already pay for.
@@ -33,7 +33,7 @@ amy setup
 ```
 
 `amy setup` asks which harness, workflow and channels you want, installs only
-those ([setup is a workflow](docs/design/setup-is-a-workflow.md) itself), and
+those ([setup is a workflow](docs/design/setup-is-a-workflow.md) itself, so amy runs on amy itself), and
 checks them. `amy start` then runs the loop in the background.
 More in [Installation](docs/start/installation.md) and the [Quickstart](docs/start/quickstart.md).
 
