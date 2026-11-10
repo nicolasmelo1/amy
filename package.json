@@ -78,7 +78,8 @@
     "ignoreBinaries": [
       "sf",
       "codex",
-      "schtasks"
+      "schtasks",
+      "wscript.exe"
     ],
     "ignoreDependencies": [
       "@amykit/workflow-ticket-to-qa",
