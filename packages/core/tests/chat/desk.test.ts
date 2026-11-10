@@ -526,3 +526,45 @@ describe("a refusal is part of the conversation", () => {
     expect(codex.asked[0]!.prompt).toMatch(/Person: how is the api project\?\n\namy: hermes could not answer read-only/);
   });
 });
+
+describe("what ran is remembered", () => {
+  it("keeps an exchange whose commands ran, though the answer could not be said", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["```amy\nstatus\n```", "it ran status"]);
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, { act: async ({ running }) => { running(); return { text: "status: done" }; } });
+    const say = chat.conversation.say!;
+    chat.conversation.say = async (place, text) => {
+      if (text.includes("status: done")) throw new Error("telegram is down");
+      return say(place, text);
+    };
+    chat.write("/action status");
+    await expect(answerTheChat(desk)).rejects.toThrow(/telegram is down/);
+    chat.conversation.say = say;
+    chat.write("what did you run?");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked[1]!.prompt).toMatch(/Person: \/action status\n\namy: [\s\S]*status: done/);
+  });
+
+  it("marks a message done the moment its commands run, so a loop killed after never runs it again", async () => {
+    const chat = chatOf();
+    let runs = 0;
+    const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nstatus\n```"]).cli }, {
+      act: async ({ running }) => {
+        running();
+        runs += 1;
+        return new Promise(() => undefined);
+      },
+    });
+    chat.write("/action status");
+    const message = chat.pending[0]!;
+
+    void answerTheChat(desk);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
+
+    expect(runs).toBe(1);
+    expect(chat.pending).not.toContain(message);
+  });
+});

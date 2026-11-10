@@ -35,6 +35,7 @@ function chatWith(text: string) {
     open: async () => ({ id: "x" }),
     post: async () => "x",
     replies: async () => [],
+    source: "telegram:900",
     chat: async () => [...pending],
     settle: async () => {
       pending.splice(0);
@@ -175,7 +176,7 @@ describe("a restart lets only a booting mount through", () => {
     await Promise.all(pass.after.map((after) => after()));
 
     expect(world.exits).toEqual(["restart"]);
-    expect(JSON.parse(fs.readFileSync(path.join(world.home, "billing", "restart.json"), "utf-8"))).toMatchObject({ place: "chat", pid: 4242 });
+    expect(JSON.parse(fs.readFileSync(path.join(world.home, "billing", "restart.json"), "utf-8"))).toMatchObject({ place: "chat", source: "telegram:900", pid: 4242 });
     expect(world.said.at(-1)).toMatch(/restart: the new mount boots\. Restarting pid 4242; the new loop says its pid here\./);
   });
 

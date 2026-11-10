@@ -25,6 +25,10 @@ describe("a message in a chat without threads is addressed, not guessed", () => 
     expect(addressed({ text: "and this?", quotes: "777" }, addressing)).toEqual({ to: "chat", text: "and this?", unaddressed: true });
   });
 
+  it("asks, rather than routing by an id after it, when the quote reached no work", () => {
+    expect(addressed({ text: "TBO-2: /decide ship it", quotes: "777" }, addressing)).toEqual({ to: "chat", text: "TBO-2: /decide ship it", unaddressed: true });
+  });
+
   it("prefers the quote to an id at the start", () => {
     expect(addressed({ text: "TBO-2: no, this one", quotes: "501" }, addressing)).toMatchObject({ to: "work", thread: "t1" });
   });

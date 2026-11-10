@@ -29,12 +29,13 @@ export type Routed =
 export function addressed(message: { text: string; quotes?: string }, addressing: Addressing): Routed {
   if (message.quotes !== undefined) {
     const thread = addressing.threadOfMessage(message.quotes);
-    if (thread !== undefined) return { to: "work", thread, text: message.text };
+    // A quote that reached no work decides it: an id after it does not send it anywhere.
+    return thread === undefined ? { to: "chat", text: message.text, unaddressed: true } : { to: "work", thread, text: message.text };
   }
   const prefix = /^\s*([^\s:]+):(?=\s|$)/.exec(message.text);
   if (prefix) {
     const thread = addressing.threadOfWork(prefix[1]!);
     if (thread !== undefined) return { to: "work", thread, text: message.text.slice(prefix[0].length).trim() };
   }
-  return message.quotes === undefined ? { to: "chat", text: message.text } : { to: "chat", text: message.text, unaddressed: true };
+  return { to: "chat", text: message.text };
 }

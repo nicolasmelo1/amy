@@ -15,6 +15,8 @@ export interface ChatAction {
   readonly asked: Asked;
   readonly place: string;
   readonly progress: ChatProgress;
+  /** Which chat the action was asked in, so a promise to answer there later is kept in that chat. */
+  readonly source?: string;
   /**
    * Said by the host the moment something with an effect is about to run.
    * A turn that fails before it is asked again; one that fails after is
@@ -118,7 +120,7 @@ async function answerClaimed(desk: ChatDesk, transcripts: Transcripts, message: 
   }
   const claimed = hold(desk, id);
   if (!claimed) return undefined;
-  const turn: Turn = { acted: false };
+  const turn: Turn = { acted: false, persist: () => done(desk.directory, id) };
   let outcome: ChatActOutcome | undefined;
   try {
     outcome = await answerOne(desk, transcripts, message, turn);
@@ -144,6 +146,8 @@ async function answerClaimed(desk: ChatDesk, transcripts: Transcripts, message: 
 interface Turn {
   acted: boolean;
   after?: () => Promise<void>;
+  /** Records the message as done, for good: called the moment anything with an effect runs. */
+  persist?: () => void;
 }
 
 /** Marks a message answered for good: a later copy of it, or a reader whose claim expired, finds it done. */
@@ -207,9 +211,14 @@ async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: Chat
 
   const { said, outcome } = await carriedOut(desk, reply, action, message.place, progress, turn);
   const answer = message.unaddressed ? `That quoted message is not one I filed under a work, so I do not know which work it is about; answered as a question.\n\n${said}` : said;
+  const record = () => {
+    kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: answer });
+    transcripts.save(kept);
+  };
+  // What ran is the conversation's even if saying so fails; a turn nothing ran in is kept only once said, so a retry is not doubled.
+  if (turn.acted) record();
   await say(`${warning}${answer}`);
-  kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: answer });
-  transcripts.save(kept);
+  if (!turn.acted) record();
   return outcome;
 }
 
@@ -289,7 +298,15 @@ async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place:
   if (!action) return { said: `${said}\n\nNothing ran: a command runs only when the message starts with /action.` };
   const refused = refusedCommands(asked, desk.commands);
   if (refused.length > 0) return { said: `${said}\n\nRefused, and nothing ran:\n${refused.map((one) => `- \`${one.line}\`: ${one.why}`).join("\n")}` };
-  const outcome = await desk.act({ asked, place, progress, running: () => { turn.acted = true; } });
+  const outcome = await desk.act({
+    asked, place, progress,
+    ...(desk.conversation.source === undefined ? {} : { source: desk.conversation.source }),
+    running: () => {
+      turn.acted = true;
+      // On disk before it runs: a loop killed mid-command never runs it again on restart.
+      turn.persist?.();
+    },
+  });
   if (outcome.after) turn.after = outcome.after;
   return { said: `${said}\n\n${outcome.text}`, outcome };
 }

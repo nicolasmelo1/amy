@@ -129,6 +129,9 @@ const stopSwitch = new FileStopSwitch(paths(home).stop);
 // project's own key beats the machine's, which is what a `.env` is for.
 loadEnv(home);
 loadEnv(process.cwd());
+// A supervised loop runs in the state directory: the project it was started
+// from is named, never its secrets, and its .env is read from there.
+if (process.env.AMY_PROJECT_ENV) loadEnv(process.env.AMY_PROJECT_ENV);
 
 /**
  * Every load resolves the same way, or a workflow of your own exists only for
@@ -965,18 +968,26 @@ function restartMarkerOf(profile: Profile): string {
 /** A loop a restart started says so where the restart was asked, with its new pid (S28). */
 async function sayRestarted(conversation: ChatParts["conversation"], profile: Profile, mountProblem: string | undefined): Promise<void> {
   const marker = restartMarkerOf(profile);
-  let asked: { place: string; pid: number } | undefined;
+  let asked: { place: string; source?: string; pid: number } | undefined;
   try {
-    asked = JSON.parse(fs.readFileSync(marker, "utf-8")) as { place: string; pid: number };
+    asked = JSON.parse(fs.readFileSync(marker, "utf-8")) as { place: string; source?: string; pid: number };
   } catch {
     return;
   }
-  fs.rmSync(marker, { force: true });
-  if (!conversation?.say) return;
+  // Asked in a chat this loop no longer reads (a channel changed with the restart): there is nowhere to say it.
+  if (!conversation?.say || asked.source !== conversation.source) {
+    console.log(`${new Date().toISOString()} restarted as pid ${process.pid}, was ${asked.pid}; the chat it was asked in is not this one`);
+    fs.rmSync(marker, { force: true });
+    return;
+  }
   const warning = mountProblem ? ` The workflow did not mount, so only the chat runs: ${mountProblem}` : "";
-  await conversation.say(asked.place, `Restarted: pid ${process.pid}, was ${asked.pid}.${warning}`).catch((error: unknown) => {
+  try {
+    await conversation.say(asked.place, `Restarted: pid ${process.pid}, was ${asked.pid}.${warning}`);
+    fs.rmSync(marker, { force: true });
+  } catch (error) {
+    // Kept, so the next loop to come up says it: the restart was promised there.
     console.error(`${new Date().toISOString()} could not say the restart in the chat: ${(error as Error).message}`);
-  });
+  }
 }
 
 /** `/action stop`: amy stop removes this loop from its supervisor and ends it, from another process. */
@@ -1034,6 +1045,7 @@ function loopSpecFor(profile: Profile, every: string): LoopSpec {
       PATH: process.env.PATH ?? "",
       ...(process.env.LANG ? { LANG: process.env.LANG } : {}),
       ...(process.env.AMY_SUPERVISOR ? { AMY_SUPERVISOR: process.env.AMY_SUPERVISOR } : {}),
+      AMY_PROJECT_ENV: process.cwd(),
     },
     workingDirectory: home,
     log,

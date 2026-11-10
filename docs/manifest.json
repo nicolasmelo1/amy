@@ -7824,6 +7824,10 @@
     ],
     "environment": [
       {
+        "variable": "AMY_PROJECT_ENV",
+        "package": "@amykit/cli"
+      },
+      {
         "variable": "AMY_SUPERVISOR",
         "package": "@amykit/cli"
       },
@@ -7903,6 +7907,7 @@
         "contributes": [],
         "settings": [],
         "environment": [
+          "AMY_PROJECT_ENV",
           "AMY_SUPERVISOR",
           "LANG",
           "NO_COLOR",

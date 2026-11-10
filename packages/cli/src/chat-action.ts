@@ -55,7 +55,7 @@ const MAX_OUTPUT = 3000;
  * already: the core refuses a batch with one that is not (A4).
  */
 export function chatAct(actor: ChatActor): (action: ChatAction) => Promise<ChatActOutcome> {
-  return async ({ asked, progress, place, running }) => {
+  return async ({ asked, progress, place, running, source }) => {
     const said: string[] = [];
     for (const [index, command] of asked.commands.entries()) {
       const spec = specOf(command, CHAT_COMMANDS);
@@ -66,7 +66,7 @@ export function chatAct(actor: ChatActor): (action: ChatAction) => Promise<ChatA
       }
       // A stop or an accepted restart ends the batch: nothing after it can fail and lose it.
       const lifecycle = name === "restart"
-        ? await restartFromChat(actor, place, (line) => progress.line(line))
+        ? await restartFromChat(actor, place, source, (line) => progress.line(line))
         : name === "stop"
           ? { text: "Stopping this loop once this is said. Nothing starts it again until `amy start`.", after: () => actor.exit("stop") }
           : undefined;
@@ -127,7 +127,7 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
  * supervisor, and the new one says its pid here. With no supervisor nothing
  * would start the new loop, so it is refused and this one stays (S43).
  */
-async function restartFromChat(actor: ChatActor, place: string, line: (text: string) => Promise<void>): Promise<ChatActOutcome> {
+async function restartFromChat(actor: ChatActor, place: string, source: string | undefined, line: (text: string) => Promise<void>): Promise<ChatActOutcome> {
   if (actor.unsupervised) {
     return { text: `restart: refused — no supervisor would start the new loop (${actor.unsupervised}). This loop and the chat stay as they are, pid ${actor.pid}.` };
   }
@@ -140,7 +140,7 @@ async function restartFromChat(actor: ChatActor, place: string, line: (text: str
     return { text: `restart: not restarted — the new mount does not boot, so this loop keeps the mount it had, pid ${actor.pid}.${fenced(`${checked.stdout}\n${checked.stderr}`)}` };
   }
   fs.mkdirSync(path.dirname(actor.restartMarker), { recursive: true });
-  fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, pid: actor.pid, at: new Date().toISOString() })}\n`, { mode: 0o600 });
+  fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, source, pid: actor.pid, at: new Date().toISOString() })}\n`, { mode: 0o600 });
   return { text: `restart: the new mount boots. Restarting pid ${actor.pid}; the new loop says its pid here.`, after: () => actor.exit("restart") };
 }
 

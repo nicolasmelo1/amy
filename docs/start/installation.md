@@ -178,6 +178,7 @@ Which variables matter depends on which plugins you mount:
 
 | Variable | Read by |
 | :-- | :-- |
+| `AMY_PROJECT_ENV` | `@amykit/cli` |
 | `AMY_SUPERVISOR` | `@amykit/cli` |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
