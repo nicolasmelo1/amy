@@ -58,6 +58,7 @@ touches:
   - packages/cli/src/supervisor/**
   - packages/cli/tests/supervisor.test.ts
   - packages/cli/src/doctor.ts
+  - packages/cli/tests/doctor-conversation.test.ts
   - .github/workflows/software-factory.yml
   - packages/cli/tests/chat-action.test.ts
   - .software-factory/policy.yaml

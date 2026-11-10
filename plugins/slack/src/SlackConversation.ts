@@ -364,11 +364,8 @@ export class SlackConversation implements Conversation {
       const file = path.join(chat, "threads", name);
       return { file, kept: readJson<{ read: string; last: number; checked?: number }>(file) };
     });
-    for (const { file, kept } of threads) {
-      if (!kept || now - kept.last > CHAT_QUIET_MS) fs.rmSync(file, { force: true });
-    }
     const due = threads
-      .filter((one) => one.kept && now - one.kept.last <= CHAT_QUIET_MS)
+      .filter((one) => one.kept)
       .sort((a, b) => (a.kept!.checked ?? 0) - (b.kept!.checked ?? 0))[0];
     if (!due) return;
     writeJsonFile(quota, { at: now });
@@ -418,7 +415,15 @@ export class SlackConversation implements Conversation {
       if (tsToMicros(message.ts) > tsToMicros(read)) read = message.ts;
       last = now;
     }
+    if (this.retireQuietThread(file, kept.last, last, now)) return;
     writeJsonFile(file, { read, last, checked: now });
+  }
+
+  /** Retire only after one final read: a reply at the quiet cutoff is not lost. */
+  private retireQuietThread(file: string, lastRead: number, lastReply: number, now: number): boolean {
+    if (now - lastRead <= CHAT_QUIET_MS || lastReply !== lastRead) return false;
+    fs.rmSync(file, { force: true });
+    return true;
   }
 
   private fileChatMessage(message: SlackMessage, root: string): void {

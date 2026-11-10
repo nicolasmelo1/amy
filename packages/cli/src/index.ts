@@ -976,7 +976,10 @@ async function assembleOrSay(profile: Profile, config: AmyConfig): Promise<Assem
 
 /** Where a restart asked from the chat leaves its promise to say the new pid. */
 function restartMarkerOf(profile: Profile): string {
-  return path.join(path.dirname(profilePaths(home, profile).pid), "restart.json");
+  // A profile may switch between a packaged workflow (whose daemon is at the
+  // machine root) and a project workflow (whose daemon is under profiles/).
+  // The handoff belongs to the profile, not either daemon layout.
+  return path.join(home, "profiles", profile.name, "restart.json");
 }
 
 /** The config bytes a chat restart already proved mount, until that restart announces itself. */
@@ -1190,7 +1193,10 @@ program
       process.exitCode = 1;
       return;
     }
-    const assembled = config ? await assembleLoaded(selected(config), config) : await assemble(selected());
+    // This must take the same path as daemon startup. In particular, an
+    // edited fork is rebuilt before assembly; assembling its installed copy
+    // would approve a candidate that the replacement daemon cannot boot.
+    const assembled = config ? await assemble(selected(config), config) : await assemble(selected());
     if (assembled.ok) return;
     for (const problem of assembled.problems) console.log(problem);
     process.exitCode = 1;

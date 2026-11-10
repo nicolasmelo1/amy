@@ -610,6 +610,7 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
       history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
       thread([]),
       history([]),
+      thread([]),
     ]);
     const amy = conversation(http, [], () => now);
     await amy.chat();
@@ -617,7 +618,26 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
 
     now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
     expect(await amy.chat()).toEqual([]);
-    expect(http.argsOf("conversations.replies")).toHaveLength(1);
+    expect(http.argsOf("conversations.replies")).toHaveLength(2);
+  });
+
+  it("files an operator reply from a quiet thread's final read", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const late = "1790000211.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+      history([]),
+      thread([{ type: "message", ts: late, thread_ts: ROOT, user: OPERATOR, text: "just before cutoff" }]),
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    await amy.settle((await amy.chat())[0]!.id);
+
+    now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["just before cutoff"]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(2);
   });
 
   it("drops a conversation whose root is gone, with what was asked there, and still reads the others", async () => {

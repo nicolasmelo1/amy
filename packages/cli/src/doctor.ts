@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
-import { AmyConfig, configuredAutoUpdateProblems } from "./config.js";
+import { AmyConfig, configuredAutoUpdateProblems, configuredChatProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths } from "./paths.js";
@@ -85,6 +85,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
     configFile(deps),
     ...configContents(deps),
     autoUpdateSettings(deps.config),
+    chatSettings(deps.config),
     ...pluginSettings(deps),
     workflowWrites(deps.workflow),
     ...briefCheck(deps.briefs ?? []),
@@ -186,6 +187,16 @@ function autoUpdateSettings(config: AmyConfig): Check {
   const problems = configuredAutoUpdateProblems(config);
   return {
     label: "auto update settings",
+    ok: problems.length === 0,
+    detail: problems.join("; "),
+  };
+}
+
+/** The loop refuses malformed chat policy before it starts, so doctor must too. */
+function chatSettings(config: AmyConfig): Check {
+  const problems = configuredChatProblems(config);
+  return {
+    label: "chat settings",
     ok: problems.length === 0,
     detail: problems.join("; "),
   };
