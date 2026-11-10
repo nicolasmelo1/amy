@@ -717,6 +717,7 @@ plugins:
     directory: telegram
     operator: …
     server: https://api.telegram.org
+    topics: true
 ```
 
 | Setting | Type | Required | Default | What it is |
@@ -724,6 +725,7 @@ plugins:
 | `directory` | `string` | no | `telegram` | where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot |
 | `operator` | `string` | **yes** |  | your Telegram user id, a number such as 123456789: the private chat each work item's topic opens in, and the only person whose replies are answers |
 | `server` | `string` | no | `https://api.telegram.org` | the Bot API server, for a local one instead of Telegram's |
+| `topics` | `boolean` | no | `true` | whether each piece of work opens a topic of its own; off, works share the private chat and a reply reaches one by quoting amy's message for it or starting with its id |
 
 ### `@amykit/plugin-terminal`
 

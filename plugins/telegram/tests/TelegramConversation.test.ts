@@ -527,7 +527,7 @@ describe("the second review", () => {
     expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["for the build"]);
     expect(telegram.pending()).toBe(0);
     expect(fs.existsSync(path.join(root, "brief"))).toBe(false);
-    expect(fs.readdirSync(shared).filter((name) => !/^owners$|^offset\.json$/.test(name))).toEqual([]);
+    expect(fs.readdirSync(shared).filter((name) => !/^owners$|^works$|^offset\.json$/.test(name))).toEqual([]);
   });
 });
 

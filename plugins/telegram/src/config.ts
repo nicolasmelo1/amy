@@ -14,6 +14,11 @@ export const configSchema = {
     description: "the Bot API server, for a local one instead of Telegram's",
     default: TELEGRAM_API,
   },
+  topics: {
+    type: "boolean",
+    description: "whether each piece of work opens a topic of its own; off, works share the private chat and a reply reaches one by quoting amy's message for it or starting with its id",
+    default: true,
+  },
   directory: {
     type: "string",
     description: "where this profile's topics are remembered, by work id, relative to the state directory; the replies read for every profile are kept once per bot",

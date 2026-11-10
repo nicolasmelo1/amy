@@ -1003,6 +1003,35 @@ gates:
       - "workspace.the_code_workflows_walk_with_their_workspace_in_its_plugin"
       - "update.the_workspace_moves_into_its_plugin"
 
+  # amy answers in the operator's chat: an ask runs read-only and runs
+  # nothing, /action runs only amy's commands, the work threads still decide,
+  # a restart lets through only a mount that boots, and the chat outlives a
+  # broken one. Driven against the installed, supervised loop; the machine's
+  # own supervisors are proved by packages/cli/tests/supervisor.test.ts.
+  amy-answers-in-the-chat:
+    activation:
+      - "packages/core/src/chat/**"
+      - "packages/core/src/ports/Conversation.ts"
+      - "plugins/telegram/src/**"
+      - "plugins/slack/src/**"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/assemble.ts"
+      - "packages/cli/src/chat-action.ts"
+      - "packages/cli/src/supervisor/**"
+      - ".software-factory/evidence/amy-answers-in-the-chat/**"
+      - ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+    evidence: ".software-factory/evidence/amy-answers-in-the-chat.json"
+    plan: "docs/design/amy-answers-in-the-chat.md"
+    required_assertions:
+      - "chat.an_ask_writes_nothing"
+      - "chat.only_an_action_acts"
+      - "chat.a_conversation_carries_its_turns"
+      - "chat.a_chat_without_threads_is_addressed_not_guessed"
+      - "chat.grooming_writes_what_its_workflow_claims"
+      - "chat.the_work_thread_still_decides"
+      - "chat.a_restart_lets_only_a_booting_mount_through"
+      - "chat.the_chat_outlives_a_broken_mount"
+
 rules:
   # L0 — The host's source names no vocabulary a workflow owns; its one
   # carried ceiling (`rosterBackoffMs`) is the config plan's to remove

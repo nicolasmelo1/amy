@@ -55,7 +55,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy remove`](#amy-remove) | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | [`amy run`](#amy-run) | Keep advancing until nothing is due |
 | [`amy skills`](#amy-skills) | Install amy's skills into the harnesses on this machine |
-| [`amy start`](#amy-start) | Start the loop in the background, and keep it running |
+| [`amy start`](#amy-start) | Start the loop under the machine's supervisor, which keeps it running |
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
 | [`amy stop`](#amy-stop) | Stop the background loop; --all pulls the machine's handbrake |
 | [`amy tick`](#amy-tick) | Advance one piece of work by one move, discovering first |
@@ -322,7 +322,7 @@ amy skills [options]
 
 ### `amy start`
 
-Start the loop in the background, and keep it running
+Start the loop under the machine's supervisor, which keeps it running
 
 ```sh
 amy start [options]
@@ -331,6 +331,7 @@ amy start [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--every <seconds>` | `60` | how long to wait after finding nothing to do |
+| `--detached` |  | start it detached instead: nothing brings it back if it stops |
 
 ### `amy status`
 

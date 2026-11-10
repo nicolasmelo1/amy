@@ -26,6 +26,8 @@ For what the two halves mean and why, see
 | `forks` | `string` | `""` | Where forks go when `--to` names no place; empty means the default — the project of a workflow of your own, or the profile's directory in AMY_HOME. |
 | `autoUpdate` | `AutoUpdateConfig` | `DEFAULT_AUTO_UPDATE` | One machine-wide cadence, persisted separately for every profile. |
 | `autoUpdateSource` | `unknown` |  | A scalar/null source value retained so malformed YAML cannot become valid. |
+| `chat` | `{ budget: boolean }` | `{ budget: false }` | The chat amy answers in. A conversation is not work: unless `budget` is on, its agent runs are held to no ceiling and kept out of the ledger the work is admitted against. |
+| `chatSource` | `unknown` |  | The `chat` block as written, kept so a malformed one is refused rather than defaulted. |
 | `retentionDays` | `number` | `7` |  |
 | `staleClaimMs` | `number` | `30 * 60 * 1000` |  |
 | `maxItemAttempts` | `number` | `5` |  |
@@ -58,11 +60,15 @@ For what the two halves mean and why, see
 
 | Variable | Read by |
 | :-- | :-- |
+| `AMY_PROJECT_ENV` | `@amykit/cli` |
+| `AMY_SUPERVISOR` | `@amykit/cli` |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
+| `LANG` | `@amykit/cli` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `NO_COLOR` | `@amykit/cli` |
 | `OLLAMA_API_KEY` | `@amykit/plugin-hermes-agent` |
+| `PATH` | `@amykit/cli` |
 | `TELEGRAM_BOT_TOKEN` | `@amykit/plugin-telegram` |
 | `TERM` | `@amykit/cli` |
 | `VITEST` | `@amykit/test-fixtures` |

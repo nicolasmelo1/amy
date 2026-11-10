@@ -1,5 +1,6 @@
 import path from "node:path";
-import { CommandRunner, Engine, EventLog, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
+import { HARNESS_COLLECTION, NamedHarness } from "@amykit/agent-kit";
+import { Budget, CommandRunner, Conversation, Engine, EventLog, Harness, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 import { isFilesystemWorkflow, LoadResult } from "./loader.js";
 import { profilePaths } from "./paths.js";
@@ -94,6 +95,93 @@ async function assemble(
   if (unmet.length > 0) return { ok: false, problems: unmet };
 
   return { ok: true, engine: mounted.engine, mounted, ...(requirements ? { workflowPlugin: requirements.workflowPlugin } : {}) };
+}
+
+/** What the chat needs of a mount: where it is held, and the harnesses that answer in it. */
+export interface ChatParts {
+  readonly conversation?: Conversation;
+  /** By the name `/harness` takes: `claude`, `claude:opus`. */
+  readonly harnesses: ReadonlyMap<string, Harness>;
+  /** The agents' budget, when the mount has one: the chat is charged to it only under chat.budget. */
+  readonly budget?: Budget;
+}
+
+/** The chat's parts of a mount that came up. */
+export function chatPartsOf(mounted: Mounted): ChatParts {
+  const conversation = mounted.ports.get("conversation") as Conversation | undefined;
+  const contributed = mounted.contributions.get(HARNESS_COLLECTION) ?? new Map<string, object>();
+  const harnesses = new Map([...contributed].map(([name, rung]) => [name, (rung as NamedHarness).cli]));
+  const budget = mounted.ports.get("budget") as Budget | undefined;
+  return { ...(conversation ? { conversation } : {}), harnesses, ...(budget ? { budget } : {}) };
+}
+
+/**
+ * The chat's parts when the workflow does not mount (S29): every configured
+ * plugin but the workflow, loaded one by one so one that will not import
+ * costs only itself, mounted together, and failing that in every smaller
+ * dependency-complete group before each one on its own.
+ * The chat outlives a broken mount because it never needed the workflow.
+ */
+export async function assembleChat(
+  home: string,
+  config: AmyConfig,
+  profile: Profile,
+  services: AssemblyServices,
+): Promise<ChatParts> {
+  const place = profilePaths(home, profile);
+  const plugins: Plugin[] = [];
+  for (const spec of pluginList(config, profile).filter((one) => keyOf(one) !== keyOf(profile.workflow))) {
+    const loaded = await services.load([spec]).catch(() => undefined);
+    if (loaded && loaded.problems.length === 0) plugins.push(...loaded.plugins.filter((plugin) => !(plugin as WorkflowPlugin).workflow));
+  }
+  let slices: Record<string, unknown>;
+  try {
+    slices = pluginSlices(config, profile, home, new Map([[profile.workflow, profile.workflow]]));
+  } catch {
+    return { harnesses: new Map() };
+  }
+  const host = { runner: services.runner, now: () => new Date(), log: services.log(place.log), paths: hostPaths(place.base, profile), readOnly: services.readOnly };
+  const together = await mount(plugins, slices, host).catch(() => undefined);
+  if (together?.ok) return chatPartsOf(together.mounted);
+  return await recoverChatParts(plugins, slices, host);
+}
+
+/** Finds a working recovery group before giving up to the parts each plugin can mount alone. */
+async function recoverChatParts(plugins: readonly Plugin[], slices: Record<string, unknown>, host: Parameters<typeof mount>[2]): Promise<ChatParts> {
+  // A workflow-dependent engine can make the all-plugin recovery mount fail,
+  // although the relay and its configured harnesses can still answer the chat.
+  // Keep trying the largest groups first. Two unrelated providers can both
+  // fail while the conversation, relay and its configured harnesses remain a
+  // complete mount; all-but-one alone cannot reach that recovery path.
+  for (let size = plugins.length - 1; size >= 2; size -= 1) {
+    for (const compatible of groupsOf(plugins, size)) {
+      const mounted = await mount(compatible, slices, host).catch(() => undefined);
+      if (mounted?.ok) return chatPartsOf(mounted.mounted);
+    }
+  }
+  let conversation: Conversation | undefined;
+  let budget: Budget | undefined;
+  const harnesses = new Map<string, Harness>();
+  for (const plugin of plugins) {
+    const alone = await mount([plugin], slices, host).catch(() => undefined);
+    if (!alone?.ok) continue;
+    const parts = chatPartsOf(alone.mounted);
+    conversation ??= parts.conversation;
+    budget ??= parts.budget;
+    for (const [name, harness] of parts.harnesses) if (!harnesses.has(name)) harnesses.set(name, harness);
+  }
+  return { ...(conversation ? { conversation } : {}), harnesses, ...(budget ? { budget } : {}) };
+}
+
+/** Every group of one size, preserving config order so recovery is deterministic. */
+function* groupsOf<T>(items: readonly T[], size: number, from = 0, chosen: readonly T[] = []): Generator<readonly T[]> {
+  if (chosen.length === size) {
+    yield chosen;
+    return;
+  }
+  for (let index = from; index <= items.length - (size - chosen.length); index += 1) {
+    yield* groupsOf(items, size, index + 1, [...chosen, items[index]!]);
+  }
 }
 
 /**

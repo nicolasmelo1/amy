@@ -1,11 +1,12 @@
 ---
+base: 0af9e232513063af9a4502c29fca923c3a0899db
 sources:
   - { id: S1, kind: friction, said: "2026-11-09: half the work with an agent is conversation. The person wants to groom, ask about projects and run amy from Slack and Telegram while the loop keeps working, never opening an agent CLI or a window" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Conversation.ts", said: "the port is one work's thread: open(workId), post, replies; there is no conversation that belongs to no work" }
   - { id: S3, kind: code, ref: "plugins/telegram/src/TelegramConversation.ts", said: "a message outside every topic of the private chat is dropped, so the chat itself answers nothing" }
   - { id: S4, kind: code, ref: "plugins/slack/src/SlackConversation.ts", said: "one thread per piece of work in one channel; a root message the operator posts there belongs to no work and is never read" }
-  - { id: S5, kind: reference, ref: "hermes-agent gateway/session.py build_session_key, gateway/session_lifecycle.py", said: "a conversation is keyed platform, chat and thread; a chat without threads is one conversation, replaced only by /new, never by time" }
-  - { id: S6, kind: reference, ref: "hermes-agent gateway/run_turn_progress.py", said: "a turn's tool progress is one message edited in place, one line per message where the platform cannot edit" }
+  - { id: S5, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/gateway/session.py build_session_key, https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/gateway/session_lifecycle.py", said: "a conversation is keyed platform, chat and thread; a chat without threads is one conversation, replaced only by /new, never by time" }
+  - { id: S6, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/gateway/run_turn_progress.py", said: "a turn's tool progress is one message edited in place, one line per message where the platform cannot edit" }
   - { id: S7, kind: reference, ref: "https://developers.secure.facebook.com/docs/whatsapp/api/webhooks/inbound", said: "WhatsApp has no threads; an inbound reply carries context.id, the wamid of the message it quotes" }
   - { id: S8, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "two conversations never confused: asking writes nothing; discussing with the work ends in a decision. That row is the window's half" }
   - { id: S9, kind: code, ref: "packages/core/src/ports/Harness.ts", said: "readOnly is enforced by the harness's own sandbox (claude plan mode, codex read-only) or the harness refuses the run, as hermes does" }
@@ -24,14 +25,14 @@ sources:
   - { id: S23, kind: decision, said: "this row ships first, before 0.7: amy is driven from the chat from then on, the person far from the machine. Decided 2026-11-09" }
   - { id: S24, kind: decision, said: "amy keeps itself running while the person is away, and a config or workflow change is taken by a restart asked from the chat. Decided 2026-11-09" }
   - { id: S25, kind: code, ref: "packages/cli/src/index.ts", said: "amy start spawns a detached loop and nothing brings it back; a source change is remounted by a child that must boot first, but config.yaml is not in that digest" }
-  - { id: S26, kind: reference, ref: "hermes-agent hermes_cli/gateway_supervised_restart.py", said: "Hermes runs under a launchd KeepAlive agent; a restart exits back to the supervisor, and success is a fresh supervised pid, never the bare exit" }
+  - { id: S26, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway_supervised_restart.py", said: "Hermes runs under a launchd KeepAlive agent; a restart exits back to the supervisor, and success is a fresh supervised pid, never the bare exit" }
   - { id: S27, kind: decision, said: "amy start, with no flag, starts the loop under the machine's supervisor, replacing a poll every five minutes; amy stop exits cleanly and nothing respawns it. Decided 2026-11-09" }
   - { id: S31, kind: decision, said: "macOS, Linux and Windows are all supervised in this row, each done properly. Decided 2026-11-09" }
-  - { id: S32, kind: reference, ref: "hermes-agent hermes_cli/gateway_launchd.py, ~/Library/LaunchAgents/ai.hermes.gateway.plist", said: "macOS: a launchd agent with RunAtLoad, KeepAlive on SuccessfulExit false and ThrottleInterval 30" }
-  - { id: S33, kind: reference, ref: "hermes-agent hermes_cli/gateway.py (_systemd_operational, _wsl_systemd_operational, _systemd_unit_is_start_limited)", said: "Linux: a systemd user unit; WSL may have no working systemd; a unit restarting too fast hits systemd's start limit and stops" }
+  - { id: S32, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway_launchd.py, ~/Library/LaunchAgents/ai.hermes.gateway.plist", said: "macOS: a launchd agent with RunAtLoad, KeepAlive on SuccessfulExit false and ThrottleInterval 30" }
+  - { id: S33, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway.py (_systemd_operational, _wsl_systemd_operational, _systemd_unit_is_start_limited)", said: "Linux: a systemd user unit; WSL may have no working systemd; a unit restarting too fast hits systemd's start limit and stops" }
   - { id: S34, kind: reference, ref: "https://www.freedesktop.org/software/systemd/man/latest/loginctl.html", said: "without enable-linger a user's services stop at logout and none start at boot; with it they run with no session" }
-  - { id: S35, kind: reference, ref: "hermes-agent hermes_cli/gateway_windows.py", said: "Windows: schtasks /Create with an XML task, a logon trigger delayed 30s, LeastPrivilege so no elevation, RestartOnFailure; Startup folder only when the task cannot be registered, never both" }
-  - { id: S36, kind: reference, ref: "hermes-agent hermes_cli/gateway_windows.py _build_gateway_vbs_script", said: "a loop under cmd.exe gets CTRL_CLOSE_EVENT at logon, Task Scheduler reads it as a user cancel and RestartOnFailure never fires; wscript.exe launches it with no console" }
+  - { id: S35, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway_windows.py", said: "Windows: schtasks /Create with an XML task, a logon trigger delayed 30s, LeastPrivilege so no elevation, RestartOnFailure; Startup folder only when the task cannot be registered, never both" }
+  - { id: S36, kind: reference, ref: "https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway_windows.py _build_gateway_vbs_script", said: "a loop under cmd.exe gets CTRL_CLOSE_EVENT at logon, Task Scheduler reads it as a user cancel and RestartOnFailure never fires; wscript.exe launches it with no console" }
   - { id: S37, kind: reference, ref: "https://learn.microsoft.com/en-us/windows/win32/TaskSchd/taskschedulerschema-restartonfailure-settingstype-element", said: "RestartOnFailure needs both Count (1 to 255) and Interval (one minute to 31 days): restarts are counted, not endless" }
   - { id: S38, kind: decision, said: "one supervisor contract, chosen by platform: launchd, systemd --user, Task Scheduler. A restart exits back to it, and amy doctor names the one in use. Proposed 2026-11-09" }
   - { id: S39, kind: decision, said: "on Linux, amy doctor refuses lingering off; with no working systemd, amy start runs detached and doctor says nothing will bring it back. Proposed 2026-11-09" }
@@ -57,32 +58,59 @@ touches:
   - packages/cli/src/supervisor/**
   - packages/cli/tests/supervisor.test.ts
   - packages/cli/src/doctor.ts
+  - packages/cli/tests/doctor-conversation.test.ts
   - .github/workflows/software-factory.yml
   - packages/cli/tests/chat-action.test.ts
   - .software-factory/policy.yaml
+  - packages/core/src/index.ts
+  - packages/cli/src/assemble.ts
+  - packages/cli/src/chat-action.ts
+  - packages/cli/tests/supervisor.test.ts
+  - packages/cli/tests/config.test.ts
+  - plugins/telegram/src/**
+  - .software-factory/evidence/amy-answers-in-the-chat/**
+  - .software-factory/evidence/amy-answers-in-the-chat-scenario.sh
+  - .software-factory/evidence/plugin-telegram/bot-api.ts
+  - .software-factory/evidence/ticket-to-qa/bin/claude.ts
+  - package.json
+  - README.md
+  - docs/concepts/ports.md
+  - docs/development/the-gate.md
+  - docs/reference/cli.md
+  - docs/reference/configuration.md
+  - docs/reference/contracts.md
+  - docs/reference/plugins.md
+  - docs/start/installation.md
+  - docs/start/configuration.md
+  - plugins/telegram/README.md
+  - registry/cli.json
+  - registry/core.json
+  - registry/plugin-slack.json
+  - registry/plugin-telegram.json
 criteria:
-  - { id: A1, statement: "a message in the Telegram private chat outside every topic is answered there as an ask, and a root message in the Slack channel is answered in its thread", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.test.ts", sources: [S1, S2, S3, S4] }
-  - { id: A2, statement: "an ask runs read-only: a harness that cannot enforce it refuses, and no commit, port write or operation follows the turn", proof: "deferred:assertion:chat.an_ask_writes_nothing", sources: [S8, S9, S10, S18] }
-  - { id: A3, statement: "a turn starting with /action runs the amy commands its answer names; the same answer without /action runs none", proof: "deferred:assertion:chat.only_an_action_acts", sources: [S11, S12, S13] }
-  - { id: A4, statement: "under /action, an answer naming a command off the list, or a shell line, is refused by name and nothing runs", proof: "deferred:test:packages/cli/tests/chat-action.test.ts", sources: [S12, S13] }
-  - { id: A5, statement: "the third turn of a conversation carries the first two, and after /harness the new harness is given them", proof: "deferred:assertion:chat.a_conversation_carries_its_turns", sources: [S14, S21] }
-  - { id: A6, statement: "in Telegram without topics, a reply quoting amy's message for TBO-1 reaches TBO-1, TBO-2: reaches TBO-2, anything else is an ask, and only /new starts another", proof: "deferred:assertion:chat.a_chat_without_threads_is_addressed_not_guessed", sources: [S5, S7, S14, S15, S16] }
-  - { id: A7, statement: "a long turn's progress is one message edited in place where the adapter declares edit, one line per message where it does not", proof: "deferred:test:packages/core/tests/chat/progress.test.ts", sources: [S6, S16] }
-  - { id: A8, statement: "grooming started from the chat runs the mounted workflow's grooming, and its call log holds only the writes that workflow claims", proof: "deferred:assertion:chat.grooming_writes_what_its_workflow_claims", sources: [S17, S18] }
-  - { id: A9, statement: "a message from anyone but the operator answers nothing, in either adapter", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S22] }
-  - { id: A11, statement: "on macOS, Linux and Windows, a loop started by amy start and killed hard is running again with a new pid, and one stopped with amy stop is not", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S24, S25, S26, S27, S31, S32, S33, S35, S37, S38, S41] }
-  - { id: A17, statement: "on Linux with no working systemd, /action restart is refused, the loop keeps its pid and the chat still answers", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S39, S43] }
-  - { id: A15, statement: "amy doctor names the supervisor in use, refuses a Linux user with lingering off, and says so when no supervisor is there", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S33, S34, S38, S39] }
-  - { id: A16, statement: "the Windows task launches amy with no console, survives a logoff and logon, and no Startup entry is left beside it", proof: "deferred:test:packages/cli/tests/supervisor.test.ts", sources: [S35, S36, S40] }
-  - { id: A12, statement: "/action restart with a config that does not mount leaves the running loop as it was and says why; one that mounts answers with the new pid", proof: "deferred:assertion:chat.a_restart_lets_only_a_booting_mount_through", sources: [S24, S25, S28] }
-  - { id: A13, statement: "a loop started with a workflow that fails to mount still answers an ask in the chat, naming the failure, and takes /action restart", proof: "deferred:assertion:chat.the_chat_outlives_a_broken_mount", sources: [S23, S29] }
-  - { id: A14, statement: "a config change under /action is shown as a diff and written only when the new config mounts; a refused one leaves config.yaml byte for byte", proof: "deferred:test:packages/cli/tests/chat-action.test.ts", sources: [S30] }
-  - { id: A10, statement: "with the chat read all the time, a work thread's /decide and an unmarked reply under policy answer still move its work, a discussion turn does not", proof: "deferred:assertion:chat.the_work_thread_still_decides", sources: [S19, S20, S42] }
+  - { id: A1, statement: "a message in the Telegram private chat outside every topic is answered there as an ask, and a root message in the Slack channel is answered in its thread", proof: "test:plugins/telegram/tests/TelegramConversation.chat.test.ts, test:plugins/slack/tests/SlackConversation.test.ts", sources: [S1, S2, S3, S4], done: true }
+  - { id: A2, statement: "an ask runs read-only: a harness that cannot enforce it refuses, and no commit, port write or operation follows the turn", proof: "assertion:chat.an_ask_writes_nothing", sources: [S8, S9, S10, S18], done: true }
+  - { id: A3, statement: "a turn starting with /action runs the amy commands its answer names; the same answer without /action runs none", proof: "assertion:chat.only_an_action_acts", sources: [S11, S12, S13], done: true }
+  - { id: A4, statement: "under /action, an answer naming a command off the list, or a shell line, is refused by name and nothing runs", proof: "test:packages/cli/tests/chat-action.test.ts", sources: [S12, S13], done: true }
+  - { id: A5, statement: "the third turn of a conversation carries the first two, and after /harness the new harness is given them", proof: "assertion:chat.a_conversation_carries_its_turns", sources: [S14, S21], done: true }
+  - { id: A6, statement: "in Telegram without topics, a reply quoting amy's message for TBO-1 reaches TBO-1, TBO-2: reaches TBO-2, anything else is an ask, and only /new starts another", proof: "assertion:chat.a_chat_without_threads_is_addressed_not_guessed", sources: [S5, S7, S14, S15, S16], done: true }
+  - { id: A7, statement: "a long turn's progress is one message edited in place where the adapter declares edit, one line per message where it does not", proof: "test:packages/core/tests/chat/progress.test.ts", sources: [S6, S16], done: true }
+  - { id: A8, statement: "grooming started from the chat runs the mounted workflow's grooming, and its call log holds only the writes that workflow claims", proof: "assertion:chat.grooming_writes_what_its_workflow_claims", sources: [S17, S18], done: true }
+  - { id: A9, statement: "a message from anyone but the operator answers nothing, in either adapter", proof: "test:plugins/slack/tests/SlackConversation.test.ts, test:plugins/telegram/tests/TelegramConversation.chat.test.ts", sources: [S22], done: true }
+  - { id: A11, statement: "on macOS, Linux and Windows, a loop started by amy start and killed hard is running again with a new pid, and one stopped with amy stop is not", proof: "test:packages/cli/tests/supervisor.test.ts", sources: [S24, S25, S26, S27, S31, S32, S33, S35, S37, S38, S41], done: true }
+  - { id: A17, statement: "on Linux with no working systemd, /action restart is refused, the loop keeps its pid and the chat still answers", proof: "test:packages/cli/tests/supervisor.test.ts", sources: [S39, S43], done: true }
+  - { id: A15, statement: "amy doctor names the supervisor in use, refuses a Linux user with lingering off, and says so when no supervisor is there", proof: "test:packages/cli/tests/supervisor.test.ts", sources: [S33, S34, S38, S39], done: true }
+  - { id: A16, statement: "the Windows task launches amy with no console, is registered to start at logon, and no Startup entry is left beside it", proof: "test:packages/cli/tests/supervisor.test.ts", sources: [S35, S36, S40], done: true }
+  - { id: A12, statement: "/action restart with a config that does not mount leaves the running loop as it was and says why; one that mounts answers with the new pid", proof: "assertion:chat.a_restart_lets_only_a_booting_mount_through", sources: [S24, S25, S28], done: true }
+  - { id: A13, statement: "a loop started with a workflow that fails to mount still answers an ask in the chat, naming the failure, and takes /action restart", proof: "assertion:chat.the_chat_outlives_a_broken_mount", sources: [S23, S29], done: true }
+  - { id: A14, statement: "a config change under /action is shown as a diff and written only when the new config mounts; a refused one leaves config.yaml byte for byte", proof: "test:packages/cli/tests/chat-action.test.ts", sources: [S30], done: true }
+  - { id: A10, statement: "with the chat read all the time, a work thread's /decide and an unmarked reply under policy answer still move its work, a discussion turn does not", proof: "assertion:chat.the_work_thread_still_decides", sources: [S19, S20, S42], done: true }
 crosses:
-  - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A2, A4, A8" }
-  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A1, A7, A9" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A5, A10, A11, A12" }
-  - { mechanism: config, answer: works, proof: "deferred:A14" }
+  - { mechanism: tracker-and-host-writes, answer: works, proof: "A2, A4, A8" }
+  - { mechanism: events-and-notifications, answer: works, proof: "A1, A7, A9" }
+  - { mechanism: profiles-and-state, answer: works, proof: "A5, A10, A11, A12" }
+  - { mechanism: config, answer: works, proof: "A14" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "A12, A13" }
 guarantee:
   - { holds: "a message routed as an ask writes nothing: the harness runs read-only under its own sandbox and no operation is invoked; a work reply keeps its own policy", not_against: "a harness whose own sandbox is broken" }
   - { holds: "/action reaches only operations in amy's contract", not_against: "an operation whose effect is wider than the person meant" }
@@ -111,3 +139,5 @@ Half the work with an agent is conversation. Here amy talks in Slack and
 Telegram, the chats it already lives in: a plain message is an ask that writes
 nothing, `/action` lets the turn act on amy, and a work thread still decides.
 A chat with no threads, as WhatsApp's will be, is routed by what a message quotes.
+On Windows the task's console-less launcher restarts a loop that did not exit
+cleanly: RestartOnFailure only covers a task that fails to start.
