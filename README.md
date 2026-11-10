@@ -23,7 +23,7 @@ amy is an opinionated state machine framework where everything is a plugin. You
 draw your process as a workflow as a Mermaid diagram, so it's easy for us, humans, and machine to understand. We then connect the logic through code, and pick the plugins it depends on (the tracker, the
 code host, the chat, the agent), configure it your way and start it. It is left
 running from then on, moving each piece of work one step at a time, on the
-Claude Code, Codex and Hermes subscriptions you already pay for.
+Claude Code, Codex and Hermes subscriptions you already pay for (more coming soon, or [you can also create a plugin for it yourself](docs/guides/write-a-plugin.md)).
 
 ## Install
 
