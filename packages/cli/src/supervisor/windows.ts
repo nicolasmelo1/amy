@@ -26,7 +26,9 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
       fs.mkdirSync(spec.directory, { recursive: true });
       fs.rmSync(stopMarker(spec.directory, spec.label), { force: true });
       const launcher = path.join(spec.directory, `${spec.label}.vbs`);
-      fs.writeFileSync(launcher, launcherOf(spec), "utf-8");
+      // UTF-16 with its mark: Windows Script Host reads a script without one in
+      // the system's code page, which would mangle a path such as C:\Users\José.
+      fs.writeFileSync(launcher, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(launcherOf(spec), "utf16le")]));
       const xml = path.join(spec.directory, `${spec.label}.xml`);
       // Task Scheduler reads a task's XML as UTF-16, as it writes it.
       fs.writeFileSync(xml, Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(taskOf(spec, user, launcher), "utf16le")]));

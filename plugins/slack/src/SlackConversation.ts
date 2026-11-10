@@ -294,7 +294,7 @@ export class SlackConversation implements Conversation {
    */
   async chat(): Promise<ChatMessage[]> {
     if (!this.options.readOnly) await this.fileChat();
-    const directory = path.join(this.options.directory, "chat", "inbox");
+    const directory = path.join(this.chatDirectory(), "inbox");
     return jsonIn(directory)
       .flatMap((name) => {
         const filed = readJson<ChatMessage>(path.join(directory, name));
@@ -306,7 +306,7 @@ export class SlackConversation implements Conversation {
   async settle(id: string): Promise<void> {
     const message = /^slack:([^:]+):(\d+\.\d+)$/.exec(id);
     if (!message || message[1] !== this.options.channel) throw new Error(`${id} is not a message this channel filed`);
-    fs.rmSync(path.join(this.options.directory, "chat", "inbox", `${safeName(message[2]!)}.json`), { force: true });
+    fs.rmSync(path.join(this.chatDirectory(), "inbox", `${safeName(message[2]!)}.json`), { force: true });
   }
 
   /** Says something in a conversation's thread. */
@@ -327,7 +327,7 @@ export class SlackConversation implements Conversation {
    */
   private async fileChat(): Promise<void> {
     const bot = await this.botUserId();
-    const chat = path.join(this.options.directory, "chat");
+    const chat = this.chatDirectory();
     privateDirectory(chat);
     const cursorFile = path.join(chat, "cursor.json");
     const cursor = readJson<{ oldest: string }>(cursorFile)?.oldest;
@@ -336,8 +336,37 @@ export class SlackConversation implements Conversation {
       return;
     }
     const oldest = await this.fileRoots(cursor, bot);
-    for (const name of jsonIn(path.join(chat, "threads"))) await this.fileReplies(path.join(chat, "threads", name), bot);
     writeJsonFile(cursorFile, { oldest });
+    await this.fileDueReplies(chat, bot);
+  }
+
+  /** The chat's own state, by channel: a channel changed in the config starts afresh and never answers the old one's messages. */
+  private chatDirectory(): string {
+    return path.join(this.options.directory, "chat", safeName(this.options.channel));
+  }
+
+  /**
+   * One conversation's replies per minute, whichever has waited longest:
+   * Slack may allow conversations.replies once a minute for the whole app, not
+   * once per thread, so the chat shares that one call rather than queueing.
+   */
+  private async fileDueReplies(chat: string, bot: string): Promise<void> {
+    const now = this.clock().getTime();
+    const quota = path.join(chat, "replies.json");
+    if (now - (readJson<{ at: number }>(quota)?.at ?? 0) < CHAT_THREAD_EVERY_MS) return;
+    const threads = jsonIn(path.join(chat, "threads")).map((name) => {
+      const file = path.join(chat, "threads", name);
+      return { file, kept: readJson<{ read: string; last: number; checked?: number }>(file) };
+    });
+    for (const { file, kept } of threads) {
+      if (!kept || now - kept.last > CHAT_QUIET_MS) fs.rmSync(file, { force: true });
+    }
+    const due = threads
+      .filter((one) => one.kept && now - one.kept.last <= CHAT_QUIET_MS)
+      .sort((a, b) => (a.kept!.checked ?? 0) - (b.kept!.checked ?? 0))[0];
+    if (!due) return;
+    writeJsonFile(quota, { at: now });
+    await this.fileReplies(due.file, bot);
   }
 
   /** The operator's root messages since the cursor, each a conversation from now on; answers the new cursor. */
@@ -349,7 +378,7 @@ export class SlackConversation implements Conversation {
       const root = !message.thread_ts || message.thread_ts === message.ts;
       if (!root || !this.isOperatorMessage(message, bot)) continue;
       this.fileChatMessage(message, message.ts);
-      writeJsonFile(path.join(this.options.directory, "chat", "threads", `${safeName(message.ts)}.json`), { read: message.ts, last: this.clock().getTime(), checked: 0 });
+      writeJsonFile(path.join(this.chatDirectory(), "threads", `${safeName(message.ts)}.json`), { read: message.ts, last: this.clock().getTime(), checked: 0 });
     }
     return oldest;
   }
@@ -358,11 +387,7 @@ export class SlackConversation implements Conversation {
   private async fileReplies(file: string, bot: string): Promise<void> {
     const now = this.clock().getTime();
     const kept = readJson<{ read: string; last: number; checked?: number }>(file);
-    if (!kept || now - kept.last > CHAT_QUIET_MS) {
-      fs.rmSync(file, { force: true });
-      return;
-    }
-    if (now - (kept.checked ?? 0) < CHAT_THREAD_EVERY_MS) return;
+    if (!kept) return;
     const root = path.basename(file, ".json");
     let { read, last } = kept;
     let messages: SlackMessage[];
@@ -372,6 +397,11 @@ export class SlackConversation implements Conversation {
       // The root is gone: that conversation is over, and the others are still read.
       if (/thread_not_found|message_not_found/.test(messageOf(error))) {
         fs.rmSync(file, { force: true });
+        // What was asked there is gone with it: nothing is left to answer in.
+        const inbox = path.join(this.chatDirectory(), "inbox");
+        for (const name of jsonIn(inbox)) {
+          if (readJson<ChatMessage>(path.join(inbox, name))?.place === root) fs.rmSync(path.join(inbox, name), { force: true });
+        }
         return;
       }
       throw error;
@@ -388,7 +418,7 @@ export class SlackConversation implements Conversation {
   private fileChatMessage(message: SlackMessage, root: string): void {
     const text = (message.text ?? "").trim();
     if (!text) return;
-    const target = path.join(this.options.directory, "chat", "inbox", `${safeName(message.ts!)}.json`);
+    const target = path.join(this.chatDirectory(), "inbox", `${safeName(message.ts!)}.json`);
     const filed: ChatMessage = {
       id: `slack:${this.options.channel}:${message.ts}`,
       at: microsToInstant(tsToMicros(message.ts!)),

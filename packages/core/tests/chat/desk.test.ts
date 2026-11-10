@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -355,13 +356,15 @@ describe("what a pass does not lose and does not act on", () => {
     const claude = harness("claude");
     const { desk } = deskOf(chat.conversation, { claude: claude.cli });
     chat.write("hello");
-    const message = chat.pending[0]!;
-    await answerTheChat(desk);
-    chat.pending.push(message);
+    const claims = path.join(desk.directory, "claims");
+    fs.mkdirSync(claims, { recursive: true });
+    fs.writeFileSync(path.join(claims, createHash("sha256").update(`|${chat.pending[0]!.id}`).digest("hex").slice(0, 32)), "a loop that died");
 
+    await answerTheChat(desk);
+    expect(claude.asked).toHaveLength(0);
     await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
 
-    expect(claude.asked).toHaveLength(2);
+    expect(claude.asked).toHaveLength(1);
   });
 });
 
@@ -420,14 +423,63 @@ describe("a turn that fails", () => {
     const claude = harness("claude");
     const { desk } = deskOf(chat.conversation, { claude: claude.cli });
     chat.write("hello");
+    const claims = path.join(desk.directory, "claims");
+    fs.mkdirSync(claims, { recursive: true });
+    const file = path.join(claims, createHash("sha256").update(`|${chat.pending[0]!.id}`).digest("hex").slice(0, 32));
+    fs.writeFileSync(file, "a loop that died");
+    fs.writeFileSync(`${file}.recovering`, "another loop");
+
+    await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
+
+    expect(claude.asked).toHaveLength(0);
+  });
+
+  it("settles a copy of a message already answered, without answering it again", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli });
+    chat.write("hello");
     const message = chat.pending[0]!;
     await answerTheChat(desk);
     chat.pending.push(message);
-    const claims = path.join(desk.directory, "claims");
-    for (const name of fs.readdirSync(claims)) fs.writeFileSync(path.join(claims, `${name}.recovering`), "another loop");
 
     await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
 
     expect(claude.asked).toHaveLength(1);
+    expect(chat.pending).toEqual([]);
+  });
+
+  it("still restarts when the answer saying so cannot be sent", async () => {
+    const chat = chatOf();
+    let restarted = false;
+    const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nrestart\n```"]).cli }, {
+      act: async () => ({ text: "restarting", after: async () => { restarted = true; } }),
+    });
+    const say = chat.conversation.say!;
+    chat.conversation.say = async (place, text) => {
+      if (text.includes("restarting")) throw new Error("telegram is down");
+      return say(place, text);
+    };
+    chat.write("/action restart");
+
+    const pass = await answerTheChat(desk);
+    await Promise.all(pass.after.map((after) => after()));
+
+    expect(restarted).toBe(true);
+    expect(chat.pending).toEqual([]);
+  });
+
+  it("starts nothing and switches nothing from a quote that reached no work", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli, codex: harness("codex").cli });
+    chat.write("remember kiwi");
+    await answerTheChat(desk);
+    chat.write("/new", { unaddressed: true });
+    chat.write("/harness codex", { unaddressed: true });
+    await answerTheChat(desk);
+
+    expect(claude.asked).toHaveLength(3);
+    expect(claude.asked[2]!.prompt).toMatch(/remember kiwi/);
   });
 });

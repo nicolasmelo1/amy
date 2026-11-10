@@ -105,21 +105,50 @@ export async function answerTheChat(desk: ChatDesk): Promise<{ answered: number;
  * a retry never runs them twice.
  */
 async function answerClaimed(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage, id: string): Promise<{ after?: () => Promise<void> } | undefined> {
+  // Answered before, by this loop or another reading the same source: a copy is settled, never run again.
+  if (fs.existsSync(doneFile(desk.directory, id))) {
+    await desk.conversation.settle!(message.id);
+    return undefined;
+  }
   const claimed = hold(desk, id);
   if (!claimed) return undefined;
-  const turn = { acted: false };
+  const turn: Turn = { acted: false };
   let outcome: ChatActOutcome | undefined;
   try {
     outcome = await answerOne(desk, transcripts, message, turn);
   } catch (error) {
-    if (turn.acted) await desk.conversation.settle!(message.id);
-    else claimed.release();
+    if (!turn.acted) {
+      claimed.release();
+      throw error;
+    }
+    done(desk.directory, id);
+    await desk.conversation.settle!(message.id);
+    // What ran stays done; a restart or a stop it asked for still happens, though the answer was not said.
+    if (turn.after) return { after: turn.after };
     throw error;
   } finally {
     claimed.stop();
   }
+  done(desk.directory, id);
   await desk.conversation.settle!(message.id);
   return outcome?.after ? { after: outcome.after } : {};
+}
+
+/** What one turn did before anything could fail: whether its commands ran, and what they asked to do after. */
+interface Turn {
+  acted: boolean;
+  after?: () => Promise<void>;
+}
+
+/** Marks a message answered for good: a later copy of it, or a reader whose claim expired, finds it done. */
+function done(directory: string, id: string): void {
+  const file = doneFile(directory, id);
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(file, "", { mode: 0o600 });
+}
+
+function doneFile(directory: string, id: string): string {
+  return path.join(directory, "done", createHash("sha256").update(id).digest("hex").slice(0, 32));
 }
 
 /** A claim taken and kept fresh until its turn ends, or nothing when another loop holds it. */
@@ -149,15 +178,15 @@ function hold(desk: ChatDesk, id: string): { stop(): void; release(): void } | u
   };
 }
 
-async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage, turn: { acted: boolean }): Promise<ChatActOutcome | undefined> {
+async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage, turn: Turn): Promise<ChatActOutcome | undefined> {
   const say = (text: string) => desk.conversation.say!(message.place, text);
-  const command = leadingCommand(message.text);
+  // A quote that reached no work is an ask, whatever it starts with: it starts nothing and switches nothing.
+  const command = message.unaddressed ? { rest: message.text } : leadingCommand(message.text);
   if (command.name === "new") return void await startAnother(transcripts, message, say);
   const kept = transcripts.current(message.place);
   if (command.name === "harness") return void await switchHarness(desk, transcripts, kept, command.rest.trim(), say);
 
-  // A quote that reached no work is an ask, whatever it starts with.
-  const action = command.name === "action" && !message.unaddressed;
+  const action = command.name === "action";
   const warning = desk.mountProblem ? `⚠️ The workflow did not mount, so only the chat is running: ${desk.mountProblem}\n\n` : "";
   const at = (desk.now?.() ?? new Date()).toISOString();
   const progress = new ChatProgress(desk.conversation, message.place);
@@ -241,7 +270,7 @@ async function switchHarness(desk: ChatDesk, transcripts: Transcripts, kept: Kep
 }
 
 /** What an answer's commands came to: run under /action when every one is on the list, and never otherwise. */
-async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place: string, progress: ChatProgress, turn: { acted: boolean }): Promise<{ said: string; outcome?: ChatActOutcome }> {
+async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place: string, progress: ChatProgress, turn: Turn): Promise<{ said: string; outcome?: ChatActOutcome }> {
   const asked = commandsIn(reply);
   const said = reply.trim();
   if (asked.commands.length === 0 && asked.unreadable.length === 0) return { said };
@@ -250,6 +279,7 @@ async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place:
   if (refused.length > 0) return { said: `${said}\n\nRefused, and nothing ran:\n${refused.map((one) => `- \`${one.line}\`: ${one.why}`).join("\n")}` };
   turn.acted = true;
   const outcome = await desk.act({ asked, place, progress });
+  if (outcome.after) turn.after = outcome.after;
   return { said: `${said}\n\n${outcome.text}`, outcome };
 }
 
