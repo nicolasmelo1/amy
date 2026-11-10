@@ -131,6 +131,7 @@ export function launcherOf(spec: LoopSpec): string {
     `  failures = failures + 1`,
     `  If failures >= ${MAX_RESTARTS} Then Exit Do`,
     `  WScript.Sleep ${RESTART_PAUSE_MS}`,
+    `  If files.FileExists(stopped) Then Exit Do`,
     `Loop`,
     `WScript.Quit code`,
     ``,

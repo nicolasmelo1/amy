@@ -29,6 +29,7 @@ describe("a line is split as a person reads it, and a shell line is refused", ()
   it("splits on spaces and keeps quoted text whole", () => {
     expect(tokenize(`brief write TBO-1 scope "it's the \\"api\\" one"`)).toEqual({ argv: ["brief", "write", "TBO-1", "scope", `it's the "api" one`] });
     expect(tokenize("a '' b")).toEqual({ argv: ["a", "", "b"] });
+    expect(tokenize(String.raw`add "C:\Users\Ada Smith\workflow"`)).toEqual({ argv: ["add", String.raw`C:\Users\Ada Smith\workflow`] });
   });
 
   it.each(["status | sh", "status; rm -rf /", "status && x", "echo $(id)", "status > out", "echo `id`"])("refuses %s", (line) => {
@@ -42,6 +43,10 @@ describe("a line is split as a person reads it, and a shell line is refused", ()
 });
 
 describe("only commands on the list run (A4)", () => {
+  it("refuses arguments to a command that takes none", () => {
+    expect(refusedCommands(commandsIn("```amy\nstatus --all\nplugin add x\n```"), specs)).toEqual([{ line: "status --all", why: "`amy status` takes no arguments from the chat" }]);
+  });
+
   it("matches the longest run of words", () => {
     expect(specOf({ argv: ["plugin", "add", "x"], line: "" }, specs)?.words).toEqual(["plugin", "add"]);
   });

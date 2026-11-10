@@ -364,3 +364,70 @@ describe("what a pass does not lose and does not act on", () => {
     expect(claude.asked).toHaveLength(2);
   });
 });
+
+describe("a turn that fails", () => {
+  it("lets go of a message nothing ran for, so the next pass asks it again before later ones", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli });
+    let failing = true;
+    const say = chat.conversation.say!;
+    chat.conversation.say = async (place, text) => {
+      if (failing) throw new Error("telegram is down");
+      return say(place, text);
+    };
+    chat.write("first");
+    chat.write("second");
+
+    await expect(answerTheChat(desk)).rejects.toThrow(/telegram is down/);
+    failing = false;
+    await answerTheChat(desk);
+
+    expect(claude.asked.map((one) => one.prompt.split("\n\n").at(-1))).toEqual(["Person: first", "Person: second"]);
+  });
+
+  it("settles a message whose commands ran, so a retry never runs them twice", async () => {
+    const chat = chatOf();
+    let ran = 0;
+    const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nstatus\n```"]).cli }, {
+      act: async () => {
+        ran += 1;
+        throw new Error("the command crashed");
+      },
+    });
+    chat.write("/action status");
+
+    await expect(answerTheChat(desk)).rejects.toThrow(/the command crashed/);
+    await answerTheChat(desk);
+
+    expect(ran).toBe(1);
+    expect(chat.pending).toEqual([]);
+  });
+
+  it("does not act on /action in a quote that reached no work", async () => {
+    const chat = chatOf();
+    const { desk, acted } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nrestart\n```"]).cli });
+    chat.write("/action restart", { unaddressed: true });
+
+    await answerTheChat(desk);
+
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toMatch(/answered as a question[\s\S]*Nothing ran: a command runs only when the message starts with \/action/);
+  });
+
+  it("leaves a stale claim another loop is recovering", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli });
+    chat.write("hello");
+    const message = chat.pending[0]!;
+    await answerTheChat(desk);
+    chat.pending.push(message);
+    const claims = path.join(desk.directory, "claims");
+    for (const name of fs.readdirSync(claims)) fs.writeFileSync(path.join(claims, `${name}.recovering`), "another loop");
+
+    await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
+
+    expect(claude.asked).toHaveLength(1);
+  });
+});

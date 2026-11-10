@@ -96,7 +96,8 @@ function readQuoted(line: string, at: number): { text: string; end: number } | u
   for (let index = at + 1; index < line.length; index += 1) {
     const char = line[index]!;
     if (char === quote) return { text, end: index };
-    if (char === "\\" && quote === '"' && index + 1 < line.length) text += line[++index];
+    // Only a quote or a backslash is escaped: a Windows path keeps its backslashes.
+    if (char === "\\" && quote === '"' && (line[index + 1] === '"' || line[index + 1] === "\\")) text += line[++index];
     else text += char;
   }
   return undefined;
@@ -117,6 +118,12 @@ export function specOf(command: NamedCommand, specs: readonly ChatCommandSpec[])
 export function refusedCommands(asked: Asked, specs: readonly ChatCommandSpec[]): { line: string; why: string }[] {
   return [
     ...asked.unreadable,
-    ...asked.commands.flatMap((command) => specOf(command, specs) ? [] : [{ line: command.line, why: `\`${command.argv.slice(0, 2).join(" ")}\` is not a command amy runs from the chat` }]),
+    ...asked.commands.flatMap((command) => {
+      const spec = specOf(command, specs);
+      if (!spec) return [{ line: command.line, why: `\`${command.argv.slice(0, 2).join(" ")}\` is not a command amy runs from the chat` }];
+      // A command declared with no arguments runs exactly as declared: one it would drop is refused.
+      if (spec.args === undefined && command.argv.length > spec.words.length) return [{ line: command.line, why: `\`amy ${spec.words.join(" ")}\` takes no arguments from the chat` }];
+      return [];
+    }),
   ];
 }

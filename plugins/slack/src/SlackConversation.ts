@@ -365,7 +365,18 @@ export class SlackConversation implements Conversation {
     if (now - (kept.checked ?? 0) < CHAT_THREAD_EVERY_MS) return;
     const root = path.basename(file, ".json");
     let { read, last } = kept;
-    for (const message of await this.threadMessages(root, tsToMicros(kept.read))) {
+    let messages: SlackMessage[];
+    try {
+      messages = await this.threadMessages(root, tsToMicros(kept.read));
+    } catch (error) {
+      // The root is gone: that conversation is over, and the others are still read.
+      if (/thread_not_found|message_not_found/.test(messageOf(error))) {
+        fs.rmSync(file, { force: true });
+        return;
+      }
+      throw error;
+    }
+    for (const message of messages) {
       if (!message.ts || message.ts === root || !this.isOperatorMessage(message, bot)) continue;
       this.fileChatMessage(message, root);
       if (tsToMicros(message.ts) > tsToMicros(read)) read = message.ts;

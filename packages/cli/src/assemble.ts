@@ -1,6 +1,6 @@
 import path from "node:path";
 import { HARNESS_COLLECTION, NamedHarness } from "@amykit/agent-kit";
-import { CommandRunner, Conversation, Engine, EventLog, Harness, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
+import { Budget, CommandRunner, Conversation, Engine, EventLog, Harness, Mounted, Plugin, WorkflowPlugin, mount, unmetNeeds } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 import { isFilesystemWorkflow, LoadResult } from "./loader.js";
 import { profilePaths } from "./paths.js";
@@ -102,6 +102,8 @@ export interface ChatParts {
   readonly conversation?: Conversation;
   /** By the name `/harness` takes: `claude`, `claude:opus`. */
   readonly harnesses: ReadonlyMap<string, Harness>;
+  /** The agents' budget, when the mount has one: the chat is charged to it only under chat.budget. */
+  readonly budget?: Budget;
 }
 
 /** The chat's parts of a mount that came up. */
@@ -109,7 +111,8 @@ export function chatPartsOf(mounted: Mounted): ChatParts {
   const conversation = mounted.ports.get("conversation") as Conversation | undefined;
   const contributed = mounted.contributions.get(HARNESS_COLLECTION) ?? new Map<string, object>();
   const harnesses = new Map([...contributed].map(([name, rung]) => [name, (rung as NamedHarness).cli]));
-  return { ...(conversation ? { conversation } : {}), harnesses };
+  const budget = mounted.ports.get("budget") as Budget | undefined;
+  return { ...(conversation ? { conversation } : {}), harnesses, ...(budget ? { budget } : {}) };
 }
 
 /**
@@ -140,15 +143,17 @@ export async function assembleChat(
   const together = await mount(plugins, slices, host).catch(() => undefined);
   if (together?.ok) return chatPartsOf(together.mounted);
   let conversation: Conversation | undefined;
+  let budget: Budget | undefined;
   const harnesses = new Map<string, Harness>();
   for (const plugin of plugins) {
     const alone = await mount([plugin], slices, host).catch(() => undefined);
     if (!alone?.ok) continue;
     const parts = chatPartsOf(alone.mounted);
     conversation ??= parts.conversation;
+    budget ??= parts.budget;
     for (const [name, harness] of parts.harnesses) if (!harnesses.has(name)) harnesses.set(name, harness);
   }
-  return { ...(conversation ? { conversation } : {}), harnesses };
+  return { ...(conversation ? { conversation } : {}), harnesses, ...(budget ? { budget } : {}) };
 }
 
 /**

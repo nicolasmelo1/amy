@@ -114,7 +114,9 @@ describe("what each supervisor is handed", () => {
     expect(launcher).toContain(", 0, True)");
     expect(launcher).toContain("  If code = 0 Then Exit Do");
     expect(launcher).toContain("  If failures >= 255 Then Exit Do");
-    expect(launcher).toContain('stopped = "/state/supervisor/amy.billing.0a1b2c3d.stopped"');
+    expect(launcher).toContain(`stopped = "${path.join("/state/supervisor", "amy.billing.0a1b2c3d.stopped")}"`);
+    // Asked again after the pause, so a stop said while it waits is heard before another start.
+    expect(launcher).toMatch(/WScript\.Sleep 5000\r\n {2}If files\.FileExists\(stopped\) Then Exit Do/);
     expect(launcher).toContain("  If files.FileExists(stopped) Then Exit Do");
     expect(launcher).toContain("WScript.Quit code");
   });

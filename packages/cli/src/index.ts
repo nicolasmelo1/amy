@@ -857,10 +857,8 @@ program
 async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
   const assembled = await assembleOrSay(profile, config);
   if (assembled.ok) {
-    // Charged only when the person asked for the chat to be (chat.budget).
-    const budget = assembled.mounted.ports.get("budget") as Budget | undefined;
-    const spend = config.chat.budget && budget ? { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } : undefined;
-    return { engine: assembled.engine, parts: chatPartsOf(assembled.mounted), ...(spend ? { spend } : {}) };
+    const parts = chatPartsOf(assembled.mounted);
+    return { engine: assembled.engine, parts, ...chargedTo(config, profile, parts) };
   }
   const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
   const chat = parts.conversation?.chat !== undefined;
@@ -869,7 +867,20 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
   // loop waits instead, and a change to the config or the workflow is the
   // restart that mounts it.
   console.error(`${new Date().toISOString()} ${chat ? "only the chat runs" : "nothing runs"} until the workflow mounts${supervised ? "; a change to the config or the workflow restarts the loop" : ""}`);
-  return { mountProblem: assembled.problems.join("; "), parts };
+  return { mountProblem: assembled.problems.join("; "), parts, ...chargedTo(config, profile, parts) };
+}
+
+/**
+ * Where the chat is charged, only when the person asked for it (chat.budget).
+ * Asked for and with no budget mounted to hold it to, a turn is refused rather
+ * than spent outside the ceiling the person meant it to count against.
+ */
+function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { spend?: ChatDesk["spend"] } {
+  if (!config.chat.budget) return {};
+  const budget: Budget = parts.budget ?? {
+    mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason: "chat.budget is on and no agent budget is mounted to count this turn against" }),
+  };
+  return { spend: { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } };
 }
 
 /** One pass over the chat, as this loop answers it; a failure to read it is said and waits for the next pass. */

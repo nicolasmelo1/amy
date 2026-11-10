@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { AgentRun } from "../agent-run.js";
@@ -86,56 +86,85 @@ export async function answerTheChat(desk: ChatDesk): Promise<{ answered: number;
     if (!held) continue;
     try {
       for (const message of messages) {
-        const claimed = hold(desk, `${source}|${message.id}`);
-        if (!claimed) continue;
-        try {
-          const outcome = await answerOne(desk, transcripts, message);
-          await conversation.settle(message.id);
-          answered += 1;
-          if (outcome?.after) return { answered, after: [outcome.after] };
-        } finally {
-          claimed.stop();
-        }
+        const settled = await answerClaimed(desk, transcripts, message, `${source}|${message.id}`);
+        if (!settled) continue;
+        answered += 1;
+        if (settled.after) return { answered, after: [settled.after] };
       }
     } finally {
-      held.stop();
-      release(desk.directory, `${source}|place:${place}`);
+      held.release();
     }
   }
   return { answered, after: [] };
 }
 
+/**
+ * One message, claimed, answered and settled; nothing when another loop has
+ * it. A turn that fails lets go of a message nothing ran for, so it is asked
+ * again next pass ahead of later ones, and settles one whose commands ran, so
+ * a retry never runs them twice.
+ */
+async function answerClaimed(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage, id: string): Promise<{ after?: () => Promise<void> } | undefined> {
+  const claimed = hold(desk, id);
+  if (!claimed) return undefined;
+  const turn = { acted: false };
+  let outcome: ChatActOutcome | undefined;
+  try {
+    outcome = await answerOne(desk, transcripts, message, turn);
+  } catch (error) {
+    if (turn.acted) await desk.conversation.settle!(message.id);
+    else claimed.release();
+    throw error;
+  } finally {
+    claimed.stop();
+  }
+  await desk.conversation.settle!(message.id);
+  return outcome?.after ? { after: outcome.after } : {};
+}
+
 /** A claim taken and kept fresh until its turn ends, or nothing when another loop holds it. */
-function hold(desk: ChatDesk, id: string): { stop(): void } | undefined {
-  if (!claim(desk.directory, id, desk.now?.() ?? new Date())) return undefined;
+function hold(desk: ChatDesk, id: string): { stop(): void; release(): void } | undefined {
+  const token = claim(desk.directory, id, desk.now?.() ?? new Date());
+  if (!token) return undefined;
   const file = claimFile(desk.directory, id);
   const renew = setInterval(() => {
     try {
-      const now = new Date();
-      fs.utimesSync(file, now, now);
+      // Only its own: a claim another loop took over is never kept alive from here.
+      if (owns(file, token)) fs.utimesSync(file, new Date(), new Date());
     } catch {
       // Released meanwhile: nothing left to renew.
     }
   }, ABANDONED_CLAIM_MS / 4);
   renew.unref?.();
-  return { stop: () => clearInterval(renew) };
+  return {
+    stop: () => clearInterval(renew),
+    release: () => {
+      clearInterval(renew);
+      try {
+        if (owns(file, token)) fs.rmSync(file, { force: true });
+      } catch {
+        // Already gone.
+      }
+    },
+  };
 }
 
-async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage): Promise<ChatActOutcome | undefined> {
+async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage, turn: { acted: boolean }): Promise<ChatActOutcome | undefined> {
   const say = (text: string) => desk.conversation.say!(message.place, text);
   const command = leadingCommand(message.text);
   if (command.name === "new") return void await startAnother(transcripts, message, say);
   const kept = transcripts.current(message.place);
   if (command.name === "harness") return void await switchHarness(desk, transcripts, kept, command.rest.trim(), say);
 
-  const action = command.name === "action";
+  // A quote that reached no work is an ask, whatever it starts with.
+  const action = command.name === "action" && !message.unaddressed;
   const warning = desk.mountProblem ? `⚠️ The workflow did not mount, so only the chat is running: ${desk.mountProblem}\n\n` : "";
   const at = (desk.now?.() ?? new Date()).toISOString();
   const progress = new ChatProgress(desk.conversation, message.place);
   const reply = await readOnlyAnswer(desk, kept, action ? command.rest.trim() : message.text, action, progress);
   if (typeof reply !== "string") return void await say(`${warning}${reply.refused}`);
 
-  const { said, outcome } = await carriedOut(desk, reply, action, message.place, progress);
+  const { said, outcome } = await carriedOut(desk, reply, action, message.place, progress, turn);
   const answer = message.unaddressed ? `That quoted message is not one I filed under a work, so I do not know which work it is about; answered as a question.\n\n${said}` : said;
   await say(`${warning}${answer}`);
   kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: answer });
@@ -212,13 +241,14 @@ async function switchHarness(desk: ChatDesk, transcripts: Transcripts, kept: Kep
 }
 
 /** What an answer's commands came to: run under /action when every one is on the list, and never otherwise. */
-async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place: string, progress: ChatProgress): Promise<{ said: string; outcome?: ChatActOutcome }> {
+async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place: string, progress: ChatProgress, turn: { acted: boolean }): Promise<{ said: string; outcome?: ChatActOutcome }> {
   const asked = commandsIn(reply);
   const said = reply.trim();
   if (asked.commands.length === 0 && asked.unreadable.length === 0) return { said };
   if (!action) return { said: `${said}\n\nNothing ran: a command runs only when the message starts with /action.` };
   const refused = refusedCommands(asked, desk.commands);
   if (refused.length > 0) return { said: `${said}\n\nRefused, and nothing ran:\n${refused.map((one) => `- \`${one.line}\`: ${one.why}`).join("\n")}` };
+  turn.acted = true;
   const outcome = await desk.act({ asked, place, progress });
   return { said: `${said}\n\n${outcome.text}`, outcome };
 }
@@ -257,37 +287,56 @@ function promptFor(desk: ChatDesk, kept: Kept, text: string, action: boolean): s
   ].filter(Boolean).join("\n\n");
 }
 
-/** Claims one message for this process; a claim left by a process that died mid-turn is taken over. */
-function claim(directory: string, id: string, now: Date): boolean {
+/**
+ * Claims something for this process, answering the token it holds it by. A
+ * claim left by a process that died mid-turn is taken over, one recovery at a
+ * time and only if it is still stale once that recovery holds, so two loops
+ * never both take it.
+ */
+function claim(directory: string, id: string, now: Date): string | undefined {
   const file = claimFile(directory, id);
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  const token = randomUUID();
+  if (createClaim(file, token)) return token;
+  if (!stale(file, now)) return undefined;
+  const recovery = `${file}.recovering`;
+  if (!createClaim(recovery, token)) {
+    // A recovery left by a process that died during it is cleared for the next pass.
+    if (stale(recovery, now, ABANDONED_CLAIM_MS / 10)) fs.rmSync(recovery, { force: true });
+    return undefined;
+  }
   try {
-    fs.writeFileSync(file, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
+    if (!stale(file, now)) return undefined;
+    fs.rmSync(file, { force: true });
+    return createClaim(file, token) ? token : undefined;
+  } finally {
+    fs.rmSync(recovery, { force: true });
+  }
+}
+
+/** Whether a claim is still the one this process took. */
+function owns(file: string, token: string): boolean {
+  const held = Buffer.from(fs.readFileSync(file, "utf-8"));
+  const mine = Buffer.from(token);
+  return held.length === mine.length && timingSafeEqual(held, mine);
+}
+
+function createClaim(file: string, token: string): boolean {
+  try {
+    fs.writeFileSync(file, token, { flag: "wx", mode: 0o600 });
     return true;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-  }
-  try {
-    if (now.getTime() - fs.statSync(file).mtimeMs < ABANDONED_CLAIM_MS) return false;
-    // Taken over by moving it aside: a rename succeeds for one loop only, and
-    // the claim is then made again as any other is.
-    const aside = `${file}.${randomUUID()}.stale`;
-    fs.renameSync(file, aside);
-    fs.rmSync(aside, { force: true });
-  } catch {
-    return false;
-  }
-  try {
-    fs.writeFileSync(file, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
-    return true;
-  } catch {
     return false;
   }
 }
 
-/** Lets go of a claim, so the next turn in that place can be taken. */
-function release(directory: string, id: string): void {
-  fs.rmSync(claimFile(directory, id), { force: true });
+function stale(file: string, now: Date, after = ABANDONED_CLAIM_MS): boolean {
+  try {
+    return now.getTime() - fs.statSync(file).mtimeMs >= after;
+  } catch {
+    return false;
+  }
 }
 
 function claimFile(directory: string, id: string): string {

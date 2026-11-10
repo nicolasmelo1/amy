@@ -620,6 +620,25 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
     expect(http.argsOf("conversations.replies")).toHaveLength(1);
   });
 
+  it("drops a conversation whose root is gone, and still reads the others", async () => {
+    const OTHER_ROOT = "1790000250.000100";
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }, { type: "message", ts: OTHER_ROOT, user: OPERATOR, text: "second" }]),
+      { match: (request) => method("conversations.replies")(request) && (request.body ?? "").includes(`ts=${ROOT}`), answer: ok({ messages: [], has_more: false }) },
+      thread([]),
+      history([]),
+      { match: (request) => method("conversations.replies")(request) && (request.body ?? "").includes(`ts=${ROOT}`), answer: { json: { ok: false, error: "thread_not_found" } } },
+      thread([{ type: "message", ts: "1790000251.000100", thread_ts: OTHER_ROOT, user: OPERATOR, text: "still here" }]),
+    ]);
+    let now = Date.parse("2026-09-21T00:00:00.000Z");
+    const amy = conversation(http, [], () => new Date((now += 61_000)));
+    await amy.chat();
+    for (const message of await amy.chat()) await amy.settle(message.id);
+
+    expect((await amy.chat()).map((one) => one.text)).toEqual(["still here"]);
+  });
+
   it("edits what it said in place", async () => {
     const http = new ScriptedHttp([
       { match: method("chat.update"), answer: ok({ channel: CHANNEL, ts: "1790000203.000100", text: "two lines", message: { type: "message", text: "two lines" } }) },
