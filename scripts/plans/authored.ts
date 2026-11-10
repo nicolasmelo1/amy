@@ -159,8 +159,27 @@ interface Unknown {
   readonly flag?: string;
 }
 
+/** What a quoted word, a placeholder or anything after `--` becomes: an argument, never a command or an option. */
+const ARGUMENT = "\u0000";
+
+/** A span's words as a shell reads them: a quoted run is one argument, and `--` ends the options. */
+function tokensOf(span: string): string[] {
+  const tokens: string[] = [];
+  let ended = false;
+  for (const word of span.matchAll(/"[^"]*"|'[^']*'|(\S+)/g)) {
+    // Only an unquoted word is captured: a quoted one has no bare form.
+    const bare = word[1];
+    if (bare === "--" && !ended) {
+      ended = true;
+      continue;
+    }
+    tokens.push(bare === undefined || ended || /^[<[]/.test(bare) ? ARGUMENT : bare);
+  }
+  return tokens;
+}
+
 function unknownIn(span: string, known: readonly Known[], globals: ReadonlyMap<string, boolean>): Unknown | undefined {
-  const all = span.trim().split(/\s+/);
+  const all = tokensOf(span);
   const leading = globalsBefore(all, globals);
   if ("unknown" in leading) return leading.unknown;
   const tokens = all.slice(leading.next);
@@ -193,28 +212,29 @@ function commandIn(tokens: readonly string[], known: readonly Known[], globals: 
   const words: string[] = [];
   let match: Known | undefined;
   for (let at = 0; at < tokens.length; at += 1) {
-    const token = tokens[at]!;
+    const word = tokens[at]!;
     // An option between the words, and its value, is stepped over: the words around it still name the command.
-    if (token.startsWith("-")) {
-      at += valueAfter(token, match, globals) ? 1 : 0;
+    if (word.startsWith("-")) {
+      at += valueAfter(word, match, globals) ? 1 : 0;
       continue;
     }
-    if (!/^[a-z][a-z0-9-]*$/.test(token)) break;
-    const next = known.find((one) => same(one.words, [...words, token]));
+    // An argument before any command names none: the span is generic, like `amy <command>`.
+    if (word === ARGUMENT) break;
+    const next = known.find((one) => same(one.words, [...words, word]));
     if (next) {
-      words.push(token);
+      words.push(word);
       match = next;
       continue;
     }
     // Past a command, a word is its argument, unless the command only groups others.
     if (match && (match.takesArguments || !groups(words, known))) break;
-    // A group with a default subcommand hands it the word as its argument.
+    // A group with a default subcommand that takes arguments hands it the word.
     const fallback = defaultUnder(words, known);
-    if (fallback && match) {
+    if (fallback?.takesArguments && match) {
       match = fallback;
       break;
     }
-    const command = [...words, token].join(" ");
+    const command = [...words, word].join(" ");
     return { unknown: { command, why: `the CLI declares no amy ${command}` } };
   }
   return match ? { match } : undefined;

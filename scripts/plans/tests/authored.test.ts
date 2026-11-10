@@ -20,7 +20,7 @@ const cli: CliFacts = {
   commands: [
     command(["doctor"]),
     command(["plugin"]),
-    command(["plugin", "list"]),
+    command(["plugin", "list"], [], 0, true),
     command(["workflow"]),
     command(["workflow", "add"], ["--into <name>"], 1),
     command(["config"]),
@@ -133,6 +133,20 @@ describe("the commands a groomed plan names", () => {
   it("pass a group's default subcommand named by its group alone, with its options", () => {
     expect(judge(plan({ body: "`amy brief invoice-currency`, `amy brief invoice-currency --json`, `amy brief --json` and `amy brief check x`" }))).toEqual([]);
     expect(judge(plan({ body: "`amy brief invoice-currency --yaml`" }))).toEqual([expect.stringMatching(/declares no --yaml/)]);
+  });
+
+  it("read a quoted argument, and anything after --, as an argument rather than an option", () => {
+    expect(judge(plan({ body: "`amy workflow add \"do not use --unsafe here\" --into mine` and `amy workflow add -- --odd-name --into mine`" }))).toEqual([]);
+  });
+
+  it("refuse a command word with punctuation in it, at the top or below a group", () => {
+    expect(judge(plan({ body: "`amy nonexistent_command`" }))).toEqual([expect.stringMatching(/the CLI declares no amy nonexistent_command/)]);
+    expect(judge(plan({ body: "`amy plugin missing_command`" }))).toEqual([expect.stringMatching(/the CLI declares no amy plugin missing_command/)]);
+  });
+
+  it("refuse a word below a group whose default subcommand takes no argument", () => {
+    expect(judge(plan({ body: "`amy plugin nonexistent`" }))).toEqual([expect.stringMatching(/the CLI declares no amy plugin nonexistent/)]);
+    expect(judge(plan({ body: "`amy plugin` and `amy <command> --help`" }))).toEqual([]);
   });
 
   it("refuse an option a criterion only names the command of", () => {
