@@ -33,6 +33,7 @@ export function blocksFrom(facts: Facts): Record<string, string> {
     "cli-commands": cliCommands(facts.cli),
     "readme-node-badge": readmeNodeBadge(facts.runtime),
     "readme-node-version": readmeNodeVersion(facts.runtime),
+    "core-dependency": coreDependency(facts.packages),
     "factory-counts": factoryCounts(facts.factory),
     "cli-index": cliIndex(facts.cli),
     "core-actions": coreActions(facts.core, facts.packages),
@@ -72,6 +73,13 @@ export function readmeNodeBadge(runtime: RuntimeFacts): string {
 /** The prose form used where a badge would be unreadable or inaccessible. */
 export function readmeNodeVersion(runtime: RuntimeFacts): string {
   return `Node ${runtime.node.replace(/^>=/, "").replace(/\.0$/, "")} or later runs the command.`;
+}
+
+/** The dependency a published plugin declares on the core this release ships. */
+function coreDependency(packages: PackageFact[]): string {
+  const core = packages.find((one) => one.name === "@amykit/core");
+  if (!core) throw new Error("no @amykit/core among the workspace packages");
+  return ["```json", `"dependencies": { "@amykit/core": "^${core.version}" }`, "```"].join("\n");
 }
 
 /** The counts, rendered from the policy the factory enforces, on the page about the gate. */

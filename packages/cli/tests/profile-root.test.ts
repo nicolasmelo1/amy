@@ -12,6 +12,7 @@ import { pluginsRootResolver } from "../src/loader.js";
 import { profileRoot } from "../src/paths.js";
 import { Profile } from "../src/profiles.js";
 import { ForkWorld, Upstream, installed } from "./fork-world.js";
+import { CORE_RANGE, CORE_VERSION } from "./core-version.js";
 
 const PAGER = "@acme/plugin-pager";
 const PAGING = "@acme/workflow-paging";
@@ -45,12 +46,12 @@ describe("a profile root", () => {
     plugins = path.join(home, "plugins");
     const upstream = new Upstream(path.join(home, "upstream"));
     const pager = (said: string) => `import { identity } from "@amykit/core";\nexport const plugin = { name: "${PAGER}", said: "${said}", core: identity, register() {} };\n`;
-    const manifest = { name: PAGER, version: "1.0.0", type: "module", main: "./index.js", dependencies: { "@amykit/core": "^0.6.0" }, repository: { type: "git", url: upstream.url, directory: "pager" } };
+    const manifest = { name: PAGER, version: "1.0.0", type: "module", main: "./index.js", dependencies: { "@amykit/core": CORE_RANGE }, repository: { type: "git", url: upstream.url, directory: "pager" } };
     upstream.release({ "pager/package.json": JSON.stringify(manifest), "pager/index.js": pager("the fork") }, `${PAGER}@1.0.0`);
 
-    installed(plugins, { name: "@amykit/core", version: "0.6.0", type: "module", main: "./index.js" }, { "index.js": "export const identity = { host: true };\n" });
+    installed(plugins, { name: "@amykit/core", version: CORE_VERSION, type: "module", main: "./index.js" }, { "index.js": "export const identity = { host: true };\n" });
     installed(plugins, manifest, { "index.js": pager("published") });
-    installed(plugins, { name: PAGING, version: "1.0.0", type: "module", main: "./index.js", dependencies: { "@amykit/core": "^0.6.0", [PAGER]: "^1.0.0" } }, {
+    installed(plugins, { name: PAGING, version: "1.0.0", type: "module", main: "./index.js", dependencies: { "@amykit/core": CORE_RANGE, [PAGER]: "^1.0.0" } }, {
       // A workflow that imports the plugin itself, by name: the fork has to reach it here too.
       "index.js": `import { plugin as pager } from "${PAGER}";\nimport { identity } from "@amykit/core";\nexport const plugin = { name: "${PAGING}", pager, core: identity, register() {} };\n`,
     });

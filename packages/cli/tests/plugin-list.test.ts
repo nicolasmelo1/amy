@@ -14,11 +14,11 @@ describe("plugin versions", () => {
       const local = path.join(home, "workflows", "local");
       const bare = path.join(root, "bare");
       for (const dir of [installed, local, bare]) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(installed, "package.json"), JSON.stringify({ version: "0.6.0" }));
+      fs.writeFileSync(path.join(installed, "package.json"), JSON.stringify({ version: "3.1.0" }));
       fs.writeFileSync(path.join(local, "package.json"), JSON.stringify({ version: "2.3.4" }));
       fs.writeFileSync(path.join(local, "index.js"), "export const plugin = {};\n");
       fs.writeFileSync(path.join(bare, "index.js"), "export const plugin = {};\n");
-      expect(pluginVersion(home, plugins, "@example/plugin-one")).toBe("0.6.0");
+      expect(pluginVersion(home, plugins, "@example/plugin-one")).toBe("3.1.0");
       expect(pluginVersion(home, plugins, "local")).toBe("2.3.4");
       expect(pluginVersion(home, plugins, bare)).toBeUndefined();
     } finally {

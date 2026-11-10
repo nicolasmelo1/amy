@@ -28,10 +28,19 @@ to and no review to pass: `amy add` installs it by name, and amy imports its
   },
   "files": ["dist"],
   "repository": { "type": "git", "url": "git+https://github.com/acme/amy-plugins.git", "directory": "plugins/jira" },
-  "publishConfig": { "access": "public" },
-  "dependencies": { "@amykit/core": "^0.6.0" }
+  "publishConfig": { "access": "public" }
 }
 ```
+
+and one dependency, on the core this release of amy ships:
+
+<!-- amy:generated core-dependency -->
+
+```json
+"dependencies": { "@amykit/core": "^0.7.0" }
+```
+
+<!-- amy:end core-dependency -->
 
 These are not optional:
 
@@ -52,7 +61,7 @@ These are not optional:
 ## Versioning
 
 Your plugin's version is yours. The one thing to be careful about is
-`@amykit/core`: a caret range (`^0.6.0`) is right while amy is pre-1.0, because
+`@amykit/core`: a caret range on its current minor, as above, is right while amy is pre-1.0, because
 the contracts still move. When they stop moving, so can that.
 
 Breaking changes that need a major, in order of how often they catch people:

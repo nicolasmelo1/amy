@@ -782,7 +782,7 @@
       "description": "Getting your package installable, findable, and listed in the catalogue.",
       "group": "Build your own",
       "order": 3,
-      "generated": false,
+      "generated": true,
       "headings": [
         {
           "depth": 2,
@@ -11442,6 +11442,7 @@
     "config-profile",
     "core-actions",
     "core-contracts",
+    "core-dependency",
     "environment",
     "event-detail",
     "event-kinds",
