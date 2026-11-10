@@ -355,8 +355,15 @@ export class SlackConversation implements Conversation {
    */
   private async fileDueReplies(chat: string, bot: string): Promise<void> {
     const now = this.clock().getTime();
-    const quota = this.repliesQuota();
-    if (now - (readJson<{ at: number }>(quota)?.at ?? 0) < CHAT_THREAD_EVERY_MS) return;
+    // Work threads read whenever their work asks, and each read takes the
+    // shared allowance. The chat waits for it, but never past its own second
+    // slot: work reads under a minute apart would otherwise hold the chat's
+    // follow-ups unread for as long as the work goes on. A read Slack refuses
+    // for that is a 429, which the API waits out.
+    const free = now - (readJson<{ at: number }>(this.repliesQuota())?.at ?? 0) >= CHAT_THREAD_EVERY_MS;
+    const chatReads = path.join(chat, "chat-replies.json");
+    const owed = now - (readJson<{ at: number }>(chatReads)?.at ?? 0) >= 2 * CHAT_THREAD_EVERY_MS;
+    if (!free && !owed) return;
     const threads = jsonIn(path.join(chat, "threads")).map((name) => {
       const file = path.join(chat, "threads", name);
       return { file, kept: readJson<{ read: string; last: number; checked?: number }>(file) };
@@ -365,7 +372,7 @@ export class SlackConversation implements Conversation {
       .filter((one) => one.kept)
       .sort((a, b) => (a.kept!.checked ?? 0) - (b.kept!.checked ?? 0))[0];
     if (!due) return;
-    writeJsonFile(quota, { at: now });
+    writeJsonFile(chatReads, { at: now });
     await this.fileReplies(due.file, bot);
   }
 

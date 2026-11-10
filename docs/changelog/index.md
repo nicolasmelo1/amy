@@ -560,6 +560,20 @@ plugins:
 
 **Telegram's and Slack's contracts are vendored and kept fresh.** Telegram publishes its Bot API only as a reference page, so `npm run contracts:update` derives that page into its types and methods, and `check:contracts` fails when today's page derives to something else. Slack's served OpenAPI description joins GitHub's and Linear's. The test fixtures export `assertValidBotApiCall`, `assertValidBotApiResult`, `assertValidSlackCall` and `assertValidSlackAnswer`, and both plugins' stand-ins are held to them.
 
+### **The chat recovers, pays and reads fairly.**
+
+`patch` · `@amykit/cli`, `@amykit/plugin-slack`
+
+When the workflow does not mount, the chat's recovery grows one group of
+plugins a mount at a time instead of trying every subset, and keeps a
+thread-only adapter out of the way of one that can answer in the chat. Under
+`chat.budget` with a dollar ceiling, `/harness` no longer offers a harness
+whose turns nothing can price. A config lock left by a dead writer is cleared
+under a guard named after the owner that was seen dead, so a writer acting on
+an old look never removes a replacement. In Slack, work-thread reads no
+longer hold the chat's follow-ups unread: the chat reads by its second minute
+at the latest.
+
 ### **The config is written by what is mounted.** Every workflow's own vocabulary — the attempt ceilings its decisions read, the status a ticket moves to, where plans go and what judges them — moved out of the config's top level and into the profile that drives the workflow, checked at mount against the workflow's own `configSchema`. `amy init` writes a config that carries only the machine, and a commented example that teaches the shape; `amy add <workflow>` writes the profile block from what the workflow's schema asks for, with the settings that need an answer written as placeholders and the rest taken from defaults. `amy config explain` lists every setting the machine and each mounted thing carries, with its type, its default and the reason it is there; `amy config explain <plugin>` narrows to one.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-linear`, `@amykit/plugin-serial-engine`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-pull-request`, `@amykit/workflow-ticket-to-qa`

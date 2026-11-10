@@ -65,6 +65,10 @@ touches:
   - packages/core/src/index.ts
   - packages/cli/src/assemble.ts
   - packages/cli/src/chat-action.ts
+  - packages/cli/src/chat-pricing.ts
+  - packages/cli/tests/chat-recovery.test.ts
+  - packages/cli/package.json
+  - package-lock.json
   - packages/cli/tests/supervisor.test.ts
   - packages/cli/tests/config.test.ts
   - plugins/telegram/src/**
@@ -75,6 +79,7 @@ touches:
   - package.json
   - README.md
   - docs/concepts/ports.md
+  - docs/concepts/architecture.md
   - docs/development/the-gate.md
   - docs/reference/cli.md
   - docs/reference/configuration.md

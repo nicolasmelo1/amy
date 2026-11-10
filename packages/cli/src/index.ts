@@ -39,6 +39,7 @@ import { FileEventLog } from "@amykit/plugin-file-log";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { FileStore } from "@amykit/plugin-file-store";
 import { renderText } from "@amykit/ui";
+import { specTable } from "@amykit/model-specs";
 import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/agent-kit";
 import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
@@ -65,6 +66,7 @@ import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf } from "./assemble.js";
+import { pricedForTheCeiling } from "./chat-pricing.js";
 import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
 import { installedStamp } from "./stamp.js";
 import { explainReport } from "./config-explain.js";
@@ -862,8 +864,7 @@ program
 async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
   const assembled = await assembleOrSay(profile, config);
   if (assembled.ok) {
-    const parts = chatPartsOf(assembled.mounted);
-    return { engine: assembled.engine, parts, ...chargedTo(config, profile, parts) };
+    return { engine: assembled.engine, ...chargedTo(config, profile, chatPartsOf(assembled.mounted)) };
   }
   const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
   const chat = parts.conversation?.chat !== undefined;
@@ -872,7 +873,7 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
   // loop waits instead, and a change to the config or the workflow is the
   // restart that mounts it.
   console.error(`${new Date().toISOString()} ${chat ? "only the chat runs" : "nothing runs"} until the workflow mounts${supervised ? "; a change to the config or the workflow restarts the loop" : ""}`);
-  return { mountProblem: assembled.problems.join("; "), parts, ...chargedTo(config, profile, parts) };
+  return { mountProblem: assembled.problems.join("; "), ...chargedTo(config, profile, parts) };
 }
 
 /**
@@ -880,7 +881,7 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
  * Asked for and with no budget mounted to hold it to, a turn is refused rather
  * than spent outside the ceiling the person meant it to count against.
  */
-function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { spend?: ChatDesk["spend"] } {
+function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { parts: ChatParts; spend?: ChatDesk["spend"] } {
   const chatProblems = configuredChatProblems(config);
   // A degraded loop keeps its chat available to explain a broken workflow,
   // but malformed chat policy must not silently turn its budget ceiling off.
@@ -888,17 +889,30 @@ function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { spe
   if (chatProblems.length > 0) {
     const reason = chatProblems.join("; ");
     return {
+      parts,
       spend: {
         budget: { mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason }) },
         log: new FileEventLog(profilePaths(home, profile).log, undefined, build),
       },
     };
   }
-  if (!config.chat.budget) return {};
+  if (!config.chat.budget) return { parts };
   const budget: Budget = parts.budget ?? {
     mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason: "chat.budget is on and no agent budget is mounted to count this turn against" }),
   };
-  return { spend: { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } };
+  // A dollar ceiling holds only harnesses whose turns arrive with a price. A
+  // slice that will not resolve mounted no relay, so no budget lets a turn start.
+  let setting: unknown;
+  try {
+    setting = configuredBudget(config, profile);
+  } catch {
+    setting = undefined;
+  }
+  const priced = pricedForTheCeiling(parts, setting, specTable(home));
+  if (priced.unpriced.length > 0) {
+    console.error(`${new Date().toISOString()} the chat does not offer ${priced.unpriced.join(", ")}: chat.budget charges a costUsd ceiling and nothing can price their turns`);
+  }
+  return { parts: priced.parts, spend: { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } };
 }
 
 /** One pass over the chat, as this loop answers it; a failure to read it is said and waits for the next pass. */
@@ -2270,9 +2284,8 @@ function pickedIsInstalled(root: string, name: string): boolean {
 type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
 
 /** The `budget` setting, from the plugin slice the relay is given. */
-function configuredBudget(): unknown {
-  const config = loadConfig(home);
-  const slice = pluginSlices(config, selected(config))["@amykit/plugin-agent-relay"];
+function configuredBudget(config: AmyConfig = loadConfig(home), profile: Profile = selected(config)): unknown {
+  const slice = pluginSlices(config, profile)["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
 
