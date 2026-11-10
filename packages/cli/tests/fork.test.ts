@@ -9,6 +9,7 @@ import { profileForks, profileRoot } from "../src/paths.js";
 import { Profile } from "../src/profiles.js";
 import { dropFork } from "../src/remove.js";
 import { ForkWorld, Upstream, installed } from "./fork-world.js";
+import { CORE_RANGE } from "./core-version.js";
 
 const PAGER = "@acme/plugin-pager";
 
@@ -146,7 +147,7 @@ describe("amy add --fork", () => {
       "packages/fixtures/package.json": JSON.stringify({ name: "@acme/test-fixtures", private: true }),
       "plugins/pager/package.json": JSON.stringify({
         name: PAGER, version: "1.0.0", type: "module", main: "./dist/index.js",
-        dependencies: { "@amykit/core": "^0.6.0" },
+        dependencies: { "@amykit/core": CORE_RANGE },
         devDependencies: { "@acme/test-fixtures": "^0.1.0" },
       }),
       "plugins/pager/tsconfig.json": JSON.stringify({ extends: "../../tsconfig.base.json", compilerOptions: { outDir: "dist" }, references: [{ path: "../../packages/fixtures" }] }),
@@ -166,7 +167,7 @@ describe("amy add --fork", () => {
 
     const manifest = JSON.parse(fs.readFileSync(path.join(forked.directory, "package.json"), "utf-8")) as { dependencies: object; devDependencies: object; scripts: object };
     expect(manifest.devDependencies).toEqual({ typescript: "^5.8.3" });
-    expect(manifest.dependencies).toEqual({ "@amykit/core": "^0.6.0" });
+    expect(manifest.dependencies).toEqual({ "@amykit/core": CORE_RANGE });
     expect(manifest.scripts).toEqual({ build: "tsc -p tsconfig.json" });
     expect(JSON.parse(fs.readFileSync(path.join(forked.directory, "tsconfig.json"), "utf-8"))).toEqual({ compilerOptions: { strict: true, outDir: "dist" } });
     expect(built).toEqual([forked.directory]);

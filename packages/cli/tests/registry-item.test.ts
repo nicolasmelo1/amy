@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { itemFile, publicPackages, registryItem, serialize, staleItems } from "../src/registry-item.js";
+import { CORE_RANGE } from "./core-version.js";
 
 const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -32,7 +33,7 @@ describe("the registry items every published package ships", () => {
       fs.writeFileSync(path.join(pager, "package.json"), JSON.stringify({
         name: "@acme/plugin-pager", version: "1.4.0", description: "pages",
         repository: { type: "git", url: "git+https://example.test/acme.git", directory: "plugins/pager" },
-        dependencies: { "@amykit/core": "^0.6.0" },
+        dependencies: { "@amykit/core": CORE_RANGE },
         devDependencies: { "secret": "^1.0.0", "fast-check": "^4.0.0" },
       }));
       fs.writeFileSync(path.join(pager, "src", "index.ts"), "export const said = 1;\n");
@@ -54,7 +55,7 @@ describe("the registry items every published package ships", () => {
         ["plugins/pager/src/index.ts", "forks/plugin-pager/src/index.ts"],
       ]);
       expect(item.files[1]!.content).toBe("export const said = 1;\n");
-      expect(item.dependencies).toEqual(["@amykit/core@^0.6.0"]);
+      expect(item.dependencies).toEqual([`@amykit/core@${CORE_RANGE}`]);
       // `secret` is the workspace's private package: no client outside it could install it.
       expect(item.devDependencies).toEqual(["fast-check@^4.0.0"]);
       expect(item.meta).toEqual({ package: "@acme/plugin-pager", version: "1.4.0", repository: "git+https://example.test/acme.git", directory: "plugins/pager", tag: "@acme/plugin-pager@1.4.0" });

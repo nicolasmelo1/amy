@@ -8,6 +8,7 @@ import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { addWorkflowInto, relativeImports } from "../src/workflow-add.js";
 import { checkWorkflow, exportWorkflow, inspectWorkflow, writeWorkflow } from "../src/workflow.js";
 import { ForkWorld, Upstream, installed } from "./fork-world.js";
+import { CORE_RANGE } from "./core-version.js";
 
 const REPOSITORY = fileURLToPath(new URL("../../../", import.meta.url));
 
@@ -52,7 +53,7 @@ function reviewPackage(root: string, dependencies: Record<string, string>): stri
     name: "@acme/workflow-review",
     type: "module",
     exports: { ".": { import: "./index.ts" } },
-    dependencies: { "@amykit/core": "^0.6.0", ...dependencies },
+    dependencies: { "@amykit/core": CORE_RANGE, ...dependencies },
   }, null, 2));
   fs.writeFileSync(path.join(directory, "workflow.mmd"), CALLEE_DIAGRAM);
   fs.writeFileSync(path.join(directory, "index.ts"), `import { defineWorkflow, withDiagramBeside } from "@amykit/core";
@@ -221,7 +222,7 @@ export const plugin = defineWorkflow({
   it("leaves a copy its caller's check walks through, the way it would walk the package", async () => {
     const callee = path.join(elsewhere, "approve");
     fs.mkdirSync(callee);
-    fs.writeFileSync(path.join(callee, "package.json"), JSON.stringify({ name: "workflow-approve", type: "module", dependencies: { "@amykit/core": "^0.6.0" } }));
+    fs.writeFileSync(path.join(callee, "package.json"), JSON.stringify({ name: "workflow-approve", type: "module", dependencies: { "@amykit/core": CORE_RANGE } }));
     fs.writeFileSync(path.join(callee, "workflow.mmd"), "stateDiagram-v2\n    [*] --> READING\n    READING --> APPROVED\n    APPROVED --> [*]\n");
     fs.writeFileSync(path.join(callee, "index.ts"), `import { advance, defineWorkflow, settled, withDiagramBeside } from "@amykit/core";
 export const plugin = withDiagramBeside(defineWorkflow({
