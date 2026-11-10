@@ -189,6 +189,24 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
     expect(await amy.replies(thread, since)).toMatchObject([{ kind: "decision", answer: { ask: "ship", chosen: ["approve"] } }]);
   });
 
+  it("gives two phases sharing a bot their own thread for one work id, and routes each quote to its own", async () => {
+    const telegram = botApiStandIn({ topicsEnabled: false });
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-phases-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport, sleep: async () => {} });
+    const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared: path.join(root, "bot"), topics: false });
+    const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot"), topics: false });
+    const briefThread = await brief.open("TBO-1", "Brief");
+    const buildThread = await build.open("TBO-1", "Build");
+    const since = new Date(telegram.now() * 1000).toISOString();
+    const asked = Number(await build.post(buildThread, { text: "Which branch?" }));
+
+    telegram.say("main", { quotes: asked });
+
+    expect(buildThread.id).not.toBe(briefThread.id);
+    expect((await build.replies(buildThread, since)).map((reply) => reply.text)).toEqual(["main"]);
+    expect(await brief.replies(briefThread, since)).toEqual([]);
+  });
+
   it("opens each work afresh when topics are turned off, and again when they are turned back on", async () => {
     const telegram = botApiStandIn();
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-switch-"));

@@ -226,7 +226,8 @@ export class TelegramConversation implements Conversation {
     if (readIdentity(this.options.directory) !== this.identity) {
       return Promise.reject(new Error(`${this.options.directory} was removed while its work was being opened`));
     }
-    this.record(workId, `w${fileNameOf(workId).slice(0, 16)}`);
+    // The profile is in it too: two phases of one project open the same work id, each a thread of its own.
+    this.record(workId, `w${fileNameOf(`${this.identity}\0${workId}`).slice(0, 16)}`);
     return Promise.resolve({ id: this.topicOfWork(workId)! });
   }
 

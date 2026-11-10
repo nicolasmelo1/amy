@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ChatAction, ChatActOutcome, ChatCommandSpec, CommandRunner, specOf } from "@amykit/core";
@@ -115,15 +115,15 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     }
     // Under one lock for the machine, and only over the config this was checked against:
     // a change another chat applied meanwhile is never silently replaced.
-    const lock = `${actor.config}.applying`;
-    if (!takeLock(lock, actor.pid)) return "config apply: not written — another config change is being applied; ask again once it is done.";
+    const release = takeLock(`${actor.config}.applying`, actor.pid);
+    if (!release) return "config apply: not written — another config change is being applied; ask again once it is done.";
     try {
       const now = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
       if (now !== current) return "config apply: not written — config.yaml changed while this one was being checked; ask again against the config as it is now.";
       running();
       fs.renameSync(candidate, actor.config);
     } finally {
-      fs.rmSync(lock, { force: true });
+      release();
     }
   } finally {
     fs.rmSync(candidate, { force: true });
@@ -155,35 +155,55 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
 }
 
 /**
- * Takes the config's lock for this process. One left by a process that is no
- * longer alive is cleared and taken again, by one taker only: the clearing is
- * a rename, which only one can win.
+ * Takes the config's lock for this process, answering what releases it. One
+ * left by a process that is no longer alive is recovered one taker at a time:
+ * under a recovery lock its owner is read again, and only a lock still dead
+ * is cleared. Release removes the lock only while it is still this one.
  */
-function takeLock(lock: string, pid: number): boolean {
-  const take = () => {
+function takeLock(lock: string, pid: number): (() => void) | undefined {
+  const token = `${pid}:${randomUUID()}`;
+  const create = (file: string) => {
     try {
-      fs.writeFileSync(lock, String(pid), { flag: "wx", mode: 0o600 });
+      fs.writeFileSync(file, token, { flag: "wx", mode: 0o600 });
       return true;
     } catch {
       return false;
     }
   };
-  if (take()) return true;
+  const release = () => {
+    try {
+      const held = Buffer.from(fs.readFileSync(lock, "utf-8"));
+      const mine = Buffer.from(token);
+      if (held.length === mine.length && timingSafeEqual(held, mine)) fs.rmSync(lock, { force: true });
+    } catch {
+      // Already gone.
+    }
+  };
+  if (create(lock)) return release;
+  if (!abandoned(lock)) return undefined;
+  const recovery = `${lock}.recovering`;
+  if (!create(recovery)) {
+    if (abandoned(recovery)) fs.rmSync(recovery, { force: true });
+    return undefined;
+  }
+  try {
+    if (!abandoned(lock)) return undefined;
+    fs.rmSync(lock, { force: true });
+    return create(lock) ? release : undefined;
+  } finally {
+    fs.rmSync(recovery, { force: true });
+  }
+}
+
+/** Whether a lock's recorded owner is gone, or nobody is recorded at all. */
+function abandoned(file: string): boolean {
   let owner: number;
   try {
-    owner = Number(fs.readFileSync(lock, "utf-8").trim());
-  } catch {
-    return take();
-  }
-  if (Number.isSafeInteger(owner) && owner > 0 && alive(owner)) return false;
-  try {
-    const aside = `${lock}.${pid}.abandoned`;
-    fs.renameSync(lock, aside);
-    fs.rmSync(aside, { force: true });
+    owner = Number.parseInt(fs.readFileSync(file, "utf-8"), 10);
   } catch {
     return false;
   }
-  return take();
+  return !(Number.isSafeInteger(owner) && owner > 0 && alive(owner));
 }
 
 function alive(pid: number): boolean {

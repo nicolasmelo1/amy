@@ -59,8 +59,9 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
       const directory = supervisorDirectory(machine);
       fs.mkdirSync(directory, { recursive: true });
       fs.writeFileSync(stopMarker(directory, label), "", "utf-8");
-      await schtasks("/End", "/TN", task(label));
+      // Deleted before it is ended, so ending it can never leave it registered.
       await schtasks("/Delete", "/TN", task(label), "/F");
+      await schtasks("/End", "/TN", task(label));
       fs.rmSync(path.join(startup, `${label}.vbs`), { force: true });
     },
     async installed(label: string) {
