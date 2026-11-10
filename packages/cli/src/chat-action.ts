@@ -142,15 +142,25 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
     return { text: `restart: refused — no supervisor would start the new loop (${actor.unsupervised}). This loop and the chat stay as they are, pid ${actor.pid}.` };
   }
   await line("Checking the new mount boots…");
-  const checked = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check"], {
-    timeoutMs: 10 * 60 * 1000,
-    ...(actor.env ? { env: actor.env } : {}),
-  });
-  if (!checked.ok) {
-    return { text: `restart: not restarted — the new mount does not boot, so this loop keeps the mount it had, pid ${actor.pid}.${fenced(`${checked.stdout}\n${checked.stderr}`)}` };
+  const config = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
+  const candidate = path.join(path.dirname(actor.config), `.config.yaml.${randomUUID()}.restart`);
+  fs.mkdirSync(path.dirname(actor.config), { recursive: true });
+  fs.writeFileSync(candidate, config, { mode: 0o600 });
+  try {
+    const checked = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check", "--config", candidate], {
+      timeoutMs: 10 * 60 * 1000,
+      ...(actor.env ? { env: actor.env } : {}),
+    });
+    if (!checked.ok) {
+      return { text: `restart: not restarted — the new mount does not boot, so this loop keeps the mount it had, pid ${actor.pid}.${fenced(`${checked.stdout}\n${checked.stderr}`)}` };
+    }
+  } finally {
+    fs.rmSync(candidate, { force: true });
   }
   fs.mkdirSync(path.dirname(actor.restartMarker), { recursive: true });
-  fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, source, pid: actor.pid, at: new Date().toISOString() })}\n`, { mode: 0o600 });
+  // The next daemon mounts these exact bytes, not a config another writer can
+  // replace after this probe and before the supervisor starts it.
+  fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, source, pid: actor.pid, at: new Date().toISOString(), config })}\n`, { mode: 0o600 });
   return { text: `restart: the new mount boots. Restarting pid ${actor.pid}; the new loop says its pid here.`, after: () => actor.exit("restart") };
 }
 

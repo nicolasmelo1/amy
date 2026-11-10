@@ -130,16 +130,33 @@ async function answerClaimed(desk: ChatDesk, transcripts: Transcripts, message: 
       throw error;
     }
     done(desk.directory, id);
-    await desk.conversation.settle!(message.id);
     // What ran stays done; a restart or a stop it asked for still happens, though the answer was not said.
-    if (turn.after) return { after: turn.after };
+    // Settlement is transport bookkeeping: its failure must not erase an
+    // accepted lifecycle handoff, which is already durable in the done file.
+    if (turn.after) {
+      try {
+        await desk.conversation.settle!(message.id);
+      } catch {
+        // The next pass settles the durable done message.
+      }
+      return { after: turn.after };
+    }
+    await desk.conversation.settle!(message.id);
     throw error;
   } finally {
     claimed.stop();
   }
   done(desk.directory, id);
+  if (outcome?.after) {
+    try {
+      await desk.conversation.settle!(message.id);
+    } catch {
+      // The after callback still owns the accepted restart or stop.
+    }
+    return { after: outcome.after };
+  }
   await desk.conversation.settle!(message.id);
-  return outcome?.after ? { after: outcome.after } : {};
+  return {};
 }
 
 /** What one turn did before anything could fail: whether its commands ran, and what they asked to do after. */

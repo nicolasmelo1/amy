@@ -154,8 +154,7 @@ function loadMountable(specs: readonly string[], profile?: string): Promise<Load
  * root refreshed, so what mounts is what the fork says now; a fork that does
  * not build refuses the boot by name.
  */
-async function assemble(profile: Profile): Promise<Assembled> {
-  const config = loadConfig(home);
+async function assemble(profile: Profile, config: AmyConfig = loadConfig(home)): Promise<Assembled> {
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) return prepared;
   return assembleLoaded(profile, config);
@@ -761,10 +760,12 @@ program
   .option("--log <file>", "internal: append the loop's output to this file")
   .action(async (options: { every: string; scheduled?: boolean; supervised?: boolean; log?: string }) => {
     if (options.log) appendOutputTo(options.log);
-    const profile = selected();
+    const current = loadConfig(home);
+    let profile = selected(current);
+    const config = restartingConfig(profile) ?? current;
+    profile = selected(config);
     let exit: "restart" | "stop" | undefined;
     const drive = async () => {
-      const config = loadConfig(home);
       const idleMs = Math.max(1, Number(options.every)) * 1000;
       let stopping = false;
 
@@ -880,6 +881,19 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
  * than spent outside the ceiling the person meant it to count against.
  */
 function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { spend?: ChatDesk["spend"] } {
+  const chatProblems = configuredChatProblems(config);
+  // A degraded loop keeps its chat available to explain a broken workflow,
+  // but malformed chat policy must not silently turn its budget ceiling off.
+  // Treat it as a denied budget until the operator repairs the config.
+  if (chatProblems.length > 0) {
+    const reason = chatProblems.join("; ");
+    return {
+      spend: {
+        budget: { mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason }) },
+        log: new FileEventLog(profilePaths(home, profile).log, undefined, build),
+      },
+    };
+  }
   if (!config.chat.budget) return {};
   const budget: Budget = parts.budget ?? {
     mayStart: () => ({ ok: false, window: "chat", measure: "costUsd", used: 0, limit: 0, stopAt: 0, retryAfterMs: 60_000, reason: "chat.budget is on and no agent budget is mounted to count this turn against" }),
@@ -952,7 +966,7 @@ async function assembleOrSay(profile: Profile, config: AmyConfig): Promise<Assem
     for (const problem of scheduleProblems) console.error(`  ${problem}`);
     return { ok: false, problems: scheduleProblems };
   }
-  const outcome = await assemble(profile);
+  const outcome = await assemble(profile, config);
   if (outcome.ok) return outcome;
   console.error("amy could not start:");
   for (const problem of outcome.problems) console.error(`  ${problem}`);
@@ -963,6 +977,16 @@ async function assembleOrSay(profile: Profile, config: AmyConfig): Promise<Assem
 /** Where a restart asked from the chat leaves its promise to say the new pid. */
 function restartMarkerOf(profile: Profile): string {
   return path.join(path.dirname(profilePaths(home, profile).pid), "restart.json");
+}
+
+/** The config bytes a chat restart already proved mount, until that restart announces itself. */
+function restartingConfig(profile: Profile): AmyConfig | undefined {
+  try {
+    const marker = JSON.parse(fs.readFileSync(restartMarkerOf(profile), "utf-8")) as { config?: unknown };
+    return typeof marker.config === "string" ? loadConfigFrom(home, marker.config) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** A loop a restart started says so where the restart was asked, with its new pid (S28). */

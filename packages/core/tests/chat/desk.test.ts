@@ -136,6 +136,24 @@ describe("only an action acts (A3)", () => {
     await Promise.all(pass.after.map((after) => after()));
     expect(exited).toBe(true);
   });
+
+  it("keeps an accepted restart when settlement fails", async () => {
+    const chat = chatOf();
+    let exited = false;
+    const { desk } = deskOf({
+      ...chat.conversation,
+      settle: async () => { throw new Error("chat temporarily unavailable"); },
+    }, { claude: harness("claude", ["```amy\nrestart\n```"]).cli }, {
+      act: async () => ({ text: "restarting", after: async () => { exited = true; } }),
+    });
+    chat.write("/action restart");
+
+    const pass = await answerTheChat(desk);
+
+    expect(pass.after).toHaveLength(1);
+    await pass.after[0]!();
+    expect(exited).toBe(true);
+  });
 });
 
 describe("a conversation carries its turns (A5)", () => {
