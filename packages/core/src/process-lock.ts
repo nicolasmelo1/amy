@@ -82,7 +82,12 @@ export function takeLock(file: string, options: LockOptions = {}): HeldLock | un
 
 function held(file: string, stamp: string, options: LockOptions): HeldLock {
   const now = options.now ?? Date.now;
-  const holds = () => look(file)?.owner?.stamp === stamp;
+  // Read straight, without the stat a takeover needs: a lock this holding
+  // published is a file, and only its owner's stamp is asked.
+  const holds = () => {
+    const text = readOr(file, undefined);
+    return text !== undefined && ownerIn(text)?.stamp === stamp;
+  };
   return {
     stamp,
     holds,
@@ -218,8 +223,9 @@ function bury(file: string, seen: Seen): boolean {
   sweep(file);
   const identity = seen.owner?.stamp ?? `${seen.ino}:${seen.mtimeMs}`;
   const tombstone = `${file}.dead-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`;
-  const entombed = entomb(file, tombstone, seen);
-  if (entombed !== "entombed") return entombed === "finished" && finishBurial(file, tombstone, seen);
+  // Refused: another process is burying it, or did. One that died doing so
+  // leaves a tombstone swept within the hour, and the next attempt buries it.
+  if (!entomb(file, tombstone, seen)) return false;
   // The tombstone is ours; the lock it holds must be the one judged abandoned.
   if (!sameLock(look(tombstone), seen)) {
     if (seen.directory) restore(tombstone, file);
@@ -232,20 +238,18 @@ function bury(file: string, seen: Seen): boolean {
 
 /**
  * Creates the tombstone from the lock: a link for a file, a rename for a
- * directory, either refused when the tombstone exists. `finished` is a file
- * lock another process already linked, whose burial may need finishing.
+ * directory, either refused when the tombstone exists.
  */
-function entomb(file: string, tombstone: string, seen: Seen): "entombed" | "finished" | "refused" {
+function entomb(file: string, tombstone: string, seen: Seen): boolean {
   try {
     if (seen.directory) fs.renameSync(file, tombstone);
     else fs.linkSync(file, tombstone);
-    return "entombed";
+    return true;
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    if (code === "EEXIST" && !seen.directory) return "finished";
     // Refused, or the lock seen is no longer there: buried by another, or
     // replaced by a new owner's file where a directory was seen.
-    if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM" || code === "ENOENT" || code === "EISDIR" || code === "ENOTDIR") return "refused";
+    if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM" || code === "ENOENT" || code === "EISDIR" || code === "ENOTDIR") return false;
     throw error;
   }
 }
@@ -253,23 +257,6 @@ function entomb(file: string, tombstone: string, seen: Seen): "entombed" | "fini
 /** Whether a lock read again is the one seen: the same file, owner and, for a lease, the same last renewal. */
 function sameLock(again: Seen | undefined, seen: Seen): boolean {
   return again !== undefined && again.ino === seen.ino && again.owner?.stamp === seen.owner?.stamp && again.mtimeMs === seen.mtimeMs;
-}
-
-/**
- * Another process linked this very lock to its tombstone. Within the grace
- * it is still removing it; past the grace it died doing so, and the burial
- * is finished here, removing the lock only while it is still the one judged.
- */
-function finishBurial(file: string, tombstone: string, seen: Seen): boolean {
-  let buried: fs.Stats;
-  try {
-    buried = fs.statSync(tombstone);
-  } catch {
-    return false;
-  }
-  if (buried.ino !== seen.ino || Date.now() - buried.ctimeMs < GRACE_MS) return false;
-  if (look(file)?.ino === seen.ino) fs.rmSync(file, { force: true });
-  return true;
 }
 
 /** Puts back a directory lock moved by mistake, unless a new one stands in its place. */

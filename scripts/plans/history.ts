@@ -42,10 +42,14 @@ export function readChange(root: string, env: NodeJS.ProcessEnv = process.env): 
   };
 
   const steps: Step[] = [];
-  const commits = git("rev-list", "--reverse", "--no-merges", `${base}..HEAD`).split("\n").filter(Boolean);
-  for (const sha of commits) {
-    const files = git("diff-tree", "--no-commit-id", "--name-only", "-r", "--no-renames", sha).split("\n").filter(Boolean);
-    steps.push({ id: sha.slice(0, 8), files, plans: new Map(files.filter(isPlan).map((file) => [file, show(sha, file)])) });
+  // A merge counts for what it changed against every parent — what its
+  // resolution wrote — and not again for the commits it brought in.
+  const commits = git("rev-list", "--reverse", "--parents", `${base}..HEAD`).split("\n").filter(Boolean).map((line) => line.split(" "));
+  for (const [sha, ...parents] of commits) {
+    const files = (parents.length > 1
+      ? git("diff-tree", "--cc", "--no-commit-id", "--name-only", "-r", sha!)
+      : git("diff-tree", "--no-commit-id", "--name-only", "-r", "--no-renames", sha!)).split("\n").filter(Boolean);
+    steps.push({ id: sha!.slice(0, 8), files, plans: new Map(files.filter(isPlan).map((file) => [file, show(sha!, file)])) });
   }
 
   const pending = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0").filter(Boolean).map((line) => line.slice(3));

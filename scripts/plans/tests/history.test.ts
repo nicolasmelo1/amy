@@ -59,6 +59,31 @@ describe("the change a plan is judged in", () => {
     expect(readChange(root, { PLANS_BASE: "work" }).steps).toEqual([]);
   });
 
+  it("reads what a merge's resolution changed, and not the commits it brought in again", () => {
+    const { root, git, write } = repository();
+    git("checkout", "--quiet", "-b", "work");
+    write("plans/x.md", "---\ntouches: [src/a.ts]\n---\n");
+    git("add", ".");
+    git("commit", "--quiet", "-m", "groom");
+    git("checkout", "--quiet", "-b", "side");
+    write("src/a.ts", "export const a = 4;\n");
+    git("commit", "--quiet", "-am", "side");
+    git("checkout", "--quiet", "work");
+    write("src/c.ts", "export const c = 1;\n");
+    git("add", ".");
+    git("commit", "--quiet", "-m", "build");
+    git("merge", "--quiet", "--no-ff", "--no-commit", "side");
+    // The resolution widens the plan, in the merge alone.
+    write("plans/x.md", "---\ntouches: [src/a.ts, src/b.ts]\n---\n");
+    git("add", ".");
+    git("commit", "--quiet", "-m", "merge side");
+
+    const steps = readChange(root, {}).steps;
+
+    expect(steps.map((one) => one.files)).toEqual([["plans/x.md"], ["src/a.ts"], ["src/c.ts"], ["plans/x.md"]]);
+    expect(steps.at(-1)!.plans.get("plans/x.md")).toContain("src/b.ts");
+  });
+
   it("says which refs it tried when none resolves", () => {
     const { root } = repository();
     expect(() => readChange(root, { PLANS_BASE: "nowhere" })).toThrow("no base to read the change against: tried nowhere");

@@ -75,7 +75,7 @@ if (problems.length > 0) {
 // See plans/a-plan-is-held-to-what-it-said.md.
 const change = readChange(repo);
 const held = heldProblems(change);
-const cli = cliFactsOf(change.atBase("packages/cli/src/index.ts") ?? "");
+const cli = cliFactsOf(change.atBase("packages/cli/src/index.ts") ?? "", { required: true });
 const authored = held.groomed.flatMap((name) => {
   const plan = [`plans/${name}`, `docs/design/${name}`].find((one) => fs.existsSync(file(one)));
   return plan ? authoredProblems({ file: plan, text: fs.readFileSync(file(plan), "utf8"), baseFiles: change.baseFiles, cli }) : [];

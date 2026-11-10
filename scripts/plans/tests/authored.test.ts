@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CliFacts } from "../../docs/lib/facts.js";
+import { cliFactsOf } from "../../docs/sources/cli.js";
 import { authoredProblems } from "../authored.js";
 
 const option = (flags: string) => ({ flags, description: "", default: undefined });
@@ -59,6 +60,13 @@ describe("a groomed plan's touches", () => {
     expect(judge(plan({ touches: ["sr/deep/a.ts"] }))).toEqual([expect.stringMatching(/touches sr\/deep\/a\.ts, and sr is neither at the base/)]);
   });
 
+  it("refuses an absolute path, or one climbing out, rather than walking its parents forever", () => {
+    expect(judge(plan({ touches: ["/README.md", "src/../x.ts"] }))).toEqual([
+      expect.stringMatching(/touches \/README\.md: name a path from the repository's root/),
+      expect.stringMatching(/touches src\/\.\.\/x\.ts: name a path from the repository's root/),
+    ]);
+  });
+
   it("refuses a glob that matches nothing at the base", () => {
     expect(judge(plan({ touches: ["lib/*.ts"] }))).toEqual([expect.stringMatching(/touches lib\/\*\.ts, which matches nothing/)]);
   });
@@ -90,6 +98,24 @@ describe("the commands a groomed plan names", () => {
 
   it("refuse an option the command does not declare", () => {
     expect(judge(plan({ body: "Then `amy doctor --fix`." }))).toEqual([expect.stringMatching(/amy doctor declares no --fix/)]);
+  });
+
+  it("are checked past the global options they open with", () => {
+    expect(judge(plan({ body: "`amy --workflow w nonexistent`" }))).toEqual([expect.stringMatching(/the CLI declares no amy nonexistent/)]);
+    expect(judge(plan({ body: "`amy -w w doctor --fix`" }))).toEqual([expect.stringMatching(/amy doctor declares no --fix/)]);
+    expect(judge(plan({ body: "`amy --workflow=w doctor`" }))).toEqual([]);
+    expect(judge(plan({ body: "`amy --verbose doctor`" }))).toEqual([expect.stringMatching(/amy declares no global --verbose/)]);
+  });
+
+  it("pass a required option the CLI's own source declares", () => {
+    const source = [
+      "const program = new Command();",
+      "const workflowCommand = program.command(\"workflow\");",
+      "workflowCommand.command(\"add\").argument(\"<spec>\", \"what\").requiredOption(\"--into <name>\", \"where\");",
+    ].join("\n");
+    const parsed = cliFactsOf(source, { required: true });
+    expect(authoredProblems({ file: "plans/x.md", text: plan({ body: "`amy workflow add ./w --into mine`" }), baseFiles, cli: parsed })).toEqual([]);
+    expect(authoredProblems({ file: "plans/x.md", text: plan({ body: "`amy workflow add ./w --onto mine`" }), baseFiles, cli: parsed })).toEqual([expect.stringMatching(/declares no --onto/)]);
   });
 
   it("pass a command one of the plan's criteria builds", () => {

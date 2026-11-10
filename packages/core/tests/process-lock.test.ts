@@ -139,13 +139,17 @@ describe("a dead owner's lock", () => {
     expect(takeLock(file)).toBeUndefined();
   });
 
-  it("is buried here once the process burying it has stood past the grace, as if it died doing so", () => {
+  it("is buried again once the tombstone of a process that died burying it is swept, an hour on", () => {
     const file = lockIn();
     fs.writeFileSync(file, `${JSON.stringify({ pid: DEAD, stamp: "dead" })}\n`);
     fs.linkSync(file, tombstoneOf(file, "dead"));
-    const later = Date.now() + 11_000;
-    vi.spyOn(Date, "now").mockReturnValue(later);
-    expect(takeLock(file, { now: () => later })?.holds()).toBe(true);
+    const ten = Date.now() + 11_000;
+    vi.spyOn(Date, "now").mockReturnValue(ten);
+    // Ten seconds on, the burier may only be slow: two finishing it could remove a new owner's lock.
+    expect(takeLock(file, { now: () => ten })).toBeUndefined();
+    const hour = Date.now() + 61 * 60 * 1000;
+    vi.spyOn(Date, "now").mockReturnValue(hour);
+    expect(takeLock(file, { now: () => hour })?.holds()).toBe(true);
   });
 
   it("is taken by exactly one of six processes racing for it", async () => {

@@ -60,6 +60,10 @@ function touchesProblems(file: string, touches: readonly string[], baseFiles: Re
   for (const entry of touches) {
     if (seen.has(entry)) problems.push(`${file} touches ${entry} twice`);
     seen.add(entry);
+    if (entry.startsWith("/") || entry.split("/").some((part) => part === ".." || part === "." || part === "")) {
+      problems.push(`${file} touches ${entry}: name a path from the repository's root, with no leading /, . or ..`);
+      continue;
+    }
     if (entry.includes("**")) {
       problems.push(`${file} touches ${entry}: name the files, not a tree, so the work's every file is known before it starts`);
       continue;
@@ -121,7 +125,8 @@ const SPAN = /`amy ([^`]+)`/g;
 
 function commandProblems(file: string, text: string, criteria: Declaration["criteria"] & object, cli: CliFacts): string[] {
   const promised = criteria.map((one) => (typeof one?.statement === "string" ? one.statement : "")).join("\n");
-  const globals = new Set(cli.options.flatMap((option) => flagsOf(option.flags)));
+  // Each global option, and whether a value follows it.
+  const globals = new Map(cli.options.flatMap((option) => flagsOf(option.flags).map((flag) => [flag, /[<[]/.test(option.flags)] as const)));
   const known: Known[] = cli.commands.map((command) => ({
     words: command.path.map((word) => word.split(" ")[0]!),
     options: new Set(command.options.flatMap((option) => flagsOf(option.flags))),
@@ -132,19 +137,36 @@ function commandProblems(file: string, text: string, criteria: Declaration["crit
     const said = `amy ${span!.trim()}`;
     const problem = unknownIn(span!, known, globals);
     if (problem === undefined) continue;
-    if (promised.includes(said) || promised.includes(`amy ${problem.command}`)) continue;
+    if (promised.includes(said) || (problem.command !== "" && promised.includes(`amy ${problem.command}`))) continue;
     problems.push(`${file} names \`${said}\`, and ${problem.why}: name what the CLI declares at the base, or the criterion that builds it`);
   }
   return [...new Set(problems)];
 }
 
-function unknownIn(span: string, known: readonly Known[], globals: ReadonlySet<string>): { command: string; why: string } | undefined {
-  const tokens = span.trim().split(/\s+/);
+function unknownIn(span: string, known: readonly Known[], globals: ReadonlyMap<string, boolean>): { command: string; why: string } | undefined {
+  const all = span.trim().split(/\s+/);
+  const leading = globalsBefore(all, globals);
+  if ("unknown" in leading) return leading.unknown;
+  const tokens = all.slice(leading.next);
   const found = commandIn(tokens, known);
   if (found === undefined || "unknown" in found) return found?.unknown;
   const words = found.match.words.join(" ");
   const flag = tokens.map((token) => /^(--?[a-zA-Z][\w-]*)/.exec(token)?.[1]).find((one) => one !== undefined && !found.match.options.has(one) && !globals.has(one) && one !== "--help" && one !== "-h");
   return flag ? { command: words, why: `amy ${words} declares no ${flag}` } : undefined;
+}
+
+/** Steps over the global options a span opens with, and the value each takes, to where its command starts. */
+function globalsBefore(tokens: readonly string[], globals: ReadonlyMap<string, boolean>): { next: number } | { unknown: { command: string; why: string } } {
+  let at = 0;
+  while (at < tokens.length && tokens[at]!.startsWith("-")) {
+    const [flag, inline] = tokens[at]!.split("=", 2) as [string, string | undefined];
+    const takesValue = globals.get(flag);
+    if (takesValue === undefined && flag !== "--help" && flag !== "-h" && flag !== "--version" && flag !== "-V") {
+      return { unknown: { command: "", why: `amy declares no global ${flag}` } };
+    }
+    at += takesValue && inline === undefined ? 2 : 1;
+  }
+  return { next: at };
 }
 
 /** The command a span's leading words name, the first word that names none, or nothing when it names no command at all. */
