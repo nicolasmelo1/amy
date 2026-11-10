@@ -32,49 +32,44 @@ That is the command itself. **It carries nothing else**, deliberately: a plugin
 is resolved by name at run time, and a machine with no `codex` on it has no
 reason to hold the plugin that shells out to one.
 
-What your config needs is installed by the step after it:
+What your machine needs is chosen in the step after it:
 
 ```sh
-amy init
+amy setup
 ```
 
-`init` writes the templates, works out which packages the workflows in your
-config need, and offers to install the ones this machine has not got:
+`setup` asks, one question at a time: which harness should do the work — the
+ones detected on this machine offered first — which workflow it should drive,
+and which channels should reach you. It installs only what you chose, asks
+each chosen plugin's settings one field at a time — offering the value the
+machine already holds as the default — and checks what it configured before
+it says it is done. `amy init` is the same walk under the name it had before.
 
-```text
-These are not installed yet:
-  @amykit/plugin-linear
-  @amykit/plugin-github
-  @amykit/plugin-claude
-  @amykit/plugin-agent-relay
-
-Install them now? [Y/n]
-```
-
-It asks rather than assuming, because installing into Amy's private plugin root
-is a change to Amy's state. With nothing to ask on — a script, a pipe, CI — it prints the command instead of running it, and `--install` is how
-a pipeline says yes:
+With no terminal to answer an ask — a script, a pipe, CI — the walk stops on
+the question and prints the flag that answers it, so a pipeline says it all
+at once instead:
 
 ```sh
-amy init --install        # install without asking
-amy init --no-install     # only print what is missing
+amy setup --harness codex --workflow errand --channels slack
 ```
 
-Adding a published workflow later is the same two steps: name it in the config,
-run `amy init` again. Adding one of your own is `amy workflow new <name>`, which
-writes the directory and the config block together and installs nothing — see
+Adding a published workflow later is `amy add <spec>`; adding one of your own
+is `amy workflow new <name>`, which writes the directory and the config block
+together and installs nothing — see
 [Workflows and profiles](workflows-and-profiles.md).
 
 ### Amy's plugin root
 
 Amy resolves configured plugins only from `~/.amy/plugins` (or
-`$AMY_HOME/plugins`). `amy init --install` writes packages there with npm's
-explicit prefix, so its result does not depend on npm's global prefix or on
-where the command itself is installed.
+`$AMY_HOME/plugins`). `amy setup` writes the packages you chose there with
+npm's explicit prefix, so its result does not depend on npm's global prefix or
+on where the command itself is installed.
 
-If npm exits zero and a package still does not resolve, `amy init` says so
-rather than leaving you with a mount that refuses by name later. Check that
-package under Amy's plugin root, then rerun `amy init --install`.
+If npm exits zero and a package still does not resolve, the walk says so and
+stops naming it rather than leaving you with a mount that refuses by name
+later. Check that package under Amy's plugin root, then run `amy setup` again:
+it offers what the machine already holds as the defaults, so nothing answered
+once is asked anew.
 
 ### A plugin a config names and nothing installed
 
@@ -87,8 +82,8 @@ amy could not start:
 Installed: @amykit/plugin-claude, @amykit/plugin-file-queue, …
 ```
 
-`amy init` is what stops you meeting that: it works the missing set out before
-anything touches a ticket.
+`amy doctor` is what stops you meeting that: it works the missing set out
+before anything touches a ticket.
 
 ### Windows, macOS, Linux
 
@@ -96,7 +91,7 @@ Amy supports Windows, macOS, and Linux, and npm puts the `amy` command on the
 PATH with its own shim. The recommended set includes a shared-brief lock backed
 by the native `fs-ext` module, so installation runs its node-gyp build step:
 install the platform's supported C/C++ build tools and the Node.js headers for
-your chosen Node release before running `amy init --install`.
+your chosen Node release before running `amy setup`.
 
 ### Installing from a checkout
 

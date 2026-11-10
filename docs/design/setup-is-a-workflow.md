@@ -47,26 +47,26 @@ touches:
   - docs/start/quickstart.md
   - docs/reference/cli.md
 criteria:
-  - { id: A1, statement: "amy setup and amy init run the same walk, and the setup workflow's diagram mounts with every state drawn and decided", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S1, S2, S5, S14, S17, S22] }
-  - { id: A2, statement: "on a fresh home the first ask is the harness, detected ones first; choosing codex installs only the codex plugin and writes a codex ladder", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S3, S7, S8, S18] }
-  - { id: A3, statement: "after the harness is installed its setup and its doctor ping run, and a failed ping stops the walk naming the model", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S12] }
-  - { id: A4, statement: "the channels ask lists conversation and notifier plugins grouped by kind, and each chosen one is configured from its configSchema", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S10, S19] }
-  - { id: A5, statement: "amy setup slack on a configured machine installs slack if absent, asks its settings with current values as defaults, writes its slice and runs its checks", proof: "deferred:test:packages/cli/tests/setup.test.ts", sources: [S4, S13, S17, S21] }
-  - { id: A6, statement: "for any set of answers, giving them all as flags writes the same config.yaml as answering them in the terminal", proof: "deferred:property:packages/cli/tests/setup.test.ts#flags_skip_a_question", sources: [S9, S20] }
-  - { id: A7, statement: "with no terminal and an ask unanswered, the walk stops and prints the flags that answer it, writing nothing more", proof: "deferred:test:packages/cli/tests/setup.test.ts", sources: [S13, S20] }
-  - { id: A8, statement: "the terminal conversation answers an ask with the chosen answer, through the same port and reply shape Slack and Telegram return", proof: "deferred:test:plugins/terminal-conversation/tests/terminal-conversation.test.ts", sources: [S11, S16, S22, S30] }
-  - { id: A9, statement: "amy setup starts one record in the setup profile, the store keeps it as any record, and once it reaches [*] nothing looks at it again", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S6, S15, S22, S24] }
-  - { id: A10, statement: "the whole walk reaches DONE with the testkit's fake conversation in place of the terminal, and no setup step reads stdin or writes stdout itself, so a window conversation answers it unchanged", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S16, S23, S25] }
-  - { id: A11, statement: "choosing a plugin whose configSchema has a record field is refused by amy setup naming the field, and no config for it is written", proof: "deferred:test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S27, S28] }
-  - { id: A12, statement: "a config.yaml that does not parse, or cannot be written, stops the walk at STOPPED naming the file; no ask offers an empty default because of it", proof: "deferred:test:packages/cli/tests/setup.test.ts", sources: [S21, S29] }
-  - { id: A13, statement: "an operation setup reaches takes only input inside the shared accepted set, and A6's property runs over that set alone", proof: "deferred:property:packages/cli/tests/setup.test.ts#flags_skip_a_question", sources: [S9, S26] }
+  - { id: A1, statement: "amy setup and amy init run the same walk, and the setup workflow's diagram mounts with every state drawn and decided", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts, test:packages/cli/tests/setup.test.ts", sources: [S1, S2, S5, S14, S17, S22], done: true }
+  - { id: A2, statement: "on a fresh home the first ask is the harness, detected ones first; choosing codex installs only the codex plugin and writes a codex ladder", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S3, S7, S8, S18], done: true }
+  - { id: A3, statement: "after the harness is installed its setup and its doctor ping run, and a failed ping stops the walk naming the model", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S12], done: true }
+  - { id: A4, statement: "the channels ask lists conversation and notifier plugins grouped by kind, and each chosen one is configured from its configSchema", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S10, S19], done: true }
+  - { id: A5, statement: "amy setup slack on a configured machine installs slack if absent, asks its settings with current values as defaults, writes its slice and runs its checks", proof: "test:packages/cli/tests/setup.test.ts", sources: [S4, S13, S17, S21], done: true }
+  - { id: A6, statement: "for any set of answers, giving them all as flags writes the same config.yaml as answering them in the terminal", proof: "property:packages/cli/tests/setup.test.ts#flags_skip_a_question", sources: [S9, S20], done: true }
+  - { id: A7, statement: "with no terminal and an ask unanswered, the walk stops and prints the flags that answer it, writing nothing more", proof: "test:packages/cli/tests/setup.test.ts", sources: [S13, S20], done: true }
+  - { id: A8, statement: "the terminal conversation answers an ask with the chosen answer, through the same port and reply shape Slack and Telegram return", proof: "test:plugins/terminal-conversation/tests/terminal-conversation.test.ts", sources: [S11, S16, S22, S30], done: true }
+  - { id: A9, statement: "amy setup starts one record in the setup profile, the store keeps it as any record, and once it reaches [*] nothing looks at it again", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S6, S15, S22, S24], done: true }
+  - { id: A10, statement: "the whole walk reaches DONE with the testkit's fake conversation in place of the terminal, and no setup step reads stdin or writes stdout itself, so a window conversation answers it unchanged", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S16, S23, S25], done: true }
+  - { id: A11, statement: "choosing a plugin whose configSchema has a record field is refused by amy setup naming the field, and no config for it is written", proof: "test:packages/workflow-setup/tests/walkthrough.test.ts", sources: [S27, S28], done: true }
+  - { id: A12, statement: "a config.yaml that does not parse, or cannot be written, stops the walk at STOPPED naming the file; no ask offers an empty default because of it", proof: "test:packages/cli/tests/setup.test.ts", sources: [S21, S29], done: true }
+  - { id: A13, statement: "an operation setup reaches takes only input inside the shared accepted set, and A6's property runs over that set alone", proof: "test:packages/cli/tests/setup.test.ts", sources: [S9, S26], done: true }
 crosses:
-  - { mechanism: install-and-update, answer: works, proof: "deferred:A2, A5; the walk installs through amy add's path" }
-  - { mechanism: config, answer: works, proof: "deferred:A6; every write goes through the typed config writers amy add uses" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A9; setup's record lives in its own setup profile and touches no other profile's state" }
-  - { mechanism: diagram, answer: works, proof: "deferred:A1" }
+  - { mechanism: install-and-update, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A2), test:packages/cli/tests/setup.test.ts (A5); the walk installs through amy add's path" }
+  - { mechanism: config, answer: works, proof: "property:packages/cli/tests/setup.test.ts#flags_skip_a_question (A6); every write goes through the typed config writers amy add uses" }
+  - { mechanism: profiles-and-state, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A9); setup's record lives in its own setup profile and touches no other profile's state" }
+  - { mechanism: diagram, answer: works, proof: "test:packages/workflow-setup/tests/walkthrough.test.ts (A1)" }
   - { mechanism: record-migration, answer: n/a, why: "a new workflow; no older setup record exists to read" }
-  - { mechanism: workflow-tooling, answer: works, proof: "deferred:A1; the testkit walks every drawn edge" }
+  - { mechanism: workflow-tooling, answer: works, proof: "test:packages/workflow-setup/tests/conformance.test.ts (A1); the testkit walks every drawn edge" }
 guarantee:
   - { holds: "only the harness, workflow and plugins the person chose are installed", not_against: "a chosen plugin's own dependencies, which npm installs with it" }
   - { holds: "a re-run never overwrites a value the person did not answer anew", not_against: "a hand edit to config.yaml made while setup is running" }
@@ -81,11 +81,15 @@ cut:
   - "a curses menu library: the terminal adapter reads lines and numbers"
   - "setting up a workflow's own settings beyond amy add's block: that is amy setup <workflow>"
   - "drawing setup in the window: when the-work-is-listed-everywhere lands, its asks show there through the conversation port, with no change to the setup workflow"
+deviations:
+  - "A6's any set of answers is any complete set: the walk asks every field of a chosen plugin's schema (S19), so a set that answers them all is what both sides of the property can carry — a field left unanswered by flags stops the walk asking for it, which is A7's stop, not a config"
+  - "a scoped record's id flattens the spec's slash (@amykit/plugin-slack walks as @amykit-plugin-slack), because a record's id is the one file the store and the queue keep for it"
+  - "the setup profile is written only once the walk is one the machine will answer: with no conversation mounted and no flag answered, the walk stops at its first ask having written no config.yaml at all (A7's writing nothing more)"
 exit: "on a machine with nothing configured, amy setup asks which harness, installs only Codex, pings its model, adds a workflow and Slack, and a second amy setup slack shows the saved values as defaults"
 ---
 # Setup is a workflow
 
-`amy init` writes a template and leaves the person to it. `amy setup` asks, one
+`amy init` wrote a template and left the person to it. `amy setup` asks, one
 question at a time, and is itself an amy workflow drawn in Mermaid: one like
 any other, started once by `amy setup`, asking the person through the same
 conversation port every workflow uses, so the window can draw it later.

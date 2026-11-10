@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-brief-is-groomed-through-amy",
-  "implementation_sha256": "81d41154ed600c722cd9faf159408378447c4c0627add6d533f56f3fb60d963d",
+  "implementation_sha256": "d138a485068fa794a15d2c1327cfd83183024ba78f9cdeba514c49f124c7d5ff",
   "runs": [
     {
       "scenario": "a-brief-is-groomed-through-amy",

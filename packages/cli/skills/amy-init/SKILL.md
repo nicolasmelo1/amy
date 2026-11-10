@@ -49,8 +49,8 @@ truth rather than a gap. Ask what process they want amy to drive, and whether
 they want to write it — `/amy-workflow` is for one of their own — or would
 rather name an existing package, the two published ones being `ticket-to-qa`
 (a tracker ticket to a QA handoff) and `note-to-plan` (friction becomes a
-plan). Write the block into the config; only then does `amy init` install
-what that workflow asks for.
+plan). Say the name when `amy setup` asks which workflow the machine should
+drive, and the walk installs only what that choice needs.
 
 **Round 2 — the world.** Repositories, where the checkouts are, which team's
 tickets land where, and the gate command per repository. Read `package.json`,
@@ -81,8 +81,7 @@ after the terminal closes and that `amy stop` ends it.
 ## Then apply, and read it back in numbers
 
 ```sh
-amy init                      # writes ~/.amy/config.yaml and roster.yaml
-# edit both with the answers
+amy setup                    # asks which harness, workflow and channels, installs only what was chosen
 amy roster confirm
 amy doctor
 ```
@@ -98,8 +97,8 @@ done while it lists a problem; name each one and what fixes it.
 ## The failures that are worth knowing before you hit them
 
 - **A plugin named and not installed is refused at boot**, with the list of
-  what *is* installed. That is a typo, nearly always. `amy init --install`
-  fixes it; `amy plugin list` shows both sides.
+  what *is* installed. That is a typo, nearly always. `amy add <spec>`
+  installs it; `amy plugin list` shows both sides.
 - **`LINEAR_API_KEY` lives in `~/.amy/.env`**, not in the shell profile, so a
   loop started from a launchd agent has it too.
 - **`amy doctor` refuses a plugin setting that is not one the plugin has.**
@@ -110,9 +109,9 @@ done while it lists a problem; name each one and what fixes it.
   not expect amy to read it.
 - **Nothing here is installed with the command.** `@amykit/cli` carries the
   command and the host services; the plugins are separate, on purpose, so a
-  machine with no `codex` carries no code for one. `amy init` prints the
-  `npm install` line for whatever the config names and is missing — and on a
-  machine with no workflow named, it installs nothing and says so.
+  machine with no `codex` carries no code for one. `amy setup` installs only
+  what the person chose, one question at a time — and a machine that chose
+  nothing carries nothing, which is what it said it wanted.
 
 ## Adding a workflow to an install that exists
 

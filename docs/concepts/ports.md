@@ -28,7 +28,7 @@ dispatches to is still a port — a workflow's runtime may reach one directly.
 | `brief` | `@amykit/plugin-file-brief-store` | _reached directly_ |
 | `code-host` | `@amykit/plugin-github` | `assign-reviewer`, `open-pull-request`, `request-rereview`, `resolve-review-thread` |
 | `commands` | `@amykit/plugin-command` | `run-command` |
-| `conversation` | `@amykit/plugin-slack`<br>`@amykit/plugin-telegram` | _reached directly_ |
+| `conversation` | `@amykit/plugin-slack`<br>`@amykit/plugin-telegram`<br>`@amykit/plugin-terminal-conversation` | _reached directly_ |
 | `feature` | `@amykit/plugin-linear` | _reached directly_ |
 | `gate` | `@amykit/plugin-command-gate` | `run-gate` |
 | `notes` | `@amykit/plugin-file-notes` | _reached directly_ |

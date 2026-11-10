@@ -15,7 +15,7 @@ describe("the harnesses on a machine", () => {
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
   it("knows the ones that read a SKILL.md", () => {
-    expect(harnesses(home).map((h) => h.name)).toEqual(["claude", "hermes"]);
+    expect(harnesses(home).map((h) => h.name)).toEqual(["claude", "codex", "hermes"]);
   });
 
   it("finds none on a machine that has none", () => {

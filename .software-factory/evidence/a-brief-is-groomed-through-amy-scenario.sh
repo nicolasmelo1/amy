@@ -93,7 +93,14 @@ notify:
   inbox: true
 YAML
 
-"$amy" init --install >/dev/null 2>&1 || true
+# The plugins the config names arrive through amy's plugin root directly:
+# `amy setup` asks a person one question at a time, and a scenario has no
+# person to answer it. The installed-plugins scenario is the one that proves
+# the install path itself.
+"$work/bin/npm" install --prefix "$work/home/.amy/plugins" \
+  @amykit/plugin-file-queue @amykit/plugin-file-store @amykit/plugin-file-brief-store \
+  @amykit/plugin-serial-engine @amykit/plugin-notify-fanout \
+  @amykit/plugin-notify-inbox >/dev/null
 
 # The project's phases import the core the machine installed, as a project
 # beside an install resolves it.

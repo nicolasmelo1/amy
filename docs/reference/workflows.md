@@ -21,6 +21,7 @@ them wait, which are terminal, and the actions it says it can emit.
 | `@amykit/workflow-feature-grooming` | `feature-grooming` | 2 | Feature grooming against read-only base-branch source snapshots. |
 | `@amykit/workflow-note-to-plan` | `note-to-plan` | 6 | The note-to-plan workflow: friction becomes a plan in the repository it is about. |
 | `@amykit/workflow-pull-request` | `pull-request` | 3 | A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted. |
+| `@amykit/workflow-setup` | `setup` | 10 | Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time. |
 | `@amykit/workflow-ticket-to-qa` | `ticket-to-qa` | 19 | The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan(). |
 
 <!-- amy:end workflow-index -->
@@ -131,6 +132,32 @@ A workflow other workflows call: open a pull request for a branch, through which
 | 1 | `OPENING` | initial |
 | 2 | `OPENED` | terminal |
 | 3 | `REFUSED` | terminal |
+
+### `@amykit/workflow-setup`
+
+Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.
+
+|  |  |
+| :-- | :-- |
+| Profile name | `setup` |
+| Source | `packages/workflow-setup` |
+| Starts in | `DETECTING` |
+| Terminal | `DONE`, `STOPPED` |
+| Waits in | `HARNESS`, `WORKFLOW`, `CHANNELS`, `CONFIGURING` |
+| Actions it emits | `ask-setting`, `check`, `install`, `pending`, `ping`, `post`, `read-config`, `setup`, `write-ladder`, `write-settings`, `write-setup-profile`, `write-workflow` |
+
+| # | State | Kind |
+| :-- | :-- | :-- |
+| 1 | `DETECTING` | initial |
+| 2 | `HARNESS` | waiting |
+| 3 | `PLUGIN_INSTALLED` | working |
+| 4 | `PINGED` | working |
+| 5 | `WORKFLOW` | waiting |
+| 6 | `CHANNELS` | waiting |
+| 7 | `CONFIGURING` | waiting |
+| 8 | `CHECKED` | working |
+| 9 | `DONE` | terminal |
+| 10 | `STOPPED` | terminal |
 
 ### `@amykit/workflow-ticket-to-qa`
 

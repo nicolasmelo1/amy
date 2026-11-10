@@ -90,12 +90,13 @@ arguments, options and defaults.
 | `amy config` | What this machine would read, if it mounted |
 | `amy contract` | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
 | `amy doctor` | Check everything the machine depends on before it touches a ticket |
-| `amy init` | Write the config and the files the mounted plugins bring, and install what they need |
+| `amy init` | Set the machine up, as `amy setup` does: the same walk, asked the same way |
 | `amy look` | Look at one piece of work now, rather than when it was next due |
 | `amy plugin` | What is mounted, and what is not |
 | `amy queue` | Inspect and tidy the queue |
 | `amy remove` | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | `amy run` | Keep advancing until nothing is due |
+| `amy setup` | Set the machine up: the harness, the workflow, the channels, one question at a time |
 | `amy skills` | Install amy's skills into the harnesses on this machine |
 | `amy start` | Start the loop in the background, and keep it running |
 | `amy status` | Show where every piece of work stands and what the queue holds |

@@ -755,3 +755,47 @@ export function removeExtraPlugin(
   const kept = loadConfig(root).extraPlugins.filter((name) => name !== spec);
   writeBlock(root, "extraPlugins:", yaml.stringify({ extraPlugins: kept }));
 }
+
+/**
+ * Points the machine's default workflow at one the person chose.
+ *
+ * The default is a pointer into the workflows table, so it is written only
+ * with a name that table holds: `amy setup` re-points it when the walk chose
+ * a workflow to drive, and never leaves it on the profile that set the
+ * machine up.
+ */
+export function writeDefaultWorkflow(root: string, name: string, _config: AmyConfig): void {
+  writeBlock(root, "defaultWorkflow:", `defaultWorkflow: ${name}`);
+}
+
+/**
+ * Writes the agent ladder, keeping every other line of the agent block.
+ *
+ * The merge is the whole point: a ladder that replaced the block would take
+ * the person's model, budget and per-step ladders with it, and a walk that
+ * tunes one setting must not cost the machine the rest of its own.
+ */
+export function writeAgentLadder(root: string, entries: readonly string[], config: AmyConfig): void {
+  const agent = { ...config.agent, ladder: [...entries] };
+  writeBlock(root, "agent:", yaml.stringify({ agent }).trimEnd());
+}
+
+/**
+ * Merges one plugin's settings into the machine's given slices, keeping
+ * every value the person did not answer anew.
+ *
+ * The `plugins:` block is where a mounted package's own settings live, read
+ * by the boot over whatever each profile and default also says: setup writes
+ * there — and only merges — so a second walk offers what the first wrote as
+ * its defaults, the way `amy setup <plugin>` is meant to.
+ */
+export function writePluginSlice(
+  root: string,
+  plugin: string,
+  values: Readonly<Record<string, unknown>>,
+): void {
+  const config = loadConfig(root);
+  const held = (config.plugins[plugin] ?? {}) as Record<string, unknown>;
+  const plugins = { ...config.plugins, [plugin]: { ...held, ...values } };
+  writeBlock(root, "plugins:", yaml.stringify({ plugins }).trimEnd());
+}

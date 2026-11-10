@@ -29,20 +29,19 @@ else does. See [Installation](installation.md).
 ## 2. Set it up — 2 min
 
 ```sh
-amy init --install         # the config template, then the packages it names
-# edit ~/.amy/config.yaml   # the workspace's root and the repositories you work in
-amy add @amykit/workflow-errand
-amy doctor                 # every dependency, checked before it touches a ticket
+amy setup                 # asks which harness, workflow and channels, and installs only what you chose
+# answer one question at a time; the machine's current values are offered as the defaults
+amy doctor                # every dependency, checked before it touches a ticket
 ```
 
-`init` writes the config template and offers to install the packages the
-template names; it asks rather than assuming — installing into a global prefix
-is a change to the machine, not to amy. `--install` says yes without asking,
-which is what a pipeline uses; with nothing to ask on it prints the command
-instead of running it.
+`setup` asks rather than assuming — installing into Amy's private plugin root
+is a change to the machine, not to amy. With nothing to ask on it stops on the
+question and prints the flag that answers it, so a pipeline can say it all at
+once. `amy init` is the same walk under the name it had before.
 
-A fresh install drives nothing until `add` names a workflow. `amy add` is
-what a machine gains a process with: it installs the package and what the
+A fresh install drives nothing until a workflow is chosen — `setup` offers the
+published ones, or `amy add` adds one later. `amy add` is what a machine gains
+a process with: it installs the package and what the
 workflow asks for beside it, appends the profile to your config, checks the
 machine still boots, and writes the workflow's own files and commands into
 the profile — the example of the file who-is-reviewing-today lives in, for

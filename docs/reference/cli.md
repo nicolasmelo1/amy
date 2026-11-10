@@ -45,7 +45,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy config explain [plugin]`](#amy-config-explain [plugin]) | Every setting the machine and its mounted plugins carry, with its type, default and why |
 | [`amy contract`](#amy-contract) | This install's whole contract, amy's services and every mounted plugin's operations, as an OpenAPI document |
 | [`amy doctor`](#amy-doctor) | Check everything the machine depends on before it touches a ticket |
-| [`amy init`](#amy-init) | Write the config and the files the mounted plugins bring, and install what they need |
+| [`amy init`](#amy-init) | Set the machine up, as `amy setup` does: the same walk, asked the same way |
 | [`amy look`](#amy-look) | Look at one piece of work now, rather than when it was next due |
 | [`amy plugin`](#amy-plugin) | What is mounted, and what is not |
 | [`amy plugin list`](#amy-plugin-list) | The plugins this install mounts, and what they assembled into |
@@ -54,6 +54,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy queue recover`](#amy-queue-recover) | Return items abandoned by a dead worker |
 | [`amy remove`](#amy-remove) | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | [`amy run`](#amy-run) | Keep advancing until nothing is due |
+| [`amy setup`](#amy-setup) | Set the machine up: the harness, the workflow, the channels, one question at a time |
 | [`amy skills`](#amy-skills) | Install amy's skills into the harnesses on this machine |
 | [`amy start`](#amy-start) | Start the loop in the background, and keep it running |
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
@@ -209,16 +210,21 @@ amy doctor
 
 ### `amy init`
 
-Write the config and the files the mounted plugins bring, and install what they need
+Set the machine up, as `amy setup` does: the same walk, asked the same way
 
 ```sh
-amy init [options]
+amy init [options] [plugin]
 ```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `[plugin]` | no | configure this one plugin, and skip the machine's questions |
 
 | Option | Default | What it does |
 | :-- | :-- | :-- |
-| `--install` |  | install the missing packages without asking |
-| `--no-install` |  | only print what is missing |
+| `--harness <name>` |  | answer the harness ask before it is asked |
+| `--workflow <name>` |  | answer the workflow ask; `none` sets up no workflow |
+| `--channels <a,b>` |  | answer the channels ask, by name, comma-separated |
 
 ### `amy look`
 
@@ -304,6 +310,24 @@ amy run [options]
 | Option | Default | What it does |
 | :-- | :-- | :-- |
 | `--max <n>` | `100` | stop after this many moves |
+
+### `amy setup`
+
+Set the machine up: the harness, the workflow, the channels, one question at a time
+
+```sh
+amy setup [options] [plugin]
+```
+
+| Argument | Required | What it is |
+| :-- | :-- | :-- |
+| `[plugin]` | no | configure this one plugin, and skip the machine's questions |
+
+| Option | Default | What it does |
+| :-- | :-- | :-- |
+| `--harness <name>` |  | answer the harness ask before it is asked |
+| `--workflow <name>` |  | answer the workflow ask; `none` sets up no workflow |
+| `--channels <a,b>` |  | answer the channels ask, by name, comma-separated |
 
 ### `amy skills`
 

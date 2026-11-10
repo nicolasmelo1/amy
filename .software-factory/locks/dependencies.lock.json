@@ -15,13 +15,14 @@
     "examples/workflow-ticket-to-qa/package.json": "ac6c46f9ebf1aa0996184b668924042ea5ac175854a8ebc7b7f34dd5e0b61620",
     "package.json": "7784702dd1b9f7aa93877a0814f4d6c878af78dac8de1da13889030172560801",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
-    "packages/cli/package.json": "82ab36544c13658fcf9d79010870f26ee59ed4547f6934648783e43254fc404a",
+    "packages/cli/package.json": "79f0f446efef14f966b3d362a53ca54dc5859abf4bb403ee98093354d6e92336",
     "packages/core/package.json": "3c7f26da90f9263db1e922f91ef1660ddedfb19c37451d34b4841167ee5e16d3",
     "packages/model-specs/package.json": "d6afcd448edab15754b7e1859f942492a247b0cea14014a6e57bd58145a274bf",
     "packages/services/package.json": "bcfa01357e3b1efa732602f395281cd0a33e4919a3160a3ee3c8c6ab260425e0",
     "packages/test-fixtures/package.json": "c94ca2063874ac5850c5eddc4e006b065210ba9d1a34b49a3797fc3d2f8a134a",
     "packages/ui-conformance/package.json": "a2f237310e7baf443b0f9ba87f2492be7f2b3120c5a95d00435550048896e87e",
     "packages/ui/package.json": "9de58fa168f2c0ab50239d0ace4bec01a862762910fba961d1bd6f8d8df21f60",
+    "packages/workflow-setup/package.json": "bb4d555f70b3b678de88381efbe7ee99816eeb1de8d96cfc2b57b06030354f32",
     "packages/workflow-testkit/package.json": "725676f9acbf7befd5c1ecec0b69485c520e76d97b80538bfbcd48ee017dd8c3",
     "plugins/agent-browser/package.json": "bf266b4e97fffd9eed8e3a61a328eb8078f1b962606250b51fc9b754802cec35",
     "plugins/agent-desktop/package.json": "9edf2c568aced004252b8e74ddcde21acd9e4895c11eb2d69e5bd2718d9b9a4a",
@@ -50,6 +51,7 @@
     "plugins/serial-engine/package.json": "ed01f7194d54924c2371d1d536a376caddcc993b7ee259383a67dea512fd7528",
     "plugins/slack/package.json": "63cf9f819e5e7194e04b838311ae933fbba46cc60ce60fce1ad93247e7fec84c",
     "plugins/telegram/package.json": "f2b670e32bbdb3c30c5b2368feb20c4dbf54730b55bb1643b117da7ade494164",
+    "plugins/terminal-conversation/package.json": "003e082c9df43ed9be5a00845f70ff3d23f382bec0630ede83a3b1c1239f52de",
     "plugins/terminal/package.json": "f7037e24d8f7b575309b182daa9c5be773f544e3ff6548da97d1861d65433d8d",
     "plugins/ui-stub/package.json": "6a01970fbf137313290ed26f4a979776eb49c5d9776a54916cf96fece1c8e06c"
   }
