@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-next-steps",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when the list of work is an ordered table of plans kept in a repository instead of a ticket tracker. It mounts a tracker port that only reads: each row is a work item with its plan as the body, and only the top rows count as work at once. The table is read from the base branch, so the order is what was merged, and a workflow on it hands every tracker write to the operator."
   },
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-codex",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The codex CLI as the agent, over its JSONL event stream.",
   "type": "module",
   "license": "MIT",
@@ -31,9 +31,9 @@
     "about": "Use it when the agent should be Codex, run through the codex CLI. It contributes a harness and a usage reader to agent-relay, which must be installed beside it. At mount it checks that the installed codex speaks the app-server protocol it was built against, and refuses to mount otherwise. Codex reports no cost of its own, so a ceiling in money needs the price table to carry the model."
   },
   "dependencies": {
-    "@amykit/core": "^0.6.0",
-    "@amykit/agent-kit": "^0.6.0",
-    "@amykit/model-specs": "^0.6.0"
+    "@amykit/core": "^0.7.0",
+    "@amykit/agent-kit": "^0.7.0",
+    "@amykit/model-specs": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

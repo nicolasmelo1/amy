@@ -5,7 +5,7 @@
   "title": "@amykit/workflow-feature-grooming",
   "description": "Feature grooming against read-only base-branch source snapshots.",
   "dependencies": [
-    "@amykit/core@^0.6.0"
+    "@amykit/core@^0.7.0"
   ],
   "devDependencies": [],
   "files": [
@@ -19,7 +19,7 @@
       "path": "examples/workflow-feature-grooming/package.json",
       "type": "registry:file",
       "target": "forks/workflow-feature-grooming/package.json",
-      "content": "{\n  \"name\": \"@amykit/workflow-feature-grooming\",\n  \"version\": \"0.6.0\",\n  \"description\": \"Feature grooming against read-only base-branch source snapshots.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": { \"type\": \"git\", \"url\": \"git+https://github.com/nicolasmelo1/amy.git\", \"directory\": \"examples/workflow-feature-grooming\" },\n  \"publishConfig\": { \"access\": \"public\", \"registry\": \"https://registry.npmjs.org\" },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": { \".\": { \"types\": \"./dist/index.d.ts\", \"import\": \"./dist/index.js\" } },\n  \"files\": [\"dist\", \"workflow.mmd\"],\n  \"dependencies\": { \"@amykit/core\": \"^0.6.0\" }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/workflow-feature-grooming\",\n  \"version\": \"0.7.0\",\n  \"description\": \"Feature grooming against read-only base-branch source snapshots.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": { \"type\": \"git\", \"url\": \"git+https://github.com/nicolasmelo1/amy.git\", \"directory\": \"examples/workflow-feature-grooming\" },\n  \"publishConfig\": { \"access\": \"public\", \"registry\": \"https://registry.npmjs.org\" },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": { \".\": { \"types\": \"./dist/index.d.ts\", \"import\": \"./dist/index.js\" } },\n  \"files\": [\"dist\", \"workflow.mmd\"],\n  \"dependencies\": { \"@amykit/core\": \"^0.7.0\" }\n}\n"
     },
     {
       "path": "examples/workflow-feature-grooming/src/brief.ts",
@@ -60,9 +60,9 @@
   ],
   "meta": {
     "package": "@amykit/workflow-feature-grooming",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "examples/workflow-feature-grooming",
-    "tag": "@amykit/workflow-feature-grooming@0.6.0"
+    "tag": "@amykit/workflow-feature-grooming@0.7.0"
   }
 }
