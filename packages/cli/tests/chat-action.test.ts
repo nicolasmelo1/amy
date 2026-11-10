@@ -99,6 +99,16 @@ describe("an action runs only amy's own commands (A4)", () => {
     expect(world.said.at(-1)).toMatch(/amy brief write TBO-1 scope the api; and the ui: done/);
   });
 
+  it("ends the batch at a stop, naming what was not run", async () => {
+    const world = setup("```amy\nstop\nstatus\n```", "/action stop then status");
+
+    const pass = await answerTheChat(world.desk);
+
+    expect(world.ran).toEqual([]);
+    expect(world.said.at(-1)).toMatch(/Not run, as the loop is ending: `status`\./);
+    expect(pass.after).toHaveLength(1);
+  });
+
   it("stops only once the answer is said", async () => {
     const world = setup("```amy\nstop\n```", "/action stop");
 

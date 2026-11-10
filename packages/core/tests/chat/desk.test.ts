@@ -393,7 +393,8 @@ describe("a turn that fails", () => {
     const chat = chatOf();
     let ran = 0;
     const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nstatus\n```"]).cli }, {
-      act: async () => {
+      act: async ({ running }) => {
+        running();
         ran += 1;
         throw new Error("the command crashed");
       },
@@ -453,7 +454,10 @@ describe("a turn that fails", () => {
     const chat = chatOf();
     let restarted = false;
     const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nrestart\n```"]).cli }, {
-      act: async () => ({ text: "restarting", after: async () => { restarted = true; } }),
+      act: async ({ running }) => {
+        running();
+        return { text: "restarting", after: async () => { restarted = true; } };
+      },
     });
     const say = chat.conversation.say!;
     chat.conversation.say = async (place, text) => {
@@ -481,5 +485,27 @@ describe("a turn that fails", () => {
 
     expect(claude.asked).toHaveLength(3);
     expect(claude.asked[2]!.prompt).toMatch(/remember kiwi/);
+  });
+});
+
+describe("a turn whose host failed before anything ran", () => {
+  it("is asked again, though the commands were reached", async () => {
+    const chat = chatOf();
+    let tries = 0;
+    const { desk } = deskOf(chat.conversation, { claude: harness("claude", ["```amy\nstatus\n```", "```amy\nstatus\n```"]).cli }, {
+      act: async ({ running }) => {
+        tries += 1;
+        if (tries === 1) throw new Error("the progress edit failed");
+        running();
+        return { text: "ran status" };
+      },
+    });
+    chat.write("/action status");
+
+    await expect(answerTheChat(desk)).rejects.toThrow(/the progress edit failed/);
+    await answerTheChat(desk);
+
+    expect(tries).toBe(2);
+    expect(last(chat.said)).toMatch(/ran status/);
   });
 });

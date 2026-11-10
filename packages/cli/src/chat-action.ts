@@ -55,35 +55,38 @@ const MAX_OUTPUT = 3000;
  * already: the core refuses a batch with one that is not (A4).
  */
 export function chatAct(actor: ChatActor): (action: ChatAction) => Promise<ChatActOutcome> {
-  return async ({ asked, progress, place }) => {
+  return async ({ asked, progress, place, running }) => {
     const said: string[] = [];
-    let after: (() => Promise<void>) | undefined;
-    for (const command of asked.commands) {
+    for (const [index, command] of asked.commands.entries()) {
       const spec = specOf(command, CHAT_COMMANDS);
       const name = spec?.words.join(" ") ?? command.argv[0];
       if (name === "config apply") {
-        said.push(await applyConfig(actor, asked.blocks.get("config.yaml"), (line) => progress.line(line)));
+        said.push(await applyConfig(actor, asked.blocks.get("config.yaml"), (line) => progress.line(line), running));
         continue;
       }
-      if (name === "restart") {
-        const restart = await restartFromChat(actor, place, (line) => progress.line(line));
-        said.push(restart.text);
-        if (restart.after) after = restart.after;
-        continue;
-      }
-      if (name === "stop") {
-        said.push("Stopping this loop once this is said. Nothing starts it again until `amy start`.");
-        after = () => actor.exit("stop");
-        continue;
+      // A stop or an accepted restart ends the batch: nothing after it can fail and lose it.
+      const lifecycle = name === "restart"
+        ? await restartFromChat(actor, place, (line) => progress.line(line))
+        : name === "stop"
+          ? { text: "Stopping this loop once this is said. Nothing starts it again until `amy start`.", after: () => actor.exit("stop") }
+          : undefined;
+      if (lifecycle) {
+        said.push(lifecycle.text);
+        if (!lifecycle.after) continue;
+        running();
+        const left = asked.commands.slice(index + 1).map((one) => `\`${one.line}\``);
+        if (left.length > 0) said.push(`Not run, as the loop is ending: ${left.join(", ")}.`);
+        return { text: said.join("\n\n"), after: lifecycle.after };
       }
       await progress.line(`Running amy ${command.argv.join(" ")}…`);
+      running();
       const result = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, ...command.argv], {
         timeoutMs: 10 * 60 * 1000,
         ...(actor.env ? { env: actor.env } : {}),
       });
       said.push(`amy ${command.argv.join(" ")}: ${result.ok ? "done" : `failed (exit ${result.exitCode})`}${fenced(`${result.stdout}\n${result.stderr}`)}`);
     }
-    return { text: said.join("\n\n"), ...(after ? { after } : {}) };
+    return { text: said.join("\n\n") };
   };
 }
 
@@ -92,7 +95,7 @@ export function chatAct(actor: ChatActor): (action: ChatAction) => Promise<ChatA
  * a child mounts it first, from a file beside the real one, and a config
  * that does not mount leaves config.yaml as it was, byte for byte.
  */
-async function applyConfig(actor: ChatActor, proposed: string | undefined, line: (text: string) => Promise<void>): Promise<string> {
+async function applyConfig(actor: ChatActor, proposed: string | undefined, line: (text: string) => Promise<void>, running: () => void): Promise<string> {
   if (proposed === undefined) return "config apply: nothing written — the answer holds no block tagged `config.yaml`.";
   const current = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
   const next = proposed.endsWith("\n") ? proposed : `${proposed}\n`;
@@ -110,6 +113,7 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     if (!checked.ok) {
       return `config apply: not written — the new config does not mount, so config.yaml stays as it was.${fenced(`${checked.stdout}\n${checked.stderr}`)}\nThe change was:${fenced(diff, "diff")}`;
     }
+    running();
     fs.renameSync(candidate, actor.config);
   } finally {
     fs.rmSync(candidate, { force: true });

@@ -15,6 +15,12 @@ export interface ChatAction {
   readonly asked: Asked;
   readonly place: string;
   readonly progress: ChatProgress;
+  /**
+   * Said by the host the moment something with an effect is about to run.
+   * A turn that fails before it is asked again; one that fails after is
+   * never run twice.
+   */
+  readonly running: () => void;
 }
 
 /** What running them came to: what to say, and what to do once it is said. */
@@ -277,8 +283,7 @@ async function carriedOut(desk: ChatDesk, reply: string, action: boolean, place:
   if (!action) return { said: `${said}\n\nNothing ran: a command runs only when the message starts with /action.` };
   const refused = refusedCommands(asked, desk.commands);
   if (refused.length > 0) return { said: `${said}\n\nRefused, and nothing ran:\n${refused.map((one) => `- \`${one.line}\`: ${one.why}`).join("\n")}` };
-  turn.acted = true;
-  const outcome = await desk.act({ asked, place, progress });
+  const outcome = await desk.act({ asked, place, progress, running: () => { turn.acted = true; } });
   if (outcome.after) turn.after = outcome.after;
   return { said: `${said}\n\n${outcome.text}`, outcome };
 }

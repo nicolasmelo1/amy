@@ -58,8 +58,9 @@ export function unitOf(spec: LoopSpec): string {
   return [
     "[Unit]",
     `Description=${spec.description}`,
-    "StartLimitIntervalSec=600",
-    "StartLimitBurst=10",
+    // No start limit: a unit that hit one stays stopped until somebody resets
+    // it, and the loop must come back. RestartSec spaces the attempts instead.
+    "StartLimitIntervalSec=0",
     "",
     "[Service]",
     "Type=simple",
@@ -68,7 +69,7 @@ export function unitOf(spec: LoopSpec): string {
     `WorkingDirectory=${spec.workingDirectory.replace(/%/g, "%%")}`,
     ...Object.entries(spec.env).map(([key, value]) => `Environment=${quoted(`${key}=${value}`)}`),
     "Restart=on-failure",
-    "RestartSec=5",
+    "RestartSec=10",
     "KillMode=mixed",
     "",
     "[Install]",

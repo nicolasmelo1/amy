@@ -335,8 +335,13 @@ export class SlackConversation implements Conversation {
       writeJsonFile(cursorFile, { oldest: msToTs(this.clock().getTime()) });
       return;
     }
-    const oldest = await this.fileRoots(cursor, bot);
-    writeJsonFile(cursorFile, { oldest });
+    // Slack may allow conversations.history once a minute too: the channel is
+    // read when that is due, and what was filed is handed out meanwhile.
+    const historyQuota = path.join(chat, "history.json");
+    if (this.clock().getTime() - (readJson<{ at: number }>(historyQuota)?.at ?? 0) >= CHAT_THREAD_EVERY_MS) {
+      writeJsonFile(historyQuota, { at: this.clock().getTime() });
+      writeJsonFile(cursorFile, { oldest: await this.fileRoots(cursor, bot) });
+    }
     await this.fileDueReplies(chat, bot);
   }
 

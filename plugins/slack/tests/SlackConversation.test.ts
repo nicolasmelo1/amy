@@ -637,6 +637,20 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
     expect((await amy.chat()).map((one) => one.text)).toEqual(["second", "still here"]);
   });
 
+  it("reads the channel at most once a minute, handing out what was filed meanwhile", async () => {
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      thread([]),
+    ]);
+    const amy = conversation(http, [], () => new Date("2026-09-21T00:00:00.000Z"));
+    await amy.chat();
+    await amy.chat();
+
+    expect((await amy.chat()).map((one) => one.text)).toEqual(["first"]);
+    expect(http.argsOf("conversations.history")).toHaveLength(1);
+  });
+
   it("reads one conversation's thread a minute for the whole channel, the longest waiting first", async () => {
     const OTHER_ROOT = "1790000250.000100";
     const http = new ScriptedHttp([

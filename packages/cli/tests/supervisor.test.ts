@@ -95,6 +95,8 @@ describe("what each supervisor is handed", () => {
   it("restarts a systemd unit on failure, quoting what systemd would expand", () => {
     const unit = unitOf({ ...SPEC, args: [...SPEC.args, "50%", "$HOME"] });
     expect(unit).toContain("Restart=on-failure");
+    // No start limit, which would leave the loop stopped until somebody reset it.
+    expect(unit).toContain("StartLimitIntervalSec=0");
     expect(unit).toContain('ExecStart="/usr/local/bin/node" "/opt/amy/index.js"');
     expect(unit).toContain('"50%%" "$$HOME"');
     expect(unit).toContain('Environment="AMY_HOME=/state"');
