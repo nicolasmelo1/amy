@@ -45,8 +45,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Build the frame and its renderers
-        run: npx tsc --build packages/ui-conformance plugins/ui-stub
+      # The whole workspace, not only the frame and its renderers: a property a
+      # delivered plan cites runs here, and setup-is-a-workflow's imports
+      # @amykit/workflow-setup and drives the built CLI, both from their dist.
+      - name: Build the workspace the checks run against
+        run: npx tsc --build
       # verify first:a check that stopped firing makes the run below
       # meaningless, and it is the cheaper failure to discover.
       #
