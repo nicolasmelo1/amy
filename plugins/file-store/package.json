@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Every install that runs an engine needs a record store, and this is the local one: each work record is a JSON file under the state directory. It keeps records only, and briefs go through file-brief-store. Pair it with file-queue and an engine."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/plugin-file-brief-store": "^0.6.0"

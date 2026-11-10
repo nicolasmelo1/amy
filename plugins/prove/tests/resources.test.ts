@@ -59,7 +59,7 @@ describe("a resource is the commands its config names", () => {
 
 describe("the documented web example", () => {
   const doc = fs.readFileSync(path.resolve(import.meta.dirname, "..", "..", "..", "docs", "build", "prove-a-phase.md"), "utf-8");
-  const example = parseYaml(/### Two worktrees side by side, with portless[\s\S]*?```yaml\n([\s\S]*?)```/.exec(doc)![1]!) as { plugins: Record<string, Record<string, unknown>> };
+  const example = parseYaml(/### Worktrees side by side, with portless[\s\S]*?```yaml\n([\s\S]*?)```/.exec(doc)![1]!) as { plugins: Record<string, Record<string, unknown>> };
 
   it("brings two worktrees' apps up side by side with portless, through the commands port", async () => {
     const lines: string[] = [];

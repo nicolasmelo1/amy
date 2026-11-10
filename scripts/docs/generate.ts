@@ -12,7 +12,8 @@ import { configFacts } from "./sources/config.js";
 import { releaseFacts } from "./sources/releases.js";
 import { runtimeFacts } from "./sources/runtime.js";
 import { manifestFrom } from "./render/manifest.js";
-import { readmesFrom } from "./render/readme.js";
+import { missingAbout, readmesFrom } from "./render/readme.js";
+import { proseProblems, said } from "./prose.js";
 import type { Facts, GeneratedFile } from "./lib/facts.js";
 
 /**
@@ -75,9 +76,17 @@ async function main(): Promise<void> {
   written.push(...readmesFrom(facts));
   written.push({ file: "docs/manifest.json", text: manifestFrom(facts, blocks, spliced) });
 
+  problems.push(...missingAbout(facts));
   if (problems.length > 0) fail(problems);
 
   const stale = written.filter((entry) => current(entry.file) !== entry.text);
+
+  // The hand-written half is held here too, so a slop word or a hand count
+  // is named by the same command that names a stale table.
+  const prose = proseProblems().map(said);
+  if (check && prose.length > 0) {
+    fail(["the prose of the documentation breaks a rule the docs check holds:", ...prose.map((line) => `  ${line}`)]);
+  }
 
   if (check) {
     if (stale.length === 0) {

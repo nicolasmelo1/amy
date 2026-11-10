@@ -6,6 +6,19 @@ The claude CLI as the agent, over its JSON envelope.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `claude` in the `harness` collection and `Claude` in the `usage` collection.
 
+Use it when the agent should be Claude Code, run through the claude CLI. It contributes a harness and a usage reader to agent-relay instead of mounting the agent port itself, so install agent-relay with it, and list codex or hermes-agent too when the relay should have somewhere to fall back. Claude reports what each run cost, so a ceiling in money works without a row in the price table.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | `CLAUDE_CODE_OAUTH_TOKEN` |
+
 ## Install
 
 ```sh
@@ -51,7 +64,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

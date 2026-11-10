@@ -20,7 +20,7 @@ five keep that promise by hand, each in its own way:
   written a fifth way.
 
 That is roughly a hundred lines in each workflow's `plugin.ts`, and three traps
-[Write a workflow](../build/write-a-workflow.md) has to call
+[Write a workflow](../guides/write-a-workflow.md) has to call
 "load-bearing" because an author who misses any one of them ships a bug that
 only shows up with two mounts, or with a different plugin order, or on the first
 tick instead of at boot. The host is the only thing that knows when every

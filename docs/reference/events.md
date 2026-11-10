@@ -1,6 +1,6 @@
 ---
 title: Events
-description: Every event kind and the exact shape of its detail — from the contract the log is validated against.
+description: Every event kind and the exact shape of its detail, read from the contract the log is validated against.
 group: Reference
 order: 5
 ---
@@ -11,8 +11,10 @@ Read out of `packages/core/events.json`, which is the contract a validator
 checks the log against and which is hash-locked so a rename cannot happen
 without a reviewer seeing it.
 
-Every line also carries `at`, `kind` and `build`. See
-[Events](../concepts/events.md).
+Every line carries `at` and `kind`, and the log stamps `build`, the build that
+wrote it; a line about one piece of work names its `workId` and `state`. See
+[Events](../concepts/events.md), and for watching the log while it is written,
+[the event log can be watched](../design/the-event-log-can-be-watched.md).
 
 ## Every kind
 

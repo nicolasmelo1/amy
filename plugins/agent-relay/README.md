@@ -6,6 +6,19 @@ One agent made of several: swaps harness on a quota, escalates model on a failur
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `agent` port.
 
+Every install that runs an agent needs it, because it is the only plugin that mounts the agent port. It puts the harnesses that claude, codex and hermes-agent contribute on a ladder, moving to another harness when one runs out of quota and to a stronger model when a step fails, so mount at least one of those beside it. When you set a spending ceiling it also mounts the budget port, and it owns amy models, the price table that ceiling is measured with.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `agent` |
+| Actions | _none_ |
+| Operations | `models.refresh-prices`, `models.show-prices` |
+| Commands | `amy models show`, `amy models refresh` |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -56,7 +69,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

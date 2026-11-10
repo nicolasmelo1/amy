@@ -6,6 +6,19 @@ Announcements as a file on disk plus a desktop notification.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `inbox` in the `notify-channel` collection.
 
+Use it when announcements should reach you on this machine: each one is written as a file on disk and raised as a desktop notification, so a missed notification still leaves the file. It adds a channel to notify-fanout, so install that too.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | _none_ |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -39,7 +52,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

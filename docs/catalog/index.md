@@ -8,7 +8,7 @@ order: 1
 # Packages
 
 Everything in amy is a package. The ones below ship in this repository; anything
-else is found by two conventions rather than by a list somebody curates.
+else is found by a keyword and a topic rather than by a list somebody curates.
 
 ## In the box
 
@@ -59,7 +59,7 @@ There is no central index, and that is deliberate. A curated list here would be
 stale the day somebody publishes, and a package would have to ask permission to
 exist.
 
-So discovery is two conventions:
+So discovery is a keyword on npm and a topic on GitHub:
 
 | Where | Query |
 | :-- | :-- |
@@ -71,17 +71,23 @@ npm search keywords:amy-plugin
 gh search repos --topic amy-plugin
 ```
 
-Anything either query returns is installable the same way everything else is:
+Anything either query returns is installable the same way everything else is.
+`amy add` installs it, mounts it and checks the machine still boots:
 
 ```sh
 amy add <package>
 ```
+
+A profile can also name it among its own `plugins` in `~/.amy/config.yaml`:
 
 ```yaml
 workflows:
   ticket-to-qa:
     plugins: ["@acme/plugin-jira", "…"]
 ```
+
+Nothing is installed until something is asked for:
+[nothing is installed by default](../design/nothing-is-installed-by-default.md).
 
 ## Installing one is a trust decision
 
@@ -96,5 +102,5 @@ outside the boundary everything else here is tested at.
 
 ## Getting yours listed
 
-Add the keyword and the topic. That is it — see
+Add the keyword and the topic. That is all; see
 [Publishing a package](publishing-a-package.md).

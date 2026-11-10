@@ -1,23 +1,18 @@
 # note-to-plan
 
-**Write down what got in your way, and get back a plan to fix it.**
+This workflow turns a note about something that got in your way into a checked plan, opened as a pull request in the repository the note is about.
 
-Every day something slows you down: a flaky retry, a confusing command, a step
-you always forget. You notice it, sigh, and move on. A week later nobody
-remembers it happened.
-
-With this workflow you write the friction down in one line:
+A flaky retry, a confusing command, a step you always forget: you notice it
+and move on, and a week later nobody remembers. Write it down in one line:
 
 ```sh
 amy note "the relay retries a harness that already said it was out of quota"
 ```
 
-amy asks an agent to turn that note into a **plan**: a short document, inside
-the repository the friction is about, that says what is wrong and what should
-change. Before anybody sees it, the plan is checked by the repository's own
-checks. Then amy opens a pull request with it. Fixing the problem is still
-somebody's decision; this workflow makes sure it is written down where that
-decision gets made.
+An agent drafts a **plan** in that repository: what is wrong and what should
+change. The repository's own checks read it before anybody does, then amy opens
+a pull request. Fixing the problem stays somebody's decision. Why: [friction
+becomes a plan](../../docs/design/friction-becomes-a-plan.md).
 
 ## How it moves
 
@@ -29,41 +24,26 @@ NOTED ──> DRAFTED ──> CHECKED ──> PR_OPEN ──> DONE
   └─────────────────────────────────────────> DECLINED   not a repository amy writes into
 ```
 
-1. **NOTED.** The note waits on the queue. It also waits while a repository
-   already has too many plans open, so nobody gets a backlog of robot plans.
-2. **DRAFTED.** An agent writes the plan into a branch of the repository.
-3. **CHECKED.** The repository's checks read the plan. Red sends it back to the
-   agent, green moves it on.
-4. **PR_OPEN.** The [pull-request](../workflow-pull-request) workflow opens a
-   pull request with the plan.
-5. **DONE** or **DECLINED.** Merging the plan is a person's choice, so the
-   workflow ends as soon as the pull request exists.
-
-## What it needs
-
-- **An agent** to draft the plan, like `@amykit/plugin-claude`.
-- **A place for notes**, `@amykit/plugin-file-notes`, which is what `amy note`
-  writes into.
-- **A plan check**, `@amykit/plugin-plan-check`, which runs the commands in
-  `check` (by default `sf check`).
-- **A code host** to open the pull request, like `@amykit/plugin-github`.
-- **A notifier** to tell you how it went, like `@amykit/plugin-slack`.
-
-`amy add` installs these for you, and `amy doctor` tells you what is still
-missing.
+- **NOTED** also waits while the ceiling on open plans is reached.
+- **CHECKED** sends a red plan back to the agent and moves a green one on.
+- **PR_OPEN** calls the [pull-request](../workflow-pull-request) workflow.
+  Merging is a person's choice, so the workflow ends once the pull request
+  exists.
 
 ## Try it
 
 ```sh
 amy add @amykit/workflow-note-to-plan
-amy doctor
+amy doctor        # names what is still missing
 amy note "amy doctor does not say which repository is missing"
-amy tick        # one move at a time, so you can watch it
-amy status
+amy tick          # one move at a time, so you can watch it
 ```
 
-`repos` is required: it is the list of repositories a plan may be written into.
-A note about anything else is handed back to you.
+It needs an agent such as `@amykit/plugin-claude`, `@amykit/plugin-file-notes`
+(where `amy note` writes), `@amykit/plugin-plan-check` (which runs the commands
+in `check`, by default `sf check`), a code host such as `@amykit/plugin-github`,
+and a notifier. `repos` lists the repositories a plan may be written into; a
+note about anything else is handed back to you.
 
 <!-- amy:generated reference -->
 
@@ -137,7 +117,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-workflow.md)
 - [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

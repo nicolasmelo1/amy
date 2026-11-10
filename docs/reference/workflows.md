@@ -1,14 +1,18 @@
 ---
 title: Workflows
-description: Every shipped workflow — its states, where it waits, and what it emits.
+description: Every shipped workflow, its states, where it waits, and what it emits.
 group: Reference
 order: 3
 ---
 
 # Workflow reference
 
-Read out of each workflow's own machine object: the states it declares, which of
-them wait, which are terminal, and the actions it says it can emit.
+Read out of each workflow as amy mounts it: its states come from the
+`workflow.mmd` beside it, and the actions from what its single `defineWorkflow`
+declares. Why a workflow is one declaration over one diagram:
+[a workflow is one declaration](../design/a-workflow-is-one-declaration.md).
+How one workflow calls another, as `PR_OPEN` calls `pull-request`:
+[a workflow calls another](../design/a-workflow-calls-another.md).
 
 ## Every shipped workflow
 
@@ -198,13 +202,13 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 
 ## What a state's kind means
 
-| Kind | The engine's behaviour |
-| :-- | :-- |
-| **initial** | The state a new record starts in. |
-| **working** | Something is due. The next look is queued immediately after this one finishes. |
-| **waiting** | Nothing to do until the outside world moves. The next look is queued with a delay from the workflow's policy. |
-| **terminal** | Nothing further is queued. The record is settled. |
+| Kind | In `workflow.mmd` | The engine's behaviour |
+| :-- | :-- | :-- |
+| **initial** | `[*] --> STATE` | The state a new record starts in. |
+| **working** | any other state | Something is due. The next look is queued as soon as this one finishes. |
+| **waiting** | `class STATE waiting` | Nothing to do until the outside world moves. A `wait` decision queues the next look after the delay it names, usually read from the workflow's policy. |
+| **terminal** | `STATE --> [*]` | Its decision settles, and nothing further is queued. |
 
 A workflow with no waiting state is a busy loop that burns quota politely; a
 workflow with no terminal refusal makes giving up look exactly like landing. See
-[Write a workflow](../build/write-a-workflow.md).
+[Write a workflow](../guides/write-a-workflow.md).

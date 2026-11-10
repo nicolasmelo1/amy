@@ -1,36 +1,34 @@
 ---
 title: Actions
-description: The catalogue the core owns, why a workflow composes rather than defines, and when to add one.
+description: The catalogue the core owns, what a workflow declares for each action it emits, and when to add one.
 group: How it works
-order: 5
+order: 6
 ---
 
 # Actions
 
-An **action** is a name plus the port it dispatches to. That is all the core
-knows about one.
+An **action** is something a decision asks for and the world does: run the
+gate, ask the agent, open a pull request. A plan carries it by name, with a
+payload. The core's catalogue says which port each name runs on:
 
 ```ts
-"run-gate": { port: "gate", method: "run" }
+import { CORE_ACTIONS } from "@amykit/core";
+
+const gate = CORE_ACTIONS["run-gate"]; // { port: "gate", method: "run" }
 ```
 
-A workflow *orders* actions. It does not define them.
+## Why a shared catalogue
 
-## Why composing and not defining
+A second workflow that needs `implement` reuses the core's `implement` and the
+port behind it. It does not declare its own, which would drag a domain along,
+and it does not import the first workflow, which would tie the workflows to
+each other.
 
-This is the constraint that makes a second workflow cheap.
-
-If a workflow defined its own actions, then a second workflow that needed
-`implement` would either declare its own — and drag a whole domain along with it
-— or import the first workflow, which puts a dependency between two things that
-should not know about each other. Composing from a shared catalogue means the
-second workflow reuses the action *and* the port behind it, and the two
-workflows stay strangers.
-
-The evidence is `draft-plan` and `run-errand`. Both dispatch to
-`agent.ask()` — a prompt goes in, an account of what it cost comes back. Two
-workflows now want an agent working in a checkout under a name of their own, and
-neither wants the other's. That moved `ask` from a guess to a fact.
+`draft-plan` and `run-errand` are the evidence. Both dispatch to `agent.ask()`:
+a prompt goes in, an account of what it cost comes back. The note-to-plan and
+errand workflows each want an agent working in a checkout under a name of their
+own, so `ask` moved from a guess to a fact, and both prompts reach the same
+ladder and the same ceiling.
 
 ## The catalogue
 
@@ -63,82 +61,79 @@ neither wants the other's. That moved `ask` from a guess to a fact.
 
 ## What a workflow declares
 
+A workflow's `actions` has one entry per action its decisions may emit. The key
+is the name; the value is a handler the workflow wrote, or `{ port, method }`
+for a port method the host calls with the action and its context:
+
 ```ts
-actions: {
-  "triage": async (action, ctx) => { /* ... */ },
-  "announce": async (action, ctx) => { /* ... */ },
-  "merge": { port: "forge", method: "merge" },
-}
+import { workflowActions } from "@amykit/core";
+
+type Effect =
+  | { type: "page-oncall"; who: string; why: string }
+  | { type: "announce"; text: string };
+
+export const actions = workflowActions<Effect>()({
+  // Each handler is handed only its own member of Effect.
+  "page-oncall": async ({ operate }, _work, effect) => {
+    await operate("pager.page", { who: effect.who, why: effect.why });
+  },
+  announce: async ({ announce }, _work, effect) => announce(effect.text),
+});
 ```
 
-One entry per action, on the workflow's runtime: the key is the name `plan()`
-emits, the value is what runs it — a handler the workflow wrote, or a port and a
-method the host calls with the action and its context — one its port marked with
-`acceptsAction`, because a method written for its own arguments would run on the
-wrong ones. Declaring and
-implementing are the same line, so they cannot disagree, and the host answers
-before touching any work whether every one of them can run:
+Declaring and implementing are the same entry, so they cannot disagree, and
+the host answers at boot, before any work, whether each one can run:
 
-```
+```text
 amy could not start:
   action `hand-off-to-qa` is declared with no implementation — give it a handler, or a port and a method
   action `triage`: needs the `agent` port, which nothing mounted
   action `check-plan`: `plan-check.check` takes its own arguments, not an action — write a handler that calls it, or mark it with `acceptsAction`
 ```
 
-A handler still runs an action the catalogue above names, because the
-catalogue is what tells the budget which actions spend an agent and the tracker
-check which ones write. A port and a method names its own port, so it may run
-an action nobody catalogued — but not one the catalogue sends to a different
-port.
+A `{ port, method }` reaches only a method its port marked with
+`acceptsAction`. A method written for its own arguments would be handed an
+action where it expects a repository and run wrong, so it is called from a
+handler instead.
 
-A plan that carries a name the map does not is refused by the engine before any
-of that plan's actions run, and by the testkit before it ships.
+A handler runs an action the catalogue names, because the catalogue tells the
+budget which actions spend an agent and the tracker check which ones write. A
+`{ port, method }` names its own port, so it may run an action nobody
+catalogued, but not one the catalogue sends to a different port. A plan naming
+an action the map does not have is refused by the engine before any of that
+plan's actions run.
+
+A handler is given its ports bound to the work, so every agent reply is logged
+for the budget; `announce(text)`, a word to the operator whose failure is a
+`notify.failed` line rather than a failed action; and `operate(id, input)`,
+which calls a mounted plugin's operation by id, validated against its schema.
 
 ## The payload lives in the workflow
 
-The core owns the name. The *payload* an action carries in a given workflow is
-that workflow's business:
-
-```ts
-export type Effect =
-  | { type: "address-threads"; threadIds: string[]; from: "automated" | "human" }
-  | { type: "assign-reviewer"; host: string }
-  | { type: "announce"; text: string };
-```
-
-That is what lets `plan()` stay type-checked over its own vocabulary while the
-core's `Action` stays `{ type: string } & Record<string, unknown>`.
+The core owns the name. Its `Action` is `{ type: string }` plus anything. The
+payload an action carries is the workflow's own `Effect` union, and
+`workflowActions<Effect>()` hands each handler only its own member. So the
+decisions stay type-checked over the workflow's vocabulary while the core stays
+ignorant of it.
 
 ## Adding an action
 
-Two routes, and which one is right depends on one question: **does anything
-outside your package want it?**
+The question is whether anything outside your package wants it.
 
-**A plugin action.** Your plugin registers the action *and* the port that runs
-it, in the same package:
+**A plugin action.** Your plugin registers the action and the port that runs
+it, in the same package, with `registry.action(name, { port, method }, impl)`.
+It works at once and you can publish it. See [Ports](ports.md#a-port-the-core-has-never-heard-of).
 
-```ts
-registry.action("page-oncall", { port: "pager", method: "page" }, new PagerDutyPager(…));
-```
+**A core action.** Adding to `CORE_ACTIONS` changes amy itself, and the bar is
+a second consumer. An action in the core with one user is a domain the core
+learned for nothing, which is what `L0.CORE_STAYS_IGNORANT` exists to prevent.
 
-Use this when the action is yours. It works immediately, nothing here has to
-change, and you can publish it.
-
-**A core action.** Adding to `CORE_ACTIONS` is a change to amy itself, and the
-bar is a second consumer. An action in the core with one user is a domain the
-core has learnt for nothing — which is the exact failure `L0.CORE_STAYS_IGNORANT`
-exists to prevent.
-
-So the path is: ship it in your plugin, and if a second workflow wants it, it
-graduates by evidence.
+So ship it in your plugin, and if a second workflow wants it, it graduates by
+evidence.
 
 ## Actions do not decide anything
 
-An action is *described* by `plan()` and *executed* by what the runtime declared
-for it. The machine never performs one, and the handler never decides whether
-to.
-
-That separation is why the whole lifecycle can be walked in a test with no I/O,
-and why a handler can be tested against a scripted world without a state machine
-anywhere near it.
+A decision describes an action and what the workflow declared for it runs it.
+The decision never performs one, and the handler never decides whether to. That
+is why a lifecycle can be walked in a test with no I/O, and why a handler can be
+tested against a scripted world with no state machine near it.

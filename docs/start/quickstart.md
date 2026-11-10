@@ -1,111 +1,93 @@
 ---
 title: Quickstart
-description: Five minutes from nothing to one move you can watch.
+description: From nothing to one move you can watch, then the loop.
 group: Start here
 order: 2
 ---
 
 # Quickstart
 
-Five minutes, four commands, and one move you can watch. Nothing here touches a
-real ticket until step 3, and step 3 is one move at a time on purpose.
+Install it, set it up, watch one move, then let the loop run. Nothing here
+touches a real ticket until step 3, and step 3 makes one move.
 
-## 1. Install — 1 min
+## 1. Install
 
 ```sh
 npm install -g @amykit/cli
-amy --version             # one line: version, the commit it was built from, and when
+amy --version             # the version, the commit it was built from, and when
 ```
 
-Nothing to clone, no install script, and the same command on macOS, Linux and
-Windows. It installs the command and nothing else — what your workflows need
-comes in the next step, once there is a config saying which ones you have.
+The same command on macOS, Linux and Windows. It installs the command and
+nothing else; what your workflows need comes in the next step. Everything amy
+knows lives in `~/.amy`, or wherever `AMY_HOME` points. See
+[Installation](installation.md).
 
-One install per machine, not one per repository: amy drives work in checkouts
-all over the disk and is reached from whichever agent harness you happen to be
-in, so everything it knows lives in `~/.amy`. `AMY_HOME` overrides that; nothing
-else does. See [Installation](installation.md).
-
-## 2. Set it up — 2 min
+## 2. Set it up
 
 ```sh
-amy setup                 # asks which harness, workflow and channels, and installs only what you chose
-# answer one question at a time; the machine's current values are offered as the defaults
+amy setup                 # which harness, which workflow, which channels
 amy doctor                # every dependency, checked before it touches a ticket
 ```
 
-`setup` asks rather than assuming — installing into Amy's private plugin root
-is a change to the machine, not to amy. With nothing to ask on it stops on the
-question and prints the flag that answers it, so a pipeline can say it all at
-once.
+`setup` asks one question at a time, offers what the machine already holds as
+the default, and installs only what you chose into `~/.amy/plugins`. With no
+terminal to answer, it stops on the question and prints the flag that answers it.
 
-A fresh install drives nothing until a workflow is chosen — `setup` offers the
-published ones, or `amy add` adds one later. `amy add` is what a machine gains
-a process with: it installs the package and what the
-workflow asks for beside it, appends the profile to your config, checks the
-machine still boots, and writes the workflow's own files and commands into
-the profile — the example of the file who-is-reviewing-today lives in, for
-the workflow whose reviewers confirm it each morning, among them. Every one
-of those is the package's, not the install's: a version of amy that mounted
-no roster carries no roster. See [Plugins](../reference/plugins.md).
+A fresh install drives nothing until a workflow is chosen. `setup` offers the
+published ones, and `amy add <package>` adds one later: it installs the
+package, writes its profile into the config, writes the files the workflow
+brings (the ticket workflow's roster, for one), and checks the machine still
+boots. See [Install a plugin](../guides/install-a-plugin.md).
 
-The Linear personal API key comes from Settings → Security and access, and goes
-in `~/.amy/.env`. Anything already exported in the shell wins over the file.
+Credentials go in `~/.amy/.env`; anything exported in the shell wins over the
+file. `amy doctor` exits non-zero when anything is wrong, so it is safe to gate
+on. See [Status and doctor](status-and-doctor.md).
 
-`amy doctor` checks the config, each plugin's settings against the schema that
-plugin declared, the checks the mounted packages declared, the API key,
-`gh`, `claude` and `git`, the notification target, and that every configured
-repository is actually
-checked out. It exits non-zero, so it is safe to gate on.
+If you would rather be walked through it, the `/amy-init` skill does the same
+interview from your harness.
 
-If you would rather be walked through it, `/amy-init` does the same interview
-and reads the result back in numbers.
-
-## 3. Watch it make one move — 1 min
+## 3. Watch it make one move
 
 ```sh
-amy tick                  # one look, exactly one move, then exit
+amy tick                  # discover, then exactly one move, then exit
 amy status                # where everything stands, and what waits on you
 ```
 
-`tick` is the whole product in one command. It looks first — the work a person
-or a hook left behind is found the same way queued work is driven — then
-claims one item, asks the workflow what to do, does exactly that, writes the
-record and queues the next look. Run it until you trust it. When you want to
-watch rather than drive, `tick` is the command for it; the loop runs the
-sequence itself.
+`tick` looks for new work first, the same way the loop does, then claims one
+item, asks the workflow what to do, does that, writes the record and queues the
+next look. This is how you watch a move before you trust the loop. Run it as
+often as you like; the loop is the same sequence on repeat.
 
-This is the step to spend time on. Everything after it is the same thing on a
-timer.
-
-## 4. Leave it running — 1 min
+## 4. Start the loop
 
 ```sh
-amy start --every 60      # the loop, in the background, looking every minute
+amy start                 # the loop, under the machine's supervisor
 amy status                # says whether the loop is up, and since when
 amy stop                  # ends it
 ```
 
-`stop --all` and `stop` are different things. `amy stop --all` is the
-handbrake: it ends work in flight and the loop with it, and nothing starts
-until `amy start`. `amy stop` ends the loop itself. The handbrake survives a
-reboot, because it is a file; the loop does not, because it is a process.
+`amy start` is enough on its own. Its loop discovers new work on every pass, so
+there is nothing to run before it. Where the machine has a supervisor (launchd,
+systemd or Task Scheduler), the loop runs under it and is started again if it
+dies; `--detached` runs it without one.
 
-## 5. Put the skills in your harnesses — 30 sec
+`amy stop --all` is the handbrake: it ends every loop and run in flight, and
+nothing starts until the next `amy start`. See [Running it](running.md).
+
+## 5. Put the skills in your harnesses
 
 ```sh
 amy skills                # finds the harnesses on this machine and asks
 ```
 
-amy is driven from Claude Code, from Hermes, from a terminal — so its skills
-install into each harness it finds rather than into one project. They ship
-inside `@amykit/cli`, so they cannot drift out of step with the amy that ships
-them. See [Harnesses and skills](../concepts/harnesses.md).
+amy is driven from Claude Code, Codex, Hermes or a terminal, so its skills
+install into each harness it finds. They ship inside `@amykit/cli` and move with
+it. See [Harnesses and skills](../concepts/harnesses.md). To drive it from
+Slack or Telegram instead, see [the chat](../guides/the-chat.md).
 
 ## What to read next
 
-You have a working install. The three things people want next:
-
-- **It should do *my* process, not this one.** → [Write a workflow](../build/write-a-workflow.md)
-- **It should talk to *my* tools.** → [Write a plugin](../build/write-a-plugin.md)
+- **It should do *my* process.** → [Write a workflow](../guides/write-a-workflow.md)
+- **It should talk to *my* tools.** → [Write a plugin](../guides/write-a-plugin.md)
 - **It did something I did not expect.** → [Status and doctor](status-and-doctor.md), then [Events](../concepts/events.md)
+- **The words are new to me.** → [Project, workflow, plugin](../guides/project-workflow-plugin.md)

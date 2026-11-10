@@ -1,6 +1,6 @@
 ---
 title: Contracts
-description: Every interface in the core — the ports, and the services lent to every plugin.
+description: Every interface in the core, the ports and the services lent to every plugin, read out of the source.
 group: Reference
 order: 4
 ---
@@ -10,10 +10,13 @@ order: 4
 The interfaces in `packages/core/src/ports`, with the doc comment each one
 carries. Read out of the source on every build.
 
-Not all of them are ports. `CommandRunner`, `EventLog`, `StopSwitch` and
-`GraphQLClient` are lent to plugins rather than mounted, and `Harness` is
-mounted under the name `agent` — [Ports](../concepts/ports.md#what-is-a-port-and-what-is-lent-to-everybody)
-explains why for each.
+Not all of them are mounted ports. `CommandRunner` and `EventLog` are lent to
+every plugin on its context, as `ctx.runner` and `ctx.log`. `StopSwitch` is the
+host's, handed to the engine, and `GraphQLClient` is what an adapter speaking
+GraphQL is built over. A `Harness` is contributed to the `harness` collection,
+one per agent CLI, and the relay that mounts the `agent` port asks through
+them. [Ports](../concepts/ports.md) explains why for each, and why the ports
+live in the core: [the ports belong to the core](../design/the-ports-belong-to-the-core.md).
 
 ## The mounted port kinds
 

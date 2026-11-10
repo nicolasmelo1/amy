@@ -21,6 +21,7 @@ interface PackageManifest {
   private?: boolean;
   main?: string;
   dependencies?: Record<string, string>;
+  amy?: { about?: unknown };
 }
 
 /** A setting as a plugin declares it to the host. */
@@ -119,7 +120,17 @@ function bringsOf(plugin: unknown): Brought | undefined {
       .filter((value): value is string => value !== undefined);
 
   const commands = list("operations").map(commandOf).filter((one): one is BroughtCommand => one !== undefined);
-  return { commands, checks: text("checks", "name"), files: text("files", "path") };
+  const events = list("operations").flatMap((one) => {
+    const declared = (one as { events?: unknown } | undefined)?.events;
+    return declared !== null && typeof declared === "object" ? Object.keys(declared) : [];
+  });
+  return {
+    commands,
+    operations: text("operations", "id").sort(),
+    events: [...new Set(events)].sort(),
+    checks: text("checks", "name"),
+    files: text("files", "path"),
+  };
 }
 
 interface Registered {
@@ -176,6 +187,7 @@ export async function packageFacts(): Promise<PackageFact[]> {
         name: manifest.name,
         version: manifest.version,
         description: manifest.description ?? "",
+        ...(typeof manifest.amy?.about === "string" ? { about: manifest.amy.about } : {}),
         private: manifest.private === true,
         group,
         directory: `${group}/${entry}`,

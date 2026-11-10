@@ -7,7 +7,7 @@ the two halves to the host, which was more than either half:
 
 - **Two registrations for one thing.** `registry.workflow(w)` and
   `registry.contribute(WORKFLOW_RUNTIME, w.name, runtime)`, by hand, matched by
-  name. [Write a workflow](../build/write-a-workflow.md) called the missing
+  name. [Write a workflow](../guides/write-a-workflow.md) called the missing
   second line "the first boot refusal nearly everybody meets", which was the
   API describing its own defect.
 - **Ports asked for one at a time.** Each workflow wrote its own `required()`

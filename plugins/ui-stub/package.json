@@ -18,7 +18,8 @@
     "dist"
   ],
   "amy": {
-    "conformance": "./dist/index.js"
+    "conformance": "./dist/index.js",
+    "about": "You do not install this one: it is private and never published. It holds the stub renderers, one in pixels and one in cells, that draw exactly the frame and nothing else. The ui conformance script is proven against them before a real renderer exists."
   },
   "dependencies": {
     "@amykit/ui": "*"

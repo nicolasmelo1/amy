@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Every install that runs an agent needs it, because it is the only plugin that mounts the agent port. It puts the harnesses that claude, codex and hermes-agent contribute on a ladder, moving to another harness when one runs out of quota and to a stronger model when a step fails, so mount at least one of those beside it. When you set a spending ceiling it also mounts the budget port, and it owns amy models, the price table that ceiling is measured with."
+  },
   "dependencies": {
     "@amykit/agent-kit": "^0.6.0",
     "@amykit/core": "^0.6.0",

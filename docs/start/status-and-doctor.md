@@ -1,96 +1,104 @@
 ---
 title: Status and doctor
-description: Reading where things stand, and finding out what is wrong before it touches a ticket.
+description: Where things stand, and what is wrong before it touches a ticket.
 group: Start here
 order: 7
 ---
 
 # Status and doctor
 
-Two commands answer two different questions. `amy doctor` asks *can this machine
-work at all*. `amy status` asks *where has the work got to*.
+`amy doctor` asks *can this machine work at all*. `amy status` asks *where has
+the work got to*.
 
 ## `amy doctor`
 
 ```sh
 amy doctor
+amy --workflow oncall doctor    # the same, for another profile
 ```
 
-It exits non-zero, so it is safe to gate on — in a shell profile, in a cron
-wrapper, in CI. What it asks, in order:
+It prints one line per check, `ok` or `FAIL`, then whether the profile mounts.
+It exits non-zero when anything failed, so it is safe to gate on in a shell
+profile, a cron wrapper or CI. What it checks:
 
-| Check | Why it is worth asking |
+| Check | Why it is asked |
 | :-- | :-- |
 | The config file exists | The most common cause of "it does nothing" |
-| Repositories are configured | Review load is counted across all of them; an empty list silently counts none |
-| A gate is configured | A workflow with no gate opens pull requests nobody checked |
-| At least one notification channel is on | A machine that cannot reach you is one you have to poll |
+| A notification channel is on | A machine that cannot reach you is one you have to poll |
+| A gate is configured when one is mounted, and repositories when a workspace is | A workflow with no gate opens pull requests nobody checked |
 | **Each plugin's settings, against the schema that plugin declared** | See below |
-| The roster, and whether it was confirmed today | A stale roster assigns reviews to people on leave |
-| State left behind by an older layout | Reported, never adopted |
-| The API keys the mounted plugins read | A credential missing at 3am is a tick that failed for no visible reason |
-| `gh`, `claude`, `git` | Every adapter shells out through one boundary; this is that boundary |
-| The notification target actually exists | A Hermes target nobody registered fails silently by design |
+| What the workflow may write, and its brief sections | A workflow claiming no writes cannot reach one |
+| State left behind by an older layout, or in the working directory | Reported, never adopted |
+| The environment variables the mounted plugins read | A credential missing at 3am is a tick that failed for no visible reason |
+| `claude`, and `gh` and `git` when a workspace is mounted | The external commands the adapters shell out to |
+| The notification target and the chat | A Hermes target nobody registered fails without a sound |
 | Every configured repository is checked out | Work cannot happen in a directory that is not there |
+| The checks each mounted package brings | ticket-to-qa's roster being confirmed today is one |
+| The machine's supervisor | Whether `amy start` has something to keep the loop up |
 
-The plugin-settings check is the one worth understanding. The schemas are not
-compiled into `doctor` — they are asked of **the plugins this install actually
-loaded**. A table baked in here would describe a machine other than the one
-being diagnosed, which is exactly the failure a diagnostic must not have.
+The settings check asks **the plugins this install loaded** for their schemas
+rather than carrying a table of its own, so it describes the machine being
+diagnosed. Why settings are checked against a schema:
+[a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md).
+Why a workflow's write surface is checked:
+[a workflow that claims no writes cannot reach one](../design/a-workflow-that-claims-no-writes-cannot-reach-one.md).
 
-If `doctor` is red and it is not obvious why, `/amy-init` walks the same ground
-and reads the result back in numbers.
+If `doctor` is red and it is not obvious why, the `/amy-init` skill walks the
+same ground and explains what it found.
 
 ## `amy status`
 
 ```sh
 amy status
+amy status --all      # include work that has finished
 amy status --json     # the same thing as data, for something else to render
 ```
 
-It tells you three things:
+It shows:
 
-**Where every piece of work stands** — one line per record, its state, and how
-long it has been there. A state in the workflow's `waitingStates` is waiting on
-somebody else; anything else is waiting on amy.
+**Where every piece of work stands.** One line per record, its state, and
+whether that state is `waiting` (the workflow's diagram marks it as waiting on
+somebody else), `active` (waiting on amy) or `finished`. Finished work is
+counted and left out unless you pass `--all`.
 
-**What the queue holds** — what is due now, what is held back and until when, and
-what is claimed by a worker right now.
+**What the queue holds.** What is due now, what is held back and until when,
+and what a worker has claimed.
 
 **Whether the loop is up**, and since when.
 
-`--json` is the interface for anything that renders it — a status page, a
-harness skill, a phone. `/amy-status` answers the same question from the
-project's side rather than the machine's, and `/amy-show-me` draws the state
-machine when the thing you need is a picture.
+`--json` is the interface for anything that renders it: a status page, a
+harness skill, a phone. The `/amy-status` skill answers the same question from
+the project's side, and `/amy-show-me` draws the state machine when you need a
+picture. `amy workflow export <name> --work <id>` prints the diagram with that
+piece of work marked.
 
 ### Reading a stuck piece of work
 
-A piece of work that is not moving is in one of four situations, and the status
-distinguishes them:
+A piece of work that is not moving is in one of these situations, and the
+status tells them apart:
 
-1. **Waiting on a person.** Its state is one of the workflow's waiting states.
-   Nothing is wrong. The queue holds it with a delay.
-2. **Parked against a ceiling.** The budget said not yet, or the reviewer
-   ceiling is reached. The record is untouched and the same move happens when
-   there is room. Look at `amy budget`.
-3. **Retrying.** It failed and is being tried again. The log has
-   `work.degraded`, and you were told on the first failure.
-4. **Given up on.** It hit `maxItemAttempts`. The log has `work.failed`, an
-   announcement went out, and in a workflow that files notes the friction
-   became a note.
+- **Waiting on a person.** Its state is one the workflow marks as waiting.
+  Nothing is wrong; the queue holds it with a delay.
+- **Parked against a ceiling.** The budget said not yet, or the reviewer
+  ceiling is reached. The record is untouched and the same move happens when
+  there is room. Look at `amy budget`.
+- **Retrying.** It failed and is being tried again. The log has
+  `work.degraded`, and you were told on the first failure.
+- **Given up on.** It hit `maxItemAttempts`. The log has `work.failed`, and an
+  announcement went out.
 
-## The log is the third answer
+## The log
 
-When neither command explains it, the log will:
+When neither command explains it, the log does:
 
 ```sh
-tail -f ~/.amy/events.jsonl
+tail -f ~/.amy/log/$(date -u +%F).jsonl
 ```
 
-Every line names the build that wrote it, and every kind is a versioned
-contract — see [Events](../concepts/events.md) and
-[Reference → Events](../reference/events.md).
+One file per day. Every line names the build that wrote it, and every kind is a
+versioned contract. See [Events](../concepts/events.md),
+[Reference → Events](../reference/events.md), and why it can be followed live:
+[the event log can be watched](../design/the-event-log-can-be-watched.md).
 
 ## `amy budget`
 
@@ -98,5 +106,5 @@ contract — see [Events](../concepts/events.md) and
 amy budget
 ```
 
-What the agents have spent, per window, against the ceiling — read from the log
+What the agents have spent, per window, against the ceiling, read from the log
 rather than from a tally of its own. See [Budgets](../concepts/budgets.md).

@@ -1,17 +1,19 @@
 ---
 title: Prove a phase
-description: Write the scenario that proves a unit of work, the resources it runs against, and the fixtures it starts from — and read the proof it leaves.
+description: Write the scenario that proves a unit of work, the resources it runs against and the fixtures it starts from, then read the proof it leaves.
 group: Build your own
-order: 5
+order: 2
 ---
 
 # Prove a phase
 
 Passing the tests a branch can run is not evidence the work holds. A project's
-`prove/` phase runs a **scenario** against the real system — the app running,
-the page published, the message sent — and leaves a **proof** the other phases
-read. Proving is a plugin, `@amykit/plugin-prove`; the core learns no scenario,
-step, resource or driver.
+`prove/` phase runs a **scenario** against the real system (the app running,
+the page published, the message sent) and leaves a **proof** the other phases
+read. Proving is the `prove` workflow, shipped as `@amykit/plugin-prove` (a
+`defineWorkflow`, whatever its name says); the core learns no scenario, step, resource or driver. Why:
+[a phase is proven, not asserted](../design/a-phase-is-proven-not-asserted.md),
+and where the phase sits in a project: [the phases a project reads](../design/a-project-is-three-phases.md).
 
 ## The scenario is a section of the brief
 
@@ -51,9 +53,9 @@ and the check refuses a step naming one nothing offers, or an input its schema
 refuses. A scenario that calls no operation at all is refused: the
 walkthrough's fake world would be its only actor.
 
-An assertion is `passed`, `failed` or `unsupported`. Unsupported — a step that
-never ran, an output without the path, a UI check nothing could settle —
-blocks completion like a failure; it is never counted as a pass.
+An assertion is `passed`, `failed` or `unsupported`. Unsupported means a step
+that never ran, an output without the path, or a UI check nothing could settle.
+It blocks completion like a failure and is never counted as a pass.
 
 ## Resources and fixtures
 
@@ -63,20 +65,21 @@ commands port by name; one with no `check` is refused at mount. A **fixture**
 ensures a state: it reads the world, acts only on what differs, and asks a
 person when it cannot.
 
-A resource has a capacity, kept for the whole machine under Amy home, so two
-tickets in different projects that need one account take turns: the next seat
+A resource has a capacity, kept for the whole machine under Amy home, so
+tickets in different projects that need the same account take turns: the next seat
 goes to the highest priority waiting, and a run that stops renewing loses its
 seat. Waiting for a seat is a look, never an attempt.
 
-### Two worktrees side by side, with portless
+### Worktrees side by side, with portless
 
 [portless](https://github.com/vercel-labs/portless) gives each app a free port
 through `PORT` and a stable `https://<name>.localhost`; in a linked git
 worktree the branch becomes a subdomain, so the main checkout and a worktree on
 `fix-ui` serve `shop.localhost` and `fix-ui.shop.localhost` at once. The
-proving plugin never names it: it is three command lines in the config. Each
-app's `up` keeps the process it started, and its `down` stops that process and
-no other, because both worktrees run the same command line.
+proving plugin never names it: it is an `up`, a `check` and a `down` command
+in the config. Each app's `up` keeps the process it started, and its `down`
+stops that process and no other, because every worktree runs the same command
+line.
 
 ```yaml
 plugins:
@@ -109,9 +112,9 @@ A driver is a plugin of its own, offering operations:
 | `@amykit/plugin-agent-desktop` | a desktop app's accessibility tree: snapshot, click, type, press | [agent-desktop](https://agent-browser.dev/desktop) |
 | `@amykit/plugin-terminal` | an interactive program: run, type, press, wait for text, read the screen | [terminal-use](https://github.com/flipbit03/terminal-use) |
 
-A UI check passes on structure first — the accessibility tree — then on pixels
+A UI check passes on structure first (the accessibility tree), then on pixels
 within a threshold against the planned design; what neither settles goes to an
-agent, and what it cannot settle is `unsupported`.
+agent, and what the agent cannot settle is `unsupported`.
 
 ## The proof
 

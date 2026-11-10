@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it with note-to-plan, which reads friction from the notes port this plugin mounts: a directory of notes written by amy note, by an editor or by a hook. Give it a repository and turn on failure notes, and it also adds a channel to notify-fanout that files a note whenever a tick fails, so the friction amy hits turns into a plan."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/plugin-notify-fanout": "^0.6.0",

@@ -6,6 +6,19 @@ Any command line tool, reached by a name the config allows.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `commands` port.
 
+Use it when a workflow or a proof needs a command line tool, such as a monitoring CLI. It mounts the commands port and the run-command action, and runs only the command lines written in its allow list, by name: a workflow may pass arguments and never the line itself. The prove workflow uses it to bring the resources a scenario runs against up and down, and to print the digest of the code a proof certifies.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `commands` |
+| Actions | `run-command` |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -43,7 +56,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

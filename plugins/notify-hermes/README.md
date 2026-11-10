@@ -6,6 +6,19 @@ Announcements over Hermes, which already owns the messaging credentials.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notify` port and `hermes` in the `notify-channel` collection.
 
+Use it when you already message through Hermes and want amy's announcements to arrive the same way, without handing amy the messaging credentials. It adds a channel to notify-fanout that sends to the Hermes delivery target you configure, and it can answer whether that target is reachable.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `notify` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -39,7 +52,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

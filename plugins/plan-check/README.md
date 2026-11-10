@@ -6,6 +6,19 @@ The quality bar for a drafted plan: the repository's own check, run in its check
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `plan-check` port.
 
+Use it with note-to-plan, which checks every plan it drafts before proposing it. It mounts the plan-check port and the check-plan action, and runs the repository's own check commands in the plan's checkout, so a plan only goes forward once the repository's own bar passes.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `plan-check` |
+| Actions | `check-plan` |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

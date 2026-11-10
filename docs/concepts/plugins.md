@@ -1,124 +1,109 @@
 ---
 title: Plugins and the registry
-description: How a plugin is assembled rather than constructed, and every way mount() refuses.
+description: What a plugin is, what it can register, and how the host mounts it or refuses it at boot.
 group: How it works
-order: 3
+order: 4
 ---
 
 # Plugins and the registry
 
-A plugin is a package exporting one object:
+A plugin is a package exporting one `plugin` object, written with
+`definePlugin`:
 
 ```ts
-export const plugin: Plugin = {
-  name: "@amykit/plugin-file-queue",
-  configSchema,
-  register(registry, ctx) {
-    registry.queue(new FileQueue(path.join(ctx.paths.state, ctx.config.directory as string)));
+import { definePlugin, type Tracker } from "@amykit/core";
+
+declare class JiraTracker {
+  constructor(site: string, project: string | undefined);
+}
+declare function asTracker(jira: JiraTracker): Tracker;
+
+export const plugin = definePlugin({
+  name: "@acme/plugin-jira",
+  configSchema: {
+    site: { type: "string", description: "the Jira site, as https://acme.atlassian.net", required: true },
+    project: { type: "string", description: "the project key work is read from" },
   },
-};
+  register(registry, ctx) {
+    // ctx.config is typed by the schema: site is a string, project may be undefined.
+    registry.port("tracker", asTracker(new JiraTracker(ctx.config.site, ctx.config.project)));
+  },
+});
 ```
 
-That is the entire contract. Everything below is what the host does with it.
+That is the contract. Its version is the one in its `package.json`, never a
+field on the plugin ([nothing is declared twice](../design/nothing-is-declared-twice.md)),
+and so is `amy.about`, the paragraph its README shows. Everything below is what the
+host does with it.
 
-## Assembled, not constructed
+## Loaded, then mounted
 
-Plugins are **loaded from the config and assembled**, not built by the CLI:
+amy reads the plugin list from the config, imports each by package name or
+path, takes its `plugin` export, and mounts them all together. Nothing is
+compiled in, so an install can carry a plugin this repository has never heard
+of. A package that is not there is told apart from a plugin that threw, and the
+answer lists what *is* installed.
 
-```ts
-const loaded = await load(specs);              // import each by name
-const outcome = await mount(loaded.plugins, config, host);
-```
+## Every way the mount refuses
 
-`load` imports each spec — a package name, or a path — and takes its `plugin`
-export. Nothing is compiled in, which is what lets an install carry a plugin
-this repository has never heard of, and lets a machine skip the ones it has no
-use for.
-
-A package that is not there is told apart from a plugin that threw, and answered
-once with the list of what *is* installed:
-
-```
-amy could not start:
-  @acme/plugin-jira: not installed — install it, or drop it from the config
-
-Installed: @amykit/plugin-claude, @amykit/plugin-file-queue, …
-```
-
-## Every way mount() refuses
-
-All of these happen at boot, by name, before any work is touched. That is the
-point of assembling rather than constructing: the alternative is finding out
-halfway through somebody's ticket.
+All of these happen at boot, by name, before any work is touched, and every
+problem is reported at once, so one boot fixes one round of edits.
 
 | Refusal | Message |
 | :-- | :-- |
 | A plugin will not import | `not installed — install it, or drop it from the config` |
-| A plugin imported but exports nothing | `imported, but exports no \`plugin\`` |
 | A plugin threw while registering | `failed to mount — <what it said>` |
 | A setting is the wrong type | `` `retentionDays` must be number, got string — <what the field is for> `` |
 | A required setting is missing | `` `repos` is required — <what the field is for> `` |
-| A setting is not one it declared | `` `retentionDay` is not a setting this plugin has `` |
-| A plugin with no schema was given settings | `has no settings, but the config gives it some` |
-| Two plugins claim the same port | `` the `tracker` port is already mounted by another plugin `` |
-| Two plugins claim the queue, store, engine or workflow | `the queue is already mounted by another plugin` |
-| Two contributions collide in one collection | `` `claude` is already in the `agent` collection `` |
-| The workflow emits an action nothing defines | `` action `escalate`: nothing defines it `` |
-| An action's port is not mounted | `` action `triage`: needs the `agent` port, which nothing mounted `` |
+| A setting it never declared | `` `retentionDay` is not a setting this plugin has `` |
+| Settings for a plugin with no schema | `has no settings, but the config gives it some` |
+| A port claimed twice | `` the `tracker` port is already mounted by another plugin `` |
+| The queue, store or engine claimed twice | `the queue is already mounted by another plugin` |
+| A name taken twice in one collection | `` `claude` is already in the `harness` collection `` |
+| An action nothing defines | `` action `escalate`: nothing defines it `` |
+| An action whose port is not mounted | `` action `triage`: needs the `agent` port, which nothing mounted `` |
 
-**Every problem is reported, not just the first.** One boot fixes one round of
-edits.
+## Config schemas
+
+`configSchema` says what the plugin's settings look like, and the host
+validates them without knowing what any of them mean. A field is `string`,
+`number`, `boolean`, `string[]` or `record`, and that ceiling is deliberate: a
+plugin that needs more shape validates it itself. The `description` is printed
+when the field is missing or wrong.
+
+`definePlugin` infers the schema, so `ctx.config` is typed by it: a field that
+is `required` or has a `default` is present, any other may be `undefined`, and
+a `default` of the wrong type fails to compile. Why: [a config is typed by its
+schema](../design/a-config-is-typed-by-its-schema.md). A plugin that needs a
+repository's base branch spreads `BRANCH_SETTINGS` into its schema and asks
+`ctx.checkouts()` ([Ports](ports.md#checkouts)).
 
 ## What a plugin is lent
 
-```ts
-interface PluginContext {
-  readonly config: Record<string, unknown>;   // its own slice, already validated
-  readonly runner: CommandRunner;             // the only way to a child process
-  readonly now: () => Date;                   // never `new Date()`, so tests can drive time
-  readonly log?: EventLog;
-  readonly paths: HostPaths;                  // { workspace, state }
-  contributions(collection: string): ReadonlyMap<string, object>;
-  port(kind: PortKind): object | undefined;
-  workflow(): Workflow<never, never> | undefined;
-}
-```
-
-The last three are **live views**, and that matters more than it looks. A plugin
-that composes others cannot see contributions made after it, so it reads them
-*when it is used* rather than when it is mounted. Otherwise the order plugins
-appear in the config would be something an operator has to get right.
+`register(registry, ctx)` gets a `PluginContext`: its own `config`, already
+validated; the `runner`, the only way to a child process; `now()`, so tests
+drive time; the event `log`; the host's `paths`; `readOnly`; and
+`checkouts()`. It also gets `port(kind)`, `contributions(collection)` and
+`workflow()`, which are read when asked, so a plugin sees what was registered
+after it.
 
 ## What a plugin can register
 
-```ts
-interface Registry {
-  queue(impl): void;
-  store(impl): void;
-  engine(impl): void;
-  workflow(impl): void;
-  port(kind, impl): void;
-  action(name, spec, port): void;
-  contribute(collection, name, impl): void;
-}
-```
+The `Registry` takes a queue, a store, an engine, a port, an action with the
+port that runs it, and a contribution to a named collection. It also takes a
+workflow, but that is the core's own contract for its tests: amy mounts only a
+workflow written with [`defineWorkflow`](workflows.md).
 
 **A port** is a named slot. One plugin fills it; a second one trying is a
 refusal. See [Ports](ports.md).
 
-**An action the core does not have** may be registered, and when it is, the
-plugin **has to bring the port that runs it in the same package**. The pair is
-inseparable on purpose: an action nobody can execute is a promise the machine
-cannot keep. If such an action proves general it graduates into the core, by
-evidence rather than guess.
+**An action the core does not have** may be registered, and then the plugin
+brings the port that runs it in the same package: an action nobody can execute
+is a promise the machine cannot keep. See [Actions](actions.md).
 
-**A contribution** adds to a named collection that some other plugin consumes.
-
-## Collections
-
-The core does not know what a collection *means*, only that several plugins may
-add to one and something else will read it. It is how the notification channels
-reach the fan-out without the core learning the word "channel".
+**A contribution** adds to a named collection that some other plugin reads.
+The core does not know what a collection means. It is how the harnesses reach
+the agent relay and the notification channels reach the fan-out.
 
 <!-- amy:generated collections -->
 
@@ -131,84 +116,44 @@ reach the fan-out without the core learning the word "channel".
 
 <!-- amy:end collections -->
 
-A collection is read **when it is used, not when it is mounted**, so the order
-plugins are listed in does not matter.
+## Deferred, and why plugin order does not matter
 
-## `ready()`, and why it exists
-
-```ts
-ready?(ctx: PluginContext): void | Promise<void>;
-```
-
-Checked once every plugin has registered and every deferred implementation is
-built, and only for a plugin whose settings cannot be judged before then.
-Throwing in `ready` is a refusal at boot, named — the same promise `register`
-makes. It is for judging, not for building something early: that is what
-`deferred` is for.
-
-## `deferred()`, and the order plugins are listed in
+Wherever an implementation is registered (`port`, `engine`, `contribute`), a
+`deferred` one may be instead:
 
 ```ts
-registry.port("agent", deferred(() => relay(ctx)));
-registry.contribute(WORKFLOW_RUNTIME, "errand", deferred(() => runtimeFor(ctx)));
-registry.engine(deferred(() => worker(ctx)));
-```
+import { definePlugin, deferred, type Harness } from "@amykit/core";
 
-Workflow authors normally do not write the first two workflow registrations
-themselves. `defineWorkflow` registers the machine immediately and contributes
-its runtime through `deferred`, as one declaration. A raw `Plugin` may still
-call `registry.workflow` and contribute `WORKFLOW_RUNTIME` directly; that is
-the compatibility contract for workflows shipped outside this repository.
+declare function relay(harnesses: ReadonlyMap<string, object>, ladder: string[]): Harness;
 
-Wherever an implementation is registered — `port`, `engine`, `contribute` — a
-deferred one may be instead. The host builds it once every plugin has
-registered, once per mount, and before any `ready`. A factory that reads another
-deferred implementation through `ctx.port` or `ctx.contributions` gets it built
-on demand, so the order they are listed in still does not matter; two that read
-each other are refused at boot, naming both. A factory that throws is the same
-refusal a `register` that throws is, naming the plugin. Whoever reads a port or
-a contribution receives the built object, never the factory.
-
-The agent relay is the case it exists for. Its `ladder: [claude:sonnet,
-codex:gpt-5]` names harnesses that *other plugins contribute*, and it cannot
-build itself until they have. A ladder that quietly meant less than it says
-would first show up as a ticket escalating for no reason; built deferred, it is
-a refusal at boot instead.
-
-## Config schemas
-
-A plugin declares what its settings look like, and the host validates them
-without knowing what any of them mean:
-
-```ts
-export const configSchema: ConfigSchema = {
-  directory: {
-    type: "string",
-    description: "where the queue is kept, relative to the state directory",
-    default: "queue",
+export const plugin = definePlugin({
+  name: "@acme/plugin-relay",
+  configSchema: { ladder: { type: "string[]", description: "harness:model pairs, tried in order", default: [] } },
+  register(registry, ctx) {
+    // Built once every plugin has registered, so a harness listed after this one is there.
+    registry.port("agent", deferred(() => relay(ctx.contributions("harness"), ctx.config.ladder)));
   },
-  retentionDays: { type: "number", description: "…", default: 7 },
-};
+});
 ```
 
-Five types only — `string`, `number`, `boolean`, `string[]`, `record` — and that
-ceiling is deliberate. A plugin that needs more shape than this wants its own
-validation, not a bigger schema language in the host.
+The host builds every deferred implementation once per mount, after every
+plugin has registered and before any `ready`. One that reads another through
+`ctx.port` or `ctx.contributions` gets it built on demand; two that read each
+other are refused, naming both. A factory that throws is refused like a
+`register` that throws. Whoever reads the port receives the built object.
 
-The `description` is not decoration: it is printed when the field is missing or
-wrong. `"invalid config"` with nothing else in it is the error message that
-costs an hour.
+The relay is the case it exists for: its ladder names harnesses other plugins
+contribute, and a ladder naming one nobody contributed is a refusal at boot
+rather than a ticket escalating for no reason. Why: [a mount builds
+once](../design/a-mount-builds-once.md).
 
-## Singletons, and the trap in them
+`ready(ctx)` is for judging, not building. It runs after every deferred
+implementation is built, for a plugin whose settings cannot be judged before
+then, and throwing in it is a refusal at boot.
 
-The exported `plugin` is a **module singleton**. A field on it would be shared
-by every host in the same process, and the second mount would answer with the
-first one's state.
-
-Build what you mount inside `register`, from `ctx`, which is per mount — or
-register it `deferred` and the host builds it once per mount for you. Nothing
-shipped keeps its own cache keyed by `PluginContext`; a test in the core holds
-that.
+The exported `plugin` is a module singleton, shared by every host in the
+process. Build what you mount inside `register` or in a `deferred`, from `ctx`,
+never in a field on the plugin.
 
 ## Every shipped plugin
 
@@ -248,5 +193,5 @@ that.
 
 ## Writing one
 
-[Write a plugin](../build/write-a-plugin.md) goes from an empty package to a proven
-one, including the gate that expires when you change it.
+[Write a plugin](../guides/write-a-plugin.md) goes from an empty package to a
+proven one.

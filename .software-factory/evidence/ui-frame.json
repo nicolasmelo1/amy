@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "ui-frame",
-  "implementation_sha256": "04549d733636660095cb9a3d32469e19e534013d670cb86a03992789a109817c",
+  "implementation_sha256": "3422e202eb3c3585edb46c02752ad068ff42825f4c933b65b96b61237607f789",
   "runs": [
     {
       "scenario": "ui-frame",

@@ -6,6 +6,19 @@ A queue kept as one file per item, claimed by rename.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `queue` port.
 
+Every install that runs an engine needs a queue, and this is the local one: each item is a file, claimed by renaming it so a loop never takes an item another one holds. Items are taken in id order or by priority. Pair it with file-store and an engine.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `queue` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -45,7 +58,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

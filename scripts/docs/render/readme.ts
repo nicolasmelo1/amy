@@ -74,6 +74,8 @@ function readmeFor(entry: MountedFact): string {
     "",
     entry.kind === "workflow" ? workflowIntro() : pluginIntro(entry),
     "",
+    ...(entry.about ? [entry.about.trim(), ""] : []),
+    ...(entry.kind === "plugin" || entry.group === "plugins" ? [extends_(entry), ""] : []),
     reference(entry),
     "",
   ].join("\n")}`.replace(/\n{3,}/g, "\n\n");
@@ -130,9 +132,43 @@ function pluginIntro(entry: MountedFact): string {
 
 function workflowIntro(): string {
   return [
-    "A workflow for [amy](https://github.com/nicolasmelo1/amy): a pure `plan()` that says what",
-    "happens next, and a runtime that says how each step is done. The engine drives it without",
-    "knowing what any of its states mean.",
+    "A workflow for [amy](https://github.com/nicolasmelo1/amy): a diagram of where work can go, a",
+    "decision per state saying where it goes next, and the actions that happen in the world. The",
+    "engine drives it without knowing what any of its states mean.",
+  ].join("\n");
+}
+
+/**
+ * Every plugin under `plugins/` that has no `amy.about`, by name.
+ *
+ * The README says when to reach for a plugin in that paragraph, and it is the
+ * one piece of a plugin README somebody writes; without it the README lists
+ * what the plugin does and never says why anybody would want it.
+ */
+export function missingAbout(facts: Facts): string[] {
+  return facts.packages
+    .filter(isMounted)
+    .filter((entry) => entry.group === "plugins" && !entry.about?.trim())
+    .map((entry) => `${entry.name} has no \`amy.about\` in ${entry.directory}/package.json saying when to use it`);
+}
+
+/** What a plugin extends amy with, each row read from the package itself. */
+function extends_(entry: MountedFact): string {
+  const named = (values: readonly string[]) => values.map((value) => `\`${value}\``).join(", ") || "_none_";
+  return [
+    "## What it extends",
+    "",
+    table(
+      ["", ""],
+      [
+        ["Ports", named([...entry.mounts, ...(entry.mountsEngine ? ["engine"] : [])])],
+        ["Actions", named(entry.addsActions.map((action) => action.name))],
+        ["Operations", named(entry.brings?.operations ?? [])],
+        ["Commands", named((entry.brings?.commands ?? []).map((command) => `amy ${command.name}`))],
+        ["Events", named(entry.brings?.events ?? [])],
+        ["Environment", named(entry.environment)],
+      ],
+    ),
   ].join("\n");
 }
 
@@ -246,7 +282,7 @@ function configuration(entry: MountedFact): string {
 
 function docLinks(entry: MountedFact): string {
   const links = [
-    `- [${entry.kind === "workflow" ? "Writing a workflow" : "Writing a plugin"}](${DOCS}/build/${entry.kind === "workflow" ? "write-a-workflow" : "write-a-plugin"}.md)`,
+    `- [${entry.kind === "workflow" ? "Writing a workflow" : "Writing a plugin"}](${DOCS}/guides/${entry.kind === "workflow" ? "write-a-workflow" : "write-a-plugin"}.md)`,
     `- [Reference: ${entry.kind === "workflow" ? "workflows" : "plugins"}](${DOCS}/reference/${entry.kind === "workflow" ? "workflows" : "plugins"}.md)`,
     `- [Ports and the registry](${DOCS}/concepts/ports.md)`,
   ];

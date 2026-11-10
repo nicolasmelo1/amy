@@ -8,17 +8,18 @@ order: 5
 # The factory itself
 
 [The gate](the-gate.md) is what this repository enforces. This page is the
-**tool that enforces it** — `sf`, at the version
+**tool that enforces it**: `sf`, at the version
 [`catalog.lock.json`](https://github.com/nicolasmelo1/amy/tree/main/.software-factory/catalog.lock.json)
 names, printed by that binary rather than written down beside it.
 
 It is here for the same reason everything in
-[Reference](../reference/cli.md) is generated: a version pinned in three files
+[Reference](../reference/cli.md) is generated: a version pinned in several files
 and described in prose is a description that goes stale on the bump nobody
-re-read. `sf docs` writes every block below, `npm run gate` runs it, and the
-build goes red when this page and the installed tool disagree.
+re-read. `sf docs` writes every block below, a rule `npm run gate` runs through
+`sf check` regenerates it, and the page is hash-locked, so a bump of the pinned
+`sf` shows up as a diff a reviewer reads.
 
-Everything on this page is regenerated. Edit the prose around a block, never
+Every block on this page is regenerated. Edit the prose around a block, never
 the block.
 
 ## The commands
@@ -217,7 +218,7 @@ sf verify [options]
 
 ## The skills that drive it
 
-These are the four skills `sf skills` installs. `/factory-triage` is the one to
+These are the skills `sf skills` installs. `/factory-triage` is the one to
 reach for when a build is red and the finding is not obvious.
 
 <!-- sf:generated skills-index -->
@@ -270,8 +271,8 @@ trusting a green run over a mixed tree.
 
 ## The hazard tools
 
-L6 rules do not read the code themselves — each one names a tool it expects to
-find and reports it as unrunnable when it is missing.
+These L6 rules do not read the code themselves: each one names a tool it
+expects to find and reports it as unrunnable when it is missing.
 
 <!-- sf:generated hazard-tools -->
 | Concern | go | python | ruby | rust | typescript |
@@ -301,7 +302,7 @@ find and reports it as unrunnable when it is missing.
 ## The interview
 
 `sf init --answers` takes what `/factory-init` collected. This is the tree that
-interview walks, and what each answer switches on — the argument behind the
+interview walks, and what each answer switches on: the argument behind the
 policy this repository already has.
 
 <!-- sf:generated interview-tree -->

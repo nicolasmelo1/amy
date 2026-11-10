@@ -6,6 +6,19 @@ Posts announcements to a mounted conversation, or fans them out through configur
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notifier` port.
 
+Every workflow that announces needs the notifier port, and this plugin mounts it. When a conversation such as slack or telegram is mounted, announcements go into the work's thread there; otherwise they fan out to every channel other plugins contribute, such as notify-inbox and notify-hermes. A channel that fails is written to the log and to stderr.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `notifier` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -28,7 +41,7 @@ because a setting nobody reads is one somebody believes is working.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

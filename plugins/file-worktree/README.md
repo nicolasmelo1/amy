@@ -6,6 +6,19 @@ One isolated checkout per piece of work, created or reused, pruned by retention.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `workspace` port and the `worktree` port.
 
+Use it when work changes code and each item should get a checkout of its own. It mounts the worktree port, which creates or reuses an isolated worktree per piece of work and prunes old ones after a retention period, and the workspace port, which says where each repository's checkout lives. With it mounted, command-gate, plan-check and the agents run in the item's own tree, and its operations list, remove and prune those trees.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `workspace`, `worktree` |
+| Actions | _none_ |
+| Operations | `worktree.list-trees`, `worktree.prune-trees`, `worktree.remove-tree` |
+| Commands | `amy worktrees list`, `amy worktrees remove`, `amy worktrees prune` |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -65,7 +78,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

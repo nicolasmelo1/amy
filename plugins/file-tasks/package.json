@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it with the errand workflow, which reads its work from the tasks port this plugin mounts. A task is a file in a directory, written by amy btw, by an editor or by a hook, and a task that names no repository is about the configured default."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/workflow-errand": "^0.6.0"

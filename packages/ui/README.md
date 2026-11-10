@@ -3,7 +3,7 @@
 A view is data. A plugin does not render: it describes, and a renderer draws.
 
 Not a renderer, and not a plugin. A closed vocabulary of primitives, a JSX
-runtime that returns them as plain data, diff and patch between two trees,
+runtime that returns them as plain data, diff and patch between trees,
 the text renderer every view is tested with, and the closed frame every
 renderer is measured against. It depends on nothing, React least of all
 ([a view is data](../../docs/design/a-view-is-data.md),
@@ -38,7 +38,7 @@ crosses a socket and a test compares it with `toEqual`.
 
 ## What is here
 
-- **The vocabulary** — `Stack`, `Row`, `Section`, `Text`, `Badge`, `List`,
+- **The vocabulary:** `Stack`, `Row`, `Section`, `Text`, `Badge`, `List`,
   `Table`, `Tabs`, `Button`, `Link`, `Input`, `Timeline`, `StateMachine`,
   `Log`, `Code`, `Diff`, `Empty`. Anything else is refused by name, and so is
   any property value that is not JSON. `catalogue()` publishes it as one
@@ -74,11 +74,11 @@ What measures a renderer against it is
 
 Local rules in `.software-factory/rules/`:
 
-- `L0.A_VIEW_DRAWS_NOTHING` — no package or plugin source imports a renderer
+- `L0.A_VIEW_DRAWS_NOTHING`: no package or plugin source imports a renderer
   or compiles its JSX against one. Only a renderer plugin may name a renderer.
-- `L0.A_RENDERER_ONLY_TRANSLATES` — a renderer imports no workflow, no plugin,
+- `L0.A_RENDERER_ONLY_TRANSLATES`: a renderer imports no workflow, no plugin,
   and nothing of this package but the primitives and the frame.
-- `L0.A_RENDERER_NAMES_NO_COLOUR` — a renderer spells no colour outside its
+- `L0.A_RENDERER_NAMES_NO_COLOUR`: a renderer spells no colour outside its
   theme-token file.
-- `L1.EVERY_RENDERER_HOLDS_THE_FRAME` — every renderer in the workspace passes
+- `L1.EVERY_RENDERER_HOLDS_THE_FRAME`: every renderer in the workspace passes
   the conformance script.

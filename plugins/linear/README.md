@@ -6,6 +6,19 @@ Linear as the tracker, over its GraphQL API.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `feature` port and the `tracker` port.
 
+Use it when your tickets live in Linear. Over Linear's GraphQL API it mounts the tracker port ticket-to-qa reads its work from, and the read-only feature port feature-grooming uses. It needs a personal API key in LINEAR_API_KEY, and maps each team or label to the repository its tickets change.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `feature`, `tracker` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | `LINEAR_API_KEY` |
+
 ## Install
 
 ```sh
@@ -55,7 +68,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

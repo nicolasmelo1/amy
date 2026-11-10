@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Every workflow that announces needs the notifier port, and this plugin mounts it. When a conversation such as slack or telegram is mounted, announcements go into the work's thread there; otherwise they fan out to every channel other plugins contribute, such as notify-inbox and notify-hermes. A channel that fails is written to the log and to stderr."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0"
   }

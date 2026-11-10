@@ -507,6 +507,9 @@ gates:
       - "packages/cli/src/config.ts"
       - "packages/cli/skills/amy-workflow/SKILL.md"
       - "packages/cli/guardrails/**"
+      # Write a workflow builds what the scaffold writes, byte for byte, so
+      # an edit to the guide is a change to what the first assertion proved.
+      - "docs/guides/write-a-workflow.md"
     evidence: ".software-factory/evidence/workflow-new.json"
     plan: "docs/design/a-workflow-is-yours-not-a-package.md"
     required_assertions:

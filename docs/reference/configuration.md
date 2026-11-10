@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Every key in config.yaml, its type and its default — from the interface that defines it.
+description: Every key in config.yaml, its type and its default, read from the interface that defines it.
 group: Reference
 order: 6
 ---
@@ -10,8 +10,10 @@ order: 6
 `~/.amy/config.yaml`. The host's own keys are read out of the interface that
 defines them; each plugin's slice is in [Plugins](plugins.md).
 
-For what the two halves mean and why, see
-[Configuration](../start/configuration.md).
+For what the host's keys and a workflow profile are for, see
+[Configuration](../start/configuration.md). Each plugin's settings are checked
+against the schema it declares, and the plugin reads them back typed by it:
+[a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md).
 
 ## The host's keys
 
@@ -75,9 +77,9 @@ For what the two halves mean and why, see
 
 <!-- amy:end environment -->
 
-These live in `~/.amy/.env`, and anything already exported in the shell wins
-over the file. A `.env` in the directory you ran the command from is read too,
-and beats the machine-wide one.
+These live in `~/.amy/.env`. A `.env` in the directory the command runs from is
+read after it and fills only the names still unset, and anything already
+exported in the shell wins over both.
 
 ## The annotated example
 

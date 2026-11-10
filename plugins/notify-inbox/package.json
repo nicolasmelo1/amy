@@ -27,6 +27,9 @@
   "files": [
     "dist"
   ],
+  "amy": {
+    "about": "Use it when announcements should reach you on this machine: each one is written as a file on disk and raised as a desktop notification, so a missed notification still leaves the file. It adds a channel to notify-fanout, so install that too."
+  },
   "dependencies": {
     "@amykit/core": "^0.6.0",
     "@amykit/plugin-notify-fanout": "^0.6.0"

@@ -1,22 +1,18 @@
 # errand
 
-**Say something in passing, and it gets done.**
+This workflow takes a chore you mention in passing and has an agent do it, opening a draft pull request or answering you.
 
-You are in the middle of something and notice a small chore: the dependencies
-in the API are stale, a README has a typo, somebody should check whether a
-monitor still fires. Opening a ticket for it costs more than the chore itself,
-so it usually gets forgotten.
-
-With this workflow you type one line and go back to what you were doing:
+You notice something small mid-task: stale dependencies, a typo, a monitor
+nobody checked. A ticket costs more than the chore, so you type one line and
+go back to what you were doing:
 
 ```sh
 amy btw "bump the deps in the api"
 ```
 
-amy hands the chore to an agent (Claude Code, Codex, or whichever one you
-mounted). If the agent changed code, amy opens a **draft** pull request for you
-to look at when you have time. If it was a question, you get the answer. Either
-way, you are told what happened.
+The agent you mounted does the chore in its own copy of the repository. If it
+changed code, amy opens a **draft** pull request. If it was a question, you get
+the answer. Either way, you are told what happened.
 
 ## How it moves
 
@@ -28,42 +24,28 @@ QUEUED ──> WORKING ──> PR_OPEN ──> DONE
   └──────────────────────────────> DECLINED   not a repository amy works in
 ```
 
-1. **QUEUED.** The chore waits on the queue. It also waits here while too many
-   errands are already open, so you never end up with a pile of pull requests
-   nobody asked to review.
-2. **WORKING.** An agent does the chore in its own copy of the repository.
-3. **PR_OPEN.** If something changed, the [pull-request](../workflow-pull-request)
-   workflow opens a draft pull request.
-4. **DONE** or **DECLINED.** A chore amy cannot do is handed back to you, never
-   guessed at.
+- **QUEUED** also waits while the ceiling on open errands is reached, so pull
+  requests nobody asked for do not pile up.
+- **PR_OPEN** calls the [pull-request](../workflow-pull-request) workflow.
+- **DECLINED** hands the chore back to you instead of guessing.
 
-Nothing in this workflow waits on a person. If a chore needs one, it should
-have been a ticket.
-
-## What it needs
-
-- **A place for the chores**, `@amykit/plugin-file-tasks`, which is what
-  `amy btw` writes into.
-- **An agent** to do the chore, like `@amykit/plugin-claude`.
-- **A code host** to open the pull request, like `@amykit/plugin-github`.
-- **A notifier** to tell you how it went, like `@amykit/plugin-slack` or
-  `@amykit/plugin-telegram`.
-
-`amy add` installs these for you, and `amy doctor` tells you what is still
-missing.
+Nothing here waits on a person. A chore that needs one should have been a
+ticket.
 
 ## Try it
 
 ```sh
 amy add @amykit/workflow-errand
-amy doctor
+amy doctor        # names what is still missing
 amy btw "fix the typo in the api README"
-amy tick        # one move at a time, so you can watch it
-amy status
+amy tick          # one move at a time, so you can watch it
 ```
 
-Only repositories listed in `repos` can receive an errand. Anything else is
-handed back to you.
+It needs `@amykit/plugin-file-tasks` (where `amy btw` writes), an agent such as
+`@amykit/plugin-claude`, a code host such as `@amykit/plugin-github`, and a
+notifier such as `@amykit/plugin-slack`. Only repositories listed in `repos`
+receive an errand. How it is proven: [the errand is proven end to
+end](../../docs/design/the-errand-is-proven-end-to-end.md).
 
 <!-- amy:generated reference -->
 
@@ -134,7 +116,7 @@ Typed on a machine that mounted this package, and unknown on one that did not.
 
 ## Where the reasoning is
 
-- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-workflow.md)
+- [Writing a workflow](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-workflow.md)
 - [Reference: workflows](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/workflows.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 

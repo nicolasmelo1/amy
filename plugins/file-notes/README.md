@@ -6,6 +6,19 @@ Friction as a directory of notes: written by hand, by a hook, or by a tick that 
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides the `notes` port.
 
+Use it with note-to-plan, which reads friction from the notes port this plugin mounts: a directory of notes written by amy note, by an editor or by a hook. Give it a repository and turn on failure notes, and it also adds a channel to notify-fanout that files a note whenever a tick fails, so the friction amy hits turns into a plan.
+
+## What it extends
+
+|  |  |
+| :-- | :-- |
+| Ports | `notes` |
+| Actions | _none_ |
+| Operations | _none_ |
+| Commands | _none_ |
+| Events | _none_ |
+| Environment | _none_ |
+
 ## Install
 
 ```sh
@@ -43,7 +56,7 @@ silently never applied.
 
 ## Where the reasoning is
 
-- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/build/write-a-plugin.md)
+- [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)
 - [Reference: plugins](https://github.com/nicolasmelo1/amy/tree/main/docs/reference/plugins.md)
 - [Ports and the registry](https://github.com/nicolasmelo1/amy/tree/main/docs/concepts/ports.md)
 
