@@ -248,7 +248,7 @@ async function readOnlyAnswer(desk: ChatDesk, kept: Kept, text: string, action: 
   try {
     const reply = await harness.ask(promptFor(desk, kept, text, action), desk.cwd, { readOnly: true, step: "chat" });
     if (desk.spend && reply.run) charge(desk.spend.log, reply.run, desk.now?.() ?? new Date());
-    return answerIn(reply, name);
+    return answerIn(reply, name, [...desk.harnesses.keys()]);
   } catch (error) {
     const other = [...desk.harnesses.keys()].find((one) => one !== name);
     return { refused: `${name} could not answer read-only, so nothing ran: ${messageOf(error)}${other ? `\nAnother can: /harness ${other}` : ""}` };
@@ -266,8 +266,12 @@ function harnessFor(desk: ChatDesk, kept: Kept): { name: string; harness: Harnes
 }
 
 /** A run that did not complete, or said nothing, is no answer: its text is not acted on. */
-function answerIn(reply: HarnessReply, name: string): string | { refused: string } {
-  if (reply.run && reply.run.outcome !== "completed") return { refused: `${name} did not finish this turn (${reply.run.outcome}), so nothing ran.` };
+function answerIn(reply: HarnessReply, name: string, names: readonly string[]): string | { refused: string } {
+  if (reply.run && reply.run.outcome !== "completed") {
+    const detail = (typeof reply.run.output === "string" ? reply.run.output.trim() : "") || reply.text.trim();
+    const other = names.find((one) => one !== name);
+    return { refused: `${name} did not finish this turn (${reply.run.outcome}), so nothing ran.${detail ? ` ${detail}` : ""}${other ? `\nAnother can: /harness ${other}` : ""}` };
+  }
   if (!reply.text.trim()) return { refused: `${name} answered nothing, so nothing ran.` };
   return reply.text;
 }

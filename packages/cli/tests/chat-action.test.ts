@@ -268,4 +268,15 @@ describe("a config lock left behind", () => {
     await answerTheChat(held.desk);
     expect(held.said.at(-1)).toMatch(/another config change is being applied/);
   });
+
+  it("leaves a freshly created empty lock to its writer rather than reclaiming it", async () => {
+    const change = "```config.yaml\nworkflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"x\"]\n```\n```amy\nconfig apply\n```";
+    const world = setup(change, "/action add x");
+    fs.writeFileSync(`${world.config}.applying`, "");
+
+    await answerTheChat(world.desk);
+
+    expect(world.said.at(-1)).toMatch(/another config change is being applied/);
+    expect(fs.readFileSync(world.config, "utf-8")).not.toContain('plugins: ["x"]');
+  });
 });

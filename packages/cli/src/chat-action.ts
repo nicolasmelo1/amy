@@ -205,7 +205,7 @@ function takeLock(lock: string, pid: number): (() => void) | undefined {
   }
 }
 
-/** Whether a lock's recorded owner is gone, or nobody is recorded at all. */
+/** Whether a lock has a recorded owner which is gone; a fresh empty lock is held, never reclaimed. */
 function abandoned(file: string): boolean {
   let owner: number;
   try {
@@ -213,7 +213,7 @@ function abandoned(file: string): boolean {
   } catch {
     return false;
   }
-  return !(Number.isSafeInteger(owner) && owner > 0 && alive(owner));
+  return Number.isSafeInteger(owner) && owner > 0 && !alive(owner);
 }
 
 function alive(pid: number): boolean {

@@ -355,6 +355,21 @@ describe("what a pass does not lose and does not act on", () => {
     expect(last(chat.said)).toMatch(said);
   });
 
+  it("names a read-only refusal returned by the harness and another harness that can answer", async () => {
+    const chat = chatOf();
+    const hermes: Harness = { name: "hermes", ask: async () => ({ text: "", run: { outcome: "failed", output: "Hermes refuses read-only execution" } as never }) };
+    const { desk, acted } = deskOf(chat.conversation, { hermes, claude: harness("claude").cli });
+    chat.write("/harness hermes");
+    await answerTheChat(desk);
+    chat.write("can you inspect this?");
+
+    await answerTheChat(desk);
+
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toContain("Hermes refuses read-only execution");
+    expect(last(chat.said)).toContain("Another can: /harness claude");
+  });
+
   it("keeps two sources' conversations apart, even where they number a place alike", async () => {
     const one = chatOf();
     const two = chatOf();

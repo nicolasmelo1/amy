@@ -142,6 +142,19 @@ export async function assembleChat(
   const host = { runner: services.runner, now: () => new Date(), log: services.log(place.log), paths: hostPaths(place.base, profile), readOnly: services.readOnly };
   const together = await mount(plugins, slices, host).catch(() => undefined);
   if (together?.ok) return chatPartsOf(together.mounted);
+  return await recoverChatParts(plugins, slices, host);
+}
+
+/** Finds a working recovery group before giving up to the parts each plugin can mount alone. */
+async function recoverChatParts(plugins: readonly Plugin[], slices: Record<string, unknown>, host: Parameters<typeof mount>[2]): Promise<ChatParts> {
+  // A workflow-dependent engine can make the all-plugin recovery mount fail,
+  // although the relay and its configured harnesses can still answer the chat.
+  // Try each complete group with one plugin removed before falling back to
+  // isolated plugins, which cannot satisfy a relay's harness contribution.
+  for (const omitted of plugins) {
+    const compatible = await mount(plugins.filter((plugin) => plugin !== omitted), slices, host).catch(() => undefined);
+    if (compatible?.ok) return chatPartsOf(compatible.mounted);
+  }
   let conversation: Conversation | undefined;
   let budget: Budget | undefined;
   const harnesses = new Map<string, Harness>();
