@@ -378,7 +378,10 @@ export class SlackConversation implements Conversation {
       const root = !message.thread_ts || message.thread_ts === message.ts;
       if (!root || !this.isOperatorMessage(message, bot)) continue;
       this.fileChatMessage(message, message.ts);
-      writeJsonFile(path.join(this.chatDirectory(), "threads", `${safeName(message.ts)}.json`), { read: message.ts, last: this.clock().getTime(), checked: 0 });
+      // A newly discovered root waits behind conversations already awaiting a
+      // reply; otherwise a steady stream of roots can starve their follow-ups.
+      const now = this.clock().getTime();
+      writeJsonFile(path.join(this.chatDirectory(), "threads", `${safeName(message.ts)}.json`), { read: message.ts, last: now, checked: now });
     }
     return oldest;
   }
@@ -735,12 +738,10 @@ export class SlackConversation implements Conversation {
 
   /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
   private async threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
-    // An existing chat conversation gets its own scheduled slot. Work reads
-    // still happen when the channel has no chat to poll, but never move that
-    // chat's quota marker forward and starve an operator follow-up.
-    if (jsonIn(path.join(this.chatDirectory(), "threads")).length === 0) {
-      writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
-    }
+    // Work and chat consume Slack's same channel-wide replies allowance.
+    // Every request records it, so the next scheduled chat read never races a
+    // work-thread request under a one-call-per-minute installation.
+    writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
     return this.pages("conversations.replies", {
       channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
       ...(inclusive ? { inclusive: "true" } : {}),

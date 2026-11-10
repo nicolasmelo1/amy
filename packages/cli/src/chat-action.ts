@@ -106,12 +106,21 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
   fs.mkdirSync(path.dirname(actor.config), { recursive: true });
   fs.writeFileSync(candidate, next, { mode: 0o600 });
   try {
+    // --all protects every profile the shared file still declares; the
+    // selected probe also rejects deleting or renaming this running profile.
     const checked = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check", "--all", "--config", candidate], {
       timeoutMs: 10 * 60 * 1000,
       ...(actor.env ? { env: actor.env } : {}),
     });
     if (!checked.ok) {
       return `config apply: not written — the new config does not mount, so config.yaml stays as it was.${fenced(`${checked.stdout}\n${checked.stderr}`)}\nThe change was:${fenced(diff, "diff")}`;
+    }
+    const selected = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, "mount-check", "--config", candidate], {
+      timeoutMs: 10 * 60 * 1000,
+      ...(actor.env ? { env: actor.env } : {}),
+    });
+    if (!selected.ok) {
+      return `config apply: not written — the new config does not mount, so config.yaml stays as it was.${fenced(`${selected.stdout}\n${selected.stderr}`)}\nThe change was:${fenced(diff, "diff")}`;
     }
     // Under one lock for the machine, and only over the config this was checked against:
     // a change another chat applied meanwhile is never silently replaced.
