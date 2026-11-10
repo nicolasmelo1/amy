@@ -49,6 +49,8 @@ export type { ActionDuties, Operated } from "./action-ports.js";
 export { CALLED, LANED, LEASE_WAIT, activeCall, call, callPath, callStanding, isCall, laneMoved, laneStanding } from "./calls.js";
 export { FileLeases, LeaseHeld } from "./leases.js";
 export type { BranchLeases } from "./leases.js";
+export { processAlive, takeLock } from "./process-lock.js";
+export type { HeldLock, LockOptions } from "./process-lock.js";
 export { expandDiagram } from "./expand.js";
 export type { Call, CallBinding, CallStep, CalleeReference, LaneStanding, Signature } from "./calls.js";
 export type { BriefCheckScope, BriefDeclaration, BriefOperation, BriefRefusal, PortNeed, PortsOf, WorkflowAction, WorkflowActionScope, WorkflowDecision, WorkflowPieceContext, WorkflowPlugin, WorkflowRuntimeParts } from "./define-workflow.js";

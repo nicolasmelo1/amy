@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, isAlive, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
+import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
   let home: string;
@@ -88,9 +88,16 @@ describe("the loop that is running", () => {
     next?.();
   });
 
-  it("knows this process is alive and a made-up one is not", () => {
-    expect(isAlive(process.pid)).toBe(true);
-    expect(isAlive(0x7fffffff)).toBe(false);
+  it("takes over a boundary an earlier version left for a dead pid, and leaves one still being written", () => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(`${file}.lock`, "2147483647\n");
+    const release = claimDaemonBoundary(file);
+    expect(release).toBeTypeOf("function");
+    release?.();
+
+    // An earlier version opened the lock and had not written its pid yet.
+    fs.writeFileSync(`${file}.lock`, "");
+    expect(claimDaemonBoundary(file)).toBeUndefined();
   });
 });
 

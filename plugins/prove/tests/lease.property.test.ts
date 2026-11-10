@@ -55,7 +55,9 @@ describe("a resource's seats", () => {
       }
       fs.rmSync(root, { recursive: true, force: true });
     }), { numRuns: 200 });
-  });
+    // Two hundred runs each take the core's lock on every move: well under a
+    // second alone, past five under coverage while the whole suite runs.
+  }, 20_000);
 
   it("gives a released seat to the highest priority waiting, not to whoever asks next", () => {
     let clock = 0;

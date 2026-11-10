@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ChatMessage, CommandResult, CommandRunner, Conversation, Harness, answerTheChat } from "@amykit/core";
-import { CHAT_COMMANDS, chatAct, clearAbandoned, lineDiff } from "../src/chat-action.js";
+import { CHAT_COMMANDS, chatAct, lineDiff } from "../src/chat-action.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -261,7 +261,8 @@ describe("a config lock left behind", () => {
 
     const recovering = setup(change, "/action add x");
     fs.writeFileSync(`${recovering.config}.applying`, "999999999");
-    fs.writeFileSync(`${recovering.config}.applying.recovering-${createHash("sha256").update("999999999").digest("hex").slice(0, 16)}`, String(process.pid));
+    // Another process linked the dead lock to its tombstone and is about to remove it.
+    fs.linkSync(`${recovering.config}.applying`, `${recovering.config}.applying.dead-${createHash("sha256").update("999999999").digest("hex").slice(0, 16)}`);
     await answerTheChat(recovering.desk);
     // Another process is recovering it: this one leaves it to that one.
     expect(recovering.said.at(-1)).toMatch(/another config change is being applied/);
@@ -270,28 +271,6 @@ describe("a config lock left behind", () => {
     fs.writeFileSync(`${held.config}.applying`, String(process.pid));
     await answerTheChat(held.desk);
     expect(held.said.at(-1)).toMatch(/another config change is being applied/);
-  });
-
-  it("never clears a replacement published after a writer saw the dead owner", () => {
-    const lock = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-lock-")), "config.yaml.applying");
-    fs.writeFileSync(lock, "999999999");
-    // Both writers saw the dead owner; the first cleared it and took the lock.
-    expect(clearAbandoned(lock, "999999999", `${process.pid}:first`)).toBe(true);
-    fs.writeFileSync(lock, `${process.pid}:first`);
-
-    // The second, acting on what it saw before, leaves the replacement alone.
-    expect(clearAbandoned(lock, "999999999", `${process.pid}:second`)).toBe(false);
-    expect(fs.readFileSync(lock, "utf-8")).toBe(`${process.pid}:first`);
-    expect(fs.readdirSync(path.dirname(lock))).toEqual(["config.yaml.applying"]);
-  });
-
-  it("clears a dead owner whose recoverer died too", () => {
-    const lock = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-lock-")), "config.yaml.applying");
-    fs.writeFileSync(lock, "999999999");
-    fs.writeFileSync(`${lock}.recovering-${createHash("sha256").update("999999999").digest("hex").slice(0, 16)}`, "999999998");
-
-    expect(clearAbandoned(lock, "999999999", `${process.pid}:taker`)).toBe(true);
-    expect(fs.readdirSync(path.dirname(lock))).toEqual([]);
   });
 
   it("leaves a freshly created empty lock to its writer rather than reclaiming it", async () => {

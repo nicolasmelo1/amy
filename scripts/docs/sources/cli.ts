@@ -29,7 +29,19 @@ const ENTRY = "packages/cli/src/index.ts";
  * the same thing, so it is what gets read.
  */
 export function cliFacts(): CliFacts {
-  const source = ts.createSourceFile(ENTRY, read(ENTRY), ts.ScriptTarget.ES2022, true);
+  return cliFactsOf(read(ENTRY));
+}
+
+/**
+ * The same, read out of a given text of the CLI's entry rather than the
+ * working tree's: a plan is checked against the CLI at the commit it was
+ * groomed at, which `git show` hands over as text. With `required`, the
+ * options declared with `.requiredOption` are read too: a plan naming
+ * `--into` names an option the command has, whether or not the reference
+ * lists it.
+ */
+export function cliFactsOf(text: string, { required = false }: { required?: boolean } = {}): CliFacts {
+  const source = ts.createSourceFile(ENTRY, text, ts.ScriptTarget.ES2022, true);
 
   const commands: CliCommand[] = [];
   const globals: Described = { description: "", options: [] };
@@ -41,7 +53,7 @@ export function cliFacts(): CliFacts {
       const base = paths.get(chain.root);
       if (base === undefined) continue;
 
-      const ended = apply(base, chain.calls, source, commands, globals);
+      const ended = apply(base, chain.calls, source, commands, globals, required);
       if (variable) paths.set(variable, ended);
     }
   }
@@ -99,6 +111,7 @@ function apply(
   source: ts.SourceFile,
   commands: CliCommand[],
   globals: Described,
+  required = false,
 ): string[] {
   let path = base;
   let current: CliCommand | null = commands.find((command) => same(command.path, path)) ?? null;
@@ -131,7 +144,7 @@ function apply(
       });
     }
 
-    if (name === "option") {
+    if (name === "option" || (required && name === "requiredOption")) {
       target.options.push({
         flags: literal(args[0], source),
         description: literal(args[1], source),

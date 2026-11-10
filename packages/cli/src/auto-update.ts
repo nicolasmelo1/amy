@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { processAlive } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 
 /** The per-profile count belongs beside the profile's other durable state. */
@@ -100,16 +101,7 @@ function recoverDaemonUpdateClaim(file: string): void {
   const claim = claims.find((candidate) => fs.existsSync(candidate));
   if (!claim) return;
   const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
-  if (Number.isSafeInteger(owner) && owner > 0) {
-    try {
-      process.kill(owner, 0);
-      return;
-    } catch (error: unknown) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "EPERM") return;
-      if (code !== "ESRCH") throw error;
-    }
-  }
+  if (processAlive(owner)) return;
   try {
     if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
     else fs.rmSync(claim, { force: true });
