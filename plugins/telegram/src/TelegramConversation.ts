@@ -153,6 +153,8 @@ export class TelegramConversation implements Conversation {
   readonly asks = true as const;
   readonly edit = true as const;
   readonly threads?: true;
+  /** The bot: its directory is named for it, so two bots never share a conversation. */
+  readonly source: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   /** Who this profile's directory is: a directory removed and made again is somebody else. */
   private readonly identity: string;
@@ -170,6 +172,7 @@ export class TelegramConversation implements Conversation {
     this.operator = normalisedId(options.operator);
     this.identity = options.readOnly ? readIdentity(options.directory) ?? "" : identityOf(options.directory);
     if (this.topics()) this.threads = true;
+    this.source = `telegram:${path.basename(this.shared())}`;
   }
 
   open(workId: string, title: string): Promise<ThreadRef> {

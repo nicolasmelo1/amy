@@ -247,3 +247,120 @@ describe("a message is answered once", () => {
     expect(last(chat.said)).toMatch(/^That quoted message is not one I filed under a work/);
   });
 });
+
+describe("one conversation is answered by one loop at a time", () => {
+  it("leaves a place another loop is answering, and answers it once that loop lets go", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli });
+    let release!: () => void;
+    const slow: Harness = { name: "claude", ask: (prompt, cwd, context) => new Promise((resolve) => { release = () => resolve(claude.cli.ask(prompt, cwd, context)); }) };
+    const first = { ...desk, harnesses: new Map([["claude", slow]]) };
+    chat.write("first");
+
+    const answering = answerTheChat(first);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    chat.write("second");
+    expect(await answerTheChat(desk)).toMatchObject({ answered: 0 });
+
+    release();
+    await answering;
+    await answerTheChat(desk);
+    expect(claude.asked.map((one) => one.prompt.split("\n\n").at(-1))).toEqual(["Person: first", "Person: second"]);
+    expect(claude.asked[1]!.prompt).toMatch(/Person: first\n\namy: answer 1/);
+  });
+});
+
+describe("a conversation is held to the budget only when it is asked to be", () => {
+  const run = { harness: "claude", model: "sonnet", outcome: "completed", durationMs: 5, costSource: "reported", costUsd: 0.25, tokens: { input: 10, output: 5 } };
+  const paid: Harness = { name: "claude", ask: async () => ({ text: "fine", run: run as never }) };
+  const ledger = () => {
+    const events: { kind: string; workId?: string; detail?: Record<string, unknown> }[] = [];
+    return { events, log: { append: (event: never) => void events.push(event), read: () => [] } as never };
+  };
+
+  it("counts nothing by default", async () => {
+    const chat = chatOf();
+    const { desk } = deskOf(chat.conversation, { claude: paid });
+    chat.write("hello");
+
+    await answerTheChat(desk);
+
+    expect(chat.said.at(-1)!.text).toBe("fine");
+  });
+
+  it("records each run against the chat when counted, and refuses a turn the ceiling stops", async () => {
+    const chat = chatOf();
+    const { events, log } = ledger();
+    let open = true;
+    const budget = { mayStart: () => (open ? { ok: true as const } : { ok: false as const, window: "perDay", measure: "costUsd" as const, used: 9, limit: 10, stopAt: 0.9, retryAfterMs: 1000, reason: "the perDay budget has spent 9 of its 10 costUsd ceiling, and new work stops at 90%" }) };
+    const { desk } = deskOf(chat.conversation, { claude: paid }, { spend: { budget, log } });
+
+    chat.write("hello");
+    await answerTheChat(desk);
+    open = false;
+    chat.write("again");
+    await answerTheChat(desk);
+
+    expect(events).toEqual([{ at: expect.any(String), kind: "agent.run", workId: "chat", detail: { harness: "claude", model: "sonnet", outcome: "completed", durationMs: 5, costSource: "reported", costUsd: 0.25, tokens: { input: 10, output: 5 } } }]);
+    expect(chat.said.at(-1)!.text).toBe("Not answered: the perDay budget has spent 9 of its 10 costUsd ceiling, and new work stops at 90%.");
+  });
+});
+
+describe("what a pass does not lose and does not act on", () => {
+  it("ends the pass once a turn hands back something to do, leaving later messages for the next pass", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["```amy\nrestart\n```", "later"]);
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, { act: async () => ({ text: "restarting", after: async () => undefined }) });
+    chat.write("/action restart");
+    chat.write("and then?");
+
+    const pass = await answerTheChat(desk);
+
+    expect(pass).toMatchObject({ answered: 1, after: [expect.any(Function)] });
+    expect(chat.pending.map((one) => one.text)).toEqual(["and then?"]);
+  });
+
+  it.each([
+    ["a run that did not complete", { outcome: "failed" }, "```amy\nrestart\n```", /claude did not finish this turn \(failed\), so nothing ran\./],
+    ["an empty answer", { outcome: "completed" }, "   ", /claude answered nothing, so nothing ran\./],
+  ])("acts on nothing from %s", async (_case, run, text, said) => {
+    const chat = chatOf();
+    const cli: Harness = { name: "claude", ask: async () => ({ text, run: run as never }) };
+    const { desk, acted } = deskOf(chat.conversation, { claude: cli });
+    chat.write("/action restart");
+
+    await answerTheChat(desk);
+
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toMatch(said);
+  });
+
+  it("keeps two sources' conversations apart, even where they number a place alike", async () => {
+    const one = chatOf();
+    const two = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf({ ...one.conversation, source: "telegram:1" }, { claude: claude.cli });
+    one.write("remember kiwi");
+    await answerTheChat(desk);
+    two.write("what was it?");
+
+    await answerTheChat({ ...desk, conversation: { ...two.conversation, source: "telegram:2" } });
+
+    expect(claude.asked[1]!.prompt).not.toMatch(/kiwi/);
+  });
+
+  it("takes over a claim left by a loop that died mid-turn", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli });
+    chat.write("hello");
+    const message = chat.pending[0]!;
+    await answerTheChat(desk);
+    chat.pending.push(message);
+
+    await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
+
+    expect(claude.asked).toHaveLength(2);
+  });
+});

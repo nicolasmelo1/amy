@@ -79,6 +79,7 @@ touches:
   - docs/reference/contracts.md
   - docs/reference/plugins.md
   - docs/start/installation.md
+  - docs/start/configuration.md
   - plugins/telegram/README.md
   - registry/cli.json
   - registry/core.json

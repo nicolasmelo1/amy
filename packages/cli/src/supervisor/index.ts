@@ -86,7 +86,8 @@ export async function findSupervisor(machine: MachineFacts): Promise<Found> {
 
 /** One label per state directory and workflow, in the characters every supervisor takes. */
 export function labelFor(stateDirectory: string, workflow: string): string {
-  const install = createHash("sha256").update(stateDirectory).digest("hex").slice(0, 8);
+  // The name is in the digest too: two names that sanitise alike are two loops.
+  const install = createHash("sha256").update(`${stateDirectory}\0${workflow}`).digest("hex").slice(0, 8);
   return `amy.${workflow.replace(/[^A-Za-z0-9_-]/g, "_")}.${install}`;
 }
 

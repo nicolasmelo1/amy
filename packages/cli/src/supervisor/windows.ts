@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { escapeXml } from "./launchd.js";
@@ -23,6 +24,7 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
     name: "task-scheduler",
     async start(spec: LoopSpec) {
       fs.mkdirSync(spec.directory, { recursive: true });
+      fs.rmSync(stopMarker(spec.directory, spec.label), { force: true });
       const launcher = path.join(spec.directory, `${spec.label}.vbs`);
       fs.writeFileSync(launcher, launcherOf(spec), "utf-8");
       const xml = path.join(spec.directory, `${spec.label}.xml`);
@@ -34,8 +36,11 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
         // Never both: the Startup folder only when no task could be registered.
         fs.mkdirSync(startup, { recursive: true });
         fs.copyFileSync(launcher, path.join(startup, `${spec.label}.vbs`));
-        const started = await machine.runner.run("wscript.exe", [launcher]);
-        if (!started.ok) throw new Error(`schtasks refused ${spec.label} (${created.stderr || created.stdout}), and its Startup entry did not start`);
+        // Started now and left running: the launcher waits on the loop, and
+        // restarts it, for as long as it runs.
+        const child = spawn("wscript.exe", [launcher], { detached: true, stdio: "ignore", windowsHide: true });
+        child.on("error", () => undefined);
+        child.unref();
         return;
       }
       fs.rmSync(path.join(startup, `${spec.label}.vbs`), { force: true });
@@ -43,6 +48,11 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
       if (!run.ok) throw new Error(`schtasks /Run ${task(spec.label)} failed: ${run.stderr || run.stdout}`);
     },
     async stop(label: string) {
+      // Said first, to a launcher that outlives its task or runs from the
+      // Startup folder: a loop that exits from now on is not started again.
+      const directory = supervisorDirectory(machine);
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(stopMarker(directory, label), "", "utf-8");
       await schtasks("/End", "/TN", task(label));
       await schtasks("/Delete", "/TN", task(label), "/F");
       fs.rmSync(path.join(startup, `${label}.vbs`), { force: true });
@@ -51,6 +61,16 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
       return (await schtasks("/Query", "/TN", task(label))).ok || fs.existsSync(path.join(startup, `${label}.vbs`));
     },
   };
+}
+
+/** Where the launcher looks before it starts a loop again: present, it stops. */
+function stopMarker(directory: string, label: string): string {
+  return path.join(directory, `${label}.stopped`);
+}
+
+/** Where amy keeps what a supervisor needs, under its state directory. */
+function supervisorDirectory(machine: MachineFacts): string {
+  return path.join(machine.env.AMY_HOME || path.join(machine.home, ".amy"), "supervisor");
 }
 
 /** How many times the launcher starts a loop that did not exit cleanly before it gives up. */
@@ -101,10 +121,13 @@ export function launcherOf(spec: LoopSpec): string {
     `Set environment = shell.Environment("PROCESS")`,
     ...Object.entries(spec.env).map(([key, value]) => `environment(${vbs(key)}) = ${vbs(value)}`),
     `shell.CurrentDirectory = ${vbs(spec.workingDirectory)}`,
+    `Set files = CreateObject("Scripting.FileSystemObject")`,
+    `stopped = ${vbs(path.join(spec.directory, `${spec.label}.stopped`))}`,
     `failures = 0`,
     `Do`,
     `  code = shell.Run("${command}", 0, True)`,
     `  If code = 0 Then Exit Do`,
+    `  If files.FileExists(stopped) Then Exit Do`,
     `  failures = failures + 1`,
     `  If failures >= ${MAX_RESTARTS} Then Exit Do`,
     `  WScript.Sleep ${RESTART_PAUSE_MS}`,

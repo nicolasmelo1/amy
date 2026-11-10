@@ -48,7 +48,7 @@ function chatWith(text: string) {
 }
 
 function answering(text: string): Harness {
-  return { name: "claude", ask: async () => ({ text, run: {} as never }) };
+  return { name: "claude", ask: async () => ({ text, run: { outcome: "completed" } as never }) };
 }
 
 function setup(answer: string, message: string, extra: { unsupervised?: string } = {}) {

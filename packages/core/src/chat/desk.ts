@@ -1,8 +1,11 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { AgentRun } from "../agent-run.js";
+import { Budget } from "../ports/Budget.js";
 import { ChatMessage, Conversation } from "../ports/Conversation.js";
-import { Harness } from "../ports/Harness.js";
+import { EventLog } from "../ports/EventLog.js";
+import { Harness, HarnessReply } from "../ports/Harness.js";
 import { Asked, ChatCommandSpec, commandsIn, refusedCommands } from "./commands.js";
 import { ChatProgress } from "./progress.js";
 import { Kept, Transcripts } from "./transcript.js";
@@ -38,6 +41,12 @@ export interface ChatDesk {
   readonly mountProblem?: string;
   /** What this amy is, for the harness to read before the conversation. */
   readonly about?: string;
+  /**
+   * Where the chat's agent runs are counted, when the person asked for them
+   * to be. Unset, a conversation is a conversation: it is not held to the
+   * ceilings and its runs are not in the ledger the work is admitted against.
+   */
+  readonly spend?: { readonly budget: Budget; readonly log: EventLog };
   readonly now?: () => Date;
 }
 
@@ -55,24 +64,61 @@ const ABANDONED_CLAIM_MS = 10 * 60 * 1000;
  * `/new` starts another conversation in a chat without threads, and
  * `/harness` switches the one answering mid-conversation (S21).
  *
- * Each message is claimed first, so two loops reading one chat answer it
- * once. What to do after an answer is said — a restart's exit — is handed
- * back rather than done, so the pass ends before the process does.
+ * A conversation is held while its turns are answered, in order, and each
+ * message is claimed, so two loops reading one chat never answer one place at
+ * once nor one message twice; a claim is renewed for as long as its turn runs.
+ * Claims and conversations are keyed by the conversation's source, so two
+ * bots or channels never share either. What to do after an answer is said — a
+ * restart's exit — ends the pass and is handed back, so nothing after it can
+ * lose it.
  */
 export async function answerTheChat(desk: ChatDesk): Promise<{ answered: number; after: (() => Promise<void>)[] }> {
   const conversation = desk.conversation;
   if (!conversation.chat || !conversation.settle || !conversation.say) return { answered: 0, after: [] };
-  const transcripts = new Transcripts(desk.directory);
-  const after: (() => Promise<void>)[] = [];
+  const source = conversation.source ?? "";
+  const transcripts = new Transcripts(path.join(desk.directory, "sources", createHash("sha256").update(source).digest("hex").slice(0, 16)));
+  const byPlace = new Map<string, ChatMessage[]>();
+  for (const message of await conversation.chat()) byPlace.set(message.place, [...(byPlace.get(message.place) ?? []), message]);
   let answered = 0;
-  for (const message of await conversation.chat()) {
-    if (!claim(desk.directory, message.id, desk.now?.() ?? new Date())) continue;
-    const outcome = await answerOne(desk, transcripts, message);
-    await conversation.settle(message.id);
-    if (outcome?.after) after.push(outcome.after);
-    answered += 1;
+  for (const [place, messages] of byPlace) {
+    const held = hold(desk, `${source}|place:${place}`);
+    // Another loop is answering here: its turn reads and saves the transcript, so this place waits.
+    if (!held) continue;
+    try {
+      for (const message of messages) {
+        const claimed = hold(desk, `${source}|${message.id}`);
+        if (!claimed) continue;
+        try {
+          const outcome = await answerOne(desk, transcripts, message);
+          await conversation.settle(message.id);
+          answered += 1;
+          if (outcome?.after) return { answered, after: [outcome.after] };
+        } finally {
+          claimed.stop();
+        }
+      }
+    } finally {
+      held.stop();
+      release(desk.directory, `${source}|place:${place}`);
+    }
   }
-  return { answered, after };
+  return { answered, after: [] };
+}
+
+/** A claim taken and kept fresh until its turn ends, or nothing when another loop holds it. */
+function hold(desk: ChatDesk, id: string): { stop(): void } | undefined {
+  if (!claim(desk.directory, id, desk.now?.() ?? new Date())) return undefined;
+  const file = claimFile(desk.directory, id);
+  const renew = setInterval(() => {
+    try {
+      const now = new Date();
+      fs.utimesSync(file, now, now);
+    } catch {
+      // Released meanwhile: nothing left to renew.
+    }
+  }, ABANDONED_CLAIM_MS / 4);
+  renew.unref?.();
+  return { stop: () => clearInterval(renew) };
 }
 
 async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: ChatMessage): Promise<ChatActOutcome | undefined> {
@@ -99,16 +145,49 @@ async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: Chat
 
 /** The harness's answer to one turn, run read-only, or what to say when there is none. */
 async function readOnlyAnswer(desk: ChatDesk, kept: Kept, text: string, action: boolean, progress: ChatProgress): Promise<string | { refused: string }> {
-  const name = kept.harness && desk.harnesses.has(kept.harness) ? kept.harness : [...desk.harnesses.keys()][0];
-  const harness = name === undefined ? undefined : desk.harnesses.get(name);
-  if (!harness || name === undefined) return { refused: "No harness is mounted, so nothing can answer here." };
+  const chosen = harnessFor(desk, kept);
+  if ("refused" in chosen) return chosen;
+  const { name, harness } = chosen;
   await progress.line(`${action ? "Acting" : "Thinking"} with ${name}…`);
   try {
-    return (await harness.ask(promptFor(desk, kept, text, action), desk.cwd, { readOnly: true, step: "chat" })).text;
+    const reply = await harness.ask(promptFor(desk, kept, text, action), desk.cwd, { readOnly: true, step: "chat" });
+    if (desk.spend && reply.run) charge(desk.spend.log, reply.run, desk.now?.() ?? new Date());
+    return answerIn(reply, name);
   } catch (error) {
     const other = [...desk.harnesses.keys()].find((one) => one !== name);
     return { refused: `${name} could not answer read-only, so nothing ran: ${messageOf(error)}${other ? `\nAnother can: /harness ${other}` : ""}` };
   }
+}
+
+/** The harness this conversation runs on, if one is mounted and the budget, when counted, lets it start. */
+function harnessFor(desk: ChatDesk, kept: Kept): { name: string; harness: Harness } | { refused: string } {
+  const name = kept.harness && desk.harnesses.has(kept.harness) ? kept.harness : [...desk.harnesses.keys()][0];
+  const harness = name === undefined ? undefined : desk.harnesses.get(name);
+  if (!harness || name === undefined) return { refused: "No harness is mounted, so nothing can answer here." };
+  const allowed = desk.spend?.budget.mayStart(desk.now?.() ?? new Date());
+  if (allowed && !allowed.ok) return { refused: `Not answered: ${allowed.reason}.` };
+  return { name, harness };
+}
+
+/** A run that did not complete, or said nothing, is no answer: its text is not acted on. */
+function answerIn(reply: HarnessReply, name: string): string | { refused: string } {
+  if (reply.run && reply.run.outcome !== "completed") return { refused: `${name} did not finish this turn (${reply.run.outcome}), so nothing ran.` };
+  if (!reply.text.trim()) return { refused: `${name} answered nothing, so nothing ran.` };
+  return reply.text;
+}
+
+/** One chat run in the ledger, as any agent run is written, against the chat rather than a work. */
+function charge(log: EventLog, run: AgentRun, now: Date): void {
+  log.append({
+    at: now.toISOString(),
+    kind: "agent.run",
+    workId: "chat",
+    detail: {
+      harness: run.harness, model: run.model, outcome: run.outcome, durationMs: run.durationMs, costSource: run.costSource,
+      ...(run.costUsd === undefined ? {} : { costUsd: run.costUsd }),
+      ...(run.tokens === undefined ? {} : { tokens: { ...run.tokens } }),
+    },
+  });
 }
 
 /** `/new`: another conversation in a chat without threads; a thread stays one. */
@@ -180,7 +259,7 @@ function promptFor(desk: ChatDesk, kept: Kept, text: string, action: boolean): s
 
 /** Claims one message for this process; a claim left by a process that died mid-turn is taken over. */
 function claim(directory: string, id: string, now: Date): boolean {
-  const file = path.join(directory, "claims", createHash("sha256").update(id).digest("hex").slice(0, 32));
+  const file = claimFile(directory, id);
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   try {
     fs.writeFileSync(file, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
@@ -190,11 +269,29 @@ function claim(directory: string, id: string, now: Date): boolean {
   }
   try {
     if (now.getTime() - fs.statSync(file).mtimeMs < ABANDONED_CLAIM_MS) return false;
-    fs.utimesSync(file, now, now);
+    // Taken over by moving it aside: a rename succeeds for one loop only, and
+    // the claim is then made again as any other is.
+    const aside = `${file}.${randomUUID()}.stale`;
+    fs.renameSync(file, aside);
+    fs.rmSync(aside, { force: true });
+  } catch {
+    return false;
+  }
+  try {
+    fs.writeFileSync(file, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
     return true;
   } catch {
     return false;
   }
+}
+
+/** Lets go of a claim, so the next turn in that place can be taken. */
+function release(directory: string, id: string): void {
+  fs.rmSync(claimFile(directory, id), { force: true });
+}
+
+function claimFile(directory: string, id: string): string {
+  return path.join(directory, "claims", createHash("sha256").update(id).digest("hex").slice(0, 32));
 }
 
 function namesOf(harnesses: ReadonlyMap<string, Harness>): string {

@@ -432,7 +432,9 @@ commands its answer names in a fenced `amy` block run as amy with arguments,
 never a shell, and one off the fixed list refuses the whole block. `/new`
 starts another conversation in a chat without threads, `/harness <name>`
 switches the harness mid-conversation, and every turn sends the conversation
-whole. A long turn's progress is one message edited in place.
+whole. A long turn's progress is one message edited in place. A conversation
+is not work: its agent runs are held to no budget ceiling and kept out of the
+ledger, unless `chat.budget: true` asks for them to be counted.
 
 `config apply` writes a new `config.yaml` from the chat, shown as a diff,
 only when it mounts in a child first. `restart` lets a new mount through only

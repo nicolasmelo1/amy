@@ -120,6 +120,13 @@ export interface AmyConfig {
   /** A scalar/null source value retained so malformed YAML cannot become valid. */
   autoUpdateSource?: unknown;
 
+  /**
+   * The chat amy answers in. A conversation is not work: unless `budget` is
+   * on, its agent runs are held to no ceiling and kept out of the ledger the
+   * work is admitted against.
+   */
+  chat: { budget: boolean };
+
   retentionDays: number;
   staleClaimMs: number;
   maxItemAttempts: number;
@@ -176,6 +183,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   add: "package",
   forks: "",
   autoUpdate: DEFAULT_AUTO_UPDATE,
+  chat: { budget: false },
   retentionDays: 7,
   staleClaimMs: 30 * 60 * 1000,
   maxItemAttempts: 5,
@@ -243,6 +251,11 @@ export const machineSchema: ConfigSchema = {
     type: "number",
     description: "how many workflow runs sit between two refreshes; the count is kept per profile",
     default: 20,
+  },
+  "chat.budget": {
+    type: "boolean",
+    description: "whether the chat's agent runs count against agent.budget: held to its ceilings and recorded in its ledger. Off, a conversation is not work and is not charged",
+    default: false,
   },
   retentionDays: {
     type: "number",
@@ -423,6 +436,7 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     skills: parsed.skills ?? {},
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
+    chat: { ...DEFAULT_CONFIG.chat, ...(parsed.chat ?? {}) },
   };
 }
 

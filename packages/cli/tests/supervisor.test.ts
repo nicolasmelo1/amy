@@ -78,6 +78,7 @@ describe("one supervisor contract, chosen by platform (A15)", () => {
   it("labels a loop by its state directory and workflow, in characters every supervisor takes", () => {
     expect(labelFor("/state", "billing brief")).toMatch(/^amy\.billing_brief\.[0-9a-f]{8}$/);
     expect(labelFor("/state", "billing")).not.toBe(labelFor("/other", "billing"));
+    expect(labelFor("/state", "billing prod")).not.toBe(labelFor("/state", "billing_prod"));
   });
 });
 
@@ -113,6 +114,8 @@ describe("what each supervisor is handed", () => {
     expect(launcher).toContain(", 0, True)");
     expect(launcher).toContain("  If code = 0 Then Exit Do");
     expect(launcher).toContain("  If failures >= 255 Then Exit Do");
+    expect(launcher).toContain('stopped = "/state/supervisor/amy.billing.0a1b2c3d.stopped"');
+    expect(launcher).toContain("  If files.FileExists(stopped) Then Exit Do");
     expect(launcher).toContain("WScript.Quit code");
   });
 });
@@ -143,7 +146,7 @@ describe("with no working systemd, a restart is refused and the chat still answe
       exit: async (how) => void exits.push(how),
     });
     const answers = ["```amy\nrestart\n```", "Nothing is waiting on you."];
-    const desk = { conversation, harnesses: new Map([["claude", { name: "claude", ask: async () => ({ text: answers.shift()!, run: {} as never }) }]]), cwd: home, directory: path.join(home, "chat"), commands: CHAT_COMMANDS, act };
+    const desk = { conversation, harnesses: new Map([["claude", { name: "claude", ask: async () => ({ text: answers.shift()!, run: { outcome: "completed" } as never }) }]]), cwd: home, directory: path.join(home, "chat"), commands: CHAT_COMMANDS, act };
 
     pending.push({ id: "1", at: "2026-11-09T10:00:00.000Z", author: "op", text: "/action restart", place: "chat" });
     const pass = await answerTheChat(desk);
@@ -206,7 +209,8 @@ describe.runIf(REAL)(`under this machine's own supervisor, ${process.platform} (
 
   afterAll(() => {
     amy("stop");
-    fs.rmSync(home, { recursive: true, force: true });
+    // Windows keeps a file open a moment after the process holding it ends.
+    fs.rmSync(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
   });
 
   it("starts the loop under it, names it in the doctor, and a loop killed hard runs again with a new pid", async () => {

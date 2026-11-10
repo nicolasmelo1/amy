@@ -62,6 +62,11 @@ export interface ChatMessage {
 export interface Conversation {
   /** Present only on adapters that can render an Ask as controls. */
   asks?: true;
+  /**
+   * Which chat this is — a bot, a channel — so its conversations and claims
+   * are never another's: two bots can number a chat or a message alike.
+   */
+  readonly source?: string;
   /** Each piece of work has a thread of its own; unset, works share the chat and are addressed. */
   threads?: true;
   /** A message amy said can be edited in place, so a long turn's progress is one message. */

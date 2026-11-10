@@ -332,7 +332,7 @@ async function withoutTopics(): Promise<[boolean, unknown]> {
     telegram.say("TBO-2: the federal one");
     telegram.say("remember the word kiwi");
     const prompts: string[] = [];
-    const harness = { name: "claude", ask: async (prompt: string) => (prompts.push(prompt), { text: `answer ${prompts.length}`, run: {} as never }) };
+    const harness = { name: "claude", ask: async (prompt: string) => (prompts.push(prompt), { text: `answer ${prompts.length}`, run: { outcome: "completed" } as never }) };
     const desk = { conversation: chat, harnesses: new Map([["claude", harness]]), cwd: directory, directory: path.join(directory, "chat"), commands: [], act: async () => ({ text: "" }) };
     await answerTheChat(desk);
     telegram.say("/new");

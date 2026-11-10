@@ -20,6 +20,8 @@ import {
   WorkRecord,
   Workflow,
   answerTheChat,
+  type Budget,
+  type ChatDesk,
   callPath,
   callStanding,
   laneStanding,
@@ -852,9 +854,14 @@ program
  * workflow does not mount (S29), which says what failed. Nothing when there
  * is neither and no supervisor would only start it again.
  */
-async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts } | undefined> {
+async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
   const assembled = await assembleOrSay(profile, config);
-  if (assembled.ok) return { engine: assembled.engine, parts: chatPartsOf(assembled.mounted) };
+  if (assembled.ok) {
+    // Charged only when the person asked for the chat to be (chat.budget).
+    const budget = assembled.mounted.ports.get("budget") as Budget | undefined;
+    const spend = config.chat.budget && budget ? { budget, log: new FileEventLog(profilePaths(home, profile).log, undefined, build) } : undefined;
+    return { engine: assembled.engine, parts: chatPartsOf(assembled.mounted), ...(spend ? { spend } : {}) };
+  }
   const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
   const chat = parts.conversation?.chat !== undefined;
   if (!chat && !supervised) return undefined;
@@ -866,7 +873,7 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
 }
 
 /** One pass over the chat, as this loop answers it; a failure to read it is said and waits for the next pass. */
-function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: ChatParts }, supervised: boolean, exit: (how: "restart" | "stop") => void): () => Promise<void> {
+function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] }, supervised: boolean, exit: (how: "restart" | "stop") => void): () => Promise<void> {
   const conversation = mounted.parts.conversation;
   // Only a supervisor starts a loop with --supervised, so the flag is what
   // says the next loop will be started; a detached loop says why not.
@@ -892,6 +899,7 @@ function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: C
         commands: CHAT_COMMANDS,
         act,
         ...(mounted.mountProblem ? { mountProblem: mounted.mountProblem } : {}),
+        ...(mounted.spend ? { spend: mounted.spend } : {}),
         about: `This amy drives the workflow \`${profile.name}\` (${profile.workflow}); its state is in ${home}.`,
       });
       for (const after of pass.after) await after();
@@ -1081,7 +1089,7 @@ function sourceDigest(profile: Profile): string {
  * cached for the life of a process, so a new mount is a new process; a
  * failing build or mount leaves this one on the mount it had.
  */
-async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean }): Promise<boolean> {
+async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean; supervised?: boolean }): Promise<boolean> {
   const config = loadConfig(home);
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) {
@@ -1089,7 +1097,7 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
     for (const problem of prepared.problems) console.error(`  ${problem}`);
     return false;
   }
-  if (!options.scheduled) {
+  if (!options.scheduled && !options.supervised) {
     console.log(`${new Date().toISOString()} the source changed and is built; restart this loop to mount it`);
     return false;
   }
@@ -1098,6 +1106,12 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
     console.error(`${new Date().toISOString()} the source changed and does not mount; the loop keeps the mount it had:`);
     console.error(checked.stdout || checked.stderr);
     return false;
+  }
+  // A supervised loop exits for its supervisor to start the new mount; only a
+  // detached one starts its own replacement.
+  if (options.supervised) {
+    console.log(`${new Date().toISOString()} the source changed and mounts: exiting for the supervisor to start it`);
+    return true;
   }
   const place = profilePaths(home, profile);
   const out = fs.openSync(path.join(path.dirname(place.pid), "daemon.log"), "a");
@@ -1120,6 +1134,14 @@ program
     // A config asked for in the chat is mounted from its own file first, and
     // only one that mounts replaces config.yaml (S30).
     const config = options.config ? loadConfigFrom(home, fs.readFileSync(options.config, "utf-8")) : undefined;
+    // What the loop refuses before it mounts anything, refused here too: a
+    // config that passed this and then stopped the loop at boot would not boot.
+    const schedule = configuredAutoUpdateProblems(config ?? loadConfig(home));
+    if (schedule.length > 0) {
+      for (const problem of schedule) console.log(problem);
+      process.exitCode = 1;
+      return;
+    }
     const assembled = config ? await assembleLoaded(selected(config), config) : await assemble(selected());
     if (assembled.ok) return;
     for (const problem of assembled.problems) console.log(problem);

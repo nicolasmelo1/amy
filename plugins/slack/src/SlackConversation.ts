@@ -118,6 +118,10 @@ export class SlackConversation implements Conversation {
   readonly asks = true as const;
   readonly threads = true as const;
   readonly edit = true as const;
+  /** The channel: its conversations and claims are its own. */
+  get source(): string {
+    return `slack:${this.options.channel}`;
+  }
   private readonly threadMap: ThreadMap;
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
