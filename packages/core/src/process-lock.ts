@@ -69,9 +69,8 @@ export function processAlive(pid: number): boolean {
 export function takeLock(file: string, options: LockOptions = {}): HeldLock | undefined {
   const pid = options.pid ?? process.pid;
   const stamp = `${pid}:${randomUUID()}`;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (publish(file, `${JSON.stringify({ pid, stamp })}\n`, new Date((options.now ?? Date.now)()))) return held(file, stamp, options);
+    if (publish(file, `${JSON.stringify({ pid, stamp })}\n`, options.now && new Date(options.now()))) return held(file, stamp, options);
     const seen = look(file);
     // Released between the refused publish and this read: try again.
     if (seen === undefined) continue;
@@ -99,13 +98,13 @@ function held(file: string, stamp: string, options: LockOptions): HeldLock {
   };
 }
 
-/** Creates `file` holding `content`, taken at `at`, in one step, or answers false when it exists. */
-function publish(file: string, content: string, at: Date): boolean {
+/** Creates `file` holding `content`, taken at `at` when a clock says, in one step, or answers false when it exists. */
+function publish(file: string, content: string, at: Date | undefined): boolean {
   const staged = `${file}.${randomUUID()}.staged`;
   try {
-    fs.writeFileSync(staged, content, { flag: "wx", mode: 0o600 });
+    stage(staged, content);
     // Its age is read against the same clock a lease is judged by.
-    fs.utimesSync(staged, at, at);
+    if (at) fs.utimesSync(staged, at, at);
     fs.linkSync(staged, file);
     return true;
   } catch (error) {
@@ -114,6 +113,17 @@ function publish(file: string, content: string, at: Date): boolean {
     throw error;
   } finally {
     fs.rmSync(staged, { force: true });
+  }
+}
+
+/** Writes the staged owner, making its directory only the first time it is missing. */
+function stage(staged: string, content: string): void {
+  try {
+    fs.writeFileSync(staged, content, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    fs.mkdirSync(path.dirname(staged), { recursive: true });
+    fs.writeFileSync(staged, content, { flag: "wx", mode: 0o600 });
   }
 }
 
@@ -131,23 +141,50 @@ interface Seen {
 }
 
 function look(file: string): Seen | undefined {
+  let stat: fs.Stats;
   try {
-    const stat = fs.statSync(file);
-    const directory = stat.isDirectory();
-    const ownerFile = directory ? path.join(file, "owner.json") : file;
-    let text = "";
-    let mtimeMs = stat.mtimeMs;
-    try {
-      text = fs.readFileSync(ownerFile, "utf-8");
-      if (directory) mtimeMs = fs.statSync(ownerFile).mtimeMs;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT" || !directory) throw error;
-    }
-    return { owner: ownerIn(text), directory, ino: stat.ino, mtimeMs };
+    stat = fs.statSync(file);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (changed(error)) return undefined;
     throw error;
   }
+  if (!stat.isDirectory()) {
+    const text = readOr(file, undefined);
+    return text === undefined ? undefined : { owner: ownerIn(text), directory: false, ino: stat.ino, mtimeMs: stat.mtimeMs };
+  }
+  // An earlier version's lock: a directory with its owner inside, perhaps not written yet.
+  const ownerFile = path.join(file, "owner.json");
+  const text = readOr(ownerFile, "");
+  if (text === undefined) return undefined;
+  let mtimeMs = stat.mtimeMs;
+  try {
+    if (text !== "") mtimeMs = fs.statSync(ownerFile).mtimeMs;
+  } catch (error) {
+    if (changed(error)) return undefined;
+    throw error;
+  }
+  return { owner: ownerIn(text), directory: true, ino: stat.ino, mtimeMs };
+}
+
+/**
+ * A file's text; `missing` when it is not there; undefined when the lock
+ * changed under the read — a directory seen that is a file now, or the reverse.
+ */
+function readOr(file: string, missing: string | undefined): string | undefined {
+  try {
+    return fs.readFileSync(file, "utf-8");
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return missing;
+    if (changed(error)) return undefined;
+    throw error;
+  }
+}
+
+/** Whether an error says the path was buried, replaced or turned from a directory to a file meanwhile. */
+function changed(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException).code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
 }
 
 /** The owner a lock's text names, in this version's form or an earlier one's. */
@@ -206,7 +243,9 @@ function entomb(file: string, tombstone: string, seen: Seen): "entombed" | "fini
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "EEXIST" && !seen.directory) return "finished";
-    if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM" || code === "ENOENT") return "refused";
+    // Refused, or the lock seen is no longer there: buried by another, or
+    // replaced by a new owner's file where a directory was seen.
+    if (code === "EEXIST" || code === "ENOTEMPTY" || code === "EPERM" || code === "ENOENT" || code === "EISDIR" || code === "ENOTDIR") return "refused";
     throw error;
   }
 }
