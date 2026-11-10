@@ -15,7 +15,7 @@
     "examples/workflow-ticket-to-qa/package.json": "ac6c46f9ebf1aa0996184b668924042ea5ac175854a8ebc7b7f34dd5e0b61620",
     "package.json": "38e8c99c227f2cb0d35cf3c2966ecda90ef251ed8a70ba7d4517033b4895ad62",
     "packages/agent-kit/package.json": "d0933d431a84ca506e4c8129d8174f8f3b47f1caad1fcd7c4f76f823114a20a6",
-    "packages/cli/package.json": "82ab36544c13658fcf9d79010870f26ee59ed4547f6934648783e43254fc404a",
+    "packages/cli/package.json": "e1260d73c555b7a0c2131419b2404570bd2d8760d48f5ce1b5422d4b044d11d7",
     "packages/core/package.json": "3c7f26da90f9263db1e922f91ef1660ddedfb19c37451d34b4841167ee5e16d3",
     "packages/model-specs/package.json": "d6afcd448edab15754b7e1859f942492a247b0cea14014a6e57bd58145a274bf",
     "packages/services/package.json": "bcfa01357e3b1efa732602f395281cd0a33e4919a3160a3ee3c8c6ab260425e0",

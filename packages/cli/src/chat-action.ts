@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { ChatAction, ChatActOutcome, ChatCommandSpec, CommandRunner, specOf } from "@amykit/core";
@@ -175,59 +175,77 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
 
 /**
  * Takes the config's lock for this process, answering what releases it. One
- * left by a process that is no longer alive is recovered one taker at a time:
- * under a recovery lock its owner is read again, and only a lock still dead
- * is cleared. Release removes the lock only while it is still this one.
+ * left by a process that is no longer alive is cleared by `clearAbandoned`.
+ * Release removes the lock only while it is still this one.
  */
 function takeLock(lock: string, pid: number): (() => void) | undefined {
   const token = `${pid}:${randomUUID()}`;
-  const create = (file: string) => {
-    const staged = `${file}.${randomUUID()}.staged`;
-    try {
-      // Link publishes a complete owner token atomically: another writer
-      // never sees the empty file window that writeFile(..., "wx") creates.
-      fs.writeFileSync(staged, token, { flag: "wx", mode: 0o600 });
-      fs.linkSync(staged, file);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      fs.rmSync(staged, { force: true });
-    }
-  };
   const release = () => {
-    try {
-      const held = Buffer.from(fs.readFileSync(lock, "utf-8"));
-      const mine = Buffer.from(token);
-      if (held.length === mine.length && timingSafeEqual(held, mine)) fs.rmSync(lock, { force: true });
-    } catch {
-      // Already gone.
-    }
+    if (holds(lock, token)) fs.rmSync(lock, { force: true });
   };
-  if (create(lock)) return release;
-  if (!abandoned(lock)) return undefined;
-  const recovery = `${lock}.recovering`;
-  if (!create(recovery)) {
-    if (abandoned(recovery)) fs.rmSync(recovery, { force: true });
-    return undefined;
+  if (publish(lock, token)) return release;
+  const seen = contentOf(lock);
+  if (seen === undefined || !clearAbandoned(lock, seen, token)) return undefined;
+  return publish(lock, token) ? release : undefined;
+}
+
+/**
+ * Removes `file` only while it still holds `seen`, an owner already found
+ * dead. One clearer at a time per dead owner: the guard is named after what
+ * was seen, so a writer who looked before another cleared it and published
+ * a replacement takes a fresh guard, reads the replacement, and leaves it.
+ * Owner tokens are never reused, so what was seen dead never comes back.
+ * A guard whose own taker died is cleared the same way, a level down.
+ */
+export function clearAbandoned(file: string, seen: string, token: string, depth = 0): boolean {
+  if (!deadOwner(seen) || depth > 3) return false;
+  const guard = `${file}.recovering-${createHash("sha256").update(seen).digest("hex").slice(0, 16)}`;
+  if (!publish(guard, token)) {
+    const guarding = contentOf(guard);
+    if (guarding === undefined || !clearAbandoned(guard, guarding, token, depth + 1) || !publish(guard, token)) return false;
   }
   try {
-    if (!abandoned(lock)) return undefined;
-    fs.rmSync(lock, { force: true });
-    return create(lock) ? release : undefined;
+    if (contentOf(file) !== seen) return false;
+    fs.rmSync(file, { force: true });
+    return true;
   } finally {
-    fs.rmSync(recovery, { force: true });
+    if (holds(guard, token)) fs.rmSync(guard, { force: true });
   }
 }
 
-/** Whether a lock has a recorded owner which is gone; a fresh empty lock is held, never reclaimed. */
-function abandoned(file: string): boolean {
-  let owner: number;
+/** Creates `file` holding `token`, or answers false when it exists. */
+function publish(file: string, token: string): boolean {
+  const staged = `${file}.${randomUUID()}.staged`;
   try {
-    owner = Number.parseInt(fs.readFileSync(file, "utf-8"), 10);
+    // Link publishes a complete owner token atomically: another writer
+    // never sees the empty file window that writeFile(..., "wx") creates.
+    fs.writeFileSync(staged, token, { flag: "wx", mode: 0o600 });
+    fs.linkSync(staged, file);
+    return true;
   } catch {
     return false;
+  } finally {
+    fs.rmSync(staged, { force: true });
   }
+}
+
+function contentOf(file: string): string | undefined {
+  try {
+    return fs.readFileSync(file, "utf-8");
+  } catch {
+    return undefined;
+  }
+}
+
+function holds(file: string, token: string): boolean {
+  const held = Buffer.from(contentOf(file) ?? "");
+  const mine = Buffer.from(token);
+  return held.length === mine.length && timingSafeEqual(held, mine);
+}
+
+/** Whether a token's recorded owner is gone; an empty or unreadable one is held, never reclaimed. */
+function deadOwner(content: string): boolean {
+  const owner = Number.parseInt(content, 10);
   return Number.isSafeInteger(owner) && owner > 0 && !alive(owner);
 }
 

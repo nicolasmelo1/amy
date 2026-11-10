@@ -51,6 +51,11 @@ function ok(json: Record<string, unknown>, headers: Record<string, string> = {})
 
 const WHO_AM_I: Script = { match: method("auth.test"), answer: ok(whoAmI(BOT)) };
 
+/** A replies call for one thread, so work and chat reads cannot take each other's scripted answer. */
+function inThread(ts: string): Script["match"] {
+  return (request) => method("conversations.replies")(request) && (request.body ?? "").includes(`ts=${ts}`);
+}
+
 function thread(messages: unknown[]): Script {
   return { match: method("conversations.replies"), answer: ok({ messages, has_more: false }) };
 }
@@ -713,6 +718,34 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
 
     expect((await amy.chat()).map((message) => message.text)).toEqual(["first", "still here"]);
     expect(http.argsOf("conversations.replies").map((args) => args.ts)).toEqual([ROOT, THREAD, ROOT]);
+  });
+
+  it("reads a chat thread within two minutes while work threads read every half minute", async () => {
+    let now = new Date("2026-09-21T00:00:00.000Z");
+    const http = new ScriptedHttp([
+      WHO_AM_I,
+      history([{ type: "message", ts: ROOT, user: OPERATOR, text: "first" }]),
+      { match: inThread(ROOT), answer: thread([]).answer },
+      ...Array.from({ length: 5 }, () => ({ match: inThread(THREAD), answer: thread([]).answer })),
+      history([]),
+      history([]),
+      { match: inThread(ROOT), answer: thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "still here" }]).answer },
+    ]);
+    const amy = conversation(http, [], () => now);
+    await amy.chat();
+    await amy.chat();
+    const chatReads = () => http.argsOf("conversations.replies").filter((args) => args.ts === ROOT).length;
+    const before = chatReads();
+
+    const seen: string[] = [];
+    for (let tick = 0; tick < 5; tick += 1) {
+      now = new Date(now.getTime() + 30_000);
+      await amy.replies({ id: THREAD }, "2026-09-21T00:00:00.000Z");
+      seen.push(...(await amy.chat()).map((message) => message.text));
+    }
+
+    expect(chatReads()).toBe(before + 1);
+    expect(seen).toContain("still here");
   });
 
   it("edits what it said in place", async () => {
