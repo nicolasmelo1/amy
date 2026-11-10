@@ -113,8 +113,22 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     if (!checked.ok) {
       return `config apply: not written — the new config does not mount, so config.yaml stays as it was.${fenced(`${checked.stdout}\n${checked.stderr}`)}\nThe change was:${fenced(diff, "diff")}`;
     }
-    running();
-    fs.renameSync(candidate, actor.config);
+    // Under one lock for the machine, and only over the config this was checked against:
+    // a change another chat applied meanwhile is never silently replaced.
+    const lock = `${actor.config}.applying`;
+    try {
+      fs.writeFileSync(lock, String(actor.pid), { flag: "wx", mode: 0o600 });
+    } catch {
+      return "config apply: not written — another config change is being applied; ask again once it is done.";
+    }
+    try {
+      const now = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
+      if (now !== current) return "config apply: not written — config.yaml changed while this one was being checked; ask again against the config as it is now.";
+      running();
+      fs.renameSync(candidate, actor.config);
+    } finally {
+      fs.rmSync(lock, { force: true });
+    }
   } finally {
     fs.rmSync(candidate, { force: true });
   }

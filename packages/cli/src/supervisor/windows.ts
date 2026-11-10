@@ -35,7 +35,11 @@ export function taskScheduler(machine: MachineFacts): Supervisor {
       const created = await schtasks("/Create", "/TN", task(spec.label), "/XML", xml, "/F");
       fs.rmSync(xml, { force: true });
       if (!created.ok) {
-        // Never both: the Startup folder only when no task could be registered.
+        // Never both: a task an earlier start registered may still be there, refused a replacement.
+        if ((await schtasks("/Query", "/TN", task(spec.label))).ok) {
+          throw new Error(`schtasks refused to replace ${task(spec.label)} (${created.stderr || created.stdout}); it is still registered, so no Startup entry is added beside it`);
+        }
+        // The Startup folder only when no task could be registered.
         fs.mkdirSync(startup, { recursive: true });
         fs.copyFileSync(launcher, path.join(startup, `${spec.label}.vbs`));
         // Started now and left running: the launcher waits on the loop, and

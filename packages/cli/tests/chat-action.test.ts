@@ -219,3 +219,20 @@ describe("a diff of two configs", () => {
     expect(lineDiff("a\nb\nc\nd\ne\nf\ng\n", "a\nb\nc\nX\ne\nf\ng\n")).toBe("  b\n  c\n- d\n+ X\n  e\n  f");
   });
 });
+
+describe("two config changes at once", () => {
+  it("refuses a candidate checked against a config that changed meanwhile", async () => {
+    const world = setup("```config.yaml\nworkflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"x\"]\n```\n```amy\nconfig apply\n```", "/action add x");
+    const racing = chatAct({
+      // Another chat applies its change while this one is being mount-checked.
+      runner: { run: async () => (fs.writeFileSync(world.config, "workflows:\n  billing:\n    workflow: ./elsewhere\n"), { ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      amy: ["node", "/amy.js"], workflow: "billing", config: world.config, restartMarker: path.join(world.home, "restart.json"), pid: 4242,
+      exit: async () => undefined,
+    });
+
+    await answerTheChat({ ...world.desk, act: racing });
+
+    expect(fs.readFileSync(world.config, "utf-8")).toBe("workflows:\n  billing:\n    workflow: ./elsewhere\n");
+    expect(world.said.at(-1)).toMatch(/config apply: not written — config.yaml changed while this one was being checked/);
+  });
+});
