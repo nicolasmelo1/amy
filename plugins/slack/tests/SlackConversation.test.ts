@@ -603,7 +603,7 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
     expect(http.argsOf("conversations.replies")).toHaveLength(1);
   });
 
-  it("stops reading a conversation's thread a day after the operator last wrote in it", async () => {
+  it("keeps reading a quiet conversation, so a later reply can reactivate it", async () => {
     let now = new Date("2026-09-21T00:00:00.000Z");
     const http = new ScriptedHttp([
       WHO_AM_I,
@@ -611,6 +611,8 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
       thread([]),
       history([]),
       thread([]),
+      history([]),
+      thread([{ type: "message", ts: "1790000211.000100", thread_ts: ROOT, user: OPERATOR, text: "back after quiet" }]),
     ]);
     const amy = conversation(http, [], () => now);
     await amy.chat();
@@ -619,6 +621,10 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
     now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
     expect(await amy.chat()).toEqual([]);
     expect(http.argsOf("conversations.replies")).toHaveLength(2);
+
+    now = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    expect((await amy.chat()).map((message) => message.text)).toEqual(["back after quiet"]);
+    expect(http.argsOf("conversations.replies")).toHaveLength(3);
   });
 
   it("files an operator reply from a quiet thread's final read", async () => {

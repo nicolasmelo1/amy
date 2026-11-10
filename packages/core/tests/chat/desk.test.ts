@@ -327,6 +327,23 @@ describe("a conversation is held to the budget only when it is asked to be", () 
 });
 
 describe("what a pass does not lose and does not act on", () => {
+  it("keeps inbox order across conversations, so an earlier stop leaves later messages queued", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["first", "```amy\nrestart\n```"]);
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
+      act: async () => ({ text: "restarting", after: async () => undefined }),
+    });
+    chat.write("first", { place: "a" });
+    chat.write("/action restart", { place: "b" });
+    chat.write("must wait", { place: "a" });
+
+    const pass = await answerTheChat(desk);
+
+    expect(pass).toMatchObject({ answered: 2, after: [expect.any(Function)] });
+    expect(chat.pending.map((one) => one.text)).toEqual(["must wait"]);
+    expect(claude.asked).toHaveLength(2);
+  });
+
   it("ends the pass once a turn hands back something to do, leaving later messages for the next pass", async () => {
     const chat = chatOf();
     const claude = harness("claude", ["```amy\nrestart\n```", "later"]);

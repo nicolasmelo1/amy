@@ -85,20 +85,24 @@ export async function answerTheChat(desk: ChatDesk): Promise<{ answered: number;
   if (!conversation.chat || !conversation.settle || !conversation.say) return { answered: 0, after: [] };
   const source = conversation.source ?? "";
   const transcripts = new Transcripts(path.join(desk.directory, "sources", createHash("sha256").update(source).digest("hex").slice(0, 16)));
-  const byPlace = new Map<string, ChatMessage[]>();
-  for (const message of await conversation.chat()) byPlace.set(message.place, [...(byPlace.get(message.place) ?? []), message]);
   let answered = 0;
-  for (const [place, messages] of byPlace) {
-    const held = hold(desk, `${source}|place:${place}`);
+  const blocked = new Set<string>();
+  // The inbox's order is the operator's order across conversations. Holding a
+  // place for one turn retains its transcript safety without moving a later
+  // message ahead of an earlier stop or restart in another place.
+  for (const message of await conversation.chat()) {
+    if (blocked.has(message.place)) continue;
+    const held = hold(desk, `${source}|place:${message.place}`);
     // Another loop is answering here: its turn reads and saves the transcript, so this place waits.
-    if (!held) continue;
+    if (!held) {
+      blocked.add(message.place);
+      continue;
+    }
     try {
-      for (const message of messages) {
-        const settled = await answerClaimed(desk, transcripts, message, `${source}|${message.id}`);
-        if (!settled) continue;
-        answered += 1;
-        if (settled.after) return { answered, after: [settled.after] };
-      }
+      const settled = await answerClaimed(desk, transcripts, message, `${source}|${message.id}`);
+      if (!settled) continue;
+      answered += 1;
+      if (settled.after) return { answered, after: [settled.after] };
     } finally {
       held.release();
     }

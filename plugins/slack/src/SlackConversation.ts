@@ -108,9 +108,6 @@ const KEYCAPS = ["one", "two", "three", "four", "five", "six", "seven", "eight",
 const APPROVAL_REACTIONS = ["white_check_mark", "x"] as const;
 const SUBMIT_REACTION = "white_check_mark";
 
-/** A conversation in the channel goes quiet after this long, and its thread is no longer read. */
-const CHAT_QUIET_MS = DAY_MS;
-
 /** A conversation's thread is read at most this often: Slack may allow conversations.replies once a minute. */
 const CHAT_THREAD_EVERY_MS = 60 * 1000;
 
@@ -358,7 +355,7 @@ export class SlackConversation implements Conversation {
    */
   private async fileDueReplies(chat: string, bot: string): Promise<void> {
     const now = this.clock().getTime();
-    const quota = path.join(chat, "replies.json");
+    const quota = this.repliesQuota();
     if (now - (readJson<{ at: number }>(quota)?.at ?? 0) < CHAT_THREAD_EVERY_MS) return;
     const threads = jsonIn(path.join(chat, "threads")).map((name) => {
       const file = path.join(chat, "threads", name);
@@ -415,15 +412,12 @@ export class SlackConversation implements Conversation {
       if (tsToMicros(message.ts) > tsToMicros(read)) read = message.ts;
       last = now;
     }
-    if (this.retireQuietThread(file, kept.last, last, now)) return;
     writeJsonFile(file, { read, last, checked: now });
   }
 
-  /** Retire only after one final read: a reply at the quiet cutoff is not lost. */
-  private retireQuietThread(file: string, lastRead: number, lastReply: number, now: number): boolean {
-    if (now - lastRead <= CHAT_QUIET_MS || lastReply !== lastRead) return false;
-    fs.rmSync(file, { force: true });
-    return true;
+  /** One channel-wide conversations.replies allowance, shared by chat and work threads. */
+  private repliesQuota(): string {
+    return path.join(this.chatDirectory(), "replies.json");
   }
 
   private fileChatMessage(message: SlackMessage, root: string): void {
@@ -739,7 +733,10 @@ export class SlackConversation implements Conversation {
   }
 
   /** Every message in the thread after `afterMicros`, or from it on when `inclusive`: Slack leaves the bound out by default. */
-  private threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+  private async threadMessages(ts: string, afterMicros: number, inclusive = false): Promise<SlackMessage[]> {
+    // Work looks use this path too. Recording every call makes chat polling
+    // yield the next slot after a work-thread read instead of taking it first.
+    writeJsonFile(this.repliesQuota(), { at: this.clock().getTime() });
     return this.pages("conversations.replies", {
       channel: this.options.channel, ts, oldest: microsToTs(afterMicros), include_all_metadata: "true",
       ...(inclusive ? { inclusive: "true" } : {}),

@@ -173,11 +173,17 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
 function takeLock(lock: string, pid: number): (() => void) | undefined {
   const token = `${pid}:${randomUUID()}`;
   const create = (file: string) => {
+    const staged = `${file}.${randomUUID()}.staged`;
     try {
-      fs.writeFileSync(file, token, { flag: "wx", mode: 0o600 });
+      // Link publishes a complete owner token atomically: another writer
+      // never sees the empty file window that writeFile(..., "wx") creates.
+      fs.writeFileSync(staged, token, { flag: "wx", mode: 0o600 });
+      fs.linkSync(staged, file);
       return true;
     } catch {
       return false;
+    } finally {
+      fs.rmSync(staged, { force: true });
     }
   };
   const release = () => {
