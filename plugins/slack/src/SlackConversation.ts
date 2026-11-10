@@ -298,7 +298,8 @@ export class SlackConversation implements Conversation {
     return jsonIn(directory)
       .flatMap((name) => {
         const filed = readJson<ChatMessage>(path.join(directory, name));
-        return filed ? [filed] : [];
+        // Filed while somebody else was the operator: theirs to have said, not this operator's to act on.
+        return filed && filed.author === this.options.operator ? [filed] : [];
       })
       .sort((a, b) => a.at.localeCompare(b.at));
   }

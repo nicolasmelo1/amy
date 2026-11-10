@@ -99,6 +99,8 @@ describe("what each supervisor is handed", () => {
     expect(unit).toContain("StartLimitIntervalSec=0");
     expect(unit).toContain('ExecStart="/usr/local/bin/node" "/opt/amy/index.js"');
     expect(unit).toContain('"50%%" "$$HOME"');
+    // Environment= expands no variables, so a dollar there is kept as written.
+    expect(unitOf({ ...SPEC, env: { AMY_HOME: "/tmp/$amy/50%" } })).toContain('Environment="AMY_HOME=/tmp/$amy/50%%"');
     expect(unit).toContain('Environment="AMY_HOME=/state"');
     expect(unit).toContain("WorkingDirectory=/state\n");
     expect(unit).toContain("WantedBy=default.target");

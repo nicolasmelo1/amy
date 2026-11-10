@@ -64,10 +64,11 @@ export function unitOf(spec: LoopSpec): string {
     "",
     "[Service]",
     "Type=simple",
-    `ExecStart=${[spec.program, ...spec.args].map(quoted).join(" ")}`,
+    `ExecStart=${[spec.program, ...spec.args].map((arg) => quoted(arg)).join(" ")}`,
     // A path, read as written: systemd takes no quotes here.
     `WorkingDirectory=${spec.workingDirectory.replace(/%/g, "%%")}`,
-    ...Object.entries(spec.env).map(([key, value]) => `Environment=${quoted(`${key}=${value}`)}`),
+    // Environment= expands specifiers but not variables: a literal $ stays one.
+    ...Object.entries(spec.env).map(([key, value]) => `Environment=${quoted(`${key}=${value}`, false)}`),
     "Restart=on-failure",
     "RestartSec=10",
     "KillMode=mixed",
@@ -79,6 +80,7 @@ export function unitOf(spec: LoopSpec): string {
 }
 
 /** A double-quoted word, with what systemd would expand escaped: `%` specifiers and `$` variables. */
-function quoted(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "%%").replace(/\$/g, "$$$$")}"`;
+function quoted(value: string, variables = true): string {
+  const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "%%");
+  return `"${variables ? escaped.replace(/\$/g, "$$$$") : escaped}"`;
 }

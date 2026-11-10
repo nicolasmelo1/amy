@@ -197,7 +197,13 @@ async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: Chat
   const at = (desk.now?.() ?? new Date()).toISOString();
   const progress = new ChatProgress(desk.conversation, message.place);
   const reply = await readOnlyAnswer(desk, kept, action ? command.rest.trim() : message.text, action, progress);
-  if (typeof reply !== "string") return void await say(`${warning}${reply.refused}`);
+  if (typeof reply !== "string") {
+    await say(`${warning}${reply.refused}`);
+    // Kept too, so a harness switched to after a refusal is given the question it refused.
+    kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: reply.refused });
+    transcripts.save(kept);
+    return undefined;
+  }
 
   const { said, outcome } = await carriedOut(desk, reply, action, message.place, progress, turn);
   const answer = message.unaddressed ? `That quoted message is not one I filed under a work, so I do not know which work it is about; answered as a question.\n\n${said}` : said;

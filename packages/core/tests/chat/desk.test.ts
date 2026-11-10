@@ -509,3 +509,20 @@ describe("a turn whose host failed before anything ran", () => {
     expect(last(chat.said)).toMatch(/ran status/);
   });
 });
+
+describe("a refusal is part of the conversation", () => {
+  it("gives a harness switched to after a refusal the question that was refused", async () => {
+    const chat = chatOf();
+    const codex = harness("codex");
+    const { desk } = deskOf(chat.conversation, { hermes: harness("hermes", [], "hermes cannot run read-only").cli, codex: codex.cli });
+    chat.write("how is the api project?");
+    await answerTheChat(desk);
+    chat.write("/harness codex");
+    await answerTheChat(desk);
+    chat.write("try that again");
+
+    await answerTheChat(desk);
+
+    expect(codex.asked[0]!.prompt).toMatch(/Person: how is the api project\?\n\namy: hermes could not answer read-only/);
+  });
+});

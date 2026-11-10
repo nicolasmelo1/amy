@@ -42,6 +42,18 @@ describe("the private chat outside every topic is a chat (A1)", () => {
     expect(telegram.pending()).toBe(0);
   });
 
+  it("hands out nothing filed for another operator of the same bot", async () => {
+    const telegram = botApiStandIn();
+    const shared = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-shared-"));
+    const api = new BotApi(TOKEN, { transport: telegram.transport, sleep: async () => {} });
+    const theirs = new TelegramConversation(api, { operator: String(SOMEBODY_ELSE), directory: path.join(shared, "theirs"), shared });
+    const mine = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(shared, "mine"), shared });
+    telegram.say("their question", { from: SOMEBODY_ELSE });
+
+    expect((await theirs.chat()).map((one) => one.text)).toEqual(["their question"]);
+    expect(await mine.chat()).toEqual([]);
+  });
+
   it("refuses to settle an id it never filed", async () => {
     await expect(amyWith(botApiStandIn()).settle("slack:C1:1.2")).rejects.toThrow(/not a message this chat filed/);
   });

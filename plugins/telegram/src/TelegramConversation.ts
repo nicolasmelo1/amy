@@ -373,7 +373,8 @@ export class TelegramConversation implements Conversation {
     return jsonFilesIn(directory)
       .flatMap((name) => {
         const filed = readJson<ChatMessage>(path.join(directory, name), true);
-        return filed ? [filed] : [];
+        // Only the operator's: a message filed for another reader of the same bot is not this one's to act on.
+        return filed && filed.author === this.operator ? [filed] : [];
       })
       .sort((a, b) => a.at.localeCompare(b.at));
   }

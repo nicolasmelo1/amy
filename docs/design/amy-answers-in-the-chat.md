@@ -65,6 +65,7 @@ touches:
   - packages/cli/src/assemble.ts
   - packages/cli/src/chat-action.ts
   - packages/cli/tests/supervisor.test.ts
+  - packages/cli/tests/config.test.ts
   - plugins/telegram/src/**
   - .software-factory/evidence/amy-answers-in-the-chat/**
   - .software-factory/evidence/amy-answers-in-the-chat-scenario.sh

@@ -45,6 +45,7 @@ import {
   AmyConfig,
   EXAMPLE_CONFIG,
   configuredAutoUpdateProblems,
+  configuredChatProblems,
   loadConfig,
   loadConfigFrom,
   addModeFor,
@@ -942,7 +943,7 @@ const CHAT_EVERY_MS = 5_000;
 
 /** Assembles the loop's mount, saying why when it does not come up. */
 async function assembleOrSay(profile: Profile, config: AmyConfig): Promise<Assembled> {
-  const scheduleProblems = configuredAutoUpdateProblems(config);
+  const scheduleProblems = [...configuredAutoUpdateProblems(config), ...configuredChatProblems(config)];
   if (scheduleProblems.length > 0) {
     console.error("amy could not start:");
     for (const problem of scheduleProblems) console.error(`  ${problem}`);
@@ -1147,7 +1148,7 @@ program
     const config = options.config ? loadConfigFrom(home, fs.readFileSync(options.config, "utf-8")) : undefined;
     // What the loop refuses before it mounts anything, refused here too: a
     // config that passed this and then stopped the loop at boot would not boot.
-    const schedule = configuredAutoUpdateProblems(config ?? loadConfig(home));
+    const schedule = [...configuredAutoUpdateProblems(config ?? loadConfig(home)), ...configuredChatProblems(config ?? loadConfig(home))];
     if (schedule.length > 0) {
       for (const problem of schedule) console.log(problem);
       process.exitCode = 1;
