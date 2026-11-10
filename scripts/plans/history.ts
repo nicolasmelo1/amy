@@ -1,0 +1,63 @@
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { isPlan, type Step } from "./held.js";
+
+/**
+ * The change a plan is judged in, read out of git.
+ *
+ * Against `origin/main` when this clone has it, since a local main can sit
+ * behind it and make every merged commit look like part of the work; else
+ * `main`. `PLANS_BASE` names another ref. Each commit since the merge-base is
+ * a step, and the working tree's uncommitted changes are one more, so the
+ * pre-commit hook judges the commit it is about to make.
+ */
+export interface Change {
+  readonly base: string;
+  readonly steps: Step[];
+  readonly atBase: (file: string) => string | undefined;
+  readonly baseFiles: ReadonlySet<string>;
+}
+
+export function readChange(root: string, env: NodeJS.ProcessEnv = process.env): Change {
+  const git = (...args: string[]) =>
+    execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  const refs = env.PLANS_BASE ? [env.PLANS_BASE] : ["origin/main", "main"];
+  const ref = refs.find((one) => {
+    try {
+      git("rev-parse", "--verify", "--quiet", `${one}^{commit}`);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  if (!ref) throw new Error(`no base to read the change against: tried ${refs.join(", ")}`);
+  const base = git("merge-base", "HEAD", ref).trim();
+  const show = (revision: string, file: string): string | undefined => {
+    try {
+      return git("show", `${revision}:${file}`);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const steps: Step[] = [];
+  const commits = git("rev-list", "--reverse", "--no-merges", `${base}..HEAD`).split("\n").filter(Boolean);
+  for (const sha of commits) {
+    const files = git("diff-tree", "--no-commit-id", "--name-only", "-r", "--no-renames", sha).split("\n").filter(Boolean);
+    steps.push({ id: sha.slice(0, 8), files, plans: new Map(files.filter(isPlan).map((file) => [file, show(sha, file)])) });
+  }
+
+  const pending = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames").split("\0").filter(Boolean).map((line) => line.slice(3));
+  if (pending.length > 0) {
+    const read = (file: string) => (fs.existsSync(path.join(root, file)) ? fs.readFileSync(path.join(root, file), "utf8") : undefined);
+    steps.push({ id: "the working tree", files: pending, plans: new Map(pending.filter(isPlan).map((file) => [file, read(file)])) });
+  }
+
+  return {
+    base,
+    steps,
+    atBase: (file) => show(base, file),
+    baseFiles: new Set(git("ls-tree", "-r", "--name-only", base).split("\n").filter(Boolean)),
+  };
+}

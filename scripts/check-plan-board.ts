@@ -5,6 +5,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import yaml from "yaml";
+import { cliFactsOf } from "./docs/sources/cli.js";
+import { authoredProblems } from "./plans/authored.js";
+import { heldProblems } from "./plans/held.js";
+import { readChange } from "./plans/history.js";
 
 const repo = path.resolve(import.meta.dirname, "..");
 const file = (relative: string) => path.join(repo, relative);
@@ -66,4 +70,21 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log("plan board: gates cite durable design notes, and plans list unfinished work with a declared scope");
+// A plan is held to what it said: grooming apart from execution, and a
+// groomed plan checked against the code it was read at.
+// See plans/a-plan-is-held-to-what-it-said.md.
+const change = readChange(repo);
+const held = heldProblems(change);
+const cli = cliFactsOf(change.atBase("packages/cli/src/index.ts") ?? "");
+const authored = held.groomed.flatMap((name) => {
+  const plan = [`plans/${name}`, `docs/design/${name}`].find((one) => fs.existsSync(file(one)));
+  return plan ? authoredProblems({ file: plan, text: fs.readFileSync(file(plan), "utf8"), baseFiles: change.baseFiles, cli }) : [];
+});
+
+if (held.problems.length > 0 || authored.length > 0) {
+  console.error(`A plan is not held to what it said (read against ${change.base.slice(0, 8)}):\n`);
+  for (const problem of [...held.problems, ...authored]) console.error(`  ${problem}`);
+  process.exit(1);
+}
+
+console.log(`plan board: gates cite durable design notes, and plans list unfinished work with a declared scope; ${held.groomed.length} plan(s) groomed in this change hold`);

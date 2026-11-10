@@ -29,7 +29,16 @@ const ENTRY = "packages/cli/src/index.ts";
  * the same thing, so it is what gets read.
  */
 export function cliFacts(): CliFacts {
-  const source = ts.createSourceFile(ENTRY, read(ENTRY), ts.ScriptTarget.ES2022, true);
+  return cliFactsOf(read(ENTRY));
+}
+
+/**
+ * The same, read out of a given text of the CLI's entry rather than the
+ * working tree's: a plan is checked against the CLI at the commit it was
+ * groomed at, which `git show` hands over as text.
+ */
+export function cliFactsOf(text: string): CliFacts {
+  const source = ts.createSourceFile(ENTRY, text, ts.ScriptTarget.ES2022, true);
 
   const commands: CliCommand[] = [];
   const globals: Described = { description: "", options: [] };
