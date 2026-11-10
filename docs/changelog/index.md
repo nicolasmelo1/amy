@@ -60,6 +60,23 @@ parent's identifier, and a test holds a child and its feature to one name.
 
 
 
+### **A lock is taken one way.**
+
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-prove`, `@amykit/plugin-slack`
+
+The core exports `takeLock` and `processAlive`. A lock is a file naming its
+owner, published whole, so a lock being taken is never read as one its owner
+abandoned; one whose owner died, or whose lease ran out unrenewed, is taken
+over through a tombstone only one process can create, so of everyone who saw
+the same dead owner exactly one removes it. A lock an earlier version left —
+a pid line, a `pid:token` line, a bare token or a directory holding
+`owner.json` — is read and recovered the same way.
+
+The daemon boundary, the config `/action` applies, a chat message's claim and
+the proof's lease lock all take it, and nothing else asks whether a process
+lives. The daemon boundary no longer removes a lock another process had
+opened and not yet written its pid into.
+
 ### **A mount builds once.** `port`, `engine` and `contribute` accept `deferred(() => impl)`: the host builds it once every plugin has registered, once per mount and before any `ready`, building on demand when one reads another, so the order plugins are listed in does not matter. A build that throws is a boot refusal naming its plugin, and two builds that read each other are refused naming both. The agent relay, the serial engine and the three shipped workflows use it in place of their own `WeakMap<PluginContext, …>`, getter proxies and build-early `ready`. One behaviour change: the serial engine is now built at boot, so an engine with no workflow, no runtime or no queue, store or notifier is refused when the host mounts rather than on its first tick.
 
 `minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-serial-engine`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-ticket-to-qa`

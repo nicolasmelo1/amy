@@ -1,7 +1,7 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { ChatAction, ChatActOutcome, ChatCommandSpec, CommandRunner, specOf } from "@amykit/core";
+import { ChatAction, ChatActOutcome, ChatCommandSpec, CommandRunner, specOf, takeLock } from "@amykit/core";
 
 /**
  * The commands an answer may name under `/action`, as the command line
@@ -124,15 +124,15 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     }
     // Under one lock for the machine, and only over the config this was checked against:
     // a change another chat applied meanwhile is never silently replaced.
-    const release = takeLock(`${actor.config}.applying`, actor.pid);
-    if (!release) return "config apply: not written — another config change is being applied; ask again once it is done.";
+    const lock = takeLock(`${actor.config}.applying`, { pid: actor.pid });
+    if (!lock) return "config apply: not written — another config change is being applied; ask again once it is done.";
     try {
       const now = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
       if (now !== current) return "config apply: not written — config.yaml changed while this one was being checked; ask again against the config as it is now.";
       running();
       fs.renameSync(candidate, actor.config);
     } finally {
-      release();
+      lock.release();
     }
   } finally {
     fs.rmSync(candidate, { force: true });
@@ -171,91 +171,6 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
   // replace after this probe and before the supervisor starts it.
   fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, source, pid: actor.pid, at: new Date().toISOString(), config })}\n`, { mode: 0o600 });
   return { text: `restart: the new mount boots. Restarting pid ${actor.pid}; the new loop says its pid here.`, after: () => actor.exit("restart") };
-}
-
-/**
- * Takes the config's lock for this process, answering what releases it. One
- * left by a process that is no longer alive is cleared by `clearAbandoned`.
- * Release removes the lock only while it is still this one.
- */
-function takeLock(lock: string, pid: number): (() => void) | undefined {
-  const token = `${pid}:${randomUUID()}`;
-  const release = () => {
-    if (holds(lock, token)) fs.rmSync(lock, { force: true });
-  };
-  if (publish(lock, token)) return release;
-  const seen = contentOf(lock);
-  if (seen === undefined || !clearAbandoned(lock, seen, token)) return undefined;
-  return publish(lock, token) ? release : undefined;
-}
-
-/**
- * Removes `file` only while it still holds `seen`, an owner already found
- * dead. One clearer at a time per dead owner: the guard is named after what
- * was seen, so a writer who looked before another cleared it and published
- * a replacement takes a fresh guard, reads the replacement, and leaves it.
- * Owner tokens are never reused, so what was seen dead never comes back.
- * A guard whose own taker died is cleared the same way, a level down.
- */
-export function clearAbandoned(file: string, seen: string, token: string, depth = 0): boolean {
-  if (!deadOwner(seen) || depth > 3) return false;
-  const guard = `${file}.recovering-${createHash("sha256").update(seen).digest("hex").slice(0, 16)}`;
-  if (!publish(guard, token)) {
-    const guarding = contentOf(guard);
-    if (guarding === undefined || !clearAbandoned(guard, guarding, token, depth + 1) || !publish(guard, token)) return false;
-  }
-  try {
-    if (contentOf(file) !== seen) return false;
-    fs.rmSync(file, { force: true });
-    return true;
-  } finally {
-    if (holds(guard, token)) fs.rmSync(guard, { force: true });
-  }
-}
-
-/** Creates `file` holding `token`, or answers false when it exists. */
-function publish(file: string, token: string): boolean {
-  const staged = `${file}.${randomUUID()}.staged`;
-  try {
-    // Link publishes a complete owner token atomically: another writer
-    // never sees the empty file window that writeFile(..., "wx") creates.
-    fs.writeFileSync(staged, token, { flag: "wx", mode: 0o600 });
-    fs.linkSync(staged, file);
-    return true;
-  } catch {
-    return false;
-  } finally {
-    fs.rmSync(staged, { force: true });
-  }
-}
-
-function contentOf(file: string): string | undefined {
-  try {
-    return fs.readFileSync(file, "utf-8");
-  } catch {
-    return undefined;
-  }
-}
-
-function holds(file: string, token: string): boolean {
-  const held = Buffer.from(contentOf(file) ?? "");
-  const mine = Buffer.from(token);
-  return held.length === mine.length && timingSafeEqual(held, mine);
-}
-
-/** Whether a token's recorded owner is gone; an empty or unreadable one is held, never reclaimed. */
-function deadOwner(content: string): boolean {
-  const owner = Number.parseInt(content, 10);
-  return Number.isSafeInteger(owner) && owner > 0 && !alive(owner);
-}
-
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
 }
 
 /** A block of output, as much of its end as the chat holds. */

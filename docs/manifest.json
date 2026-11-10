@@ -263,6 +263,11 @@
           "description": ""
         },
         {
+          "title": "A lock is taken one way",
+          "path": "/design/a-lock-is-taken-one-way",
+          "description": ""
+        },
+        {
           "title": "A mount builds once",
           "path": "/design/a-mount-builds-once",
           "description": ""
@@ -270,6 +275,11 @@
         {
           "title": "A phase is proven, not asserted",
           "path": "/design/a-phase-is-proven-not-asserted",
+          "description": ""
+        },
+        {
+          "title": "A plan is held to what it said",
+          "path": "/design/a-plan-is-held-to-what-it-said",
           "description": ""
         },
         {
@@ -1083,6 +1093,11 @@
           "depth": 3,
           "title": "A frozen adapter, such as Object.freeze({ name, register }), mounts again through the host that only takes declarations. The proxy that keeps a plugin's own receiver stood on the plugin itself. Replacing register on a frozen object breaks a Proxy invariant, so it threw a TypeError before registration ran. It now stands on an empty object of its own and still reads and calls every member on the plugin.",
           "slug": "a-frozen-adapter-such-as-objectfreeze-name-register-mounts-again-through-the-host-that-only-takes-declarations-the-proxy-that-keeps-a-plugins-own-receiver-stood-on-the-plugin-itself-replacing-register-on-a-frozen-object-breaks-a-proxy-invariant-so-it-threw-a-typeerror-before-registration-ran-it-now-stands-on-an-empty-object-of-its-own-and-still-reads-and-calls-every-member-on-the-plugin"
+        },
+        {
+          "depth": 3,
+          "title": "**A lock is taken one way.**",
+          "slug": "a-lock-is-taken-one-way"
         },
         {
           "depth": 3,
@@ -2110,6 +2125,17 @@
       "headings": []
     },
     {
+      "path": "/design/a-lock-is-taken-one-way",
+      "file": "docs/design/a-lock-is-taken-one-way.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-lock-is-taken-one-way.md",
+      "title": "A lock is taken one way",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/a-mount-builds-once",
       "file": "docs/design/a-mount-builds-once.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-mount-builds-once.md",
@@ -2136,6 +2162,17 @@
       "file": "docs/design/a-phase-is-proven-not-asserted.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-phase-is-proven-not-asserted.md",
       "title": "A phase is proven, not asserted",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-plan-is-held-to-what-it-said",
+      "file": "docs/design/a-plan-is-held-to-what-it-said.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-plan-is-held-to-what-it-said.md",
+      "title": "A plan is held to what it said",
       "description": "",
       "group": "",
       "order": 999,
@@ -11253,6 +11290,30 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "a-lock-is-taken-one-way",
+        "title": "**A lock is taken one way.**",
+        "body": "The core exports `takeLock` and `processAlive`. A lock is a file naming its\nowner, published whole, so a lock being taken is never read as one its owner\nabandoned; one whose owner died, or whose lease ran out unrenewed, is taken\nover through a tombstone only one process can create, so of everyone who saw\nthe same dead owner exactly one removes it. A lock an earlier version left —\na pid line, a `pid:token` line, a bare token or a directory holding\n`owner.json` — is read and recovered the same way.\n\nThe daemon boundary, the config `/action` applies, a chat message's claim and\nthe proof's lease lock all take it, and nothing else asks whether a process\nlives. The daemon boundary no longer removes a lock another process had\nopened and not yet written its pid into.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-prove",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "patch"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "a-mount-builds-once",

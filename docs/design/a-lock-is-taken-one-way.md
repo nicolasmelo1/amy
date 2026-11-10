@@ -37,13 +37,13 @@ touches:
 untouched:
   - "packages/core/src/leases.ts: a branch lease has a holder's name and no process behind it to die"
 criteria:
-  - { id: A1, statement: "for any sequence of takes, releases, renewals, deaths and clock moves by any holders, no two hold one lock at once and a live, renewed holder's lock is never taken", proof: "deferred:property:packages/core/tests/process-lock.property.test.ts#a_lock_held_twice", sources: [S1, S7, S10] }
-  - { id: A2, statement: "six processes racing on a lock whose owner died: exactly one takes it, and the tombstone stops a second from removing the new owner's lock", proof: "deferred:test:packages/core/tests/process-lock.test.ts", sources: [S2, S10] }
-  - { id: A3, statement: "a lock is published whole: a reader never finds it empty or without its owner, so a lock being taken is never read as abandoned", proof: "deferred:test:packages/core/tests/process-lock.test.ts", sources: [S3] }
-  - { id: A4, statement: "a lock taken with a lease is taken over once unrenewed past it, whether its owner lives or not, and renewing keeps it", proof: "deferred:test:packages/core/tests/process-lock.test.ts", sources: [S5] }
-  - { id: A5, statement: "a pid line, a pid:token line, a bare token and a directory holding owner.json are each held while their owner lives or is fresh and taken over once dead or stale", proof: "deferred:test:packages/core/tests/process-lock.test.ts", sources: [S9] }
-  - { id: A6, statement: "the daemon boundary, the config apply lock, a chat message's claim and the proof's lease lock are each taken through the core lock, and their own tests pass through it", proof: "deferred:test:packages/cli/tests/chat-action.test.ts", sources: [S1, S3, S4, S5, S7] }
-  - { id: A7, statement: "no file under a package, plugin or example src/ but packages/core/src/process-lock.ts calls process.kill with a signal of 0", proof: "deferred:test:packages/core/tests/process-lock.test.ts", sources: [S6, S8, S11] }
+  - { id: A1, statement: "for any sequence of takes, releases, renewals, deaths and clock moves by any holders, no two hold one lock at once and a live, renewed holder's lock is never taken", proof: "property:packages/core/tests/process-lock.property.test.ts#a_lock_held_twice", sources: [S1, S7, S10], done: true }
+  - { id: A2, statement: "six processes racing on a lock whose owner died: exactly one takes it, and the tombstone stops a second from removing the new owner's lock", proof: "test:packages/core/tests/process-lock.test.ts", sources: [S2, S10], done: true }
+  - { id: A3, statement: "a lock is published whole: a reader never finds it empty or without its owner, so a lock being taken is never read as abandoned", proof: "test:packages/core/tests/process-lock.test.ts", sources: [S3], done: true }
+  - { id: A4, statement: "a lock taken with a lease is taken over once unrenewed past it, whether its owner lives or not, and renewing keeps it", proof: "test:packages/core/tests/process-lock.test.ts", sources: [S5], done: true }
+  - { id: A5, statement: "a pid line, a pid:token line, a bare token and a directory holding owner.json are each held while their owner lives or is fresh and taken over once dead or stale", proof: "test:packages/core/tests/process-lock.test.ts", sources: [S9], done: true }
+  - { id: A6, statement: "the daemon boundary, the config apply lock, a chat message's claim and the proof's lease lock are each taken through the core lock, and their own tests pass through it", proof: "test:packages/cli/tests/chat-action.test.ts", sources: [S1, S3, S4, S5, S7], done: true }
+  - { id: A7, statement: "no file under a package, plugin or example src/ but packages/core/src/process-lock.ts calls process.kill with a signal of 0", proof: "test:packages/core/tests/process-lock.test.ts", sources: [S6, S8, S11], done: true }
 crosses:
   - { mechanism: profiles-and-state, answer: works, proof: "A6; daemon.ts keeps its pid file and lock path, and only how the lock is taken changes" }
   - { mechanism: install-and-update, answer: works, proof: "A5, A7; auto-update.ts asks the core whether a claim's owner lives and keeps its hand-off" }

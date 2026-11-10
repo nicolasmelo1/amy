@@ -23,14 +23,14 @@ touches:
   - scripts/docs/sources/cli.ts
   - CONTRIBUTING.md
 criteria:
-  - { id: A1, statement: "a commit that changes a plan's declaration and any path outside plans/ and docs/mechanisms.yaml is refused, naming the commit and the plan", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S4, S11] }
-  - { id: A2, statement: "after a change's first commit outside plans/ and docs/mechanisms.yaml, any later non-mechanical change to a plan's declaration is refused, even in a grooming commit, and the refusal says to groom it again", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S3, S4, S5] }
-  - { id: A3, statement: "moving a plan to docs/design, marking a criterion done, dropping deferred: from a proof, and pointing a source at the delivered note of a plan moved in that change pass", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S5] }
-  - { id: A4, statement: "uncommitted changes in the working tree are judged as one more commit after the last one", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S7, S8] }
-  - { id: A5, statement: "a plan groomed in the change is refused for a touches entry with **, an entry listed twice, or a path absent at the base whose directory neither exists there nor holds another entry", proof: "deferred:test:scripts/plans/tests/authored.test.ts", sources: [S1, S6] }
-  - { id: A6, statement: "a plan groomed in the change is refused for a criterion whose proof cites a file that neither exists at the base nor is in its touches", proof: "deferred:test:scripts/plans/tests/authored.test.ts", sources: [S6] }
-  - { id: A7, statement: "a plan groomed in the change is refused for an amy command, or an option of one, the CLI at the base does not declare, unless one of its criteria names it", proof: "deferred:test:scripts/plans/tests/authored.test.ts", sources: [S2, S6, S9] }
-  - { id: A8, statement: "the change is read against origin/main, else main: its commits, the paths each touched, each plan's declaration at each, and the CLI and file list at the base", proof: "deferred:test:scripts/plans/tests/history.test.ts", sources: [S7, S8, S10] }
+  - { id: A1, statement: "a commit that changes a plan's declaration and any path outside plans/ and docs/mechanisms.yaml is refused, naming the commit and the plan", proof: "test:scripts/plans/tests/held.test.ts", sources: [S4, S11], done: true }
+  - { id: A2, statement: "after a change's first commit outside plans/ and docs/mechanisms.yaml, any later non-mechanical change to a plan's declaration is refused, even in a grooming commit, and the refusal says to groom it again", proof: "test:scripts/plans/tests/held.test.ts", sources: [S3, S4, S5], done: true }
+  - { id: A3, statement: "moving a plan to docs/design, marking a criterion done, dropping deferred: from a proof, and pointing a source at the delivered note of a plan moved in that change pass", proof: "test:scripts/plans/tests/held.test.ts", sources: [S5], done: true }
+  - { id: A4, statement: "uncommitted changes in the working tree are judged as one more commit after the last one", proof: "test:scripts/plans/tests/held.test.ts", sources: [S7, S8], done: true }
+  - { id: A5, statement: "a plan groomed in the change is refused for a touches entry with **, an entry listed twice, or a path absent at the base whose directory neither exists there nor holds another entry", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S1, S6], done: true }
+  - { id: A6, statement: "a plan groomed in the change is refused for a criterion whose proof cites a file that neither exists at the base nor is in its touches", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S6], done: true }
+  - { id: A7, statement: "a plan groomed in the change is refused for an amy command, or an option of one, the CLI at the base does not declare, unless one of its criteria names it", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S2, S6, S9], done: true }
+  - { id: A8, statement: "the change is read against origin/main, else main: its commits, the paths each touched, each plan's declaration at each, and the CLI and file list at the base", proof: "test:scripts/plans/tests/history.test.ts", sources: [S7, S8, S10], done: true }
 crosses:
   - { mechanism: status, answer: n/a, why: "the board's renderer, packages/cli/src/plan-board.ts, is unchanged; the new checks read plans beside it in scripts/" }
 guarantee:

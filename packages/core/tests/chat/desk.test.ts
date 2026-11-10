@@ -478,7 +478,8 @@ describe("a turn that fails", () => {
     fs.mkdirSync(claims, { recursive: true });
     const file = path.join(claims, createHash("sha256").update(`|${chat.pending[0]!.id}`).digest("hex").slice(0, 32));
     fs.writeFileSync(file, "a loop that died");
-    fs.writeFileSync(`${file}.recovering`, "another loop");
+    // Another loop linked the dead claim to its tombstone and is about to remove it.
+    fs.linkSync(file, `${file}.dead-${createHash("sha256").update("a loop that died").digest("hex").slice(0, 16)}`);
 
     await answerTheChat({ ...desk, now: () => new Date(Date.now() + 11 * 60 * 1000) });
 

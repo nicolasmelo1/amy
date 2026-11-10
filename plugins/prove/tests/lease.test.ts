@@ -143,7 +143,7 @@ describe("a lease lock left by a daemon that died holding it", () => {
     const lock = path.join(root, "account.json.lock");
     fs.mkdirSync(lock);
     fs.writeFileSync(path.join(lock, "owner.json"), JSON.stringify({ pid: deadPid(), stamp: "dead" }));
-    const script = path.join(root, "claim.ts");
+    const script = path.join(root, "claim.mts");
     fs.writeFileSync(script, [
       `import { Leases } from ${JSON.stringify(pathToFileURL(source).href)};`,
       "const [root, holder, start] = process.argv.slice(2);",

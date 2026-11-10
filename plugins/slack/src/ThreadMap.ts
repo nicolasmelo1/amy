@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { processAlive } from "@amykit/core";
 
 /**
  * One generation of a work item's thread: its root `ts` once Slack answered,
@@ -330,7 +331,7 @@ export class ThreadMap {
   private isLive(generation: Generation): boolean {
     const owner = generation.entry.owner;
     if (!owner) return false;
-    return Date.now() - generation.mtimeMs < this.leaseMs && isAlive(pidOf(owner));
+    return Date.now() - generation.mtimeMs < this.leaseMs && processAlive(pidOf(owner));
   }
 
   /** The newest generation that is not a tombstone: the thread, or its attempt. */
@@ -488,13 +489,3 @@ function pidOf(owner: string): number {
   return Number(owner.split(":")[0]);
 }
 
-function isAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    // EPERM: it exists and belongs to somebody else.
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
