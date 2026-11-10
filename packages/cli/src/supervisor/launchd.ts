@@ -34,8 +34,11 @@ export function launchd(machine: MachineFacts): Supervisor & { domain(): Promise
       if (!loaded.ok) throw new Error(`launchctl bootstrap ${where} refused ${spec.label}: ${loaded.stderr || loaded.stdout}`);
     },
     async stop(label: string) {
-      await machine.runner.run("launchctl", ["bootout", `${await target()}/${label}`]);
+      // The plist first: bootout may end the very process stopping it (a stop
+      // asked from the chat runs in the job), and a plist left behind would
+      // start the loop again at the next login.
       fs.rmSync(plist(label), { force: true });
+      await machine.runner.run("launchctl", ["bootout", `${await target()}/${label}`]);
     },
     async installed(label: string) {
       return fs.existsSync(plist(label));

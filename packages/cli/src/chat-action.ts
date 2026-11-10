@@ -116,11 +116,7 @@ async function applyConfig(actor: ChatActor, proposed: string | undefined, line:
     // Under one lock for the machine, and only over the config this was checked against:
     // a change another chat applied meanwhile is never silently replaced.
     const lock = `${actor.config}.applying`;
-    try {
-      fs.writeFileSync(lock, String(actor.pid), { flag: "wx", mode: 0o600 });
-    } catch {
-      return "config apply: not written — another config change is being applied; ask again once it is done.";
-    }
+    if (!takeLock(lock, actor.pid)) return "config apply: not written — another config change is being applied; ask again once it is done.";
     try {
       const now = fs.existsSync(actor.config) ? fs.readFileSync(actor.config, "utf-8") : "";
       if (now !== current) return "config apply: not written — config.yaml changed while this one was being checked; ask again against the config as it is now.";
@@ -156,6 +152,47 @@ async function restartFromChat(actor: ChatActor, place: string, source: string |
   fs.mkdirSync(path.dirname(actor.restartMarker), { recursive: true });
   fs.writeFileSync(actor.restartMarker, `${JSON.stringify({ place, source, pid: actor.pid, at: new Date().toISOString() })}\n`, { mode: 0o600 });
   return { text: `restart: the new mount boots. Restarting pid ${actor.pid}; the new loop says its pid here.`, after: () => actor.exit("restart") };
+}
+
+/**
+ * Takes the config's lock for this process. One left by a process that is no
+ * longer alive is cleared and taken again, by one taker only: the clearing is
+ * a rename, which only one can win.
+ */
+function takeLock(lock: string, pid: number): boolean {
+  const take = () => {
+    try {
+      fs.writeFileSync(lock, String(pid), { flag: "wx", mode: 0o600 });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (take()) return true;
+  let owner: number;
+  try {
+    owner = Number(fs.readFileSync(lock, "utf-8").trim());
+  } catch {
+    return take();
+  }
+  if (Number.isSafeInteger(owner) && owner > 0 && alive(owner)) return false;
+  try {
+    const aside = `${lock}.${pid}.abandoned`;
+    fs.renameSync(lock, aside);
+    fs.rmSync(aside, { force: true });
+  } catch {
+    return false;
+  }
+  return take();
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
 }
 
 /** A block of output, as much of its end as the chat holds. */

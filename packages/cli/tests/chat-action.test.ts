@@ -236,3 +236,18 @@ describe("two config changes at once", () => {
     expect(world.said.at(-1)).toMatch(/config apply: not written — config.yaml changed while this one was being checked/);
   });
 });
+
+describe("a config lock left behind", () => {
+  it("is taken over when the process that held it is gone, and kept when it is alive", async () => {
+    const change = "```config.yaml\nworkflows:\n  billing:\n    workflow: ./billing\n    plugins: [\"x\"]\n```\n```amy\nconfig apply\n```";
+    const dead = setup(change, "/action add x");
+    fs.writeFileSync(`${dead.config}.applying`, "999999999");
+    await answerTheChat(dead.desk);
+    expect(dead.said.at(-1)).toMatch(/config apply: written/);
+
+    const held = setup(change, "/action add x");
+    fs.writeFileSync(`${held.config}.applying`, String(process.pid));
+    await answerTheChat(held.desk);
+    expect(held.said.at(-1)).toMatch(/another config change is being applied/);
+  });
+});
