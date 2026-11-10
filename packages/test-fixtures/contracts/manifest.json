@@ -5,7 +5,7 @@
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
       "publisher": "GitHub — the public GraphQL schema for github.com",
-      "sha256": "46f1d455d72ab784c6cb2b86e9b023df195dcfd2ed92099108b0faa5faa5d1fc"
+      "sha256": "ab960644266c5bab249dd4e6c1e56b6b8631c2b0c68b96e5b8d7c30d391e120b"
     },
     {
       "name": "github-rest",

@@ -31,6 +31,9 @@ mechanisms:
   - id: checkouts-and-leases
     says: git trees, worktrees, branch leases and lent revisions; a move never loses a commit
     paths: ["packages/core/src/git.ts", "packages/core/src/leases.ts", "packages/core/src/checkouts.ts", "plugins/file-worktree/src/**"]
+  - id: process-locks
+    says: one process at a time holds a file lock, and a dead or stale owner's lock is taken over by exactly one other
+    paths: ["packages/core/src/process-lock.ts"]
   - id: mount-and-capabilities
     says: boot reads every binding, and a workflow reaches only the writes it claims
     paths: ["packages/core/src/mount.ts", "packages/core/src/action-ports.ts", "packages/core/src/actions.ts", "packages/core/src/dispatch.ts", "packages/core/src/plugin.ts", "packages/cli/src/assemble.ts"]

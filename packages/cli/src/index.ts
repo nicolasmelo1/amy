@@ -28,6 +28,7 @@ import {
   describeBuild,
   mount,
   parseBudget,
+  processAlive,
   renderBrief,
   stampId,
   unmetNeeds,
@@ -450,12 +451,7 @@ function reportDoctor(
 /** Waits until the daemon is gone, so an after update never sees a live loop. */
 async function waitForDaemonExit(pid: number): Promise<void> {
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    try {
-      process.kill(pid, 0);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
-      throw error;
-    }
+    if (!processAlive(pid)) return;
     await sleep(50);
   }
   throw new Error(`daemon ${pid} did not exit after SIGTERM`);
@@ -483,7 +479,7 @@ async function stopEverything(): Promise<void> {
     const live = runningProfileDaemon(profile);
     await unsupervise(profile);
     if (!live) continue;
-    if (isAliveNow(live.record.pid)) process.kill(live.record.pid, "SIGTERM");
+    if (processAlive(live.record.pid)) process.kill(live.record.pid, "SIGTERM");
     await waitForDaemonExit(live.record.pid);
     if (!hasDaemonUpdate(home, live.record.workflow)) clearDaemon(live.file);
     ended.push(`${live.record.workflow} (pid ${live.record.pid})`);
@@ -621,7 +617,7 @@ program
       return;
     }
     const { file, record } = live;
-    if (!isAliveNow(record.pid)) {
+    if (!processAlive(record.pid)) {
       if (!hasDaemonUpdate(home, record.workflow)) clearDaemon(file);
       console.log(`stopped ${record.workflow}: pid ${record.pid}`);
       return;
@@ -1020,14 +1016,6 @@ async function recordedPid(profile: Profile, waitMs: number): Promise<number | u
   return undefined;
 }
 
-function isAliveNow(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
 
 /** Everything the loop prints goes to its log, which every supervisor then agrees on. */
 function appendOutputTo(file: string): void {

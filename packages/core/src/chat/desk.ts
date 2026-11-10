@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { AgentRun } from "../agent-run.js";
@@ -8,6 +8,7 @@ import { EventLog } from "../ports/EventLog.js";
 import { Harness, HarnessReply } from "../ports/Harness.js";
 import { Asked, ChatCommandSpec, commandsIn, refusedCommands } from "./commands.js";
 import { ChatProgress } from "./progress.js";
+import { takeLock } from "../process-lock.js";
 import { Kept, Transcripts } from "./transcript.js";
 
 /** What `/action` hands the host to run: the commands, the blocks beside them, and where to say how it goes. */
@@ -184,13 +185,15 @@ function doneFile(directory: string, id: string): string {
 
 /** A claim taken and kept fresh until its turn ends, or nothing when another loop holds it. */
 function hold(desk: ChatDesk, id: string): { stop(): void; release(): void } | undefined {
-  const token = claim(desk.directory, id, desk.now?.() ?? new Date());
-  if (!token) return undefined;
   const file = claimFile(desk.directory, id);
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  // A claim is a lease: a loop that died mid-turn, or stopped renewing, is taken over.
+  const claim = takeLock(file, { leaseMs: ABANDONED_CLAIM_MS, now: () => (desk.now?.() ?? new Date()).getTime() });
+  if (!claim) return undefined;
   const renew = setInterval(() => {
     try {
       // Only its own: a claim another loop took over is never kept alive from here.
-      if (owns(file, token)) fs.utimesSync(file, new Date(), new Date());
+      claim.renew();
     } catch {
       // Released meanwhile: nothing left to renew.
     }
@@ -201,7 +204,7 @@ function hold(desk: ChatDesk, id: string): { stop(): void; release(): void } | u
     release: () => {
       clearInterval(renew);
       try {
-        if (owns(file, token)) fs.rmSync(file, { force: true });
+        claim.release();
       } catch {
         // Already gone.
       }
@@ -368,58 +371,6 @@ function promptFor(desk: ChatDesk, kept: Kept, text: string, action: boolean): s
     history ? `The conversation so far:\n\n${history}` : "",
     `Person: ${text}`,
   ].filter(Boolean).join("\n\n");
-}
-
-/**
- * Claims something for this process, answering the token it holds it by. A
- * claim left by a process that died mid-turn is taken over, one recovery at a
- * time and only if it is still stale once that recovery holds, so two loops
- * never both take it.
- */
-function claim(directory: string, id: string, now: Date): string | undefined {
-  const file = claimFile(directory, id);
-  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  const token = randomUUID();
-  if (createClaim(file, token)) return token;
-  if (!stale(file, now)) return undefined;
-  const recovery = `${file}.recovering`;
-  if (!createClaim(recovery, token)) {
-    // A recovery left by a process that died during it is cleared for the next pass.
-    if (stale(recovery, now, ABANDONED_CLAIM_MS / 10)) fs.rmSync(recovery, { force: true });
-    return undefined;
-  }
-  try {
-    if (!stale(file, now)) return undefined;
-    fs.rmSync(file, { force: true });
-    return createClaim(file, token) ? token : undefined;
-  } finally {
-    fs.rmSync(recovery, { force: true });
-  }
-}
-
-/** Whether a claim is still the one this process took. */
-function owns(file: string, token: string): boolean {
-  const held = Buffer.from(fs.readFileSync(file, "utf-8"));
-  const mine = Buffer.from(token);
-  return held.length === mine.length && timingSafeEqual(held, mine);
-}
-
-function createClaim(file: string, token: string): boolean {
-  try {
-    fs.writeFileSync(file, token, { flag: "wx", mode: 0o600 });
-    return true;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    return false;
-  }
-}
-
-function stale(file: string, now: Date, after = ABANDONED_CLAIM_MS): boolean {
-  try {
-    return now.getTime() - fs.statSync(file).mtimeMs >= after;
-  } catch {
-    return false;
-  }
 }
 
 function claimFile(directory: string, id: string): string {

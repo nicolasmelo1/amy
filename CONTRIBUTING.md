@@ -232,6 +232,20 @@ files every change carries (the changeset, the changelog, `docs/manifest.json`).
 `sf check` reads that change against `main` in the pre-commit hook, and CI
 reads it against the pull request's base.
 
+A plan is held to what it said. Grooming is a commit that touches only
+`plans/` and `docs/mechanisms.yaml`; the first commit touching anything else
+starts execution, and from then on a plan's declaration moves only
+mechanically: to `docs/design/`, a criterion marked `done`, `deferred:`
+dropped from a proof, a source pointed at a delivered note. Anything more —
+a new `touches` entry, a `deviations` line, a reworded criterion — is
+grooming again, from main. A plan groomed in the change is checked at its
+base too: its `touches` are exact paths, never `**` and never twice; each
+proof's file exists there or is touched; and every command named in
+backticks, `` `amy workflow add ./w --into mine` ``, is one the CLI declares
+there, options included, unless one of its criteria builds it.
+`npm run check:plans` reads the change against `origin/main`, else `main`
+(`PLANS_BASE` names another ref), with the working tree as one more commit.
+
 ## Where to ask
 
 Open an issue. If you hit something that got in your way while working — an

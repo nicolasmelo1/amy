@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { processAlive, takeLock } from "@amykit/core";
 
 /**
  * What is written down about the loop that is running.
@@ -43,7 +44,7 @@ export function claimExitedDaemon(file: string, pid: number): DaemonRecord | und
   }
 
   const record = readDaemon(claim);
-  if (!record || record.pid !== pid || isAlive(record.pid)) {
+  if (!record || record.pid !== pid || processAlive(record.pid)) {
     if (!fs.existsSync(file)) fs.renameSync(claim, file);
     else fs.rmSync(claim, { force: true });
     return undefined;
@@ -55,70 +56,20 @@ export function claimExitedDaemon(file: string, pid: number): DaemonRecord | und
 
 /**
  * Claims the short boundary where a loop becomes visible, or an update owns
- * the machine. `open(..., "wx")` is atomic: a start cannot slip between an
- * update's running check and its package move. The owner is written before
- * the descriptor closes, so a file that exists is a file with an owner: a
- * crash in that window leaves nothing on disk, because the write and the
- * existence share the one syscall pair nobody else can see between.
+ * the machine: a start cannot slip between an update's running check and its
+ * package move. The core's lock is published whole, so a lock being taken is
+ * never read as one its owner abandoned.
  */
 export function claimDaemonBoundary(pidFile: string): (() => void) | undefined {
-  const lock = `${pidFile}.lock`;
-  fs.mkdirSync(path.dirname(lock), { recursive: true });
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    let descriptor: number | undefined;
-    try {
-      descriptor = fs.openSync(lock, "wx");
-      fs.writeFileSync(descriptor, `${process.pid}\n`, "utf-8");
-      fs.closeSync(descriptor);
-      return () => fs.rmSync(lock, { force: true });
-    } catch (error) {
-      if (descriptor !== undefined) {
-        try { fs.closeSync(descriptor); } catch { /* already closed */ }
-      }
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      // The owner may release the lock between our refused open and this
-      // read: a disappearing lock is a claim that came free, not a crash,
-      // so it is retried like a stale claim is. Any other read error is
-      // ours, and says so.
-      let owner: number;
-      try {
-        owner = Number(fs.readFileSync(lock, "utf-8").trim());
-      } catch (readError) {
-        if ((readError as NodeJS.ErrnoException).code !== "ENOENT") throw readError;
-        continue;
-      }
-      // A pid of 0 is a malformed record, not an owner: kill(0, 0) asks
-      // about the process group and would report a live lock nobody owns.
-      if ((!Number.isSafeInteger(owner) || owner <= 0 || !isAlive(owner))) {
-        fs.rmSync(lock, { force: true });
-        continue;
-      }
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Whether a process id belongs to something still running.
- *
- * Signal 0 checks for the process without touching it. A process somebody
- * else owns answers `EPERM`, which is still an answer: it exists.
- */
-export function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as { code?: string }).code === "EPERM";
-  }
+  const lock = takeLock(`${pidFile}.lock`);
+  return lock ? () => lock.release() : undefined;
 }
 
 /** The loop that is running, or nothing — a record naming a dead pid is nothing. */
 export function running(file: string): DaemonRecord | undefined {
   const record = readDaemon(file);
   if (!record) return undefined;
-  if (isAlive(record.pid)) return record;
+  if (processAlive(record.pid)) return record;
 
   // Cleared here rather than reported, because a stale file is not news: it
   // is what a reboot leaves behind, and the next `amy start` should just work.
