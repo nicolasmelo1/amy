@@ -1,5 +1,112 @@
 # @amykit/plugin-file-worktree
 
+## 0.7.0
+
+### Minor Changes
+
+- b761f29: **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
+- 1ad01d3: **A command belongs to the package that means it.** A plugin declares
+  `commands`, `checks` and `files` beside `register`, read after the module is
+  imported and before anything mounts: `amy --help` lists `amy roster` beside
+  the workflow that brought it, `amy doctor` runs the checks it brought, and
+  `amy init`/`amy add` write the files it brought into the profile's state,
+  once. A command that declares `mount: true` receives the mounted ports or a
+  refusal naming why the machine did not come up; every other command answers on
+  the machine that will not boot, which is when it matters.
+  
+  The host keeps the entry point and the ownership rules. A name belongs to one
+  package, reusing a built-in or another package's command is refused at load
+  naming both owners, and a command run against a profile that does not mount
+  its owner names the profiles that do.
+  
+  `amy btw` moved to the errand, `amy note` to note-to-plan, `amy roster` to
+  ticket-to-qa, `amy worktrees` to the worktree adapter and `amy models` to the
+  relay; the CLI imports none of them. `pause` and `resume` became
+  `amy stop --all` and `amy start`, `discover` became the first act of `amy
+  tick` and is hidden rather than listed, `poke` became `look`, `workflow rm` merged into
+  `amy remove <profile>` with `--keep-state`, the two `plugin add`/`plugin
+  remove` verbs are gone, and `daemon`/`after-daemon` are hidden and still
+  callable. A price table older than seven days is refreshed by `amy update`
+  and `amy start` through the relay's own command, and a refresh that fails
+  leaves the table as it was.
+  
+  Because `tick` now looks before it moves, two loops it exposed are closed: a
+  note the machine wrote about its own failure is not itself planned, and
+  discovery does not bring back work that reached its attempt ceiling: the
+  record says `gaveUp`, and `amy look <id>` is the only thing that clears it.
+  
+  `HostPaths` gains `profile`, the directory a profile owns, so a workflow that
+  keeps a file beside its records — the roster — reads what its own command
+  writes. The roster moved there, which is why `amy init` no longer writes it on
+  a machine that mounts nothing that assigns reviewers.
+- 4a55287: **A plugin brings operations, not commands.** `PluginCommand` is removed: a
+  plugin declares `operations` — each one `defineOperation`, with its input and
+  output schemas — and the command line is drawn from them like every other
+  door. Installing a plugin adds its command, its entry in `amy contract` and the
+  id an action can call; removing it takes all three. A plugin that still
+  declares `commands` is refused at load, naming the plugin and the member.
+  
+  - Each operation with `cli` words is a command, marked with its package in
+    `amy --help`. Its positional fields are arguments, every other field a flag;
+    a number is parsed, a boolean is a bare flag, an array repeats, an enum lists
+    its values, and a value that does not parse is refused naming the flag.
+  - `--json` prints the output as JSON, a stream as JSON Lines and an error as
+    the `{ code, message, details? }` envelope on stderr. Without it the output
+    is drawn from itself and its schema: objects as labelled fields, arrays of
+    objects as tables, enums coloured. No operation draws its own output.
+  - The exit code is the outcome: 0 an output, 1 a declared error, 2 an input
+    refused, 70 anything undeclared or a machine that would not mount.
+  - `amy contract` prints the install's whole contract — amy's services and every
+    mounted plugin's operations — as an OpenAPI document; `amy contract --check`
+    refuses one that does not build. A plugin's operation is local-only unless it
+    says `localOnly: false`.
+  - An operation id and a command's first word each belong to one package; a
+    second claiming either is refused at load, naming both.
+  - A workflow's action calls a mounted plugin's operation by id with
+    `operate(id, input)`, getting the output or the error, and reaches only what
+    its profile mounts.
+  - `amy btw`, `amy note`, `amy roster`, `amy worktrees` and `amy models` keep
+    their words and are now operations. Their output is drawn rather than
+    written by hand, and each takes `--json`.
+- d85dacd: **A workspace is a capability.** Nothing is handed a workspace without asking: plugins borrow their checkouts through a `workspace` port the file-worktree plugin mounts, and workflows inherit them from their support, so a machine that works nowhere in particular needs none. The seven machine keys — `repos`, `workspaceRoot`, `checkouts`, `defaultBranch`, `baseBranch`, `gate` and `worktrees` — are read from the plugins whose slices carry them (`plugins: "@amykit/plugin-file-worktree"` for the six workspace keys, `plugins: "@amykit/plugin-command-gate"` for the gate). The doctor asks about checkouts, worktrees, `gh` and `git` only where a workspace was mounted, so a machine that drives no code — a support inbox, say — is told it is ready, and `amy update` moves an old install's keys under those slices, saying each move, keeping the original beside the config, and refusing a key put back at the top level by name. The provenance of every derived slice, now a property with its own falsifier (`machine_key_leaks_into_a_slice`).
+- 3649573: Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+- 2363da5: **The host lends the checkout.** `PluginContext` gains `checkouts()`, which answers with the `Git` and the layout for the calling plugin — the host's paths, the plugin's own `defaultBranch` and `baseBranch`, and the `worktree` port read whenever a path is asked for, so a worktree plugin listed after the caller is still the one used. The core exports `BRANCH_SETTINGS`, the two branch settings with one description, and every shipped schema that declares them spreads it in place of its own wording. The command gate, the plan check and the three workflows that opened pull requests ask their context instead of building a `Git` and a second copy of its layout. The settings stay per plugin, so no `config.yaml` changes; the plan check's `baseBranch` now defaults to `{}` like every other's.
+
+### Patch Changes
+
+- 09cb74f: The docs describe the contract that exists. Every README is rewritten against the code: a plugin's README lists the ports, actions, operations, commands, events and environment its package registers, and opens with `amy.about`, a new field in its package.json saying when to use it.
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [cea9b94]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [4a55287]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [c7cd07a]
+- Updated dependencies [bb67d1f]
+- Updated dependencies [ec32d67]
+- Updated dependencies [b266baf]
+- Updated dependencies [f062bea]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [09cb74f]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

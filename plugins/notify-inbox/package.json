@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-notify-inbox",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Announcements as a file on disk plus a desktop notification.",
   "type": "module",
   "license": "MIT",
@@ -31,8 +31,8 @@
     "about": "Use it when announcements should reach you on this machine: each one is written as a file on disk and raised as a desktop notification, so a missed notification still leaves the file. It adds a channel to notify-fanout, so install that too."
   },
   "dependencies": {
-    "@amykit/core": "^0.6.0",
-    "@amykit/plugin-notify-fanout": "^0.6.0"
+    "@amykit/core": "^0.7.0",
+    "@amykit/plugin-notify-fanout": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/ui",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
   "type": "module",
   "license": "MIT",

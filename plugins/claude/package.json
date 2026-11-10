@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-claude",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The claude CLI as the agent, over its JSON envelope.",
   "type": "module",
   "license": "MIT",
@@ -31,9 +31,9 @@
     "about": "Use it when the agent should be Claude Code, run through the claude CLI. It contributes a harness and a usage reader to agent-relay instead of mounting the agent port itself, so install agent-relay with it, and list codex or hermes-agent too when the relay should have somewhere to fall back. Claude reports what each run cost, so a ceiling in money works without a row in the price table."
   },
   "dependencies": {
-    "@amykit/agent-kit": "^0.6.0",
-    "@amykit/core": "^0.6.0",
-    "@amykit/model-specs": "^0.6.0"
+    "@amykit/agent-kit": "^0.7.0",
+    "@amykit/core": "^0.7.0",
+    "@amykit/model-specs": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-plan-check",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
   "type": "module",
   "license": "MIT",
@@ -31,8 +31,8 @@
     "about": "Use it with note-to-plan, which checks every plan it drafts before proposing it. It mounts the plan-check port and the check-plan action, and runs the repository's own check commands in the plan's checkout, so a plan only goes forward once the repository's own bar passes."
   },
   "dependencies": {
-    "@amykit/core": "^0.6.0",
-    "@amykit/workflow-note-to-plan": "^0.6.0"
+    "@amykit/core": "^0.7.0",
+    "@amykit/workflow-note-to-plan": "^0.7.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

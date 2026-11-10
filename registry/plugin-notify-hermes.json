@@ -5,8 +5,8 @@
   "title": "@amykit/plugin-notify-hermes",
   "description": "Announcements over Hermes, which already owns the messaging credentials.",
   "dependencies": [
-    "@amykit/core@^0.6.0",
-    "@amykit/plugin-notify-fanout@^0.6.0"
+    "@amykit/core@^0.7.0",
+    "@amykit/plugin-notify-fanout@^0.7.0"
   ],
   "devDependencies": [],
   "files": [
@@ -20,7 +20,7 @@
       "path": "plugins/notify-hermes/package.json",
       "type": "registry:file",
       "target": "forks/plugin-notify-hermes/package.json",
-      "content": "{\n  \"name\": \"@amykit/plugin-notify-hermes\",\n  \"version\": \"0.6.0\",\n  \"description\": \"Announcements over Hermes, which already owns the messaging credentials.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/notify-hermes\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it when you already message through Hermes and want amy's announcements to arrive the same way, without handing amy the messaging credentials. It adds a channel to notify-fanout that sends to the Hermes delivery target you configure, and it can answer whether that target is reachable.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.6.0\",\n    \"@amykit/plugin-notify-fanout\": \"^0.6.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/plugin-notify-hermes\",\n  \"version\": \"0.7.0\",\n  \"description\": \"Announcements over Hermes, which already owns the messaging credentials.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/notify-hermes\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it when you already message through Hermes and want amy's announcements to arrive the same way, without handing amy the messaging credentials. It adds a channel to notify-fanout that sends to the Hermes delivery target you configure, and it can answer whether that target is reachable.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\",\n    \"@amykit/plugin-notify-fanout\": \"^0.7.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
     },
     {
       "path": "plugins/notify-hermes/src/hermesChannel.ts",
@@ -49,9 +49,9 @@
   ],
   "meta": {
     "package": "@amykit/plugin-notify-hermes",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "plugins/notify-hermes",
-    "tag": "@amykit/plugin-notify-hermes@0.6.0"
+    "tag": "@amykit/plugin-notify-hermes@0.7.0"
   }
 }

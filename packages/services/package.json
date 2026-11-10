@@ -1,6 +1,6 @@
 {
   "name": "@amykit/services",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
   "type": "module",
   "license": "MIT",
@@ -30,9 +30,9 @@
     "openapi.json"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "^0.7.0"
   },
   "devDependencies": {
-    "@amykit/plugin-file-store": "^0.6.0"
+    "@amykit/plugin-file-store": "^0.7.0"
   }
 }

@@ -1,5 +1,97 @@
 # @amykit/plugin-linear
 
+## 0.7.0
+
+### Minor Changes
+
+- b761f29: **A config is typed by its schema.** `definePlugin` gives a plugin's register and ready hooks the post-validation type derived from its schema, rejects mismatched defaults, and moves every shipped schema onto that declaration. Scalar and `string[]` settings no longer cast away the host's validation; record settings remain explicitly narrowed where a plugin needs a stronger value shape.
+- 3649573: Plugin versions and unused workflow observer declarations were removed; package manifests supply displayed versions.
+- f4069bb: **The config is written by what is mounted.** Every workflow's own
+  vocabulary — the attempt ceilings its decisions read, the status a ticket
+  moves to, where plans go and what judges them — moved out of the config's top
+  level and into the profile that drives the workflow, checked at mount against
+  the workflow's own `configSchema`. `amy init` writes a config that carries
+  only the machine, and a commented example that teaches the shape;
+  `amy add <workflow>` writes the profile block from what the workflow's schema
+  asks for, with the settings that need an answer written as placeholders and
+  the rest taken from defaults. `amy config explain` lists every setting the
+  machine and each mounted thing carries, with its type, its default and the
+  reason it is there; `amy config explain <plugin>` narrows to one.
+  
+  A key of the old shape left at the top level is refused at boot by name, with
+  the place it moved to in the message, so nothing is silently read from where
+  it lived. `amy update` moves a v1 config for you: each old key is rewritten
+  under the profile or the plugin that reads it, the original file is kept
+  beside the config as `config.yaml.moved`, and a second update changes
+  nothing. The engine learns to tune itself at the same time — the serial
+  engine's retry between failed items is its own setting now, no longer
+  borrowed from whichever workflow's poll happened to be at the top of the
+  config.
+- 0ef3ae3: **The roster belongs to its workflow.** The team list that names who reviews
+  and who owns QA is one ticket-to-qa profile's file, written by `init` and
+  `add` beside the profile's records and confirmed by `amy roster confirm` —
+  the workflow brought its command and its check with it, and none of the
+  host's source names the file any more. Where a profile has no roster of its
+  own, the workflow's red check names the file the machine kept where the
+  roster used to live, so the error is a way back and not a dead end.
+  
+  `amy update` now gives an existing install its move: every team an older
+  release kept at `~/.amy/roster.yaml` is copied into each profile that mounts
+  the workflow, the old name is retired as `roster.yaml.moved` rather than
+  deleted, and a second update changes nothing.
+  
+  The doctor asks the machine, and only the machine: a gate's commands are
+  asked of the machines that mounted a gate, and each mounted plugin names the
+  environment variables it reads — `plugin.environment` — so the errand's
+  machine is green without the ticket workflow's tracker key, and no install
+  carries a credential checklist nothing on it asked for. The quickstart walks
+  the shape the machine has now: init, add a workflow, doctor, start.
+
+### Patch Changes
+
+- 344e3ab: **A brief is named the way its feature is.**
+  
+  A child ticket's `briefId` was its Linear parent's uuid, while the same parent
+  read as a feature (`getFeature`, `features`) was named by its identifier, and
+  the brief store keys a brief by that feature id. Every reader that asked the
+  store for `ticket.briefId` — ticket-to-qa's brief lane, a workflow looking for
+  a declaration file named `PROJ-1200.yaml` — found nothing, and read "no brief"
+  rather than failing: a ticket under a groomed feature was driven as if nobody
+  had groomed it. `briefId`, and `featureId` on updated groomed work, are now the
+  parent's identifier, and a test holds a child and its feature to one name.
+- 09cb74f: The docs describe the contract that exists. Every README is rewritten against the code: a plugin's README lists the ports, actions, operations, commands, events and environment its package registers, and opens with `amy.about`, a new field in its package.json saying when to use it.
+- Updated dependencies [b761f29]
+- Updated dependencies [3b540fa]
+- Updated dependencies [cea9b94]
+- Updated dependencies [2c7324c]
+- Updated dependencies [1ad01d3]
+- Updated dependencies [4a55287]
+- Updated dependencies [91f6caf]
+- Updated dependencies [ac4faca]
+- Updated dependencies [ebae48c]
+- Updated dependencies [2b4deec]
+- Updated dependencies [989f399]
+- Updated dependencies [7d2dd00]
+- Updated dependencies [da95fc7]
+- Updated dependencies [b83a214]
+- Updated dependencies [65ebf9f]
+- Updated dependencies [8b21570]
+- Updated dependencies [d85dacd]
+- Updated dependencies [c7cd07a]
+- Updated dependencies [bb67d1f]
+- Updated dependencies [ec32d67]
+- Updated dependencies [b266baf]
+- Updated dependencies [f062bea]
+- Updated dependencies [3649573]
+- Updated dependencies [f4069bb]
+- Updated dependencies [09cb74f]
+- Updated dependencies [f9b65f6]
+- Updated dependencies [37504c1]
+- Updated dependencies [2363da5]
+- Updated dependencies [0ef3ae3]
+- Updated dependencies [0815efb]
+  - @amykit/core@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
