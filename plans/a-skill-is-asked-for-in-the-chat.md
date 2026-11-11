@@ -1,0 +1,58 @@
+---
+sources:
+  - { id: S1, kind: friction, said: "2026-11-11: grooming a feature means opening a terminal for /amy-groom; it should start from Slack, `/amy-groom let's groom X`, and go on in the thread" }
+  - { id: S2, kind: code, ref: "packages/cli/src/harnesses.ts", symbol: "harnesses", said: "amy skills writes amy's skills only into a harness's own directory (~/.claude, ~/.codex, ~/.hermes skills); amy keeps no copy of its own" }
+  - { id: S3, kind: code, ref: "plugins/agent-relay/src/skills.ts", symbol: "DEFAULT_SKILL_ROOT", said: "a step's skills are looked up under ~/.claude/skills unless skillRoots says otherwise, so what a step may use depends on the operator's harness setup" }
+  - { id: S4, kind: code, ref: "plugins/agent-relay/src/skills.ts", symbol: "parseSkills", said: "the skills setting is a ladder per step, checked at boot against what is installed, but only core actions reaching the agent are steps; `chat` is not one" }
+  - { id: S5, kind: code, ref: "packages/core/src/chat/desk.ts", symbol: "leadingCommand", said: "a chat message may start with /new, /harness or /action; anything else is a read-only question, and a chat turn asks its harness with no skill" }
+  - { id: S6, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "AskContext", said: "AskContext.skill lends a skill by name and directory; the claude harness lends it to an isolated run with --add-dir" }
+  - { id: S7, kind: code, ref: "packages/cli/src/chat-action.ts", said: "the /action list already holds brief sections, show, write and check, every command amy-groom runs" }
+  - { id: S8, kind: reference, ref: "https://community.atlassian.com/forums/Jira-Service-Management/Using-the-updated-slash-commands-to-raise-a-request-in-a-request/qaq-p/2514844", said: "Slack takes a message starting with / as one of its own commands; a leading space sends it as text" }
+  - { id: S9, kind: decision, said: "amy installs every skill it ships into ~/.amy/skills, its own root, on install and on every update; a harness directory stays an extra the person chooses. Decided 2026-11-11" }
+  - { id: S10, kind: decision, said: "which skills the chat may run is the skills ladder already in the config, under the step `chat`; nothing else names them. Decided 2026-11-11" }
+  - { id: S11, kind: decision, said: "a turn that starts with a skill is an /action turn: the commands its answer names run, under the same list. Decided 2026-11-11" }
+  - { id: S12, kind: decision, said: "a thread started with a skill keeps it: every later message there is answered with the skill lent and acting, the way grooming asks one question at a time. Decided 2026-11-11" }
+touches:
+  - packages/cli/src/harnesses.ts
+  - packages/cli/src/skills-record.ts
+  - packages/cli/src/index.ts
+  - packages/cli/src/config.ts
+  - packages/cli/tests/harnesses.test.ts
+  - plugins/agent-relay/src/skills.ts
+  - plugins/agent-relay/src/config.ts
+  - plugins/agent-relay/src/plugin.ts
+  - plugins/agent-relay/tests/skills.test.ts
+  - packages/core/src/chat/desk.ts
+  - packages/core/src/chat/transcript.ts
+  - packages/core/tests/chat/desk.test.ts
+  - docs/start/install.md
+criteria:
+  - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
+  - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, then ~/.claude/skills", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9] }
+  - { id: A3, statement: "`skills: { chat: [amy-groom] }` mounts; a chat skill that is not installed is refused at boot, naming it and what is installed", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S4, S10] }
+  - { id: A4, statement: "a message starting with /amy-groom, after any leading space or a bot's name, is answered with amy-groom lent to the harness, as an /action turn", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S1, S5, S6, S7, S8, S11] }
+  - { id: A5, statement: "a later message in that thread, with no prefix, is answered with the same skill lent and acting; /new ends it", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S12] }
+  - { id: A6, statement: "a /skill the chat ladder does not name is answered with the skills it does name, and nothing runs", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S10] }
+  - { id: A7, statement: "the harness still runs read-only in a skill turn: what acts is the amy commands its answer names, from the /action list", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S7, S11] }
+crosses:
+  - { mechanism: install-and-update, answer: works, proof: "deferred:test:packages/cli/tests/harnesses.test.ts" }
+  - { mechanism: config, answer: works, proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts" }
+  - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/core/tests/chat/desk.test.ts" }
+guarantee:
+  - { holds: "a skill the chat runs is one amy installed and the config names for the chat", not_against: "a person editing a SKILL.md under ~/.amy/skills by hand until the next update" }
+  - { holds: "a skill turn acts only through the /action list", not_against: "a skill whose instructions ask for a command off the list: it is refused, not run" }
+failures:
+  - { step: chat, when: "the skill named is on the ladder but its directory is gone", goes_to: "an answer naming the skill and `amy skills`, and nothing runs" }
+  - { step: install, when: "~/.amy/skills cannot be written", goes_to: "a failed install naming the directory" }
+cut:
+  - "a skill shipped by a plugin rather than by amy: the plugin's own plan"
+  - "a skill turn that writes files itself: the harness stays read-only"
+exit: "from Slack, `/amy-groom` on a ticket grooms its brief in the thread until amy brief check is green, with nothing typed in a terminal"
+---
+# A skill is asked for in the chat
+
+Grooming needs a terminal today: amy's skills live only in a harness's own
+directory, and the chat knows three commands. This plan gives amy its own
+skill root, lets the chat's step in the skills ladder name which skills a
+message may start with, and runs such a thread as /action, so `/amy-groom`
+in Slack grooms a brief in the thread.
