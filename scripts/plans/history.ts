@@ -17,6 +17,8 @@ export interface Change {
   readonly steps: Step[];
   readonly atBase: (file: string) => string | undefined;
   readonly baseFiles: ReadonlySet<string>;
+  /** Every file at the base whose text holds the pattern, found by one git grep. */
+  readonly grepBase: (pattern: string, paths?: readonly string[]) => readonly string[];
 }
 
 export function readChange(root: string, env: NodeJS.ProcessEnv = process.env): Change {
@@ -78,5 +80,16 @@ export function readChange(root: string, env: NodeJS.ProcessEnv = process.env): 
     steps,
     atBase: (file) => show(base, file),
     baseFiles: new Set(git("ls-tree", "-r", "--name-only", base).split("\n").filter(Boolean)),
+    grepBase: (pattern, paths) => {
+      try {
+        const held = git("grep", "-l", "-F", pattern, base, "--", ...(paths ?? [])).split("\n").filter(Boolean);
+        // A grep against a revision prefixes each path with it.
+        return held.map((line) => (line.startsWith(`${base}:`) ? line.slice(base.length + 1) : line));
+      } catch (finding) {
+        // git grep exits 1 when nothing holds the pattern; anything else is a failure to read.
+        if ((finding as { status?: number }).status === 1) return [];
+        throw finding;
+      }
+    },
   };
 }

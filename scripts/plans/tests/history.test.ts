@@ -108,4 +108,21 @@ describe("the change a plan is judged in", () => {
     const { root } = repository();
     expect(() => readChange(root, { PLANS_BASE: "nowhere" })).toThrow("no base to read the change against: tried nowhere");
   });
+
+  it("finds the files holding a pattern at the base with one git grep, not what the change adds", () => {
+    const { root, git, write } = repository();
+    // A plugin no machine mounts: this repository holds no config at all.
+    write("plugins/lonely/src/plugin.ts", 'const op = defineOperation({ cli: { words: ["lonely"] } });\n');
+    git("add", ".");
+    git("commit", "--quiet", "-m", "add a plugin no machine mounts");
+    git("checkout", "--quiet", "-b", "work");
+    // A file only the change holds never reaches the base the grep reads.
+    write("plugins/added/src/plugin.ts", 'const op = defineOperation({ cli: { words: ["added"] } });\n');
+
+    const change = readChange(root, {});
+
+    expect(change.grepBase("cli: {")).toEqual(["plugins/lonely/src/plugin.ts"]);
+    expect(change.grepBase("cli: {", [":(glob)plugins/*/src/**/*.ts"])).toEqual(["plugins/lonely/src/plugin.ts"]);
+    expect(change.grepBase("nothing holds this")).toEqual([]);
+  });
 });
