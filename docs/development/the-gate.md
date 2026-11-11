@@ -46,6 +46,7 @@ held to a gate that is proven to work.
 | `L0.ONLY_THE_TRACKER_SPEAKS_TICKET` | Only the tracker's contract names a ticket (docs/design/an-agent-only-answers.md) |
 | `L0.PORTS_LIVE_IN_THEIR_OWN_FILE` | The agent and gate ports live in their own files (docs/design/an-agent-only-answers.md) |
 | `L0.THE_AGENT_PORT_ONLY_ASKS` | The core's agent port declares ask and nothing else (docs/design/an-agent-only-answers.md) |
+| `L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS` | (packages/core/tests/two-copies.test.ts is the behaviour; this is the line) |
 | `L0.THE_CORE_NAMES_NO_VENDOR` | The core's code names no product (docs/design/an-agent-only-answers.md) |
 | `L0.THE_CORE_WORDS_NOTHING` | The core writes no title for anybody (docs/design/an-agent-only-answers.md) |
 | `L0.THE_HOST_NAMES_NO_ROSTER` | carried ceiling (`rosterBackoffMs`) is the config plan's to remove |
@@ -78,6 +79,7 @@ held to a gate that is proven to work.
 | `L4.ROOT_FILES_ARE_DECLARED` | New top-level files are declared before they appear |
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L4.THE_CONTRACT_DOCUMENTS_ITSELF` | Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md) |
+| `L5.A_FIXTURE_READS_THE_CORE_VERSION` | An evidence fixture reads the core's version, never writes one |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
@@ -148,7 +150,7 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **58 rules**, and `sf verify` proves every one fires against a broken fixture.
 
 **28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
@@ -193,7 +195,7 @@ digest. A gate's `plan` in the policy names the design note that argues for it.
 | `plugin-next-steps` | `plugins/next-steps/src/**`<br>`packages/core/src/ports/Ticketing.ts`<br>`packages/core/src/ports/BaseSource.ts`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd` | 4 |
 | `plugin-serial-engine` | `plugins/serial-engine/src/**`<br>`plugins/notify-fanout/src/**` | 13 |
 | `plugin-telegram` | `plugins/telegram/src/**`<br>`plugins/telegram/tests/stand-in.ts`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/test-fixtures/contracts/telegram-bot-api.json`<br>`packages/test-fixtures/src/contracts/telegram.ts`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd` | 3 |
-| `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/project.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/define-workflow.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 9 |
+| `project-phases` | `packages/cli/src/assemble.ts`<br>`packages/cli/src/project.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/loader.ts`<br>`packages/core/src/define-workflow.ts`<br>`packages/core/src/mount.ts`<br>`plugins/file-brief-store/src/**` | 10 |
 | `the-event-log-can-be-watched` | `packages/core/src/ports/EventLog.ts`<br>`plugins/file-log/src/**` | 6 |
 | `ticket-to-qa` | `examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-store/src/**`<br>`plugins/file-brief-store/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/linear/src/**`<br>`plugins/github/src/**`<br>`plugins/claude/src/**`<br>`plugins/command-gate/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**`<br>`plugins/slack/src/**`<br>`packages/core/src/ports/Conversation.ts`<br>`packages/core/src/calls.ts`<br>`packages/core/src/leases.ts`<br>`plugins/concurrent-engine/src/**` | 56 |
 | `ui-frame` | `packages/ui/**`<br>`packages/ui-conformance/src/**`<br>`plugins/ui-*/src/**` | 11 |

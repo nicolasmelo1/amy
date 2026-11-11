@@ -1,0 +1,11 @@
+# Mutation fixture for L5.A_FIXTURE_READS_THE_CORE_VERSION. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L5.A_FIXTURE_READS_THE_CORE_VERSION
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L5.A_FIXTURE_READS_THE_CORE_VERSION:
+    enabled: true

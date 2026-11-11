@@ -57,13 +57,13 @@ const coreEntry = pathToFileURL(path.join(repo, "node_modules", "@amykit", "core
  * by the absolute URL of the core it imports — a scratch tree resolves no
  * package of its own.
  */
-function phase(fixture: string, directory: string): string {
+function phase(fixture: string, directory: string, core: string = coreEntry): string {
   const published = spawnSync(path.join(repo, "node_modules", ".bin", "tsx"), [path.join(import.meta.dirname, "..", "lib", "publish.ts"), path.join(import.meta.dirname, fixture), directory], {
     encoding: "utf-8",
   });
   if (published.status !== 0) throw new Error(`publishing ${fixture} failed: ${published.stderr}`);
   const entry = path.join(directory, "index.js");
-  fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replaceAll(`from "@amykit/core"`, `from ${JSON.stringify(coreEntry)}`), "utf-8");
+  fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replaceAll(`from "@amykit/core"`, `from ${JSON.stringify(core)}`), "utf-8");
   return directory;
 }
 
@@ -164,6 +164,33 @@ await attempt("project.what_was_briefed_is_what_is_proven", async () => {
     throw new Error(`the proof was handed ${handed.join(", ")}`);
   }
   return true;
+});
+
+
+// 1b. A phase that resolves a core of its own mounts. An install always holds
+// several copies of the core, and 0.7.0 marked a port need with a symbol only
+// the copy that made it could read: every project whose phase asked for a
+// port refused to mount. The phases above share the CLI's copy, so they could
+// not see it; this one imports a second copy, the way a phase folder with its
+// own node_modules does.
+await attempt("project.a_phase_with_its_own_core_mounts", async () => {
+  // Under node_modules, so the copy's own imports resolve.
+  const second = path.join(repo, "node_modules", `.second-core-${process.pid}`);
+  const original = fs.realpathSync(path.join(repo, "node_modules", "@amykit", "core"));
+  fs.mkdirSync(second, { recursive: true });
+  fs.cpSync(path.join(original, "dist"), path.join(second, "dist"), { recursive: true });
+  fs.copyFileSync(path.join(original, "package.json"), path.join(second, "package.json"));
+  try {
+    const own = path.join(work, "own-core");
+    phase("phase-brief", path.join(own, "brief"));
+    phase("phase-work", path.join(own, "workflow"));
+    phase("phase-prove-own-core", path.join(own, "prove"), pathToFileURL(path.join(second, "dist", "index.js")).href);
+    const assembled = await mountedAs(configured({ owncore: { workflow: path.join(own, "workflow") } }), "owncore");
+    if (!assembled.ok) throw new Error(assembled.problems.join("; "));
+    return true;
+  } finally {
+    fs.rmSync(second, { recursive: true, force: true });
+  }
 });
 
 // 2. One project, one profile: its state is the project's own, nothing in

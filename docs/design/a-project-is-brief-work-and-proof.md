@@ -67,6 +67,11 @@ drew, and it brings no brief and no proof of its own into its caller.
       record walks BRIEF, WORK, PROVE and DONE, each phase a child record
       (proof: assertion:project.the_three_phases_walk_as_one)
       (proof: test:packages/cli/tests/project.test.ts)
+- [x] A phase that resolves a core of its own mounts beside the CLI's copy:
+      an install holds several copies of the core, and what one marks a
+      need with another reads
+      (proof: assertion:project.a_phase_with_its_own_core_mounts)
+      (proof: test:packages/core/tests/two-copies.test.ts)
 - [x] WORK never starts before BRIEF ends, DONE is never reached before PROVE
       holds, and PROVE refused returns to WORK naming what did not hold
       (proof: test:packages/cli/tests/project.test.ts)

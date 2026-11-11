@@ -7,7 +7,7 @@
     "entry": "dist/assemble.js"
   },
   "observed": {
-    "assertions_run": 9,
+    "assertions_run": 10,
     "assertions_failed": 0,
     "node": "v22.22.1"
   },
@@ -22,6 +22,10 @@
     },
     {
       "type": "project.what_was_briefed_is_what_is_proven",
+      "status": "passed"
+    },
+    {
+      "type": "project.a_phase_with_its_own_core_mounts",
       "status": "passed"
     },
     {

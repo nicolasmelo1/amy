@@ -1,0 +1,31 @@
+id: L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS
+layer: L0
+title: What the core marks a value with, every copy of the core can read
+severity: high
+statement: >-
+  The core and the agent kit create no local symbol: every symbol they mark a
+  value with is registered, `Symbol.for("@amykit/<package>/<name>")`.
+why: >-
+  An install always holds more than one copy of the core — the CLI's own, the
+  plugins root's, and whatever a project's phase folder resolves from its own
+  node_modules — and a value one copy marked is read by another. A local
+  symbol is a different key in every copy, so the mark reads as absent:
+  0.7.0 shipped the port need and the operation failure as local symbols, and
+  no project with a `prove/` phase could mount, while a plugin's declared
+  failure was answered as an internal error. Nothing inside one repository
+  ever sees two copies, so no test written against one catches it; this line
+  is the only place the mistake is visible.
+fix: >-
+  Register the symbol under the package's name:
+  `Symbol.for("@amykit/core/<what-it-marks>")`. A sentinel that never leaves
+  the function that made it is not a mark — use a plain object or `undefined`
+  instead of a symbol. packages/core/tests/two-copies.test.ts runs the core
+  against a second copy of itself; extend it when a new mark is added.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: ["packages/core/src/**/*.ts", "packages/agent-kit/src/**/*.ts"]
+  forbidden:
+    - regex: '\bSymbol\('
+      message: "A local symbol is a different key in every copy of the core, and an install holds several. Register it: Symbol.for(\"@amykit/core/<name>\")."

@@ -968,6 +968,11 @@
           "slug": "coming-next"
         },
         {
+          "depth": 3,
+          "title": "**What the core marks a value with, every copy of the core can read.** An install always holds several copies of the core: the CLI's own, the plugins root's, and whatever a project's phase folder resolves from its own node_modules. 0.7.0 marked a workflow's port need and an operation's declared failure with local symbols, a different key in every copy. So no project whose phase asks for a port could mount (\"Cannot destructure property 'optional' of 'need[PORT_NEED]'\"), and a plugin's declared failure was answered as an internal error. Both are now registered symbols. packages/core/tests/two-copies.test.ts runs the core against a second copy of itself, the project-phases gate mounts a phase that imports its own core, and L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS refuses a local symbol in the core.",
+          "slug": "what-the-core-marks-a-value-with-every-copy-of-the-core-can-read-an-install-always-holds-several-copies-of-the-core-the-clis-own-the-plugins-roots-and-whatever-a-projects-phase-folder-resolves-from-its-own-nodemodules-070-marked-a-workflows-port-need-and-an-operations-declared-failure-with-local-symbols-a-different-key-in-every-copy-so-no-project-whose-phase-asks-for-a-port-could-mount-cannot-destructure-property-optional-of-needportneed-and-a-plugins-declared-failure-was-answered-as-an-internal-error-both-are-now-registered-symbols-packagescoreteststwo-copiestestts-runs-the-core-against-a-second-copy-of-itself-the-project-phases-gate-mounts-a-phase-that-imports-its-own-core-and-l0thecoremarkswithregisteredsymbols-refuses-a-local-symbol-in-the-core"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -5191,6 +5196,11 @@
         },
         {
           "depth": 3,
+          "title": "L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS",
+          "slug": "l0thecoremarkswithregisteredsymbols"
+        },
+        {
+          "depth": 3,
           "title": "L0.THE_CORE_NAMES_NO_VENDOR",
           "slug": "l0thecorenamesnovendor"
         },
@@ -5373,6 +5383,11 @@
           "depth": 2,
           "title": "L5 — Meta: the guardrail is proven to fire",
           "slug": "l5-meta-the-guardrail-is-proven-to-fire"
+        },
+        {
+          "depth": 3,
+          "title": "L5.A_FIXTURE_READS_THE_CORE_VERSION",
+          "slug": "l5afixturereadsthecoreversion"
         },
         {
           "depth": 3,
@@ -10603,6 +10618,7 @@
         "plan": "docs/design/a-project-is-brief-work-and-proof.md",
         "assertions": [
           "project.the_three_phases_walk_as_one",
+          "project.a_phase_with_its_own_core_mounts",
           "project.what_was_briefed_is_what_is_proven",
           "project.a_declared_absent_phase_says_why_at_the_status",
           "project.a_packaged_workflow_declares_its_phases",
@@ -10847,6 +10863,13 @@
         "enabled": true,
         "settings": {},
         "title": "The core's agent port declares ask and nothing else (docs/design/an-agent-only-answers.md)",
+        "reason": ""
+      },
+      {
+        "id": "L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS",
+        "enabled": true,
+        "settings": {},
+        "title": "(packages/core/tests/two-copies.test.ts is the behaviour; this is the line)",
         "reason": ""
       },
       {
@@ -11106,6 +11129,13 @@
         "reason": ""
       },
       {
+        "id": "L5.A_FIXTURE_READS_THE_CORE_VERSION",
+        "enabled": true,
+        "settings": {},
+        "title": "An evidence fixture reads the core's version, never writes one",
+        "reason": ""
+      },
+      {
         "id": "L5.EVERY_CHECK_HAS_A_MUTATION_TEST",
         "enabled": true,
         "settings": {},
@@ -11253,7 +11283,20 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "core-marks-cross-copies",
+        "title": "**What the core marks a value with, every copy of the core can read.** An install always holds several copies of the core: the CLI's own, the plugins root's, and whatever a project's phase folder resolves from its own `node_modules`. 0.7.0 marked a workflow's port need and an operation's declared failure with local symbols, a different key in every copy. So no project whose phase asks for a port could mount (\"Cannot destructure property 'optional' of 'need[PORT_NEED]'\"), and a plugin's declared failure was answered as an internal error. Both are now registered symbols. `packages/core/tests/two-copies.test.ts` runs the core against a second copy of itself, the `project-phases` gate mounts a phase that imports its own core, and `L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS` refuses a local symbol in the core.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

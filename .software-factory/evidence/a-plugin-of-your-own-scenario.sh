@@ -75,6 +75,7 @@ cd "$work/home"
 # npm, standing in for a registry: the third-party names answer from the
 # tarballs above, `@amykit/*` from this checkout's packs, and `view` answers
 # the release the scenario published; everything else is the real npm.
+core_version=$("$tsx" "$here/lib/core-version.ts")
 cat > "$work/bin/npm" <<SH
 #!/bin/sh
 set -eu
@@ -82,7 +83,7 @@ printf '%s\n' "\$*" >> "$work/npm.log"
 if [ "\$1" = "view" ]; then
   case "\$2" in
     @acme/plugin-pager@*) echo '"1.1.0"'; exit 0 ;;
-    @amykit/*) echo '"0.6.0"'; exit 0 ;;
+    @amykit/*) echo '"$core_version"'; exit 0 ;;
   esac
 fi
 args=""

@@ -13,7 +13,7 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.6.0",
+    "@amykit/core": "current",
     "@acme/plugin-pager": "^1.0.0"
   }
 }

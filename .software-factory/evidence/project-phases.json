@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "project-phases",
-  "implementation_sha256": "bdc9d3bba9b2f3e6d97fb72b05b767f83d2411abbd7c59ab9ba793b73650712c",
+  "implementation_sha256": "02477bed16a639ffb39c5b30403ba1aeefa8fc845f153ef6295ec6ede1cabba7",
   "runs": [
     {
       "scenario": "project-phases",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/project-phases-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/project-phases-run.json",
-      "report_sha256": "c49eae4d5ab6e52ea755322db08cfbe98f8c11166f108f590a23a780bd87d254",
+      "report_sha256": "f6f81a256fed76b9f4f94860a1906b6c5ed44ad7186b2c2aee33d7396fc500fe",
       "required_assertions": [
         "project.the_three_phases_walk_as_one",
         "project.what_was_briefed_is_what_is_proven",

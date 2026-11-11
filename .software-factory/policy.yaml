@@ -726,6 +726,7 @@ gates:
     plan: "docs/design/a-project-is-brief-work-and-proof.md"
     required_assertions:
       - "project.the_three_phases_walk_as_one"
+      - "project.a_phase_with_its_own_core_mounts"
       - "project.what_was_briefed_is_what_is_proven"
       - "project.a_declared_absent_phase_says_why_at_the_status"
       - "project.a_packaged_workflow_declares_its_phases"
@@ -1256,6 +1257,13 @@ rules:
     enabled: true
   # L6 — Something scans the code for known-insecure patterns
   L6.INSECURE_PATTERNS_ARE_SCANNED:
+    enabled: true
+  # L5 — An evidence fixture reads the core's version, never writes one
+  L5.A_FIXTURE_READS_THE_CORE_VERSION:
+    enabled: true
+  # L0 — What the core marks a value with, every copy of the core can read
+  # (packages/core/tests/two-copies.test.ts is the behaviour; this is the line)
+  L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS:
     enabled: true
   # L6 — A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md)
   L6.A_PUSH_NEVER_FORCES:
