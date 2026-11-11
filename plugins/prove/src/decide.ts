@@ -72,6 +72,8 @@ export type Effect =
   | { type: "renew" }
   | { type: "prepare" }
   | { type: "run-step"; step: string }
+  /** An agent step, its own action so the budget counts it and only it as spending the agent. */
+  | { type: "run-agent-step"; step: string }
   | { type: "ask"; step?: string; fixture?: string; question: string; deadlineMs: number }
   | { type: "give-up" }
   | { type: "finish"; outcome: "proven" | "refused"; why: string };
@@ -165,7 +167,7 @@ export const decide = {
     // A wait-until's first check is a look like its later ones: what costs an
     // attempt is a step that acts, not one that reads until the world agrees.
     if (step.kind === "wait-until") return act(`check \`${step.id}\``, { attempt: false }, { type: "run-step", step: step.id });
-    return act(`run \`${step.id}\``, { type: "run-step", step: step.id });
+    return act(`run \`${step.id}\``, { type: step.kind === "agent" ? "run-agent-step" : "run-step", step: step.id });
   },
 
   ASKING: (record, observation, policy) => {

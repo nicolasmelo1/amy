@@ -620,8 +620,9 @@ function callSite(
     ...ctx,
     config: settings.config,
     // A callee's store lists its own records under each of its caller's, one call deeper.
-    port: (kind) => scoped(bound(kind), ctx.port(bound(kind))),
-    ...(ctx.workflowPort ? { workflowPort: (kind: string) => scoped(bound(kind), ctx.workflowPort!(bound(kind))) } : {}),
+    // Scoped by the name the callee asks for, whatever its call binds that to.
+    port: (kind) => scoped(kind, ctx.port(bound(kind))),
+    ...(ctx.workflowPort ? { workflowPort: (kind: string) => scoped(kind, ctx.workflowPort!(bound(kind))) } : {}),
     // A callee's checkouts answer through the same workplace, and a refusal
     // there names the call's workflow — the one whose work stopped — rather
     // than the caller this context was spread from. A deeper call's name is

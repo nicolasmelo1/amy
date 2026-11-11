@@ -64,7 +64,7 @@ describe("a human step", () => {
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
 
     expect(outcome.mounted.ports.has("tracker")).toBe(false);
-    expect(Object.keys(outcome.mounted.workflow!.catalogue ?? {}).sort()).toEqual(["ask", "finish", "give-up", "lease", "prepare", "renew", "run-step"]);
+    expect(Object.keys(outcome.mounted.workflow!.catalogue ?? {}).sort()).toEqual(["ask", "finish", "give-up", "lease", "prepare", "renew", "run-agent-step", "run-step"]);
     expect(unmetNeeds(outcome.mounted, outcome.mounted.workflow as Workflow<never, never>)).toEqual([]);
   });
 

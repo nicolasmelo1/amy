@@ -4,6 +4,7 @@ import {
   WORKFLOW_RUNTIME,
   Workflow,
   WorkflowRuntime,
+  actionsOf,
   call,
   defineWorkflow,
   implementationOf,
@@ -13,6 +14,7 @@ import {
   unmetNeeds,
   withDiagram,
 } from "@amykit/core";
+import { decide } from "../src/decide.js";
 import { ProveWorld, prove } from "./world.js";
 
 /** What the serial engine reads to tell an action that spends the agent from one that does not. */
@@ -32,21 +34,40 @@ const project: Plugin = withDiagram(defineWorkflow({
 }), "stateDiagram-v2\n[*] --> PROVE\nPROVE --> DONE: PROVEN\nPROVE --> DONE: refused\nDONE --> [*]\nclass PROVE call\n");
 
 describe("a proof's agent step and the budget", () => {
-  it("spends the agent standing alone: `run-step` reaches the agent port, and the bookkeeping steps do not", async () => {
-    const { runtime } = await new ProveWorld({}, {}).mounted();
+  it("plans an agent step as `run-agent-step`, and a deterministic or wait-until step as `run-step`", () => {
+    const scenario = {
+      name: "s", resources: [], fixtures: [], assertions: [],
+      steps: [
+        { id: "open", kind: "deterministic", operation: "bank.open", input: {} },
+        { id: "look", kind: "agent", prompt: "find the refund" },
+      ],
+    };
+    const policy = { leaseTtlMs: 1, seatRetryMs: 1, askEveryMs: 1, fixtureDeadlineMs: 1, resources: {}, fixtures: {} };
+    const observation = { unit: "TBO-1", problems: [], briefRevision: 1, lost: [], now: "2026-09-03T12:00:00.000Z" };
+    const running = (results: Record<string, unknown>) =>
+      ({ id: "TBO-1", state: "RUNNING", updatedAt: "", attempts: {}, history: [], scenario, prepared: true, held: [], results }) as never;
 
-    expect(reached(runtime, "run-step")).toBe("agent");
-    expect(["lease", "renew", "prepare", "ask", "finish", "give-up"].map((action) => reached(runtime, action))).not.toContain("agent");
+    expect(actionsOf(decide.RUNNING!(running({}), observation as never, policy as never)).map((one) => one.type)).toEqual(["run-step"]);
+    expect(actionsOf(decide.RUNNING!(running({ open: { status: "done", output: {} } }), observation as never, policy as never)).map((one) => one.type)).toEqual(["run-agent-step"]);
   });
 
-  it("spends the agent called as a phase: the project's composed `run-step` still reaches it", async () => {
+
+  it("spends the agent standing alone: an agent step reaches the agent port, and a deterministic step or the bookkeeping does not", async () => {
+    const { runtime } = await new ProveWorld({}, {}).mounted();
+
+    expect(reached(runtime, "run-agent-step")).toBe("agent");
+    expect(["run-step", "lease", "renew", "prepare", "ask", "finish", "give-up"].map((action) => reached(runtime, action))).not.toContain("agent");
+  });
+
+  it("spends the agent called as a phase: the project's composed agent step still reaches it, its deterministic one does not", async () => {
     const world = new ProveWorld({}, {});
     const outcome = await mount([project, ...world.ports()], {}, world.host());
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const workflow = outcome.mounted.workflow as unknown as Workflow;
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime;
 
-    expect(reached(runtime, "run-step")).toBe("agent");
+    expect(reached(runtime, "run-agent-step")).toBe("agent");
+    expect(reached(runtime, "run-step")).not.toBe("agent");
     expect(unmetNeeds(outcome.mounted, outcome.mounted.workflow!)).toEqual([]);
   });
 
