@@ -13,6 +13,9 @@ export default defineConfig({
     // fast-check runs from a fixed seed, so a property a plan cites is
     // deterministic. See CONTRIBUTING.md, on `property:` proofs.
     setupFiles: ["scripts/git.setup.ts", "scripts/properties.setup.ts"],
+    // Every temporary directory a test makes lands in one per run, removed
+    // when the run ends. See scripts/tmp.setup.ts.
+    globalSetup: ["scripts/tmp.setup.ts"],
 
     // Named explicitly, or the default pattern walks
     // `.software-factory/mutations` as well, where the repositories are
