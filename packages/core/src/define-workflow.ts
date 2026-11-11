@@ -19,7 +19,10 @@ import { ActionContext, ActionImplementation, FoundWork, ProgressPolicy } from "
 import { WORKFLOW_RUNTIME } from "./runtime.js";
 import type { BriefRecord } from "./ports/Brief.js";
 
-const PORT_NEED = Symbol("workflow-port-need");
+// Registered, not local: a project's phase is declared with the core its own
+// package resolves, and the CLI that mounts it reads the need with its own
+// copy. A local symbol is one key per copy, so the need read as undefined.
+const PORT_NEED = Symbol.for("@amykit/core/workflow-port-need");
 
 export interface PortNeed<T, Optional extends boolean = false> {
   readonly [PORT_NEED]: { readonly type: T; readonly optional: Optional; readonly requires?: readonly string[] };

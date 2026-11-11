@@ -91,7 +91,10 @@ export interface StreamEvent<Name extends string = string, Data = unknown> {
   readonly data: Data;
 }
 
-const FAILURE: unique symbol = Symbol("amy.operation.failure");
+// Registered, not local: a plugin answers with the core its own package
+// resolves, and the host checks the answer with its copy. A local symbol would
+// read a declared failure from another copy as an output.
+const FAILURE: unique symbol = Symbol.for("@amykit/core/operation-failure");
 
 /** A declared error, as a handler returns it. Made with `fail`. */
 export interface Failure {

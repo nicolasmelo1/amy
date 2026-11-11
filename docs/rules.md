@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**68 rules shipped**, 57 enabled here, 11 switched off, 57 carrying a mutation fixture, 1 violations frozen.
+**69 rules shipped**, 58 enabled here, 11 switched off, 58 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,7 +19,7 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 19 | 17 |
+| **L0** | Shape | where things live | 20 | 18 |
 | **L1** | Grain | how the code reads | 7 | 6 |
 | **L2** | Contract | no drift from the source of truth | 9 | 8 |
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
@@ -150,6 +150,16 @@ The `Agent` interface in packages/core/src declares one member, `ask`, and exten
 **Why.** The agent port is the one every workflow shares. A method named for a step (triage, implement, review) carries that step's inputs, its prompt and its side effects into every workflow that mounts an agent, which is how one workflow's lifecycle ended up in the contract of all of them. A prompt, a directory and a context in, an answer and its cost out, is the whole of what an agent does; what a step does around that call is the workflow's.
 
 **Fix.** Do not add the method to the port. Build the step on `ask` in the workflow, or as a helper in packages/agent-kit that takes the agent as an argument (see `implementStep` and `judgeStep`). The decision and its reasons are in docs/design/an-agent-only-answers.md.
+
+### L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS
+
+**What the core marks a value with, every copy of the core can read**
+
+The core and the agent kit create no local symbol: every symbol they mark a value with is registered, `Symbol.for("@amykit/<package>/<name>")`.
+
+**Why.** An install always holds more than one copy of the core — the CLI's own, the plugins root's, and whatever a project's phase folder resolves from its own node_modules — and a value one copy marked is read by another. A local symbol is a different key in every copy, so the mark reads as absent: 0.7.0 shipped the port need and the operation failure as local symbols, and no project with a `prove/` phase could mount, while a plugin's declared failure was answered as an internal error. Nothing inside one repository ever sees two copies, so no test written against one catches it; this line is the only place the mistake is visible.
+
+**Fix.** Register the symbol under the package's name: `Symbol.for("@amykit/core/<what-it-marks>")`. A sentinel that never leaves the function that made it is not a mark — use a plain object or `undefined` instead of a symbol. packages/core/tests/two-copies.test.ts runs the core against a second copy of itself; extend it when a new mark is added.
 
 ### L0.THE_CORE_NAMES_NO_VENDOR
 
