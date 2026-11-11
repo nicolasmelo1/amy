@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // shape.
 export default defineConfig({
   test: {
-    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "examples/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts"],
+    include: ["packages/*/tests/**/*.test.ts", "plugins/*/tests/**/*.test.ts", "examples/*/tests/**/*.test.ts", "scripts/docs/tests/**/*.test.ts", "scripts/plans/tests/**/*.test.ts", "scripts/tests/**/*.test.ts"],
     // fast-check runs from a fixed seed, so a property a plan cites is
     // deterministic. See CONTRIBUTING.md, on `property:` proofs.
     setupFiles: ["scripts/git.setup.ts", "scripts/properties.setup.ts"],
