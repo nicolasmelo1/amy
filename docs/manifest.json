@@ -335,6 +335,11 @@
           "description": ""
         },
         {
+          "title": "A plugin's command is a command too",
+          "path": "/design/a-plugin-command-is-a-command-too",
+          "description": ""
+        },
+        {
           "title": "A private workflow composes the shipped one",
           "path": "/design/a-private-workflow-composes-the-shipped-one",
           "description": ""
@@ -1921,6 +1926,17 @@
       "file": "docs/design/a-plugin-brings-operations-not-commands.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-plugin-brings-operations-not-commands.md",
       "title": "A plugin brings operations, not commands",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-plugin-command-is-a-command-too",
+      "file": "docs/design/a-plugin-command-is-a-command-too.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-plugin-command-is-a-command-too.md",
+      "title": "A plugin's command is a command too",
       "description": "",
       "group": "",
       "order": 999,

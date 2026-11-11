@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import yaml from "yaml";
 import { cliFactsOf } from "./docs/sources/cli.js";
 import { authoredProblems } from "./plans/authored.js";
+import { COMMAND_SOURCES, COMMAND_SPELLING, commandsOf, operationsOf } from "./plans/contributed.js";
 import { heldProblems } from "./plans/held.js";
 import { readChange } from "./plans/history.js";
 
@@ -76,9 +77,15 @@ if (problems.length > 0) {
 const change = readChange(repo);
 const held = heldProblems(change);
 const cli = cliFactsOf(change.atBase("packages/cli/src/index.ts") ?? "", { required: true });
+// The commands the repository's operations bring, read out of their sources
+// at the base rather than any machine's mounts: a plan is about the
+// repository, not one machine's config.
+const operations = operationsOf(change.grepBase(COMMAND_SPELLING, COMMAND_SOURCES), change.atBase);
 const authored = held.groomed.flatMap((name) => {
   const plan = [`plans/${name}`, `docs/design/${name}`].find((one) => fs.existsSync(file(one)));
-  return plan ? authoredProblems({ file: plan, text: fs.readFileSync(file(plan), "utf8"), baseFiles: change.baseFiles, cli }) : [];
+  if (!plan) return [];
+  const text = fs.readFileSync(file(plan), "utf8");
+  return authoredProblems({ file: plan, text, baseFiles: change.baseFiles, cli: { ...cli, commands: [...cli.commands, ...commandsOf(operations, text)] } });
 });
 
 if (held.problems.length > 0 || authored.length > 0) {

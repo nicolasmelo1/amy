@@ -250,7 +250,9 @@ again, from main. Why: [a plan is held to what it said](docs/design/a-plan-is-he
 base too: its `touches` are exact paths, never `**` and never twice; each
 proof's file exists there or is touched; and every command named in
 backticks, `` `amy workflow add ./w --into mine` ``, is one the CLI declares
-there, options included, unless one of its criteria builds it.
+there, or one an operation anywhere in the repository spells, mounted or
+not, its input's fields the options, unless one of its criteria builds it.
+A plugin's operation counts because [a plugin's command is a command too](docs/design/a-plugin-command-is-a-command-too.md).
 `npm run check:plans` reads the change against `origin/main`, else `main`
 (`PLANS_BASE` names another ref), with the working tree as one more commit.
 

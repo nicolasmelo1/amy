@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import type { CliFacts } from "../../docs/lib/facts.js";
 import { cliFactsOf } from "../../docs/sources/cli.js";
+import { commandsOf, operationsOf } from "../contributed.js";
 import { authoredProblems } from "../authored.js";
 
 const option = (flags: string) => ({ flags, description: "", default: undefined });
@@ -156,5 +159,22 @@ describe("the commands a groomed plan names", () => {
 
   it("pass a command one of the plan's criteria builds", () => {
     expect(judge(plan({ statement: "`amy setup` walks the machine", body: "Then `amy setup`." }))).toEqual([]);
+  });
+
+  it("pass a command a plugin's operation declares, and refuse an option it does not", () => {
+    // The operations the repository spells, read out of their sources as they
+    // stand at the base of this change, the way check:plans reads them.
+    const repo = path.resolve(import.meta.dirname, "../../..");
+    const contributed = (text: string) =>
+      commandsOf(
+        operationsOf(["plugins/prove/src/operations.ts"], (file) => fs.readFileSync(path.join(repo, file), "utf8")),
+        text,
+      );
+    const withContributed = (body: string) =>
+      authoredProblems({ file: "plans/x.md", text: plan({ body }), baseFiles, cli: { ...cli, commands: [...cli.commands, ...contributed(body)] } });
+    expect(withContributed("`amy prove show TBO-12 --revision 3` names what the prove operation declares.")).toEqual([]);
+    expect(withContributed("`amy prove show TBO-12 --revison 3` names what it does not.")).toEqual([
+      expect.stringMatching(/names `amy prove show TBO-12 --revison 3`, and amy prove show declares no --revison/),
+    ]);
   });
 });
