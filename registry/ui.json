@@ -35,7 +35,7 @@
       "path": "packages/ui/package.json",
       "type": "registry:file",
       "target": "forks/ui/package.json",
-      "content": "{\n  \"name\": \"@amykit/ui\",\n  \"version\": \"0.7.0\",\n  \"description\": \"A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/ui\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    },\n    \"./jsx-runtime\": {\n      \"types\": \"./dist/jsx-runtime.d.ts\",\n      \"import\": \"./dist/jsx-runtime.js\"\n    },\n    \"./jsx-dev-runtime\": {\n      \"types\": \"./dist/jsx-dev-runtime.d.ts\",\n      \"import\": \"./dist/jsx-dev-runtime.js\"\n    },\n    \"./frame\": {\n      \"types\": \"./dist/frame/index.d.ts\",\n      \"import\": \"./dist/frame/index.js\"\n    },\n    \"./frame.yaml\": \"./frame.yaml\",\n    \"./conformance/golden.json\": \"./conformance/golden.json\",\n    \"./conformance/config.yaml\": \"./conformance/config.yaml\"\n  },\n  \"files\": [\n    \"dist\",\n    \"frame.yaml\",\n    \"conformance\"\n  ]\n}\n"
+      "content": "{\n  \"name\": \"@amykit/ui\",\n  \"version\": \"0.7.1\",\n  \"description\": \"A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/ui\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    },\n    \"./jsx-runtime\": {\n      \"types\": \"./dist/jsx-runtime.d.ts\",\n      \"import\": \"./dist/jsx-runtime.js\"\n    },\n    \"./jsx-dev-runtime\": {\n      \"types\": \"./dist/jsx-dev-runtime.d.ts\",\n      \"import\": \"./dist/jsx-dev-runtime.js\"\n    },\n    \"./frame\": {\n      \"types\": \"./dist/frame/index.d.ts\",\n      \"import\": \"./dist/frame/index.js\"\n    },\n    \"./frame.yaml\": \"./frame.yaml\",\n    \"./conformance/golden.json\": \"./conformance/golden.json\",\n    \"./conformance/config.yaml\": \"./conformance/config.yaml\"\n  },\n  \"files\": [\n    \"dist\",\n    \"frame.yaml\",\n    \"conformance\"\n  ]\n}\n"
     },
     {
       "path": "packages/ui/src/diff.ts",
@@ -124,9 +124,9 @@
   ],
   "meta": {
     "package": "@amykit/ui",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "packages/ui",
-    "tag": "@amykit/ui@0.7.0"
+    "tag": "@amykit/ui@0.7.1"
   }
 }

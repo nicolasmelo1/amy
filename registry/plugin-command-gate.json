@@ -5,7 +5,7 @@
   "title": "@amykit/plugin-command-gate",
   "description": "A gate that runs the target repository's own commands.",
   "dependencies": [
-    "@amykit/core@^0.7.0"
+    "@amykit/core@^0.7.1"
   ],
   "devDependencies": [],
   "files": [
@@ -19,7 +19,7 @@
       "path": "plugins/command-gate/package.json",
       "type": "registry:file",
       "target": "forks/plugin-command-gate/package.json",
-      "content": "{\n  \"name\": \"@amykit/plugin-command-gate\",\n  \"version\": \"0.7.0\",\n  \"description\": \"A gate that runs the target repository's own commands.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/command-gate\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it with ticket-to-qa, which needs a gate port to decide whether a change is ready for review. It runs the target repository's own commands, listed per repository with a default fallback, and refuses a repository that has neither. With file-worktree mounted, the commands run in the work item's own checkout.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/plugin-command-gate\",\n  \"version\": \"0.7.1\",\n  \"description\": \"A gate that runs the target repository's own commands.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/command-gate\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it with ticket-to-qa, which needs a gate port to decide whether a change is ready for review. It runs the target repository's own commands, listed per repository with a default fallback, and refuses a repository that has neither. With file-worktree mounted, the commands run in the work item's own checkout.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.1\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
     },
     {
       "path": "plugins/command-gate/src/CommandGate.ts",
@@ -54,9 +54,9 @@
   ],
   "meta": {
     "package": "@amykit/plugin-command-gate",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "plugins/command-gate",
-    "tag": "@amykit/plugin-command-gate@0.7.0"
+    "tag": "@amykit/plugin-command-gate@0.7.1"
   }
 }

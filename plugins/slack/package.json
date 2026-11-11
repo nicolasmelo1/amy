@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-slack",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when you want to follow and answer amy from Slack. It mounts the conversation port: each piece of work gets a thread in one channel, and only the operator's replies count as answers. It can also hold amy's chat. It needs a bot token, read from the environment or a file."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.0"
+    "@amykit/core": "^0.7.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

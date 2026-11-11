@@ -5,7 +5,7 @@
   "title": "@amykit/plugin-terminal-conversation",
   "description": "The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.",
   "dependencies": [
-    "@amykit/core@^0.7.0"
+    "@amykit/core@^0.7.1"
   ],
   "devDependencies": [],
   "files": [
@@ -19,7 +19,7 @@
       "path": "plugins/terminal-conversation/package.json",
       "type": "registry:file",
       "target": "forks/plugin-terminal-conversation/package.json",
-      "content": "{\n  \"name\": \"@amykit/plugin-terminal-conversation\",\n  \"version\": \"0.7.0\",\n  \"description\": \"The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": {\n    \"url\": \"https://github.com/nicolasmelo1/amy/issues\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/terminal-conversation\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it when a workflow should ask its questions in the terminal amy runs in. It mounts the conversation port on stdin and stdout: an ask is printed, and the answer is a line or a number typed back. amy setup mounts it for the setup workflow, so the questions arrive where you typed the command.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/plugin-terminal-conversation\",\n  \"version\": \"0.7.1\",\n  \"description\": \"The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": {\n    \"url\": \"https://github.com/nicolasmelo1/amy/issues\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/terminal-conversation\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Use it when a workflow should ask its questions in the terminal amy runs in. It mounts the conversation port on stdin and stdout: an ask is printed, and the answer is a line or a number typed back. amy setup mounts it for the setup workflow, so the questions arrive where you typed the command.\"\n  },\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.1\"\n  }\n}\n"
     },
     {
       "path": "plugins/terminal-conversation/src/TerminalConversation.ts",
@@ -54,9 +54,9 @@
   ],
   "meta": {
     "package": "@amykit/plugin-terminal-conversation",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "plugins/terminal-conversation",
-    "tag": "@amykit/plugin-terminal-conversation@0.7.0"
+    "tag": "@amykit/plugin-terminal-conversation@0.7.1"
   }
 }
