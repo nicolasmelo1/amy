@@ -22,8 +22,10 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # A fork has neither the token nor any reason to open pull requests here.
-    if: github.repository == 'nicolasmelo1/amy'
+    # A fork has neither the token nor any reason to open pull requests here,
+    # and a run from another branch would carry that branch's commits into a
+    # refresh aimed at main.
+    if: github.repository == 'nicolasmelo1/amy' && github.ref == 'refs/heads/main'
     permissions:
       # Pushes the refresh branch, when AMY_BOT_TOKEN is not set.
       contents: write
@@ -77,7 +79,7 @@ jobs:
           GH_TOKEN: ${{ env.PUSH_TOKEN }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          branch="chore/contracts-refresh-$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}"
+          branch="chore/contracts-refresh-$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
