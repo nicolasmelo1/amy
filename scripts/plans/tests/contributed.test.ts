@@ -133,8 +133,50 @@ describe("an operation whose input is not an inline z.object", () => {
     expect(judge(unread, "`amy unread T-1 --anything y` and `amy spread --whatever`")).toEqual([]);
   });
 
-  it("counts two operations that spell the same words, and leaves their refusal to the mount", () => {
+  it("counts two operations that spell the same words as one command, and leaves their refusal to the mount", () => {
     const twice = [...unread, ...unread];
-    expect(commandsOf(twice, "")).toHaveLength(4);
+    expect(commandsOf(twice, "").map((one) => one.path.join(" "))).toEqual(["spread", "unread"]);
+  });
+});
+
+describe("a field that is a list", () => {
+  const spelled = [
+    'import { defineOperation } from "@amykit/core";',
+    'import { z } from "zod";',
+    "const listed = defineOperation({",
+    '  id: "x.listed",',
+    "  input: z.object({ enabled: z.boolean().array().optional() }),",
+    '  cli: { words: ["listed"] },',
+    "});",
+  ].join("\n");
+  const listed = operationsOf(["synthetic.ts"], () => spelled);
+
+  it("takes a value, and has no --no- form even when its elements are booleans", () => {
+    expect(listed[0]?.fields).toEqual([expect.objectContaining({ name: "enabled", kind: "array" })]);
+    expect(judge(listed, "`amy listed --enabled true`")).toEqual([]);
+    expect(judge(listed, "`amy listed --no-enabled`")).toEqual([expect.stringMatching(/amy listed declares no --no-enabled/)]);
+  });
+});
+
+describe("two operations that spell the same words with different fields", () => {
+  const spelled = [
+    'import { defineOperation } from "@amykit/core";',
+    'import { z } from "zod";',
+    "const first = defineOperation({",
+    '  id: "x.first",',
+    "  input: z.object({ first: z.string() }),",
+    '  cli: { words: ["shared"] },',
+    "});",
+    "const second = defineOperation({",
+    '  id: "x.second",',
+    "  input: z.object({ second: z.string() }),",
+    '  cli: { words: ["shared"] },',
+    "});",
+  ].join("\n");
+  const shared = operationsOf(["synthetic.ts"], () => spelled);
+
+  it("pass an option either declares, and refuse one neither does", () => {
+    expect(judge(shared, "`amy shared --first a` and `amy shared --second b`")).toEqual([]);
+    expect(judge(shared, "`amy shared --third c`")).toEqual([expect.stringMatching(/amy shared declares no --third/)]);
   });
 });

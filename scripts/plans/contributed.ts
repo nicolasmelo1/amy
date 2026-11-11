@@ -127,9 +127,12 @@ function zodCall(expression: ts.Expression, name: string): boolean {
 /** What a field's schema takes, read from the root of its zod chain. */
 function kindOf(chain: ts.CallExpression): ContributedField["kind"] {
   // `z.number().int().min(0)` is a method on the result of `z.number()`:
-  // the kind is the name of the innermost call, the one on the zod root.
+  // the kind is the name of the innermost call, the one on the zod root —
+  // unless the chain makes it a list on the way, `z.boolean().array()`,
+  // which the command line takes as a value, never as a `--no-` form.
   let call: ts.CallExpression = chain;
   while (ts.isCallExpression(call) && ts.isPropertyAccessExpression(call.expression) && ts.isCallExpression(call.expression.expression)) {
+    if (ts.isIdentifier(call.expression.name) && call.expression.name.text === "array") return "array";
     call = call.expression.expression;
   }
   const root = ts.isPropertyAccessExpression(call.expression) && ts.isIdentifier(call.expression.name) ? call.expression.name.text : "";
@@ -194,9 +197,21 @@ export function commandsOf(operations: readonly ContributedOperation[], text: st
       const path = operation.words.slice(0, depth);
       if (!commands.some((one) => same(one.path, path))) commands.push({ path, description: "", arguments: [], options: [], isDefault: false, hidden: false });
     }
-    commands.push(commandOf(operation, operation.fields === undefined ? spelled : []));
+    const command = commandOf(operation, operation.fields === undefined ? spelled : []);
+    const at = commands.findIndex((one) => same(one.path, command.path));
+    // Two operations that spell the same words count together, each option
+    // and argument of either: which one a mount keeps is the mount's call.
+    if (at === -1) commands.push(command);
+    else commands[at] = merged(commands[at]!, command);
   }
   return commands.sort((a, b) => a.path.join(" ").localeCompare(b.path.join(" ")));
+}
+
+/** Two declarations of the same words as one: every option and argument either declares. */
+function merged(one: CliCommand, other: CliCommand): CliCommand {
+  const options = [...one.options, ...other.options.filter((option) => !one.options.some((kept) => kept.flags === option.flags))];
+  const args = [...one.arguments, ...other.arguments.filter((arg) => !one.arguments.some((kept) => kept.name === arg.name))];
+  return { ...one, options, arguments: args, isDefault: one.isDefault || other.isDefault };
 }
 
 /** One operation as the CLI declares it: its positionals the arguments, its fields the flags. */
