@@ -42,7 +42,7 @@ export async function observe(scope: Scope, current: PlanRecord): Promise<Observ
   return {
     note,
     writable: scope.config.repos.includes(note.repo),
-    plansInFlight: inFlightFor(scope.ports.store, note.repo, unitOf(current)),
+    plansInFlight: inFlightFor(scope.ports.store, note.repo, current.id),
     now: scope.ctx.now(),
   };
 }

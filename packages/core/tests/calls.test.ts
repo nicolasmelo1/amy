@@ -28,6 +28,8 @@ import {
   unitOf,
   withDiagram,
 } from "../src/index.js";
+import { calledStore } from "../src/calls.js";
+import type { Store } from "../src/ports/Store.js";
 
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
@@ -465,6 +467,53 @@ describe("the smallest call", () => {
 
     expect(callPath(record).map((step) => `${step.id}@${step.state}`)).toEqual(["W-2@OPEN", "W-2/OPEN#1@OPENING"]);
     expect(record.calls!["W-2/OPEN#1"]!.input).toEqual({ branch: "amy/first" });
+  });
+
+  it("hands a called workflow a store of its own records under every root, never its caller's roots", async () => {
+    const seen: string[][] = [];
+    const counter = defineWorkflow({
+      name: "counter",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: { store: port<Store>() },
+      decide: { COUNTING: () => settled("counted"), COUNTED: () => settled("done") },
+      record: () => ({}),
+      observe: async (scope) => {
+        seen.push(scope.ports.store.all().map((record) => record.id));
+        return {};
+      },
+      actions: {},
+    });
+    const roots = new Map<string, WorkRecord>();
+    const store: Plugin = {
+      name: "store",
+      register: (registry) => registry.store({ load: (id) => roots.get(id) ?? null, save: (record) => void roots.set(record.id, record), all: () => [...roots.values()] }),
+    };
+    const shop = withDiagram(defineWorkflow({
+      name: "shop",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WORK: call(withDiagram(counter, "stateDiagram-v2\n[*] --> COUNTING\nCOUNTING --> COUNTED\nCOUNTED --> [*]\n")) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: COUNTED\nDONE --> [*]\nclass WORK call\n");
+    const { runtime } = await mounted([shop, store]);
+    for (const id of ["SHOP-1", "SHOP-2"]) roots.set(id, runtime.newRecord(id, HOST.now()));
+
+    await runtime.observe(roots.get("SHOP-1")!);
+
+    expect(seen).toEqual([["SHOP-1/WORK#1", "SHOP-2/WORK#1"]]);
+  });
+
+  it("refuses a called workflow saving through its store: its records are saved with its caller's", () => {
+    const view = calledStore({ load: () => null, save: () => {}, all: () => [] }, "WORK");
+
+    expect(() => view.save({ id: "SHOP-1/WORK#1", state: "COUNTING", updatedAt: "", attempts: {}, history: [] })).toThrow(
+      "SHOP-1/WORK#1 is a called record: it is saved with its caller's, never on its own",
+    );
   });
 
   it("names the unit a called record is for at any depth, the id it was called under being the run's", async () => {

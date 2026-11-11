@@ -326,7 +326,11 @@ code-host and conversation calls, the same plans and the same end.
 A called phase registers nothing, so its own actions reach the mount through
 its declaration's `catalogue`, carried on the composed workflow. A handler
 under a core action's name implements the core's action: one in a workflow
-that does not need that action's port is refused at boot, naming both.
+that does not need that action's port is refused at boot, naming both. A catalogue
+entry is also the port its handler says it reaches, so one on the agent is
+counted by the budget through every call. A called workflow's store lists
+its own records under each of its caller's, so a limit it keeps counts its
+called peers as it counts roots.
 
 ## The files
 

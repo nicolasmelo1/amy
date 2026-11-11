@@ -8,9 +8,10 @@ import { PluginCheck, PluginFile, PluginSetup } from "./commands.js";
 import { DeclaredOperation, OPERATIONS_COLLECTION, MountedOperation } from "./operation.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, ValueFor, validateConfig } from "./config-schema.js";
-import { Call, CallSite, ForkSite, Signature, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
+import { Call, CallSite, ForkSite, Signature, calledStore, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
+import type { Store } from "./ports/Store.js";
 import { BranchLeases, FileLeases } from "./leases.js";
-import { PortLookup } from "./dispatch.js";
+import { PortLookup, reaching } from "./dispatch.js";
 import { deferred } from "./deferred.js";
 import { Plugin, PluginContext, Registry, Workflow, ProjectPhases } from "./plugin.js";
 import { WorkflowRuntime } from "./runtime.js";
@@ -614,11 +615,13 @@ function callSite(
   const settings = validateConfig(at, declaration.configSchema, binding.binding.config);
   if (!settings.ok) throw new Error(settings.problems.join("; "));
   const bound = (kind: string): string => binding.binding.ports?.[kind] ?? kind;
+  const scoped = <T>(kind: string, port: T): T => (kind === "store" && port ? calledStore(port as unknown as Store, state) as unknown as T : port);
   const calleeCtx: PluginContext | undefined = ctx && {
     ...ctx,
     config: settings.config,
-    port: (kind) => ctx.port(bound(kind)),
-    ...(ctx.workflowPort ? { workflowPort: (kind: string) => ctx.workflowPort!(bound(kind)) } : {}),
+    // A callee's store lists its own records under each of its caller's, one call deeper.
+    port: (kind) => scoped(bound(kind), ctx.port(bound(kind))),
+    ...(ctx.workflowPort ? { workflowPort: (kind: string) => scoped(bound(kind), ctx.workflowPort!(bound(kind))) } : {}),
     // A callee's checkouts answer through the same workplace, and a refusal
     // there names the call's workflow — the one whose work stopped — rather
     // than the caller this context was spread from. A deeper call's name is
@@ -1028,12 +1031,14 @@ function runtimeFromPieces<S extends ConfigSchema, P extends object, N extends N
   const actions = Object.create(null) as Record<string, ActionImplementation<R, O>>;
   const declared = typeof declaration.actions === "function" ? declaration.actions(scope) : declaration.actions;
   for (const [name, implementation] of Object.entries(declared)) {
+    // A handler says the port its catalogue entry names, so the budget counts
+    // one catalogued on the agent as spending it, through every call.
     actions[name] = typeof implementation === "function"
-      ? (effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(
+      ? reaching<ActionImplementation<R, O>>((effect, work) => (implementation as WorkflowAction<S, P, N, R, O>)(
         { ...scope, ...actionPorts(scope.ports, work, scope.ctx.log, scope.ctx.now, operationsOf(scope.ctx)) },
         work,
         effect,
-      )
+      ), declaration.catalogue?.[name])
       : implementation;
   }
   const progress = typeof declaration.progress === "function" ? declaration.progress(scope) : declaration.progress;

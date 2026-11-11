@@ -11,6 +11,7 @@ import { ActionSpec } from "./actions.js";
 import { BranchLeases, LeaseHeld, runningLane } from "./leases.js";
 import { ActionContext, ActionImplementation, WorkflowRuntime } from "./runtime.js";
 import { Workflow } from "./plugin.js";
+import { Store } from "./ports/Store.js";
 import { Worktree } from "./ports/Worktree.js";
 import { Action, Lane, Moved, Plan, WorkRecord, applyPlan, looksIn, movedBy } from "./work.js";
 
@@ -208,6 +209,25 @@ export function callStanding(workflow: Workflow, record: WorkRecord): { readonly
 export function enterCall(record: WorkRecord, site: CallSite, now: Date): WorkRecord {
   const child = newChild(record, site, now);
   return { ...record, calls: { ...record.calls, [child.id]: child }, calling: child.id };
+}
+
+/**
+ * The store a called workflow is handed: the records of that workflow under
+ * every record its caller's store lists, the ones in calls at `state`. A
+ * callee counting its peers, against a limit of its own, counts the same
+ * thing called as standing alone. Its records are saved with its caller's,
+ * never by it.
+ */
+export function calledStore(store: Store, state: string): Store {
+  const all = (): WorkRecord[] => store.all().flatMap((record) =>
+    Object.values(record.calls ?? {}).filter((child) => child.id.match(CALL_PART)?.[0].slice(1).split("#")[0] === state));
+  return {
+    all,
+    load: (workId) => all().find((record) => record.id === workId) ?? null,
+    save: (record) => {
+      throw new Error(`${record.id} is a called record: it is saved with its caller's, never on its own`);
+    },
+  };
 }
 
 /** One call's own part of a record id: `/<STATE>#<n>`, the way `newChild` writes it. */

@@ -471,11 +471,12 @@ export const plugin = defineWorkflow({
   },
   operations: proofOperations,
   // Its own actions, catalogued here so a project calling it as a phase
-  // mounts them: none spends an agent the core counts or writes a tracker,
-  // and the notifier is the one port each run of them is sure to have.
-  catalogue: Object.fromEntries(
-    ["lease", "renew", "prepare", "run-step", "ask", "finish", "give-up"].map((name) => [name, { port: "notifier", method: "announce" }]),
-  ),
+  // mounts them. An agent step spends the agent, so the budget counts
+  // `run-step`; the rest write no tracker, on the notifier every run has.
+  catalogue: {
+    ...Object.fromEntries(["lease", "renew", "prepare", "ask", "finish", "give-up"].map((name) => [name, { port: "notifier", method: "announce" }])),
+    "run-step": { port: "agent", method: "ask" },
+  },
   record: () => ({}),
   discover: async () => [],
   observe,

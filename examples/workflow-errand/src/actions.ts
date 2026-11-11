@@ -38,7 +38,7 @@ export async function observe(scope: Scope, current: ErrandRecord): Promise<Obse
   return {
     task,
     workable: scope.config.repos.includes(task.repo),
-    inFlight: inFlightExcept(scope.ports.store, unitOf(current)),
+    inFlight: inFlightExcept(scope.ports.store, current.id),
     now: scope.ctx.now(),
   };
 }
