@@ -5,14 +5,14 @@
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
       "publisher": "GitHub — the public GraphQL schema for github.com",
-      "sha256": "ab960644266c5bab249dd4e6c1e56b6b8631c2b0c68b96e5b8d7c30d391e120b"
+      "sha256": "e77f0dc544b72bf889d62636f127cf4ce91c64056f648c95e26907253919467c"
     },
     {
       "name": "github-rest",
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
       "publisher": "GitHub — the OpenAPI description of the github.com REST API",
-      "sha256": "ec167bc179f6dc75f4f4933d0bc8e5b64aadfc8691094ad9b0cdf54b4ada37b9"
+      "sha256": "3e056802680135531a5b8b6c8b3fd35e4e0c9705a6130e128c655e01ed9a8d1e"
     },
     {
       "name": "linear-graphql",
