@@ -271,19 +271,24 @@ async function update(): Promise<void> {
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-/** Whether today's reference page derives to the vendored Bot API contract. */
-async function botApiProblems(): Promise<string[]> {
-  const botApi = await botApiContract();
-  const vendored = path.join(directory, BOT_API.file);
-  if (fs.existsSync(vendored) && fs.readFileSync(vendored, "utf8") === botApi) return [];
-  const now = (JSON.parse(botApi) as { version: string }).version;
-  return [`${BOT_API.name} moved: ${BOT_API.url} now describes Bot API ${now} differently from the vendored derivation`];
-}
-
 /** What the vendored set says against its sources: a move is tolerated inside the window, a problem never. */
 interface Findings {
   moved: string[];
   problems: string[];
+}
+
+/** A vendored file that is gone or no longer the bytes its manifest recorded: edited here, never a publisher's move. */
+function tampered(file: string, bytes: Buffer | undefined, recorded: string | undefined): string | undefined {
+  if (bytes === undefined) return `${file} is missing`;
+  if (sha256(bytes) !== recorded) return `${file} is not the copy its manifest recorded; run \`npm run contracts:update\` rather than editing it`;
+  return undefined;
+}
+
+function vendoredBytes(file: string, gzip?: boolean): Buffer | undefined {
+  const at = path.join(directory, file);
+  if (!fs.existsSync(at)) return undefined;
+  const stored = fs.readFileSync(at);
+  return gzip ? gunzipSync(stored) : stored;
 }
 
 async function documentFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
@@ -292,32 +297,47 @@ async function documentFindings(manifest: ContractsManifest, found: Findings): P
     if (recorded?.url !== document.url || recorded?.file !== document.file) {
       found.problems.push(`${document.name} is recorded from somewhere other than ${document.url}`);
     }
-    const stored = fs.readFileSync(path.join(directory, document.file));
-    const vendored = document.gzip ? gunzipSync(stored) : stored;
+    const problem = tampered(document.file, vendoredBytes(document.file, document.gzip), recorded?.sha256);
+    if (problem) {
+      found.problems.push(problem);
+      continue;
+    }
     const served = await published(document);
-    if (sha256(served.body) !== sha256(vendored)) {
+    if (sha256(served.body) !== recorded?.sha256) {
       found.moved.push(`${document.name} moved: ${document.url} no longer serves the vendored copy (${served.servedAs || "no cache headers"})`);
     }
   }
 }
 
-async function ghFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
-  const latest = await latestGh();
-  if (latest !== manifest.gh.version) {
-    found.moved.push(`gh moved: ${latest} is the latest release, and the vendored contract is ${manifest.gh.version}'s`);
+/** The Bot API derivation: the vendored file is checked against its manifest, and only today's page is a move. */
+async function botApiFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
+  const problem = tampered(BOT_API.file, vendoredBytes(BOT_API.file), manifest.derived?.[0]?.sha256);
+  if (problem) {
+    found.problems.push(problem);
     return;
   }
-  const gh = await ghContract(latest);
+  const botApi = await botApiContract();
+  if (sha256(botApi) === manifest.derived?.[0]?.sha256) return;
+  const now = (JSON.parse(botApi) as { version: string }).version;
+  found.moved.push(`${BOT_API.name} moved: ${BOT_API.url} now describes Bot API ${now} differently from the vendored derivation`);
+}
+
+/** gh's files are always what the pinned release prints; only a newer release is a move. */
+async function ghFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
+  const pinned = manifest.gh.version;
+  const gh = await ghContract(pinned);
   for (const [part, file] of GH_PARTS) {
-    if (fs.readFileSync(path.join(directory, file), "utf8") !== gh[part]) found.problems.push(`${file} is not what gh ${latest} prints`);
+    if (vendoredBytes(file)?.toString("utf8") !== gh[part]) found.problems.push(`${file} is not what gh ${pinned} prints`);
   }
+  const latest = await latestGh();
+  if (latest !== pinned) found.moved.push(`gh moved: ${latest} is the latest release, and the vendored contract is ${pinned}'s`);
 }
 
 async function check(): Promise<void> {
   const manifest: ContractsManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   const found: Findings = { moved: [], problems: [] };
   await documentFindings(manifest, found);
-  found.moved.push(...(await botApiProblems()));
+  await botApiFindings(manifest, found);
   await ghFindings(manifest, found);
 
   const window = withinWindow(manifest.vendoredAt, new Date());

@@ -53,16 +53,17 @@ jobs:
         run: npm run contracts:update
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      # The manifest's date moves on every update; only a contract file that
-      # changed is a refresh worth a pull request.
+      # The manifest's date moves on every update; any other change, a
+      # contract file or a pin such as gh's version, is a refresh worth a pull
+      # request.
       - name: Whether any contract moved
         id: moved
         run: |
-          if git diff --quiet -- packages/test-fixtures/contracts ':!packages/test-fixtures/contracts/manifest.json'; then
-            echo "moved=false" >> "$GITHUB_OUTPUT"
-          else
+          if git diff -U0 -- packages/test-fixtures/contracts | grep -E '^[-+][^-+]' | grep -qv '"vendoredAt"'; then
             echo "moved=true" >> "$GITHUB_OUTPUT"
             git diff --stat -- packages/test-fixtures/contracts
+          else
+            echo "moved=false" >> "$GITHUB_OUTPUT"
           fi
       - name: The suite against the new contracts
         if: steps.moved.outputs.moved == 'true'
