@@ -853,10 +853,11 @@ function agreed(bindings: readonly (ActionSpec | undefined)[]): ActionSpec | und
 /** The caller's own action, handed its own world while the record waits in a fork. */
 function ownInAFork(own: WorkflowRuntime, name: string, port: PortLookup, forks: ReadonlyMap<string, ForkSite>): ActionImplementation {
   const implementation = implementationOf(own, name)!;
-  return async (action: Action, context: ActionContext) => {
+  // Wrapped, it still says the port it reaches: the budget reads that.
+  return reaching(async (action: Action, context: ActionContext) => {
     const observation = forks.has(context.record.state) ? ownObservation(context.observation) : context.observation;
     await runAction(implementation, action, { ...context, observation }, port);
-  };
+  }, declaredBinding(implementation));
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   port,
   runAction,
   settled,
+  portReachedBy,
   unitOf,
   withDiagram,
 } from "../src/index.js";
@@ -545,6 +546,48 @@ describe("the smallest call", () => {
     await runtime.observe(roots.get("SHOP-1")!);
 
     expect(seen).toEqual([["SHOP-1/WORK#1", "SHOP-2/WORK#1"]]);
+  });
+
+  it("keeps a workflow's own agent action counted as spending the agent when it draws a fork, standing alone and called", async () => {
+    const lane = withDiagram(defineWorkflow({
+      name: "lane",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { WORKING: () => advance("DONE", "worked"), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORKING\nWORKING --> DONE\nDONE --> [*]\n");
+    const forker = withDiagram(defineWorkflow({
+      name: "forker",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: { agent: port<object>() },
+      catalogue: { draft: { port: "agent", method: "ask" } },
+      calls: { A: call(lane), B: call(lane) },
+      decide: { PLANNED: () => advance("split", "planned", { type: "draft" }), merge: () => advance("FINISHED", "met"), FINISHED: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: { draft: async () => {} },
+    }), "stateDiagram-v2\n    state split <<fork>>\n    state merge <<join>>\n    [*] --> PLANNED\n    PLANNED --> split\n    split --> A\n    split --> B\n    A --> merge: DONE\n    B --> merge: DONE\n    merge --> FINISHED\n    FINISHED --> [*]\n    class A, B call\n");
+    const caller = withDiagram(defineWorkflow({
+      name: "caller",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WORK: call(forker) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: FINISHED\nDONE --> [*]\nclass WORK call\n");
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: async () => ({ text: "", run: {} }) }) };
+
+    for (const root of [forker, caller]) {
+      const { runtime } = await mounted([root, agent]);
+      expect(portReachedBy(implementationOf(runtime, "draft"))).toBe("agent");
+    }
   });
 
   it("refuses a called workflow saving through its store: its records are saved with its caller's", () => {
