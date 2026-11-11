@@ -108,6 +108,7 @@ export class ProveWorld {
     };
     const notifier: Notifier = { announce: async ({ text, kind }) => { this.said.push({ text, ...(kind ? { kind } : {}) }); } };
     const conversation: Conversation = {
+      known: async (workId) => ({ id: `thread-${workId}` }),
       open: async (workId) => ({ id: `thread-${workId}` }),
       post: async (thread, message) => { this.posted.push({ thread: thread.id, text: message.text }); return "ts"; },
       replies: async (thread, since) => (this.replies.get(thread.id) ?? []).filter((one) => one.at >= since),

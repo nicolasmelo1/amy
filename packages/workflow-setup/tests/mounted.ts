@@ -64,6 +64,10 @@ export class ScriptedConversation implements Conversation {
     this.lines.push(line);
   }
 
+  async known(workId: string): Promise<ThreadRef> {
+    return { id: `thread-${workId}` };
+  }
+
   async open(workId: string, _title: string): Promise<ThreadRef> {
     return { id: `thread-${workId}` };
   }

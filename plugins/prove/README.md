@@ -47,7 +47,7 @@ Its settings below are set per call site, with `config` on the binding.
 | `ASKING` | waiting |
 | `PROVEN` | terminal |
 
-It emits `ask`, `escalate`, `finish`, `lease`, `prepare`, `renew` and `run-step`.
+It emits `ask`, `finish`, `give-up`, `lease`, `prepare`, `renew` and `run-step`.
 
 ## Configuration
 

@@ -1,4 +1,4 @@
-import { Announcement, Conversation, Notifier } from "@amykit/core";
+import { Announcement, Conversation, Notifier, unitOf } from "@amykit/core";
 
 export interface Channel {
   name: string;
@@ -27,7 +27,10 @@ export class FanOutNotifier implements Notifier {
 
   async announce(announcement: Announcement): Promise<void> {
     if (this.conversation) {
-      const thread = await this.conversation.open(announcement.workId, announcement.workId);
+      // The unit's thread, whichever phase speaks: one a workflow opened
+      // keeps the title it gave it, and only a unit with none is opened here.
+      const unit = unitOf({ id: announcement.workId });
+      const thread = (await this.conversation.known(unit)) ?? (await this.conversation.open(unit, unit));
       await this.conversation.post(thread, { text: announcement.text });
       return;
     }

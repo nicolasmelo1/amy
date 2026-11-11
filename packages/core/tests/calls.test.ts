@@ -25,6 +25,7 @@ import {
   port,
   runAction,
   settled,
+  unitOf,
   withDiagram,
 } from "../src/index.js";
 
@@ -464,6 +465,27 @@ describe("the smallest call", () => {
 
     expect(callPath(record).map((step) => `${step.id}@${step.state}`)).toEqual(["W-2@OPEN", "W-2/OPEN#1@OPENING"]);
     expect(record.calls!["W-2/OPEN#1"]!.input).toEqual({ branch: "amy/first" });
+  });
+
+  it("names the unit a called record is for at any depth, the id it was called under being the run's", async () => {
+    const { runtime } = await mounted([withDiagram(defineWorkflow({
+      name: "starts-calling",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { OPEN: call(opener({ needs: "none" }), { input: () => ({ branch: "amy/first" }) }) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> OPEN\nOPEN --> DONE: OPENED\nOPEN --> DONE: REFUSED\nDONE --> [*]\nclass OPEN call\n")]);
+    const minted = runtime.newRecord("SHOP-1@acme%2Fshop", HOST.now()).calls!["SHOP-1@acme%2Fshop/OPEN#1"]!;
+
+    expect(unitOf(minted)).toBe("SHOP-1@acme%2Fshop");
+    expect(unitOf({ id: "SHOP-1/WORK#1/X#2" })).toBe("SHOP-1");
+    expect(unitOf({ id: "SHOP-1" })).toBe("SHOP-1");
+    // A slash that is no call's stays: only `/<STATE>#<n>` is a call's part.
+    expect(unitOf({ id: "notes/2026-11-11.md/DRAFT#3" })).toBe("notes/2026-11-11.md");
   });
 
   it("folds what the callee returned into its caller, which takes the edge named for the end", async () => {

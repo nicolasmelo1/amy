@@ -310,6 +310,24 @@ eight. The errand's stand-in `gh` now also returns the link a pull request
 has, which it never did: the errand had been announcing `undefined` where the
 link belonged, and the new assertion is what found it.
 
+## The unit a called record is for
+
+A callee's record id is the call's: `SHOP-1/WORK#1`. What a tracker, a code
+host or a person is told names the unit the work is for, and only the core
+knows how to read it off the id: `unitOf(record)` is `SHOP-1` at any depth, a
+root's `@repository` kept. A checkout or an agent's context keys on the
+record's own id, so two phases of one unit never share one.
+`L0.A_CALLED_RECORD_NAMES_ITS_UNIT` refuses a split of an id on `/` or `#`
+anywhere else; three packages had a copy, and the one that had none asked
+the tracker for `SHOP-1/WORK#1`. The workflow testkit walks every world a
+second time as `UNIT/PHASE#1` and holds the two walks to the same tracker,
+code-host and conversation calls, the same plans and the same end.
+
+A called phase registers nothing, so its own actions reach the mount through
+its declaration's `catalogue`, carried on the composed workflow. A handler
+under a core action's name implements the core's action: one in a workflow
+that does not need that action's port is refused at boot, naming both.
+
 ## The files
 
 | | |

@@ -30,7 +30,7 @@ async function world(name: string, shape: (world: ErrandWorld) => void = () => u
     if (working) working.state = "DONE";
   };
   const { runtime } = await fake.mounted();
-  return { name, workId: "task-1", runtime, meanwhile: Array.from({ length: 4 }, () => done) };
+  return { name, workId: "task-1", runtime, meanwhile: Array.from({ length: 4 }, () => done), again: () => world(name, shape, repo, inFlight) };
 }
 
 const worlds = [

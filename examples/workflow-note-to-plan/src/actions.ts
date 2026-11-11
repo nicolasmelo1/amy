@@ -6,6 +6,7 @@ import {
   Store,
   WorkflowActionScope,
   WorkflowPieceContext,
+  unitOf,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
@@ -35,13 +36,13 @@ export async function discover(scope: Scope): Promise<string[]> {
 }
 
 export async function observe(scope: Scope, current: PlanRecord): Promise<Observation> {
-  const note = scope.ports.notes.get(current.id);
-  if (!note) throw new Error(`the note ${current.id} is not in the notes directory any more`);
+  const note = scope.ports.notes.get(unitOf(current));
+  if (!note) throw new Error(`the note ${unitOf(current)} is not in the notes directory any more`);
 
   return {
     note,
     writable: scope.config.repos.includes(note.repo),
-    plansInFlight: inFlightFor(scope.ports.store, note.repo, current.id),
+    plansInFlight: inFlightFor(scope.ports.store, note.repo, unitOf(current)),
     now: scope.ctx.now(),
   };
 }

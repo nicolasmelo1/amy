@@ -1,6 +1,6 @@
 import { definePlugin } from "@amykit/core";
 import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
-import { ClaudeHarness } from "./ClaudeHarness.js";
+import { ClaudeHarness, writingMode } from "./ClaudeHarness.js";
 import { configSchema } from "./config.js";
 import { ClaudeUsageReader } from "./usage.js";
 
@@ -9,6 +9,8 @@ export const plugin = definePlugin<typeof configSchema>({
   configSchema,
   register(registry, ctx) {
     const tiers = ctx.config.models;
+    // Refused here, at mount, rather than as a run that answers and edits nothing.
+    const permissionMode = writingMode(ctx.config.permissionMode);
 
     // Contributed rather than mounted as the `agent` port: only one plugin
     // can own a port, and three harnesses that each wanted to be *the* agent
@@ -23,6 +25,7 @@ export const plugin = definePlugin<typeof configSchema>({
       make: (model) =>
         new ClaudeHarness(ctx.runner, {
           model: model || undefined,
+          permissionMode,
           timeoutMs: ctx.config.timeoutMs,
         }),
     });

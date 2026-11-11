@@ -17,6 +17,7 @@ import {
   defineWorkflow,
   optional,
   port,
+  unitOf,
 } from "@amykit/core";
 import { StepResult } from "./assertions.js";
 import { Effect, Observation, Policy, ProveRecord, decide, stepsBlocking, verdictOf } from "./decide.js";
@@ -63,11 +64,6 @@ export const needs = {
 type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
 type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
 type Work = ActionContext<ProveRecord, Observation>;
-
-/** The unit a run proves: the work the proving phase was called for, its brief's id. */
-export function unitOf(record: { readonly id: string }): string {
-  return record.id.split("/")[0]!;
-}
 
 /** Where a mount keeps its proofs: the project's artifact root, beside the briefs, or the profile's own state. */
 export function proofsAt(paths: { readonly state: string; readonly profile?: string; readonly artifacts?: string }): string {
@@ -234,7 +230,7 @@ const actions = {
     };
   },
 
-  escalate: async (scope: ActionScope, work: Work) => {
+  "give-up": async (scope: ActionScope, work: Work) => {
     const asking = work.record.asking;
     await scope.ports.notifier.announce({
       workId: work.record.id,
@@ -474,6 +470,12 @@ export const plugin = defineWorkflow({
     return { ...policy, resources, fixtures: readFixtures(config.fixtures) };
   },
   operations: proofOperations,
+  // Its own actions, catalogued here so a project calling it as a phase
+  // mounts them: none spends an agent the core counts or writes a tracker,
+  // and the notifier is the one port each run of them is sure to have.
+  catalogue: Object.fromEntries(
+    ["lease", "renew", "prepare", "run-step", "ask", "finish", "give-up"].map((name) => [name, { port: "notifier", method: "announce" }]),
+  ),
   record: () => ({}),
   discover: async () => [],
   observe,

@@ -1,0 +1,11 @@
+# Mutation fixture for L0.A_CALLED_RECORD_NAMES_ITS_UNIT. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L0.A_CALLED_RECORD_NAMES_ITS_UNIT
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L0.A_CALLED_RECORD_NAMES_ITS_UNIT:
+    enabled: true

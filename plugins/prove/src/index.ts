@@ -1,4 +1,6 @@
-export { configSchema, holderOf, leasesAt, needs, plugin, proofsAt, unitOf } from "./plugin.js";
+export { configSchema, holderOf, leasesAt, needs, plugin, proofsAt } from "./plugin.js";
+/** The unit a run proves is the core's to say, at any call depth; kept here for whoever imported it from prove. */
+export { unitOf } from "@amykit/core";
 export type { Settings } from "./plugin.js";
 export { decide, nextStep, verdictOf } from "./decide.js";
 export type { Asking, Effect, Observation, Policy, ProveRecord, ProveState } from "./decide.js";

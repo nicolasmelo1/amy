@@ -141,6 +141,15 @@ export class SlackConversation implements Conversation {
     if (!options.readOnly) privateDirectory(this.filesDirectory);
   }
 
+  known(workId: string): Promise<ThreadRef | undefined> {
+    try {
+      const ts = this.threadMap.known(workId, this.options.channel);
+      return Promise.resolve(ts ? { id: ts } : undefined);
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
   open(workId: string, title: string): Promise<ThreadRef> {
     let known: string | undefined;
     try {

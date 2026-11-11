@@ -154,6 +154,7 @@ plugins:
   "@amykit/plugin-claude":
     model: ""
     models: []
+    permissionMode: acceptEdits
     timeoutMs: 1800000
 ```
 
@@ -161,6 +162,7 @@ plugins:
 | :-- | :-- | :-- | :-- | :-- |
 | `model` | `string` | no | `""` | passed to the CLI as --model, which is the flag it accepts |
 | `models` | `string[]` | no | `[]` | the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `claude:<model>`. Empty means a single agent using `model` |
+| `permissionMode` | `string` | no | `acceptEdits` | passed to the CLI as --permission-mode on a run that may write: `acceptEdits`, `auto` or `bypassPermissions`. A read-only run is always `plan` |
 | `timeoutMs` | `number` | no | `1800000` | how long one agent call may run before it is given up on |
 
 ### `@amykit/plugin-codex`

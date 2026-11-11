@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { WORKSPACE_PORT, ConfigOf, OperationContext, PluginContext, Worktree, Workspace, baseBranchesOf, defineOperation, definePlugin, fail } from "@amykit/core";
+import { WORKSPACE_PORT, ConfigOf, OperationContext, PluginContext, Worktree, Workspace, baseBranchesOf, defineOperation, definePlugin, fail, unitOf } from "@amykit/core";
 import { z } from "zod";
 import { configSchema } from "./config.js";
 
@@ -59,7 +59,7 @@ function settingsFor(ctx: TypedContext): WorktreeManagerConfig {
 
 /** Called pieces live inside their root record, while a worktree remains root-owned. */
 function rootRecordId(workId: string): string {
-  return workId.split("/", 1)[0] ?? workId;
+  return unitOf({ id: workId });
 }
 
 /**

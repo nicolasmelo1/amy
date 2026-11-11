@@ -707,7 +707,7 @@ export function unmetNeeds(mounted: Mounted, workflow: Workflow<never, never>): 
   if (actions !== null) {
     const port = (kind: PortKind): object | undefined => mounted.ports.get(kind);
     for (const [action, implementation] of Object.entries(actions)) {
-      const problem = unrunnable(action, implementation, port) ?? catalogued(mounted, action, implementation);
+      const problem = unrunnable(action, implementation, port) ?? catalogued(mounted, action, implementation, workflow);
       if (problem) unmet.push(problem);
     }
     unmet.push(...unclaimedWrites(mounted, workflow, actions));
@@ -925,8 +925,10 @@ function declaredOn(
  * which ones write. A port and a method names its own port, so it may run an
  * action nobody catalogued — but not one the catalogue sends elsewhere.
  */
-function catalogued(mounted: Mounted, action: string, implementation: unknown): string | null {
-  const spec = mounted.actions.get(action);
+function catalogued(mounted: Mounted, action: string, implementation: unknown, workflow?: Workflow<never, never>): string | null {
+  // A plugin's registered action first, then the workflow's own catalogue,
+  // which carries every phase it calls: a called phase registers nothing.
+  const spec = mounted.actions.get(action) ?? workflow?.catalogue?.[action];
   const bound = declaredBinding(implementation);
   if (bound) {
     if (!spec || spec.port === bound.port) return null;

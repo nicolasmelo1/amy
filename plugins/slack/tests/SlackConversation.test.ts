@@ -108,6 +108,18 @@ describe("a Slack thread per piece of work", () => {
     expect(posts[2]).toMatchObject({ channel: CHANNEL, thread_ts: THREAD, text: "- and which version?" });
   });
 
+  it("knows a work's thread without opening one, across a restart, and knows none for a work that has none", async () => {
+    const http = new ScriptedHttp([{ match: method("chat.postMessage"), answer: ok(postedAnswer(THREAD)) }]);
+    const slack = conversation(http);
+
+    expect(await slack.known("ENG-1")).toBeUndefined();
+    expect(http.argsOf("chat.postMessage")).toHaveLength(0);
+    await slack.open("ENG-1", "ENG-1: the login page");
+
+    expect(await conversation(http).known("ENG-1")).toEqual({ id: THREAD });
+    expect(http.argsOf("chat.postMessage")).toHaveLength(1);
+  });
+
   it("opens one thread when the same work is opened twice at once", async () => {
     const http = new ScriptedHttp([{ match: method("chat.postMessage"), answer: ok(postedAnswer(THREAD)) }]);
     const slack = conversation(http);

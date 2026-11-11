@@ -6,6 +6,7 @@ import {
   Store,
   WorkflowActionScope,
   WorkflowPieceContext,
+  unitOf,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
@@ -31,13 +32,13 @@ export async function discover(scope: Scope): Promise<string[]> {
 }
 
 export async function observe(scope: Scope, current: ErrandRecord): Promise<Observation> {
-  const task = scope.ports.tasks.get(current.id);
-  if (!task) throw new Error(`the task ${current.id} is not in the tasks directory any more`);
+  const task = scope.ports.tasks.get(unitOf(current));
+  if (!task) throw new Error(`the task ${unitOf(current)} is not in the tasks directory any more`);
 
   return {
     task,
     workable: scope.config.repos.includes(task.repo),
-    inFlight: inFlightExcept(scope.ports.store, current.id),
+    inFlight: inFlightExcept(scope.ports.store, unitOf(current)),
     now: scope.ctx.now(),
   };
 }

@@ -43,6 +43,8 @@ export interface Walk {
   readonly fromTheStart: boolean;
   readonly looks: readonly Look[];
   readonly findings: readonly Finding[];
+  /** The record where the walk came to rest, when it was walked at all. */
+  readonly rest?: WorkRecord;
 }
 
 export interface WalkOptions {
@@ -50,6 +52,8 @@ export interface WalkOptions {
   readonly ports: (world: World) => Readonly<Record<string, object>>;
   readonly maxLooks: number;
   readonly start: Date;
+  /** The id the record runs under when the walk is the one called as a phase. */
+  readonly calledAs?: string;
 }
 
 /**
@@ -71,8 +75,8 @@ export async function walk(workflow: AnyWorkflow, world: World, options: WalkOpt
   };
   const ports = attempt(() => options.ports(world), (error) => fail("walk", `the ports could not be built — ${error}`)) ?? {};
   const port: PortLookup = (kind) => (Object.hasOwn(ports, kind) ? ports[kind] : undefined);
-  const done = (runtime: AnyRuntime | undefined, fromTheStart: boolean): Walk => ({
-    world: world.name, runtime, port, fromTheStart, looks, findings,
+  const done = (runtime: AnyRuntime | undefined, fromTheStart: boolean, rest?: WorkRecord): Walk => ({
+    world: world.name, runtime, port, fromTheStart, looks, findings, ...(rest ? { rest } : {}),
   });
 
   const runtime = attempt(() => options.runtime(world, clock.now), (error) => fail("walk", `the runtime could not be built — ${error}`));
@@ -80,7 +84,11 @@ export async function walk(workflow: AnyWorkflow, world: World, options: WalkOpt
 
   const fromTheStart = !world.start;
   const record = attempt(
-    () => world.start?.(clock.now()) ?? runtime.newRecord(world.workId ?? world.name, clock.now()),
+    () => {
+      const started = world.start?.(clock.now());
+      if (started) return options.calledAs ? { ...started, id: options.calledAs } : started;
+      return runtime.newRecord(options.calledAs ?? world.workId ?? world.name, clock.now());
+    },
     (error) => fail("walk", `the first record could not be made — ${error}`),
   );
   if (!record) return done(runtime, fromTheStart);
@@ -88,8 +96,8 @@ export async function walk(workflow: AnyWorkflow, world: World, options: WalkOpt
     fail("reachability", `newRecord starts at \`${record.state}\`, not at the initial state \`${workflow.initialState}\``);
   }
 
-  await drive(workflow, runtime, record, { world, clock, looks, fail, port, maxLooks: options.maxLooks });
-  return done(runtime, fromTheStart);
+  const rest = await drive(workflow, runtime, record, { world, clock, looks, fail, port, maxLooks: options.maxLooks });
+  return done(runtime, fromTheStart, rest);
 }
 
 interface Drive {
@@ -102,17 +110,17 @@ interface Drive {
 }
 
 /** The looks themselves, from the first record until the walk comes to rest. */
-async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkRecord, walk: Drive): Promise<void> {
+async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkRecord, walk: Drive): Promise<WorkRecord> {
   const pending = [...(walk.world.meanwhile ?? [])];
   let record = first;
   let worldMoved = false;
 
   for (let count = 0; count < walk.maxLooks; count += 1) {
     const look = await lookOnce(workflow, runtime, record, { ...walk, worldMoved });
-    if (!look) return;
+    if (!look) return record;
     walk.looks.push(look.look);
     const plan = look.look.plan;
-    if (plan.kind === "settled") return;
+    if (plan.kind === "settled") return record;
 
     if (look.next.state !== record.state) worldMoved = false;
     record = look.next;
@@ -126,13 +134,14 @@ async function drive(workflow: AnyWorkflow, runtime: AnyRuntime, first: WorkReco
     // world ends, which is not a failure: it is a question for the other
     // worlds, whether any of them gets the work out of here.
     const next = pending.shift();
-    if (!next) return;
+    if (!next) return record;
     walk.clock.pass(look.holdMs);
-    if (!(await meanwhile(next, walk.fail))) return;
+    if (!(await meanwhile(next, walk.fail))) return record;
     worldMoved = true;
   }
 
   walk.fail("reachability", `did not come to rest within ${walk.maxLooks} looks; it was last in \`${record.state}\``);
+  return record;
 }
 
 async function meanwhile(step: () => void | Promise<void>, fail: (property: Property, said: string) => void): Promise<boolean> {

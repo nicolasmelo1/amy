@@ -4,7 +4,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
 import { DIAGRAM_FILE } from "../src/diagram.js";
-import { declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, withDiagramBeside } from "../src/define-workflow.js";
+import { declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, port, withDiagram, withDiagramBeside } from "../src/define-workflow.js";
+import { call } from "../src/calls.js";
+import { WORKSPACE_PORT } from "../src/index.js";
 import { Plugin, PluginContext, Workflow } from "../src/plugin.js";
 import { HostServices, mount, mountedActions, unmetNeeds } from "../src/mount.js";
 import { ActionContext, WORKFLOW_RUNTIME, WorkflowRuntime } from "../src/runtime.js";
@@ -1582,5 +1584,107 @@ describe("a workflow drawn as a diagram", () => {
     expect(diagramBeside(pathToFileURL(path.join(local, "index.ts")))?.path).toBe(path.join(local, DIAGRAM_FILE));
     expect(diagramBeside(directory(DRAWN))?.text).toBe(DRAWN);
     expect(diagramBeside(directory())).toBeUndefined();
+  });
+});
+
+
+/** A port that answers any method with nothing, for a mount that only builds runtimes. */
+function anyPort(): object {
+  return new Proxy({}, {
+    get: (_target, key) => (typeof key === "symbol" || key === "then" ? undefined : async () => undefined),
+  });
+}
+
+/** Every port a shipped workflow needs, stood in for, plus the workplace its checkouts read. */
+const STOOD_IN = ["tracker", "code-host", "agent", "gate", "notifier", "conversation", "brief", "commands", "tasks", "store", "harnesses", "catalog", "installer", "config", "checks", "notes", "plan-check"];
+
+/** A setting for every required key a schema gives no default, so a mount gets as far as building the runtime. */
+function required(schema: Plugin["configSchema"]): Record<string, unknown> {
+  const settings: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(schema ?? {})) {
+    if (!entry.required || entry.default !== undefined || key.includes(".")) continue;
+    settings[key] = entry.type === "string[]" ? ["acme/shop"] : entry.type === "number" ? 1 : entry.type === "boolean" ? false : entry.type === "record" ? {} : "x";
+  }
+  return settings;
+}
+
+describe("a core action's name is the core's", () => {
+  /** The shape prove 0.7.1 shipped: its gave-up notice took the core's `escalate`, with no tracker among its needs. */
+  const gaveUp = (name: string, catalogue?: Record<string, { port: string; method: string }>) => withDiagram(defineWorkflow({
+    name,
+    configSchema: {},
+    policy: {},
+    needs: { notifier: port<object>() },
+    ...(catalogue ? { catalogue } : {}),
+    decide: { ASKING: () => ({ kind: "act", effects: [{ type: "escalate" }], why: "nobody answered" }), DONE: () => ({ kind: "settled", why: "done" }) },
+    record: () => ({}),
+    observe: async () => ({}),
+    actions: { escalate: async () => {}, lease: async () => {} },
+  }), "stateDiagram-v2\n[*] --> ASKING\nASKING --> DONE\nDONE --> [*]\n");
+
+  it("refuses at boot a handler for a core action in a workflow that does not need the catalogue's port, naming both", async () => {
+    const outcome = await mount([gaveUp("proving"), ...STOOD_IN.map((kind) => plugin(`fake-${kind}`, { register: (r) => r.port(kind, anyPort()) }))], {}, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? [] : outcome.problems).toContainEqual(expect.stringContaining(
+      "proving: action `escalate` is the core's, run on the `tracker` port, which proving does not need",
+    ));
+  });
+
+  it("carries a called phase's own catalogue to the mount, and refuses a catalogue entry under a core action's name", async () => {
+    const phase = defineWorkflow({
+      name: "phase",
+      configSchema: {},
+      policy: {},
+      needs: { notifier: port<object>() },
+      catalogue: { lease: { port: "notifier", method: "announce" } },
+      decide: { LEASING: () => ({ kind: "act", effects: [{ type: "lease" }], why: "a seat" }), DONE: () => ({ kind: "settled", why: "done" }) },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: { lease: async () => {} },
+    });
+    const drawnPhase = withDiagram(phase, "stateDiagram-v2\n[*] --> LEASING\nLEASING --> DONE\nDONE --> [*]\n");
+    const root = withDiagram(defineWorkflow({
+      name: "project",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      calls: { PROVE: call(drawnPhase) },
+      decide: { FINISHED: () => ({ kind: "settled", why: "done" }) },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> PROVE\nPROVE --> FINISHED: DONE\nFINISHED --> [*]\nclass PROVE call\n");
+    const outcome = await mount([root, plugin("fake-notifier", { register: (r) => r.port("notifier", anyPort()) })], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.workflow!.catalogue).toEqual({ lease: { port: "notifier", method: "announce" } });
+    expect(unmetNeeds(outcome.mounted, outcome.mounted.workflow!)).toEqual([]);
+
+    const taken = await mount([gaveUp("taker", { escalate: { port: "notifier", method: "announce" } })], {}, HOST);
+    expect(taken.ok ? [] : taken.problems).toContainEqual(expect.stringContaining(
+      "taker: its catalogue — `escalate` is the core's action, run on `tracker`; name this workflow's own action something else",
+    ));
+  });
+
+  it("finds no shipped workflow implementing a core action on a port it does not need", async () => {
+    const root = path.resolve(import.meta.dirname, "../../..");
+    const shipped = [
+      "examples/workflow-errand", "examples/workflow-feature-grooming", "examples/workflow-note-to-plan", "examples/workflow-pull-request",
+      "examples/workflow-ticket-to-qa", "packages/workflow-setup", "plugins/prove",
+    ];
+    const refused: string[] = [];
+    for (const directory of shipped) {
+      const entry = pathToFileURL(path.join(root, directory, "src", "index.ts"));
+      const module = (await import(entry.href)) as { plugin: Plugin };
+      const drawn = withDiagramBeside(module.plugin, entry);
+      const stood = STOOD_IN.map((kind) => plugin(`fake-${kind}`, { register: (r) => r.port(kind, anyPort()) }));
+      const workspace = plugin("fake-workspace", { register: (r) => r.port(WORKSPACE_PORT, { workspaceRoot: "/w", checkouts: {} }) });
+      const outcome = await mount([drawn, ...stood, workspace], { [drawn.name]: required(drawn.configSchema) }, HOST);
+      // Every one mounts whole, so the runtime that holds its handlers was built and judged.
+      refused.push(...(outcome.ok ? [] : outcome.problems.map((problem) => `${directory}: ${problem}`)));
+    }
+
+    expect(refused).toEqual([]);
   });
 });

@@ -25,6 +25,17 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L0.A_CALLED_RECORD_NAMES_ITS_UNIT": {
+      "severity": "high",
+      "scope": 3,
+      "exclude": 1,
+      "forbidden": 1,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L0.A_RENDERER_NAMES_NO_COLOUR": {
       "severity": "medium",
       "scope": 1,

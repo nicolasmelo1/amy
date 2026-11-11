@@ -210,6 +210,22 @@ export function enterCall(record: WorkRecord, site: CallSite, now: Date): WorkRe
   return { ...record, calls: { ...record.calls, [child.id]: child }, calling: child.id };
 }
 
+/** One call's own part of a record id: `/<STATE>#<n>`, the way `newChild` writes it. */
+const CALL_PART = /\/[^/#]+#\d+$/;
+
+/**
+ * The unit a record is for, at any call depth: the id of the record at the
+ * top of its calls. `SHOP-1/WORK#1/CHECK#2` is for `SHOP-1`; a root id keeps
+ * everything it carries, a repository after `@` included. What a tracker, a
+ * code host or a person is told names this; a checkout or an agent's context
+ * may key on the record's own id.
+ */
+export function unitOf(record: { readonly id: string }): string {
+  let id = record.id;
+  while (CALL_PART.test(id)) id = id.replace(CALL_PART, "");
+  return id;
+}
+
 /** The callee's new record for one entry into its call state, holding what the binding lends it. */
 function newChild(record: WorkRecord, site: CallSite, now: Date): WorkRecord {
   const prefix = `${record.id}/${site.state}#`;
@@ -313,6 +329,7 @@ export function composedWorkflow(own: Workflow, sites: ReadonlyMap<string, CallS
   return {
     ...own,
     calls: Object.fromEntries([...sites].map(([state, site]) => [state, site.workflow])),
+    catalogue: catalogueThrough(own, sites),
     everyLane: (record, observation, policy) => everyLaneThrough(own, sites, forks, record, observation, policy),
     plan: (record, observation, policy) => {
       const fork = forks.get(record.state);
@@ -328,6 +345,27 @@ export function composedWorkflow(own: Workflow, sites: ReadonlyMap<string, CallS
       return carried(child, inner);
     },
   };
+}
+
+/**
+ * The caller's catalogue and every callee's, each callee's entry on the port
+ * its call binds that need to. One name catalogued two ways is refused.
+ */
+function catalogueThrough(own: Workflow, sites: ReadonlyMap<string, CallSite>): Readonly<Record<string, ActionSpec>> {
+  const catalogue: Record<string, ActionSpec & { by: string }> = Object.fromEntries(
+    Object.entries(own.catalogue ?? {}).map(([name, spec]) => [name, { ...spec, by: own.name }]),
+  );
+  for (const site of sites.values()) {
+    for (const [name, spec] of Object.entries(site.workflow.catalogue ?? {})) {
+      const bound = { port: site.binding.ports?.[spec.port] ?? spec.port, method: spec.method };
+      const held = catalogue[name];
+      if (held && (held.port !== bound.port || held.method !== bound.method)) {
+        throw new Error(`\`${name}\` is catalogued by ${held.by} on \`${held.port}.${held.method}\` and by ${site.callee} on \`${bound.port}.${bound.method}\`; an action is catalogued once`);
+      }
+      catalogue[name] ??= { ...bound, by: site.callee };
+    }
+  }
+  return Object.fromEntries(Object.entries(catalogue).map(([name, { port, method }]) => [name, { port, method }]));
 }
 
 /**

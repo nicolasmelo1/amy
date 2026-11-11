@@ -61,6 +61,10 @@ export class TerminalConversation implements Conversation {
     }
   }
 
+  known(workId: string): Promise<ThreadRef | undefined> {
+    return Promise.resolve(this.announced.has(workId) ? { id: workId } : undefined);
+  }
+
   open(workId: string, title: string): Promise<ThreadRef> {
     // The thread is the work: no topic to create and no channel to find,
     // so re-opening finds the same thread because its id is the work's.

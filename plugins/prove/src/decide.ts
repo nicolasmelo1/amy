@@ -73,7 +73,7 @@ export type Effect =
   | { type: "prepare" }
   | { type: "run-step"; step: string }
   | { type: "ask"; step?: string; fixture?: string; question: string; deadlineMs: number }
-  | { type: "escalate" }
+  | { type: "give-up" }
   | { type: "finish"; outcome: "proven" | "refused"; why: string };
 
 type Decision = (record: ProveRecord, observation: Observation, policy: Policy) => Plan;
@@ -176,7 +176,7 @@ export const decide = {
     // after the deadline is not one in time however soon it is read.
     const reply = observation.reply && observation.reply.at <= asking.deadlineAt ? observation.reply : undefined;
     if (!reply && observation.now >= asking.deadlineAt) {
-      return end("refused", `nobody answered \`${asking.step ?? asking.fixture}\` before ${asking.deadlineAt}`, { type: "escalate" });
+      return end("refused", `nobody answered \`${asking.step ?? asking.fixture}\` before ${asking.deadlineAt}`, { type: "give-up" });
     }
     const lost = lostLease(observation);
     if (lost) return lost;

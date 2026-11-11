@@ -166,6 +166,12 @@ for the callee's terminal states. A workflow declares what a caller passes in
 `input` and what it returns at each end in `output`. Calls nest, and a cycle is
 refused at boot. See [a workflow calls another](../design/a-workflow-calls-another.md).
 
+A called record's id is the call's, `SHOP-1/WORK#1`. What the tracker, the
+code host or a person is told names the unit it is for, `unitOf(record)`. A
+called phase's own actions reach the mount through its `catalogue`, and the
+testkit walks every world called as a phase too. See [a shipped workflow runs
+as a phase](../design/a-shipped-workflow-runs-as-a-phase.md).
+
 Work that runs side by side is drawn as a `<<fork>>`, and every line out of it
 is a lane:
 
@@ -208,7 +214,7 @@ Proves a phase against the real system: one workflow walks the scenario each bri
 | Starts in | `READING` |
 | Terminal | `refused`, `PROVEN` |
 | Waits in | `READING`, `LEASING`, `ASKING` |
-| Actions it emits | `ask`, `escalate`, `finish`, `lease`, `prepare`, `renew`, `run-step` |
+| Actions it emits | `ask`, `finish`, `give-up`, `lease`, `prepare`, `renew`, `run-step` |
 
 | # | State | Kind |
 | :-- | :-- | :-- |

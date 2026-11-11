@@ -1,5 +1,5 @@
 import { Observation, Policy } from "./observation.js";
-import { attemptsIn, looksIn, Plan, PullRequestView, ReviewThread } from "@amykit/core";
+import { attemptsIn, looksIn, Plan, PullRequestView, ReviewThread, unitOf } from "@amykit/core";
 import { act, advance, settled, wait } from "./effects.js";
 import {
   TicketRecord,
@@ -523,7 +523,7 @@ function planReviewerAssignment(
       firstLook,
       policy.rosterBackoffMs,
       `the roster was last confirmed on ${obs.roster.confirmedOn}, not today`,
-      `Confirm today's reviewers and QA before I assign ${record.id}.`,
+      `Confirm today's reviewers and QA before I assign ${unitOf(record)}.`,
     );
   }
 
@@ -533,7 +533,7 @@ function planReviewerAssignment(
       firstLook,
       policy.rosterBackoffMs,
       "every reviewer on the roster is marked unavailable",
-      `No reviewer is available for ${record.id}.`,
+      `No reviewer is available for ${unitOf(record)}.`,
     );
   }
 
@@ -546,7 +546,7 @@ function planReviewerAssignment(
       firstLook,
       policy.pollBackoffMs,
       `every reviewer is carrying ${policy.maxOpenReviewsPerReviewer} open review(s) or more`,
-      `${record.id} has a pull request open and nobody assigned: ` +
+      `${unitOf(record)} has a pull request open and nobody assigned: ` +
         `every reviewer is at ${policy.maxOpenReviewsPerReviewer} open review(s).`,
     );
   }
@@ -718,7 +718,7 @@ function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): 
         ? ([
             {
               type: "announce" as const,
-              text: `Confirm today's QA owner before I hand over ${record.id}.`,
+              text: `Confirm today's QA owner before I hand over ${unitOf(record)}.`,
             },
           ] as const)
         : []),
@@ -733,14 +733,14 @@ function planQaHandoff(record: TicketRecord, obs: Observation, policy: Policy): 
         ? ([
             {
               type: "announce" as const,
-              text: `The QA owner for ${record.id} is away, who takes it?`,
+              text: `The QA owner for ${unitOf(record)} is away, who takes it?`,
             },
           ] as const)
         : []),
     );
   }
 
-  return advance("DONE", `handing ${record.id} to ${obs.roster.qa.tracker}`, {
+  return advance("DONE", `handing ${unitOf(record)} to ${obs.roster.qa.tracker}`, {
     type: "hand-off-to-qa",
     tracker: obs.roster.qa.tracker,
   });

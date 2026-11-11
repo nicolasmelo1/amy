@@ -11,7 +11,7 @@ import {
   Tracker,
   WorkflowRuntime,
 } from "@amykit/core";
-import { World, conforms } from "@amykit/workflow-testkit";
+import { PortCall, World, conforms, watched } from "@amykit/workflow-testkit";
 import { fakeHost, fakeRun, fakeTracker, pullRequest, thread, ticket } from "@amykit/test-fixtures";
 import { ThreadVerdict, TicketRecord } from "../src/index.js";
 import { newRecord, workflow as ticketToQa } from "./drawn.js";
@@ -67,6 +67,8 @@ class TicketWorld implements World {
   private reviews = 0;
   private now: () => Date = () => new Date();
   private mounted: WorkflowRuntime | undefined;
+  /** What the tracker and the code host were asked, for the walk called as a phase to be held to. */
+  private readonly asked: PortCall[] = [];
 
   constructor(name: string, private readonly road: Road = {}) {
     this.name = name;
@@ -83,11 +85,20 @@ class TicketWorld implements World {
    */
   async mount(): Promise<void> {
     this.mounted = (await mountedTicket(
-      { tracker: this.tracker(), host: this.host(), agent: this.agent(), gate: { run: async () => this.gate() } },
+      { tracker: watched("tracker", this.tracker(), this.asked), host: watched("code-host", this.host(), this.asked), agent: this.agent(), gate: { run: async () => this.gate() } },
       () => this.now(),
       this.git(),
     )).runtime;
   }
+
+  readonly said = (): readonly PortCall[] => this.asked;
+
+  /** The same road again, fresh and mounted, for the walk called as a phase. */
+  readonly again = async (): Promise<TicketWorld> => {
+    const fresh = new TicketWorld(this.name, this.road);
+    await fresh.mount();
+    return fresh;
+  };
 
   runtime(now: () => Date): WorkflowRuntime {
     this.now = now;
@@ -141,7 +152,8 @@ class TicketWorld implements World {
   private tracker(): Tracker {
     return fakeTracker({
       inProgress: async () => [ticket()],
-      get: async () => ticket(),
+      // Only the ticket's own id is a ticket: a call's id, `PROJ-1239/WORK#1`, is not.
+      get: async (id) => (id === ticket().id ? ticket() : null),
       comment: async (_id, body) => {
         this.comments.push({ author: "amy", body, at: this.now().toISOString(), fromAmy: true });
       },

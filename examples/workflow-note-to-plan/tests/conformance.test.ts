@@ -35,7 +35,7 @@ async function world(name: string, shape: (world: NoteWorld) => void = () => und
     if (open) open.state = "DONE";
   };
   const { runtime } = await fake.mounted();
-  return { name, workId: "note-1", runtime, meanwhile: Array.from({ length: 4 }, () => merged) };
+  return { name, workId: "note-1", runtime, meanwhile: Array.from({ length: 4 }, () => merged), again: () => world(name, shape, repo, inFlight) };
 }
 
 const worlds = [

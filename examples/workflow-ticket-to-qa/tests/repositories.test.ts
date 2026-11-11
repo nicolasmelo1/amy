@@ -221,6 +221,7 @@ describe("the runtime with its writes handed to the operator", () => {
     const notifier = new RecordingNotifier();
     const posted: string[] = [];
     const conversation: Conversation = {
+      known: async () => ({ id: "T1" }),
       open: async () => ({ id: "T1" }),
       post: async (_thread, message) => (posted.push(message.text), "m1"),
       replies: async () => [],

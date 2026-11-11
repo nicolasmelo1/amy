@@ -2,7 +2,7 @@ import fs from "node:fs";
 import nodePath from "node:path";
 import { fileURLToPath } from "node:url";
 import { Checkouts } from "./checkouts.js";
-import { ActionSpec } from "./actions.js";
+import { ActionSpec, CORE_ACTIONS } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
 import { PluginCheck, PluginFile, PluginSetup } from "./commands.js";
 import { DeclaredOperation, OPERATIONS_COLLECTION, MountedOperation } from "./operation.js";
@@ -260,6 +260,13 @@ interface DeclarationBase<
   readonly needs: N;
   readonly trackerWrites?: Claims<S, P>;
   readonly codeHostWrites?: Claims<S, P>;
+  /**
+   * This workflow's own actions, each with the port it must have mounted to
+   * run, one of its `needs`. Carried on the workflow, so a phase another
+   * workflow calls still reaches the mount; a core action's name is the
+   * core's, and never one of these.
+   */
+  readonly catalogue?: Readonly<Record<string, ActionSpec>>;
   /** What a caller must pass, typed like a plugin's settings; a record a caller starts holds it as \`input\`. */
   readonly input?: In;
   /** What this workflow returns, keyed by terminal state. A workflow with none returns nothing at any end. */
@@ -467,6 +474,7 @@ function assemble(
   // config the machine explains.
   if (ctx) policyFits(declaration.name, declaration.configSchema, declaration.policy);
   if (ctx && declaration.phases) phasesFit(declaration.name, declaration.phases);
+  if (ctx) catalogueFits(declaration, path);
   const policy = policyFor(declaration.name, declaration.policy, config?.policy);
   // Only a workflow with lanes holds branches, and only its lanes take them.
   const forked = Object.keys(shape.diagram?.forks ?? {}).length > 0;
@@ -501,6 +509,7 @@ function assemble(
     const runtimePolicy = declaration.runtimePolicy?.({ ports, config: settings, policy }) ?? policy;
     const args = { ports, config: settings, policy: runtimePolicy, checkouts: ctx.checkouts(), ctx: ctx as PluginContext<ConfigOf<ConfigSchema>> };
     const parts = runtimeFromPieces(declaration, args);
+    coreActionsFit(declaration, parts.actions, path);
     for (const site of sites.values()) site.runtime = (site as PendingSite).build();
     const lookup: PortLookup = (kind) => (ctx.workflowPort ?? ctx.port)(kind);
     return composedRuntime(completeRuntime(parts, runtimePolicy, (workId, now) => own(workId, now)), sites, lookup, forks);
@@ -909,6 +918,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     readonly phases?: ProjectPhases;
     readonly trackerWrites?: Claims<S, P>;
     readonly codeHostWrites?: Claims<S, P>;
+    readonly catalogue?: Readonly<Record<string, ActionSpec>>;
     readonly decide: Readonly<Record<string, WorkflowDecision<R, O, P>>>;
     before?(record: R, observation: O, policy: P): Plan | undefined;
     after?(decision: Plan, record: R, observation: O, policy: P): Plan;
@@ -937,6 +947,7 @@ function workflowFor<S extends ConfigSchema, P extends object, R extends WorkRec
     ...(declaration.phases ? { phases: declaration.phases } : {}),
     trackerWrites: claims(declaration.trackerWrites),
     codeHostWrites: claims(declaration.codeHostWrites),
+    ...(declaration.catalogue ? { catalogue: declaration.catalogue } : {}),
     // What it says before any decision passes through `after` like any plan,
     // so a write it makes in a fork is handed over as one anywhere else is.
     ...(declaration.before ? {
@@ -1070,6 +1081,38 @@ export function policyFor<P extends object>(workflow: string, defaults: P, confi
     throw new Error(`${workflow} policy must be a mapping`);
   }
   return { ...defaults, ...overrides };
+}
+
+/** The ports every action is handed whatever it needs: `announce` reaches the notifier for any workflow. */
+const HELD_BY_EVERY_WORKFLOW = new Set(["notifier"]);
+
+/** A catalogue entry is the workflow's own action, on a port it needs. */
+function catalogueFits(declaration: AnyDeclaration, path: readonly string[]): void {
+  const problems: string[] = [];
+  for (const [name, spec] of Object.entries(declaration.catalogue ?? {})) {
+    if (Object.hasOwn(CORE_ACTIONS, name)) {
+      problems.push(`\`${name}\` is the core's action, run on \`${CORE_ACTIONS[name]!.port}\`; name this workflow's own action something else`);
+    } else if (!Object.hasOwn(declaration.needs ?? {}, spec.port)) {
+      problems.push(`\`${name}\` is catalogued on the \`${spec.port}\` port, which ${declaration.name} does not need`);
+    }
+  }
+  if (problems.length > 0) throw new Error(`${path.join(" → ")}: its catalogue — ${problems.join("; ")}`);
+}
+
+/**
+ * A handler under a core action's name implements the core's action, which
+ * the catalogue runs on its port: a workflow that does not need that port
+ * has taken the name for something else, and the budget and the write check
+ * would count a write it never makes.
+ */
+function coreActionsFit(declaration: AnyDeclaration, actions: Readonly<Record<string, unknown>>, path: readonly string[]): void {
+  const problems: string[] = [];
+  for (const [name, implementation] of Object.entries(actions)) {
+    const spec = CORE_ACTIONS[name];
+    if (typeof implementation !== "function" || !spec || HELD_BY_EVERY_WORKFLOW.has(spec.port) || Object.hasOwn(declaration.needs ?? {}, spec.port)) continue;
+    problems.push(`action \`${name}\` is the core's, run on the \`${spec.port}\` port, which ${declaration.name} does not need — need the port, or name its own action something else`);
+  }
+  if (problems.length > 0) throw new Error(`${path.join(" → ")}: ${problems.join("; ")}`);
 }
 
 /**

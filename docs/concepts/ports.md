@@ -210,6 +210,7 @@ Declared in `packages/core/src/ports/Conversation.ts`.
 | `settle(id: string): Promise<void>` | The message is answered: it is not handed out again. |
 | `say(place: string, text: string): Promise<string>` | Says something in a chat place, and answers the message's id. |
 | `revise(place: string, id: string, text: string): Promise<void>` | Replaces what a said message reads; only where `edit` is declared. |
+| `known(workId: string): Promise<ThreadRef \| undefined>` | The work's remembered thread, or none: it creates nothing, so a look that only reads replies never leaves a thread behind it. |
 | `open(workId: string, title: string): Promise<ThreadRef>` | Opens the work's remembered thread, creating it only on first use. |
 | `post(thread: ThreadRef, message: { text: string; files?: string[]; ask?: Ask }): Promise<string>` |  |
 | `replies(thread: ThreadRef, since: string): Promise<Reply[]>` | Replies after `since`, oldest first. Files are readable local paths. |
