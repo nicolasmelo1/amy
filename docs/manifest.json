@@ -968,11 +968,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "**What the core marks a value with, every copy of the core can read.** An install always holds several copies of the core: the CLI's own, the plugins root's, and whatever a project's phase folder resolves from its own node_modules. 0.7.0 marked a workflow's port need and an operation's declared failure with local symbols, a different key in every copy. So no project whose phase asks for a port could mount (\"Cannot destructure property 'optional' of 'need[PORT_NEED]'\"), and a plugin's declared failure was answered as an internal error. Both are now registered symbols. packages/core/tests/two-copies.test.ts runs the core against a second copy of itself, the project-phases gate mounts a phase that imports its own core, and L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS refuses a local symbol in the core.",
-          "slug": "what-the-core-marks-a-value-with-every-copy-of-the-core-can-read-an-install-always-holds-several-copies-of-the-core-the-clis-own-the-plugins-roots-and-whatever-a-projects-phase-folder-resolves-from-its-own-nodemodules-070-marked-a-workflows-port-need-and-an-operations-declared-failure-with-local-symbols-a-different-key-in-every-copy-so-no-project-whose-phase-asks-for-a-port-could-mount-cannot-destructure-property-optional-of-needportneed-and-a-plugins-declared-failure-was-answered-as-an-internal-error-both-are-now-registered-symbols-packagescoreteststwo-copiestestts-runs-the-core-against-a-second-copy-of-itself-the-project-phases-gate-mounts-a-phase-that-imports-its-own-core-and-l0thecoremarkswithregisteredsymbols-refuses-a-local-symbol-in-the-core"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -7963,7 +7958,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -7977,7 +7972,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -7998,7 +7993,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -8012,7 +8007,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -8026,7 +8021,7 @@
       },
       {
         "name": "@amykit/plugin-agent-browser",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.",
         "directory": "plugins/agent-browser",
@@ -8062,7 +8057,7 @@
       },
       {
         "name": "@amykit/plugin-agent-desktop",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.",
         "directory": "plugins/agent-desktop",
@@ -8091,7 +8086,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -8143,7 +8138,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -8190,7 +8185,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -8237,7 +8232,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -8274,7 +8269,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -8319,7 +8314,7 @@
       },
       {
         "name": "@amykit/plugin-concurrent-engine",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Advances one work item per tick, moving every lane of a fork at once.",
         "directory": "plugins/concurrent-engine",
@@ -8362,7 +8357,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -8386,7 +8381,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -8400,7 +8395,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -8438,7 +8433,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -8483,7 +8478,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -8513,7 +8508,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -8544,7 +8539,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -8625,7 +8620,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -8649,7 +8644,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -8710,7 +8705,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -8765,7 +8760,7 @@
       },
       {
         "name": "@amykit/plugin-next-steps",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
         "directory": "plugins/next-steps",
@@ -8823,7 +8818,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -8839,7 +8834,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -8867,7 +8862,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -8894,7 +8889,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -8943,7 +8938,7 @@
       },
       {
         "name": "@amykit/plugin-prove",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
         "directory": "plugins/prove",
@@ -9012,7 +9007,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -9055,7 +9050,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -9132,7 +9127,7 @@
       },
       {
         "name": "@amykit/plugin-telegram",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
         "directory": "plugins/telegram",
@@ -9178,7 +9173,7 @@
       },
       {
         "name": "@amykit/plugin-terminal",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.",
         "directory": "plugins/terminal",
@@ -9214,7 +9209,7 @@
       },
       {
         "name": "@amykit/plugin-terminal-conversation",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "plugin",
         "description": "The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.",
         "directory": "plugins/terminal-conversation",
@@ -9230,7 +9225,7 @@
       },
       {
         "name": "@amykit/services",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
         "directory": "packages/services",
@@ -9244,7 +9239,7 @@
       },
       {
         "name": "@amykit/ui",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
         "directory": "packages/ui",
@@ -9258,7 +9253,7 @@
       },
       {
         "name": "@amykit/ui-conformance",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
         "directory": "packages/ui-conformance",
@@ -9272,7 +9267,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "examples/workflow-errand",
@@ -9348,7 +9343,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "examples/workflow-feature-grooming",
@@ -9395,7 +9390,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "examples/workflow-note-to-plan",
@@ -9481,7 +9476,7 @@
       },
       {
         "name": "@amykit/workflow-pull-request",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
         "directory": "examples/workflow-pull-request",
@@ -9515,7 +9510,7 @@
       },
       {
         "name": "@amykit/workflow-setup",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
         "directory": "packages/workflow-setup",
@@ -9542,7 +9537,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -9556,7 +9551,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.7.0",
+        "version": "0.7.1",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "examples/workflow-ticket-to-qa",
@@ -11283,20 +11278,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "core-marks-cross-copies",
-        "title": "**What the core marks a value with, every copy of the core can read.** An install always holds several copies of the core: the CLI's own, the plugins root's, and whatever a project's phase folder resolves from its own `node_modules`. 0.7.0 marked a workflow's port need and an operation's declared failure with local symbols, a different key in every copy. So no project whose phase asks for a port could mount (\"Cannot destructure property 'optional' of 'need[PORT_NEED]'\"), and a plugin's declared failure was answered as an internal error. Both are now registered symbols. `packages/core/tests/two-copies.test.ts` runs the core against a second copy of itself, the `project-phases` gate mounts a phase that imports its own core, and `L0.THE_CORE_MARKS_WITH_REGISTERED_SYMBOLS` refuses a local symbol in the core.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

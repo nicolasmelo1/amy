@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-prove",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
   "type": "module",
   "license": "MIT",
@@ -32,12 +32,12 @@
     "about": "Use it as the proving phase of a project, once a brief has settled the scenario the work must pass. It is a workflow that walks that scenario against the real system through the operations mounted plugins offer, such as agent-browser, agent-desktop and terminal, and records a proof. It needs file-brief-store and a notifier; mount command for the resources a scenario runs against and the code digest, and a conversation so it can ask a person to make a fixture hold."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.0",
+    "@amykit/core": "^0.7.1",
     "yaml": "^2.8.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@amykit/plugin-command": "^0.7.0",
+    "@amykit/plugin-command": "^0.7.1",
     "@amykit/test-fixtures": "^0.1.0",
     "fast-check": "^4.10.2"
   }

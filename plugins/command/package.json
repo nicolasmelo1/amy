@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-command",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Any command line tool, reached by a name the config allows.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when a workflow or a proof needs a command line tool, such as a monitoring CLI. It mounts the commands port and the run-command action, and runs only the command lines written in its allow list, by name: a workflow may pass arguments and never the line itself. The prove workflow uses it to bring the resources a scenario runs against up and down, and to print the digest of the code a proof certifies."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.0"
+    "@amykit/core": "^0.7.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -1,5 +1,12 @@
 # @amykit/plugin-telegram
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [e79dea1]
+  - @amykit/core@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes

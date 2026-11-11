@@ -1,5 +1,14 @@
 # @amykit/plugin-hermes-agent
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [e79dea1]
+  - @amykit/core@0.7.1
+  - @amykit/agent-kit@0.7.1
+  - @amykit/model-specs@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes

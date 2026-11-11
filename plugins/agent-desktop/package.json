@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-agent-desktop",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when a proof has to drive a native desktop app. It adds desktop operations a prove scenario can call: read an app's accessibility tree, click or type on a ref, and press a key combination. A click that succeeds only says it was delivered, so a scenario reads a snapshot after it. It needs the agent-desktop CLI on the machine."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.0",
+    "@amykit/core": "^0.7.1",
     "zod": "^4.6.7"
   }
 }

@@ -1,5 +1,25 @@
 # @amykit/cli
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [e79dea1]
+  - @amykit/core@0.7.1
+  - @amykit/agent-kit@0.7.1
+  - @amykit/model-specs@0.7.1
+  - @amykit/services@0.7.1
+  - @amykit/ui@0.7.1
+  - @amykit/workflow-setup@0.7.1
+  - @amykit/plugin-file-log@0.7.1
+  - @amykit/plugin-file-notes@0.7.1
+  - @amykit/plugin-file-queue@0.7.1
+  - @amykit/plugin-file-store@0.7.1
+  - @amykit/plugin-file-tasks@0.7.1
+  - @amykit/plugin-notify-fanout@0.7.1
+  - @amykit/plugin-serial-engine@0.7.1
+  - @amykit/plugin-terminal-conversation@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes

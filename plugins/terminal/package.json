@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-terminal",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when a proof has to drive an interactive terminal program, such as an editor or a CLI that prompts. It adds terminal operations a prove scenario can call: run a program, type, press keys, wait for text and read the screen. It needs the terminal-use CLI on the machine."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.0",
+    "@amykit/core": "^0.7.1",
     "zod": "^4.6.7"
   }
 }

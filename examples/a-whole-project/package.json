@@ -6,10 +6,10 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "@amykit/core": "^0.7.0",
-    "@amykit/plugin-prove": "^0.7.0",
-    "@amykit/workflow-feature-grooming": "^0.7.0",
-    "@amykit/workflow-ticket-to-qa": "^0.7.0"
+    "@amykit/core": "^0.7.1",
+    "@amykit/plugin-prove": "^0.7.1",
+    "@amykit/workflow-feature-grooming": "^0.7.1",
+    "@amykit/workflow-ticket-to-qa": "^0.7.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

@@ -5,13 +5,13 @@
   "title": "@amykit/workflow-note-to-plan",
   "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
   "dependencies": [
-    "@amykit/core@^0.7.0",
-    "@amykit/plugin-file-queue@^0.7.0",
-    "@amykit/workflow-pull-request@^0.7.0",
+    "@amykit/core@^0.7.1",
+    "@amykit/plugin-file-queue@^0.7.1",
+    "@amykit/workflow-pull-request@^0.7.1",
     "zod@^4.6.7"
   ],
   "devDependencies": [
-    "@amykit/workflow-testkit@^0.7.0"
+    "@amykit/workflow-testkit@^0.7.1"
   ],
   "files": [
     {
@@ -24,7 +24,7 @@
       "path": "examples/workflow-note-to-plan/package.json",
       "type": "registry:file",
       "target": "forks/workflow-note-to-plan/package.json",
-      "content": "{\n  \"name\": \"@amykit/workflow-note-to-plan\",\n  \"version\": \"0.7.0\",\n  \"description\": \"The note-to-plan workflow: friction becomes a plan in the repository it is about.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"examples/workflow-note-to-plan\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"workflow.mmd\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.0\",\n    \"@amykit/plugin-file-queue\": \"^0.7.0\",\n    \"@amykit/workflow-pull-request\": \"^0.7.0\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"@amykit/workflow-testkit\": \"^0.7.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/workflow-note-to-plan\",\n  \"version\": \"0.7.1\",\n  \"description\": \"The note-to-plan workflow: friction becomes a plan in the repository it is about.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"examples/workflow-note-to-plan\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"workflow.mmd\"\n  ],\n  \"dependencies\": {\n    \"@amykit/core\": \"^0.7.1\",\n    \"@amykit/plugin-file-queue\": \"^0.7.1\",\n    \"@amykit/workflow-pull-request\": \"^0.7.1\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"@amykit/workflow-testkit\": \"^0.7.1\"\n  }\n}\n"
     },
     {
       "path": "examples/workflow-note-to-plan/src/actions.ts",
@@ -113,9 +113,9 @@
   ],
   "meta": {
     "package": "@amykit/workflow-note-to-plan",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "examples/workflow-note-to-plan",
-    "tag": "@amykit/workflow-note-to-plan@0.7.0"
+    "tag": "@amykit/workflow-note-to-plan@0.7.1"
   }
 }
