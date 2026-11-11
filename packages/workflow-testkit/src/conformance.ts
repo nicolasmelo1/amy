@@ -64,7 +64,9 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
  */
 async function walkedCalled(machine: AnyWorkflow, world: World, alone: Walk, walking: WalkOptions): Promise<CalledPair> {
   const saidAlone = [...(world.said?.() ?? [])];
-  const unit = world.workId ?? world.name;
+  // The unit is the record the walk standing alone started from: a world's
+  // `start` may name it, and its name is only the last resort.
+  const unit = alone.looks[0]?.record.id ?? world.workId ?? world.name;
   const again = (await world.again?.()) ?? world;
   const before = again.said?.().length ?? 0;
   const called = await walk(machine, again, { ...walking, calledAs: calledId(unit) });

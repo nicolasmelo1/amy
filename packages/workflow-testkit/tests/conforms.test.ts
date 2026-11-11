@@ -150,6 +150,34 @@ describe("a workflow called as a phase", () => {
     expect(checkouts).toEqual(["SHOP-1", "SHOP-1/PHASE#1"]);
   });
 
+  it("fails one whose write names the call where standing alone it named the unit, the same action by type", async () => {
+    const asking = workflowOf({
+      states: ["asking", "done"],
+      terminal: ["done"],
+      plan: (record) => (record.state === "asking" ? { kind: "advance", to: "done", why: "asked", effects: [{ type: "announce", text: `Question for ${record.id}` }] } : settled()),
+    });
+
+    const findings = await conformance(asking, {
+      runtime: () => runtimeOf("asking", { observe: () => ({}), actions: { announce: async () => {} } }),
+      worlds: [{ name: "a question", workId: "SHOP-1" }],
+    });
+
+    expect(findings.filter((finding) => finding.property === "called").map((finding) => finding.message)).toEqual([
+      "a question: called as `SHOP-1/PHASE#1`, it plans `announce {\"text\":\"Question for SHOP-1/PHASE#1\"}` where standing alone it planned `announce {\"text\":\"Question for SHOP-1\"}`",
+    ]);
+  });
+
+  it("calls the record a world's own start names, not the world's name", async () => {
+    const ids: string[] = [];
+    const findings = await conformance(received(), {
+      runtime: () => runtimeOf("received", { observe: (record) => void ids.push(record.id) }),
+      worlds: [{ name: "an unanswered ticket", start: (now) => ({ id: "SHOP-1", state: "received", updatedAt: now.toISOString(), attempts: {}, history: [] }) }],
+    });
+
+    expect(findings.filter((finding) => finding.property === "called" || finding.property === "walk")).toEqual([]);
+    expect([...new Set(ids)]).toEqual(["SHOP-1", "SHOP-1/PHASE#1"]);
+  });
+
   it("walks every world called as a phase, with no way to leave it out", async () => {
     const ids: string[] = [];
     const findings = await conformance(received(), {

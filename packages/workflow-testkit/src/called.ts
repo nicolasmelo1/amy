@@ -102,9 +102,16 @@ function safely(value: unknown): string {
   }
 }
 
-/** The actions every look planned, in order: what the work did to the world. */
+/**
+ * The actions every look planned, in order, each with what it carries: an
+ * announcement naming the call where it named the unit is a different write,
+ * whatever its type.
+ */
 function writes(walk: Walk): string[] {
-  return walk.looks.flatMap((look) => actionsOf(look.plan).map((action) => action.type));
+  return walk.looks.flatMap((look) => actionsOf(look.plan).map((action) => {
+    const { type, ...payload } = action;
+    return Object.keys(payload).length === 0 ? type : `${type} ${safely(payload)}`;
+  }));
 }
 
 function firstDifference(alone: readonly string[], called: readonly string[]): { alone?: string; called?: string } | undefined {
