@@ -5,11 +5,11 @@
 //   tsx scripts/contracts.ts --update   download them again and rewrite the
 //                                       manifest
 //
-// A double that answers what the real tool would refuse is how
-// `reviewsRequestedOf` shipped broken; a double held to a stale contract is
-// the same defect a release later. So the check runs in the gate, and a
-// contract that moved turns it red until somebody updates and the suite runs
-// against the new one.
+// A double held to a stale contract is how `reviewsRequestedOf` shipped
+// broken, so the check runs in the gate. A contract that moved is a warning
+// for STALE_AFTER_DAYS after it was vendored and red after that: GitHub
+// republishes its REST description several times a day. The scheduled
+// `contracts` workflow refreshes them inside the window.
 //
 // Nothing in the vendored directory is an authority on itself. The sources
 // are the constants below, and every file is compared with what its source
@@ -24,6 +24,7 @@ import path from "node:path";
 import { URL } from "node:url";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { deriveBotApi } from "./bot-api-contract.js";
+import { STALE_AFTER_DAYS, withinWindow } from "./contracts-window.js";
 
 const repo = path.resolve(import.meta.dirname, "..");
 const directory = path.join(repo, "packages/test-fixtures/contracts");
@@ -52,6 +53,8 @@ interface Vendored {
 
 /** `manifest.json` in the vendored directory: what was downloaded, from where. */
 interface ContractsManifest {
+  /** When `--update` last wrote the set; a moved contract older than the window is red. */
+  vendoredAt?: string;
   documents: (ContractDocument & { sha256: string })[];
   derived?: (typeof BOT_API & { version: string; sha256: string })[];
   gh: { version: string; releases: string } & Partial<Record<GhPart, Vendored>>;
@@ -249,7 +252,7 @@ async function update(): Promise<void> {
   const gh = await ghContract(version);
 
   fs.mkdirSync(directory, { recursive: true });
-  const manifest: ContractsManifest = { documents: [], gh: { version, releases: GH_RELEASES } };
+  const manifest: ContractsManifest = { vendoredAt: new Date().toISOString(), documents: [], gh: { version, releases: GH_RELEASES } };
   for (const { document, body } of bodies) {
     fs.writeFileSync(path.join(directory, document.file), document.gzip ? gzipSync(body, { level: 9 }) : body);
     manifest.documents.push({ ...document, gzip: undefined, sha256: sha256(body) });
@@ -277,42 +280,58 @@ async function botApiProblems(): Promise<string[]> {
   return [`${BOT_API.name} moved: ${BOT_API.url} now describes Bot API ${now} differently from the vendored derivation`];
 }
 
-async function check(): Promise<void> {
-  const manifest: ContractsManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  const problems: string[] = [];
+/** What the vendored set says against its sources: a move is tolerated inside the window, a problem never. */
+interface Findings {
+  moved: string[];
+  problems: string[];
+}
 
+async function documentFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
   for (const document of DOCUMENTS) {
     const recorded = manifest.documents.find((entry) => entry.name === document.name);
     if (recorded?.url !== document.url || recorded?.file !== document.file) {
-      problems.push(`${document.name} is recorded from somewhere other than ${document.url}`);
+      found.problems.push(`${document.name} is recorded from somewhere other than ${document.url}`);
     }
     const stored = fs.readFileSync(path.join(directory, document.file));
     const vendored = document.gzip ? gunzipSync(stored) : stored;
     const served = await published(document);
     if (sha256(served.body) !== sha256(vendored)) {
-      problems.push(`${document.name} moved: ${document.url} no longer serves the vendored copy (${served.servedAs || "no cache headers"})`);
+      found.moved.push(`${document.name} moved: ${document.url} no longer serves the vendored copy (${served.servedAs || "no cache headers"})`);
     }
   }
+}
 
-  problems.push(...(await botApiProblems()));
-
+async function ghFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
   const latest = await latestGh();
   if (latest !== manifest.gh.version) {
-    problems.push(`gh moved: ${latest} is the latest release, and the vendored contract is ${manifest.gh.version}'s`);
-  } else {
-    const gh = await ghContract(latest);
-    for (const [part, file] of GH_PARTS) {
-      if (fs.readFileSync(path.join(directory, file), "utf8") !== gh[part]) {
-        problems.push(`${file} is not what gh ${latest} prints`);
-      }
-    }
+    found.moved.push(`gh moved: ${latest} is the latest release, and the vendored contract is ${manifest.gh.version}'s`);
+    return;
   }
+  const gh = await ghContract(latest);
+  for (const [part, file] of GH_PARTS) {
+    if (fs.readFileSync(path.join(directory, file), "utf8") !== gh[part]) found.problems.push(`${file} is not what gh ${latest} prints`);
+  }
+}
 
-  if (problems.length > 0) {
-    console.error("The doubles are held to contracts their publishers no longer serve:\n");
-    for (const problem of problems) console.error(`  ${problem}`);
+async function check(): Promise<void> {
+  const manifest: ContractsManifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const found: Findings = { moved: [], problems: [] };
+  await documentFindings(manifest, found);
+  found.moved.push(...(await botApiProblems()));
+  await ghFindings(manifest, found);
+
+  const window = withinWindow(manifest.vendoredAt, new Date());
+  const age = window.days === undefined ? "with no recorded date" : `${window.days} day(s) ago`;
+  if (found.problems.length > 0 || (found.moved.length > 0 && !window.ok)) {
+    console.error(`The doubles are held to contracts their publishers no longer serve (vendored ${age}, window ${STALE_AFTER_DAYS} days):\n`);
+    for (const problem of [...found.problems, ...found.moved]) console.error(`  ${problem}`);
     console.error("\nRun `npm run contracts:update`, then `npm test` against what changed.");
     process.exit(1);
+  }
+  if (found.moved.length > 0) {
+    console.warn(`contracts: vendored ${age}, inside the ${STALE_AFTER_DAYS}-day window; the scheduled refresh takes these:`);
+    for (const one of found.moved) console.warn(`  ${one}`);
+    return;
   }
   console.log("contracts: every vendored contract is the one its publisher serves today");
 }

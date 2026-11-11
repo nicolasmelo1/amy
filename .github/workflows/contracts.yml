@@ -1,0 +1,97 @@
+name: contracts
+
+# The vendored contracts follow their publishers without anybody asking: a
+# moved contract is a warning for 30 days (scripts/contracts-window.ts), and
+# once a week this downloads them again, runs the suite against them and opens
+# a pull request when it holds. When it does not, the job is red, nothing is
+# opened, and the window is the time somebody has to look.
+
+on:
+  schedule:
+    # Mondays, early and off the hour, before the week's pull requests.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # A fork has neither the token nor any reason to open pull requests here.
+    if: github.repository == 'nicolasmelo1/amy'
+    permissions:
+      # Pushes the refresh branch, when AMY_BOT_TOKEN is not set.
+      contents: write
+      # Opens the refresh pull request and closes the one it supersedes.
+      pull-requests: write
+    env:
+      # A pull request opened with the default token has its own CI held for
+      # a person's approval; one opened with a personal or app token runs it
+      # like any other. The default is the fallback, so the job still works.
+      PUSH_TOKEN: ${{ secrets.AMY_BOT_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The push below names its own credential, so the checkout's has no
+          # reason to stay in .git/config where a later step can read it.
+          persist-credentials: false
+      # The services' tests run oasdiff, which this clean runner lacks.
+      - name: Install oasdiff
+        run: ./scripts/install-oasdiff.sh
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Download every contract again
+        run: npm run contracts:update
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      # The manifest's date moves on every update; only a contract file that
+      # changed is a refresh worth a pull request.
+      - name: Whether any contract moved
+        id: moved
+        run: |
+          if git diff --quiet -- packages/test-fixtures/contracts ':!packages/test-fixtures/contracts/manifest.json'; then
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "moved=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- packages/test-fixtures/contracts
+          fi
+      - name: The suite against the new contracts
+        if: steps.moved.outputs.moved == 'true'
+        run: npm test
+      # The repository's git hooks run the whole gate, which needs tools this
+      # job does not install; the pull request's own CI is that gate, so the
+      # commit and the push skip them here and nowhere else.
+      - name: Open the refresh pull request
+        if: steps.moved.outputs.moved == 'true'
+        env:
+          GH_TOKEN: ${{ env.PUSH_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          branch="chore/contracts-refresh-$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add packages/test-fixtures/contracts
+          git -c core.hooksPath=/dev/null commit -q \
+            -m "chore(contracts): the vendored contracts follow their publishers again" \
+            -m "Refreshed by the scheduled contracts workflow with npm run contracts:update; the suite passed against them in that run."
+          git -c core.hooksPath=/dev/null push -q "https://x-access-token:${PUSH_TOKEN}@github.com/${REPOSITORY}.git" "HEAD:refs/heads/$branch"
+          url=$(gh pr create --base main --head "$branch" \
+            --title "chore(contracts): the vendored contracts follow their publishers again" \
+            --body "Opened by the scheduled \`contracts\` workflow (run ${GITHUB_RUN_ID}). \`npm run contracts:update\` downloaded every vendored contract again and \`npm test\` passed against them. Only \`packages/test-fixtures/contracts\` changes, so no changeset.")
+          echo "opened $url"
+          # One refresh open at a time: an older one is the same change, staler.
+          gh pr list --state open --limit 100 --json number,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"chore/contracts-refresh-\")) | select(.headRefName != \"$branch\") | .number" |
+            while read -r number; do
+              gh pr close "$number" --delete-branch --comment "Superseded by $url."
+            done
