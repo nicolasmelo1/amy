@@ -1,0 +1,30 @@
+id: L5.A_FIXTURE_READS_THE_CORE_VERSION
+layer: L5
+title: An evidence fixture reads the core's version, never writes one
+severity: high
+statement: >-
+  No evidence fixture writes a version for an `@amykit` package: a fixture
+  manifest says `"current"`, which lib/publish.ts resolves to the core this
+  repository holds, and a script or driver reads lib/core-version.ts.
+why: >-
+  A scenario installs its fixtures beside the CLI it is proving, and the CLI
+  refuses a workflow whose `@amykit/core` range does not hold the core it
+  runs. Six fixtures wrote `^0.6.0` by hand; the 0.7.0 release made every one
+  of them refuse to install, `amy workflow add` copied nothing, and the gates
+  that ran them went red on main for a reason no product change caused. The
+  version moves on every release, so a number written in a fixture is a
+  failure scheduled for the next one.
+fix: >-
+  Write `"@amykit/core": "current"` in the fixture's package.json, and in a
+  TypeScript driver import CORE_RANGE from lib/core-version.ts; a shell stub
+  asks `tsx lib/core-version.ts` for the version.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope: [".software-factory/evidence/**/package.json", ".software-factory/evidence/**/*.ts", ".software-factory/evidence/**/*.sh"]
+  forbidden:
+    - regex: '"@amykit/[a-z0-9-]+"\s*:\s*"[\^~]?[0-9]'
+      message: "A version written in a fixture goes stale at the next release. Write \"current\" (resolved by lib/publish.ts), or read CORE_RANGE from lib/core-version.ts."
+    - regex: "@amykit/[^)\\n]*\\)\\s*echo\\s+'\"[0-9]"
+      message: "A stub answering a fixed @amykit version goes stale at the next release; ask lib/core-version.ts for it."

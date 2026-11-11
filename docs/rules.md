@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**67 rules shipped**, 56 enabled here, 11 switched off, 56 carrying a mutation fixture, 1 violations frozen.
+**68 rules shipped**, 57 enabled here, 11 switched off, 57 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -24,7 +24,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L2** | Contract | no drift from the source of truth | 9 | 8 |
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
 | **L4** | Cadence | docs, plans and rules stay attached | 11 | 10 |
-| **L5** | Meta | the guardrail is proven to fire | 3 | 3 |
+| **L5** | Meta | the guardrail is proven to fire | 4 | 4 |
 | **L6** | Hazard | the defect classes this repository hunts | 14 | 9 |
 
 <!-- sf:end layer-index -->
@@ -480,6 +480,16 @@ Every operation in packages/services/openapi.json has an id, a summary, a descri
 **Fix.** Run `npm run build`, which writes the document from the contract, then `npx tsx packages/services/gates/documents-itself.ts` and add what each line names to the operation's declaration — never to openapi.json, which is generated and locked. See docs/design/amy-speaks-in-domains.md.
 
 ## L5 — Meta: the guardrail is proven to fire
+
+### L5.A_FIXTURE_READS_THE_CORE_VERSION
+
+**An evidence fixture reads the core's version, never writes one**
+
+No evidence fixture writes a version for an `@amykit` package: a fixture manifest says `"current"`, which lib/publish.ts resolves to the core this repository holds, and a script or driver reads lib/core-version.ts.
+
+**Why.** A scenario installs its fixtures beside the CLI it is proving, and the CLI refuses a workflow whose `@amykit/core` range does not hold the core it runs. Six fixtures wrote `^0.6.0` by hand; the 0.7.0 release made every one of them refuse to install, `amy workflow add` copied nothing, and the gates that ran them went red on main for a reason no product change caused. The version moves on every release, so a number written in a fixture is a failure scheduled for the next one.
+
+**Fix.** Write `"@amykit/core": "current"` in the fixture's package.json, and in a TypeScript driver import CORE_RANGE from lib/core-version.ts; a shell stub asks `tsx lib/core-version.ts` for the version.
 
 ### L5.EVERY_CHECK_HAS_A_MUTATION_TEST
 

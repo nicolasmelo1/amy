@@ -19,7 +19,7 @@
           "@amykit/plugin-notify-inbox",
           "@amykit/plugin-serial-engine"
         ],
-        "added": "installing /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.6fZswetyHU/workflow-support-inbox into /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.6fZswetyHU/home/.amy/plugins…\nadded @acme/workflow-support-inbox as the workflow `support-inbox`\nthe machine boots: run `amy doctor`, then `amy tick`."
+        "added": "installing /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.3X3IKKDQ9e/workflow-support-inbox into /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.3X3IKKDQ9e/home/.amy/plugins…\nadded @acme/workflow-support-inbox as the workflow `support-inbox`\nthe machine boots: run `amy doctor`, then `amy tick`."
       }
     },
     {
@@ -28,7 +28,7 @@
       "detail": {
         "code": 0,
         "asked": [],
-        "out": "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.6fZswetyHU/home/.amy/config.yaml\nok   a notification channel is on\nok   auto update settings\nok   chat settings\nok   settings for @amykit/plugin-telegram\nok   workflow write surface  read-only: it cannot write the tracker or code host\nok   TELEGRAM_BOT_TOKEN\nok   claude available\nok   telegram bot  @amy_work_bot, with topics in private chats\nok   telegram chat  private chat with 4021\nok   telegram updates  read by amy alone\nok   supervisor  launchd (gui/501), which starts the loop again when it stops\nok   10 plugin(s) assembled\n\nready"
+        "out": "ok   config file  /var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.3X3IKKDQ9e/home/.amy/config.yaml\nok   a notification channel is on\nok   auto update settings\nok   chat settings\nok   settings for @amykit/plugin-telegram\nok   workflow write surface  read-only: it cannot write the tracker or code host\nok   TELEGRAM_BOT_TOKEN\nok   claude available\nok   telegram bot  @amy_work_bot, with topics in private chats\nok   telegram chat  private chat with 4021\nok   telegram updates  read by amy alone\nok   supervisor  launchd (gui/501), which starts the loop again when it stops\nok   10 plugin(s) assembled\n\nready"
       }
     },
     {
@@ -62,7 +62,7 @@
         "drafted": [
           {
             "queue": "billing",
-            "cwd": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.6fZswetyHU/home/.amy"
+            "cwd": "/private/var/folders/ql/h_cgdz7j2t32wh9xdp1cwyfr0000gn/T/tmp.3X3IKKDQ9e/home/.amy"
           }
         ],
         "sent": "Hi Grace, you were charged twice for the same order, and the second charge is refunded today. It reaches your card in three to five working days.\n",

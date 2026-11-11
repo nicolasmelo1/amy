@@ -78,6 +78,7 @@ held to a gate that is proven to work.
 | `L4.ROOT_FILES_ARE_DECLARED` | New top-level files are declared before they appear |
 | `L4.RULE_PROSE_NAMES_A_REAL_COMMAND` | Every command a rule's prose quotes is one this `sf` accepts |
 | `L4.THE_CONTRACT_DOCUMENTS_ITSELF` | Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md) |
+| `L5.A_FIXTURE_READS_THE_CORE_VERSION` | An evidence fixture reads the core's version, never writes one |
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
@@ -148,7 +149,7 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **56 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **57 rules**, and `sf verify` proves every one fires against a broken fixture.
 
 **28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 

@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through a workflow of its own that calls one copied into it until the callee escalates, and through the note-to-plan and errand scenarios whose pull requests are opened by a call, against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/a-workflow-calls-another-run.json",
-      "report_sha256": "d0cb2f7f737f59864f7512ac0506a3688d64df56b7009b91f6833b03055c449b",
+      "report_sha256": "0a81fe7976b8bdebc91b510f26c88f74ba86d9d45a6701ec6bdb56f0b3363218",
       "required_assertions": []
     }
   ]

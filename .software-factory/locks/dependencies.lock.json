@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "files": {
-    ".software-factory/evidence/a-plugin-of-your-own/plugin-pager/package.json": "ae032ef8a4ab524debb1552de71681e715b56e6bca519ae2d9322c1c310d2cbd",
-    ".software-factory/evidence/a-plugin-of-your-own/workflow-paging/package.json": "ac1cae9821c64ed63c0a9587e98d3acbb9041333279168f8a627bde9d37124ed",
-    ".software-factory/evidence/a-workspace-is-a-capability/workflow-support-inbox/package.json": "1ee09a150610bf5e25fb255441829a103bf2806a3bfa4bd74fdaa165f8311d1c",
+    ".software-factory/evidence/a-plugin-of-your-own/plugin-pager/package.json": "c10003b645712a7027a52d22cd7eddf3a2c77ba161be442953878ee464fd7d42",
+    ".software-factory/evidence/a-plugin-of-your-own/workflow-paging/package.json": "8c8870f4bfbeb2fbd947cfb513d4e8c657fa7086e5f448c51ecca580f0618b34",
+    ".software-factory/evidence/a-workspace-is-a-capability/workflow-support-inbox/package.json": "3313cb36b97e928c33e72f5c1b0d906c9e760ab977fafab2b86c22246efc9b02",
     ".software-factory/evidence/amy-add-remove/plugin-extra/package.json": "fdf46ddf207e8cd09cf998cc6b9f41268b0e5485efd7e95db94438f9a04e7724",
-    ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "6f3a4601268c34c70c795211852c518b8797623c08ce44cebffccc4fea858a7b",
-    ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "b024593c5ca92eec192c4b292c4a1b0c35b95cfdf9253eb297fe7d9ba3c8c270",
+    ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "bb99fdbbe6e4d8c6ba2440098d057cc7849d80effd790ad45973c4bb6fc694eb",
+    ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "c71bf396a8aa7574a8aa8f021659d241ccf0082311cc2b6616d3b4508157a06c",
     "examples/a-whole-project/package.json": "1d84ecea1487babd101d150588cc47f99252c321b990468960566b98e4e55678",
     "examples/workflow-errand/package.json": "c5f6e489c673d3b08e0efedb17b2fb20bf3b9cd51a8b23b316696d4a9b2cbe37",
     "examples/workflow-feature-grooming/package.json": "1036e91ca7c2a3bab773fa61a18fe25cfbdc0fc79158bdc0fea258eb3c8324ef",

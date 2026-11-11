@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { CORE_RANGE } from "../lib/core-version.js";
 
 function usage(): never {
   throw new Error("usage: drive.ts <amy-binary> <report-path> [--keep]");
@@ -80,7 +81,7 @@ function reviewPackage(root: string): string {
     version: "1.0.0",
     type: "module",
     exports: { ".": { import: "./index.ts" } },
-    dependencies: { "@amykit/core": "^0.6.0" },
+    dependencies: { "@amykit/core": CORE_RANGE },
   }, null, 2)}\n`);
   fs.writeFileSync(path.join(directory, "workflow.mmd"), REVIEW);
   fs.writeFileSync(path.join(directory, "index.ts"), `import fs from "node:fs";

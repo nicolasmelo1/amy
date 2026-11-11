@@ -5376,6 +5376,11 @@
         },
         {
           "depth": 3,
+          "title": "L5.A_FIXTURE_READS_THE_CORE_VERSION",
+          "slug": "l5afixturereadsthecoreversion"
+        },
+        {
+          "depth": 3,
           "title": "L5.EVERY_CHECK_HAS_A_MUTATION_TEST",
           "slug": "l5everycheckhasamutationtest"
         },
@@ -11103,6 +11108,13 @@
         "enabled": true,
         "settings": {},
         "title": "Every operation, property, example and error in the contract is documented (docs/design/amy-speaks-in-domains.md)",
+        "reason": ""
+      },
+      {
+        "id": "L5.A_FIXTURE_READS_THE_CORE_VERSION",
+        "enabled": true,
+        "settings": {},
+        "title": "An evidence fixture reads the core's version, never writes one",
         "reason": ""
       },
       {

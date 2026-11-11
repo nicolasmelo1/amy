@@ -496,6 +496,17 @@
       "must_live_in": 0,
       "must_not_live_in": 0
     },
+    "L5.A_FIXTURE_READS_THE_CORE_VERSION": {
+      "severity": "high",
+      "scope": 3,
+      "exclude": 0,
+      "forbidden": 2,
+      "narrowed_patterns": 0,
+      "languages": 0,
+      "tools": 0,
+      "must_live_in": 0,
+      "must_not_live_in": 0
+    },
     "L5.EVERY_CHECK_HAS_A_MUTATION_TEST": {
       "severity": "critical",
       "scope": 0,

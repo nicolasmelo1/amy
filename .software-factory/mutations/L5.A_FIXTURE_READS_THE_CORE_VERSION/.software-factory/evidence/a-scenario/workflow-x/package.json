@@ -1,0 +1,4 @@
+{
+  "name": "@acme/workflow-x",
+  "dependencies": { "@amykit/core": "^0.6.0" }
+}

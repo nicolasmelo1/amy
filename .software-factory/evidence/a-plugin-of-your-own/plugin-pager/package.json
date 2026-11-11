@@ -16,6 +16,6 @@
     "directory": "plugins/pager"
   },
   "dependencies": {
-    "@amykit/core": "^0.6.0"
+    "@amykit/core": "current"
   }
 }
