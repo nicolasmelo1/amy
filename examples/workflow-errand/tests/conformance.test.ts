@@ -1,7 +1,8 @@
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WorkflowRuntime } from "@amykit/core";
 import { World, conforms } from "@amykit/workflow-testkit";
 import { Task } from "../src/index.js";
+import { runErrand } from "../src/actions.js";
 import { ErrandWorld } from "./mounted.js";
 
 const REPO = "acme/widgets";
@@ -51,5 +52,30 @@ describe("errand", () => {
     worlds,
     // Shipped, so every arrow its diagram draws is one some world walks.
     everyEdge: true,
+  });
+});
+
+describe("an errand run as a lane of a fork", () => {
+  it("works in the tree its own record holds, though it reads the unit's task", async () => {
+    const trees: string[] = [];
+    const held = (tree: string | undefined) => void trees.push(tree ?? "");
+    const git = {
+      prepareBranch: async (_repo: string, _branch: string, tree?: string) => held(tree),
+      pathFor: (_repo: string, tree?: string) => (held(tree), `/trees/${tree}`),
+      commit: async (_repo: string, _message: string, tree?: string) => (held(tree), true),
+      commitsAhead: async () => 0,
+      push: async (_repo: string, _branch: string, tree?: string) => held(tree),
+    };
+    let cwd = "";
+    const scope = {
+      checkouts: { git, layout: { workspaceRoot: "/checkouts", checkouts: {} } },
+      ports: { agent: { ask: async (_prompt: string, at: string) => ((cwd = at), { text: "done", run: { outcome: "completed", output: "done" } }) } },
+      ctx: { now: () => new Date("2026-09-05T10:00:00.000Z") },
+    };
+
+    await runErrand(scope as never, { record: { id: "task-1/WORK#1" }, observation: { task: task(REPO) }, outcomes: {} } as never, { type: "run-errand" } as never);
+
+    expect([...new Set(trees)]).toEqual(["task-1/WORK#1"]);
+    expect(cwd).toBe("/trees/task-1/WORK#1");
   });
 });
