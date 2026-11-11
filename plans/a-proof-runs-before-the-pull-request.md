@@ -6,6 +6,7 @@ sources:
   - { id: S4, kind: reference, ref: "docs/design/a-project-is-brief-work-and-proof.md", said: "what BRIEF returned is what PROVE is asked to show; PROVE refused goes back to the phase before it" }
   - { id: S5, kind: reference, ref: "docs/design/a-workflow-calls-another.md", said: "a call state runs another workflow as a child record, and its ends move the caller only through the edges the caller drew" }
   - { id: S6, kind: reference, ref: "plans/a-proof-runs-against-its-own-branch.md", said: "a resource's commands are handed the work's worktree and branch, so a proof boots the code WORK produced" }
+  - { id: S8, kind: friction, said: "2026-11-11: the private project's fork of this, a call at PROVING, fails ticket-to-qa's every-edge conformance on ten of the proving workflow's own edges, which only the proving suite walks" }
   - { id: S7, kind: decision, said: "the work calls the proof between its checks and its pull request: ticket-to-qa declares a slot there, a project fills it with prove/, and standing alone it passes on. Decided 2026-11-11" }
 touches:
   - packages/core/src/define-workflow.ts
@@ -20,6 +21,8 @@ touches:
   - examples/workflow-ticket-to-qa/src/handover.ts
   - examples/workflow-ticket-to-qa/tests/conformance.test.ts
   - examples/a-whole-project/tests/project.test.ts
+  - packages/workflow-testkit/src/transitions.ts
+  - packages/workflow-testkit/tests/conforms.test.ts
   - docs/guides/what-a-project-is.md
   - docs/design/a-project-is-brief-work-and-proof.md
 criteria:
@@ -29,6 +32,7 @@ criteria:
   - { id: A4, statement: "a project whose WORK declares the slot fills it with its prove/ phase, handed the brief's criteria and run against the work's branch; the walk is BRIEF, WORK, DONE, with no PROVE after WORK", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S2, S4, S6, S7] }
   - { id: A5, statement: "a proof that is refused, or that leaves a criterion the brief settled unanswered, sends the work back to IMPLEMENTING carrying what did not hold, counted against maxImplementAttempts; a proven one goes on to PR_OPEN", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S1, S4, S7] }
   - { id: A6, statement: "the pull request opened after a proof names it and every file its steps kept, in the body amy writes or the turn it hands the operator", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts", sources: [S1] }
+  - { id: A8, statement: "the workflow testkit's every-edge property holds a filled slot to the edges of its ends, and leaves the callee's inner edges to the callee's own suite", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S8] }
   - { id: A7, statement: "a project whose WORK declares no slot keeps BRIEF, WORK, PROVE and DONE, and its proof runs where it ran", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S2, S4] }
 crosses:
   - { mechanism: calls, answer: works, proof: "deferred:test:packages/core/tests/calls.test.ts" }
