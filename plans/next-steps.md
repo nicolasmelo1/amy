@@ -10,9 +10,9 @@ the rest.
 | 1 | [A plugin's command is a command too](a-plugin-command-is-a-command-too.md) |
 | 2 | [A shipped workflow runs as a phase](a-shipped-workflow-runs-as-a-phase.md) |
 | 3 | [A skill is asked for in the chat](a-skill-is-asked-for-in-the-chat.md) |
-| 4 | [A plugin's command is a command too](a-plugin-command-is-a-command-too.md) |
-| 5 | [The examples are not the machine](the-examples-are-not-the-machine.md) |
-| 6 | [A proof runs against its own branch](a-proof-runs-against-its-own-branch.md) |
+| 4 | [The examples are not the machine](the-examples-are-not-the-machine.md) |
+| 5 | [A proof runs against its own branch](a-proof-runs-against-its-own-branch.md) |
+| 6 | [A proof runs before the pull request](a-proof-runs-before-the-pull-request.md) |
 | 7 | [amy runs on the current Node](amy-runs-on-the-current-node.md) |
 | 8 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) |
 | 9 | [A harness answers before the work](a-harness-answers-before-the-work.md) |
