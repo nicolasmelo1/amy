@@ -8,6 +8,9 @@ sources:
   - { id: S6, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "AskContext", said: "AskContext.skill lends a skill by name and directory; the claude harness lends it to an isolated run with --add-dir" }
   - { id: S7, kind: code, ref: "packages/cli/src/chat-action.ts", said: "the /action list already holds brief sections, show, write and check, every command amy-groom runs" }
   - { id: S8, kind: reference, ref: "https://community.atlassian.com/forums/Jira-Service-Management/Using-the-updated-slash-commands-to-raise-a-request-in-a-request/qaq-p/2514844", said: "Slack takes a message starting with / as one of its own commands; a leading space sends it as text" }
+  - { id: S13, kind: code, ref: "packages/core/src/chat/commands.ts", symbol: "refusedCommands", said: "a chat command declared with no arguments refuses any, so `brief sections --json` is refused; tokenize refuses a heredoc, so a multiline section cannot be written from the chat" }
+  - { id: S14, kind: code, ref: "packages/core/src/chat/commands.ts", symbol: "commandsIn", said: "a fenced block tagged with a file name is already carried beside the commands, the way config apply takes its config.yaml" }
+  - { id: S15, kind: decision, said: "a section's body reaches brief write from a named fenced block (`--from answer.md`), never a shell; amy-groom says so for the chat. Proposed 2026-11-11, from review on #205" }
   - { id: S9, kind: decision, said: "amy installs every skill it ships into ~/.amy/skills, its own root, on install and on every update; a harness directory stays an extra the person chooses. Decided 2026-11-11" }
   - { id: S10, kind: decision, said: "which skills the chat may run is the skills ladder already in the config, under the step `chat`; nothing else names them. Decided 2026-11-11" }
   - { id: S11, kind: decision, said: "a turn that starts with a skill is an /action turn: the commands its answer names run, under the same list. Decided 2026-11-11" }
@@ -23,6 +26,10 @@ touches:
   - plugins/agent-relay/src/plugin.ts
   - plugins/agent-relay/tests/skills.test.ts
   - packages/core/src/chat/desk.ts
+  - packages/core/src/chat/commands.ts
+  - packages/core/tests/chat/commands.test.ts
+  - packages/cli/src/chat-action.ts
+  - packages/cli/skills/amy-groom/SKILL.md
   - packages/core/src/chat/transcript.ts
   - packages/core/tests/chat/desk.test.ts
   - docs/start/install.md
@@ -34,6 +41,8 @@ criteria:
   - { id: A5, statement: "a later message in that thread, with no prefix, is answered with the same skill lent and acting; /new ends it", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S12] }
   - { id: A6, statement: "a /skill the chat ladder does not name is answered with the skills it does name, and nothing runs", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S10] }
   - { id: A7, statement: "the harness still runs read-only in a skill turn: what acts is the amy commands its answer names, from the /action list", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S7, S11] }
+  - { id: A8, statement: "brief sections and brief check take --json from the chat, and brief write takes --explains and --from <block>, a fenced block in the same answer", proof: "deferred:test:packages/core/tests/chat/commands.test.ts", sources: [S7, S13, S14, S15] }
+  - { id: A9, statement: "a skill turn writes a multiline section through --from and the next brief check reads it, on the fakes", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S1, S13, S15] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:test:packages/cli/tests/harnesses.test.ts" }
   - { mechanism: config, answer: works, proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts" }
@@ -43,6 +52,7 @@ guarantee:
   - { holds: "a skill turn acts only through the /action list", not_against: "a skill whose instructions ask for a command off the list: it is refused, not run" }
 failures:
   - { step: chat, when: "the skill named is on the ladder but its directory is gone", goes_to: "an answer naming the skill and `amy skills`, and nothing runs" }
+  - { step: chat, when: "--from names a block the answer does not carry", goes_to: "the whole block refused, naming the missing block, and nothing runs" }
   - { step: install, when: "~/.amy/skills cannot be written", goes_to: "a failed install naming the directory" }
 cut:
   - "a skill shipped by a plugin rather than by amy: the plugin's own plan"

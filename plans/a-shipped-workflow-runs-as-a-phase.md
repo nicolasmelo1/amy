@@ -44,7 +44,7 @@ criteria:
   - { id: A12, statement: "ids that key a run rather than a unit (a checkout, an agent's context) may differ between the two runs, and stay distinct per record", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S2, S9] }
   - { id: A3, statement: "ticket-to-qa's conformance worlds pass as a called phase: the tracker is asked for the ticket, the branch and the pull request name the ticket, never the call", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts", sources: [S1, S3] }
   - { id: A4, statement: "the whole-project example boots through the same boot check the daemon runs, with no unmet need, and walks WORK through ticket-to-qa's real actions on the fakes to its QA handoff; no test sets a child's state by hand", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S5, S8] }
-  - { id: A5, statement: "a claude run that is not read-only passes --permission-mode with the configured mode, `acceptEdits` unless set; a read-only run is still plan; an empty or unknown mode is refused at mount, naming the setting", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S6, S10] }
+  - { id: A5, statement: "a claude run that is not read-only passes --permission-mode with the configured mode, `acceptEdits` unless set; a read-only run is still plan; an empty, unknown or non-writing mode (plan) is refused at mount, naming the setting", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S6, S10] }
   - { id: A6, statement: "a harness conformance in agent-kit, run against claude and codex, fails any harness whose writing run is handed no way to write or whose read-only run is handed one", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S6, S10] }
   - { id: A7, statement: "the proving plugin catalogues lease, renew, prepare, run-step, ask, finish and give-up itself; its gave-up notice is `give-up`, and mounted as a phase it needs no tracker", proof: "deferred:test:plugins/prove/tests/human-step.test.ts", sources: [S7, S8, S11] }
   - { id: A8, statement: "a called phase's own catalogue entries reach the mount, and a handler for a core action in a workflow that does not need the catalogue's port is refused at boot, naming both", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S7, S8, S11] }
@@ -64,7 +64,7 @@ guarantee:
   - { holds: "a core action's name means the catalogue's write in every shipped plugin", not_against: "two third-party plugins agreeing on a name the core does not ship" }
 failures:
   - { step: mount, when: "a workflow implements a core action without needing the port the catalogue runs it on", goes_to: "a refused boot naming the action and that port" }
-  - { step: mount, when: "the claude permissionMode setting is empty or not a mode the CLI accepts", goes_to: "a refused boot naming the setting and the accepted modes" }
+  - { step: mount, when: "the claude permissionMode setting is empty, unknown or a mode that cannot write", goes_to: "a refused boot naming the setting and the writing modes" }
 cut:
   - "the rest of what a proof needs (http.request, screenshots and recordings, a resource booting the work's branch): a proof runs against its own branch"
   - "taking up a pull request already open: its own plan, after this one"
