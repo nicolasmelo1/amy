@@ -1,5 +1,5 @@
 ---
-base: 2847d3953ae69b02e2a810f6467694ef66617fa9
+base: 2ca4f36f7ec98452bc5dd13ed72b22889b1e9468
 sources:
   - { id: S1, kind: friction, said: "2026-11-10: Copilot on #192: a groomed plan naming amy prove show invoice-currency --revision 0 is refused by check:plans, though the prove plugin declares that command" }
   - { id: S2, kind: code, ref: "plugins/prove/src/operations.ts", said: "an operation spells its command as cli: { words, positional, default } beside an inline input: z.object({...}); eleven operations across plugins and examples do" }
