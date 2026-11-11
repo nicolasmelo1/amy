@@ -36,20 +36,20 @@ touches:
   - plugins/claude/README.md
   - plugins/codex/tests/CodexHarness.test.ts
   - .software-factory/rules/a-called-record-names-its-unit.yaml
-  - .software-factory/rules/no-workflow-action-shadows-the-core.yaml
   - docs/design/a-workflow-calls-another.md
 criteria:
   - { id: A1, statement: "the core exports unitOf(record), the unit a record is for at any call depth (`SHOP-1/WORK#1/X#2` → `SHOP-1`, `SHOP-1@acme%2Fshop` keeps its repo part), and ticket-to-qa, feature-grooming and the proving plugin use it; their private copies are gone", proof: "deferred:test:packages/core/tests/calls.test.ts", sources: [S2, S3, S4, S9] }
-  - { id: A2, statement: "the workflow testkit runs every conformance world twice, at the top and called under `UNIT/PHASE#1`, and fails when the two ask a port for a different id, write differently or end differently", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S3, S5, S9] }
+  - { id: A2, statement: "the workflow testkit runs every conformance world twice, at the top and called under `UNIT/PHASE#1`, and fails when the two name a different unit to the tracker or code host, write differently or end differently", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S3, S5, S9] }
   - { id: A10, statement: "every shipped workflow's conformance suite runs its worlds called as a phase too", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S9] }
+  - { id: A12, statement: "ids that key a run rather than a unit (a checkout, an agent's context) may differ between the two runs, and stay distinct per record", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S2, S9] }
   - { id: A3, statement: "ticket-to-qa's conformance worlds pass as a called phase: the tracker is asked for the ticket, the branch and the pull request name the ticket, never the call", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts", sources: [S1, S3] }
   - { id: A4, statement: "the whole-project example boots through the same boot check the daemon runs, with no unmet need, and walks WORK through ticket-to-qa's real actions on the fakes to its QA handoff; no test sets a child's state by hand", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S5, S8] }
   - { id: A5, statement: "a claude run that is not read-only passes --permission-mode with the configured mode, `acceptEdits` unless set; a read-only run is still plan; an empty or unknown mode is refused at mount, naming the setting", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S6, S10] }
   - { id: A6, statement: "a harness conformance in agent-kit, run against claude and codex, fails any harness whose writing run is handed no way to write or whose read-only run is handed one", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S6, S10] }
   - { id: A7, statement: "the proving plugin catalogues lease, renew, prepare, run-step, ask, finish and give-up itself; its gave-up notice is `give-up`, and mounted as a phase it needs no tracker", proof: "deferred:test:plugins/prove/tests/human-step.test.ts", sources: [S7, S8, S11] }
-  - { id: A8, statement: "a called phase's own catalogue entries reach the mount, and a workflow whose handler takes a core action's name is refused at boot, naming the action and the port the core sends it to", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S7, S8, S11] }
+  - { id: A8, statement: "a called phase's own catalogue entries reach the mount, and a handler for a core action in a workflow that does not need the catalogue's port is refused at boot, naming both", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S7, S8, S11] }
   - { id: A9, statement: "a factory rule refuses code outside packages/core that splits a record id on `/` or `#`, and its mutation test is red on the 0.7.1 sources", proof: "deferred:unspecified:sf check on the pull request", sources: [S4, S9] }
-  - { id: A11, statement: "a factory rule refuses a workflow under examples/ or plugins/ that declares a handler named after a CORE_ACTIONS entry, and its mutation test is red on the 0.7.1 sources", proof: "deferred:unspecified:sf check on the pull request", sources: [S7, S11] }
+  - { id: A11, statement: "a test mounts every shipped workflow and fails when one implements a core action on a port it does not need; prove 0.7.1's `escalate` trips it, ticket-to-qa's handlers do not", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S7, S11] }
 crosses:
   - { mechanism: calls, answer: works, proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:test:packages/core/tests/mount.test.ts" }
@@ -61,13 +61,14 @@ crosses:
 guarantee:
   - { holds: "every workflow amy ships behaves the same called as a phase as standing alone", not_against: "a third-party workflow that reads record.id itself and does not run the testkit's called worlds" }
   - { holds: "an agent run amy hands work to can write, and a read-only one cannot", not_against: "a CLI that changes what its permission modes mean" }
-  - { holds: "an action's name means one thing across the core and every shipped plugin", not_against: "two third-party plugins agreeing on a name the core does not ship" }
+  - { holds: "a core action's name means the catalogue's write in every shipped plugin", not_against: "two third-party plugins agreeing on a name the core does not ship" }
 failures:
-  - { step: mount, when: "a workflow's handler is named after a core action", goes_to: "a refused boot naming the action and the core's port" }
+  - { step: mount, when: "a workflow implements a core action without needing the port the catalogue runs it on", goes_to: "a refused boot naming the action and that port" }
   - { step: mount, when: "the claude permissionMode setting is empty or not a mode the CLI accepts", goes_to: "a refused boot naming the setting and the accepted modes" }
 cut:
   - "the rest of what a proof needs (http.request, screenshots and recordings, a resource booting the work's branch): a proof runs against its own branch"
   - "taking up a pull request already open: its own plan, after this one"
+  - "renaming ticket-to-qa's handlers of core actions: they implement them, on the ports the catalogue names"
   - "amy update and --install-links on a file: plugin: install-and-update, already listed"
 exit: "a project of amy's shipped brief, ticket-to-qa and prove phases walks BRIEF → WORK → PROVE → DONE on the fakes with no fork, and the gate goes red if any of the three bugs comes back"
 ---
@@ -77,4 +78,4 @@ Called as phases, three shipped pieces break: ticket-to-qa takes its call's
 id for a ticket, claude's writing runs may not write, and prove takes the
 core's `escalate` and catalogues none of its actions. The example hid all
 three. This plan fixes each at its owner, and gates every shipped workflow
-called as a phase, every harness's writing run and every action's name.
+called as a phase, every harness's writing run and every core action's port.
