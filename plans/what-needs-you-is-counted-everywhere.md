@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: bf221baf76d544453b7538861967a258cf962222
 sources:
   - { id: S1, kind: friction, said: "mostly a person wants, at a glance, whether anything needs them and whether work moves, like a build monitor in the menu bar; opening a terminal or window to learn nothing needs them is the interruption" }
   - { id: S2, kind: reference, ref: "plans/the-work-is-listed-everywhere.md", said: "the frame floats what needs you at the top right; this slice fills it, and gives the menu bar its own renderer" }
