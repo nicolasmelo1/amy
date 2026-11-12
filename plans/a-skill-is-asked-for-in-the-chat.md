@@ -59,6 +59,8 @@ touches:
   - plugins/codex/tests/CodexHarness.test.ts
   - registry/plugin-codex.json
   - .software-factory/evidence/amy-answers-in-the-chat/drive.ts
+  - docs/start/configuration.md
+  - docs/reference/configuration.md
 criteria:
   - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
   - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, and never in ~/.claude/skills on its own", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9, S17] }
