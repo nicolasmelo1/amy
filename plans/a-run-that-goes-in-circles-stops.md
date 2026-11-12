@@ -1,5 +1,5 @@
 ---
-base: d91948702b111be2075c6fdb65488e8ebdd2044a
+base: 238631296a3f4ffb87acd7bd0e795bef76c19b77
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: a Claude run that repeats the same failing call spends its whole turn and timeout before amy sees anything; no-retry-is-free judges only between runs" }
   - { id: S2, kind: reference, ref: "docs/design/no-retry-is-free.md", said: "a run that adds no evidence counts toward budget.progress.maxUnchanged; nothing looks inside one run" }
