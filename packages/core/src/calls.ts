@@ -212,15 +212,23 @@ export function enterCall(record: WorkRecord, site: CallSite, now: Date): WorkRe
 }
 
 /**
- * The store a called workflow is handed: the records of that workflow under
- * every record its caller's store lists, the ones in calls at `state`. A
- * callee counting its peers, against a limit of its own, counts the same
- * thing called as standing alone. Its records are saved with its caller's,
- * never by it.
+ * The store a called workflow is handed: the records of that workflow running
+ * under every record its caller's store lists, the call at `state` (a lane of
+ * `fork`, when it is one). A callee counting its peers, against a limit of its
+ * own, counts the same thing called as standing alone; a call its caller has
+ * returned from or left is history, not a peer. Its records are saved with
+ * its caller's, never by it.
  */
-export function calledStore(store: Store, state: string): Store {
-  const all = (): WorkRecord[] => store.all().flatMap((record) =>
-    Object.values(record.calls ?? {}).filter((child) => child.id.match(CALL_PART)?.[0].slice(1).split("#")[0] === state));
+export function calledStore(store: Store, state: string, fork?: string): Store {
+  const live = (record: WorkRecord): string | undefined =>
+    fork === undefined
+      ? (record.state === state ? record.calling : undefined)
+      : (record.state === fork ? record.lanes?.[state]?.call : undefined);
+  const all = (): WorkRecord[] => store.all().flatMap((record) => {
+    const id = live(record);
+    const child = id === undefined ? undefined : record.calls?.[id];
+    return child ? [child] : [];
+  });
   return {
     all,
     load: (workId) => all().find((record) => record.id === workId) ?? null,

@@ -590,6 +590,21 @@ describe("the smallest call", () => {
     }
   });
 
+  it("lists only the calls still running: not one its caller returned from, nor a lane its caller left the fork with", () => {
+    const record = (id: string, state: string, more: Partial<WorkRecord> = {}): WorkRecord => ({ id, state, updatedAt: "", attempts: {}, history: [], ...more });
+    const child = (id: string) => record(id, "WORKING");
+    const roots: WorkRecord[] = [
+      record("SHOP-1", "WORK", { calling: "SHOP-1/WORK#1", calls: { "SHOP-1/WORK#1": child("SHOP-1/WORK#1") } }),
+      record("SHOP-2", "DONE", { calls: { "SHOP-2/WORK#1": child("SHOP-2/WORK#1") } }),
+      record("SHOP-3", "split", { lanes: { A: { call: "SHOP-3/A#1" } }, calls: { "SHOP-3/A#1": child("SHOP-3/A#1") } }),
+      record("SHOP-4", "ESCALATED", { lanes: { A: { call: "SHOP-4/A#1" } }, calls: { "SHOP-4/A#1": child("SHOP-4/A#1") } }),
+    ];
+    const store = { load: () => null, save: () => {}, all: () => roots };
+
+    expect(calledStore(store, "WORK").all().map((one) => one.id)).toEqual(["SHOP-1/WORK#1"]);
+    expect(calledStore(store, "A", "split").all().map((one) => one.id)).toEqual(["SHOP-3/A#1"]);
+  });
+
   it("refuses a called workflow saving through its store: its records are saved with its caller's", () => {
     const view = calledStore({ load: () => null, save: () => {}, all: () => [] }, "WORK");
 

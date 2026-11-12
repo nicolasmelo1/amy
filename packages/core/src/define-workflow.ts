@@ -615,7 +615,8 @@ function callSite(
   const settings = validateConfig(at, declaration.configSchema, binding.binding.config);
   if (!settings.ok) throw new Error(settings.problems.join("; "));
   const bound = (kind: string): string => binding.binding.ports?.[kind] ?? kind;
-  const scoped = <T>(kind: string, port: T): T => (kind === "store" && port ? calledStore(port as unknown as Store, state) as unknown as T : port);
+  const fork = Object.entries(shape.diagram?.forks ?? {}).find(([, drawn]) => drawn.lanes.includes(state))?.[0];
+  const scoped = <T>(kind: string, port: T): T => (kind === "store" && port ? calledStore(port as unknown as Store, state, fork) as unknown as T : port);
   const calleeCtx: PluginContext | undefined = ctx && {
     ...ctx,
     config: settings.config,
