@@ -44,6 +44,11 @@ touches:
   - registry/cli.json
   - registry/core.json
   - registry/plugin-agent-relay.json
+  - packages/core/src/ports/Harness.ts
+  - plugins/claude/src/ClaudeHarness.ts
+  - plugins/claude/tests/ClaudeHarness.test.ts
+  - packages/cli/tests/config.test.ts
+  - registry/plugin-claude.json
 criteria:
   - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
   - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, then ~/.claude/skills", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9] }
@@ -58,6 +63,7 @@ crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:test:packages/cli/tests/harnesses.test.ts" }
   - { mechanism: config, answer: works, proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/core/tests/chat/desk.test.ts" }
+  - { mechanism: tracker-and-host-writes, answer: n/a, why: "the harness port gains an optional fact a harness reports about itself; nothing is written to a tracker or a host" }
 guarantee:
   - { holds: "a skill the chat runs is one amy installed and the config names for the chat", not_against: "a person editing a SKILL.md under ~/.amy/skills by hand until the next update" }
   - { holds: "a skill turn acts only through the /action list", not_against: "a skill whose instructions ask for a command off the list: it is refused, not run" }
