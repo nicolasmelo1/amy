@@ -1,4 +1,5 @@
 ---
+base: 1471c13ea5a21e998b417b336683844b0932092f
 sources:
   - { id: S1, kind: friction, said: "a window only one renderer opens grows a flag per renderer (--terminal, --desktop, --phone), and a renderer somebody else writes has none; every other part of amy is a plugin found by its registered name" }
   - { id: S2, kind: decision, said: "a renderer is a plugin contributing to ui-renderer under a name (text, desktop, terminal, menubar, a third party's); it says which frame.yaml surfaces it draws, how to start, and how to build when it has a build" }
