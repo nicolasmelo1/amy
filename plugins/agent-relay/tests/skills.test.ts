@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { installedSkills, locateSkill, parseSkills, skillsNamed } from "../src/skills.js";
+import { installedSkills, locateSkill, ownSkillRoot, parseSkills, skillRoots, skillsNamed } from "../src/skills.js";
 
 /** The problems, or a failure saying the config was wrongly accepted. */
 function problemsOf(value: unknown): string[] {
@@ -109,5 +109,33 @@ describe("installedSkills", () => {
 
     expect(locateSkill([path.join(root, "nowhere"), root], "logion")).toBe(path.join(root, "logion"));
     expect(locateSkill([root], "half-installed")).toBeUndefined();
+  });
+});
+
+describe("the chat is a step too (A3)", () => {
+  it("reads a ladder for the conversation", () => {
+    expect(parseSkills({ chat: ["/amy-groom"] })).toEqual({ ok: true, ladders: { chat: ["amy-groom"] } });
+  });
+
+  it("says chat is a step when it refuses another key", () => {
+    expect(problemsOf({ nowhere: ["/x"] }).join("\n")).toContain("or `chat` for the conversation");
+  });
+});
+
+describe("where an installed skill is looked for (A2)", () => {
+  it("is amy's own root first, then the configured roots, then the harness's", () => {
+    expect(ownSkillRoot("/home/a/.amy")).toBe("/home/a/.amy/skills");
+    expect(skillRoots(["~/shared/skills"], "/home/a/.amy")).toEqual([
+      "/home/a/.amy/skills",
+      "~/shared/skills",
+      "~/.claude/skills",
+    ]);
+  });
+
+  it("names no root twice, and keeps amy's own first", () => {
+    expect(skillRoots(["/home/a/.amy/skills"], "/home/a/.amy")).toEqual([
+      "/home/a/.amy/skills",
+      "~/.claude/skills",
+    ]);
   });
 });

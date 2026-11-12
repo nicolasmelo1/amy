@@ -45,8 +45,10 @@ import { USAGE_COLLECTION, type UsageReader, type UsageResult } from "@amykit/ag
 import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type SubscriptionUsage } from "./status-page.js";
 import {
   AmyConfig,
+  chatSkills,
   configuredAutoUpdateProblems,
   configuredChatProblems,
+  configuredSkillRoots,
   loadConfig,
   loadConfigFrom,
   addModeFor,
@@ -114,7 +116,7 @@ import { addWorkflowInto } from "./workflow-add.js";
 import { ForkTarget, applyForkUpdates, treeDigest, forkTargets, mergeForks, prepareForks, profileForkDirectories, readRecord, readTree, writeMarkedMerges, writeRecord, writeTree } from "./fork.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, migrateSettingsFile, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
-import { recordWrite, writeSkills } from "./skills-record.js";
+import { locateSkill, ownSkillRoot, recordWrite, skillRoots, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -689,7 +691,7 @@ program
         return;
       }
       const { engine, mountProblem, parts } = mounted;
-      const reader = chatReader(profile, mounted, options.supervised === true, (how) => {
+      const reader = chatReader(profile, config, mounted, options.supervised === true, (how) => {
         exit = how;
         stopping = true;
       });
@@ -817,7 +819,7 @@ function chargedTo(config: AmyConfig, profile: Profile, parts: ChatParts): { par
 }
 
 /** One pass over the chat, as this loop answers it; a failure to read it is said and waits for the next pass. */
-function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] }, supervised: boolean, exit: (how: "restart" | "stop") => void): () => Promise<void> {
+function chatReader(profile: Profile, config: AmyConfig, mounted: { mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] }, supervised: boolean, exit: (how: "restart" | "stop") => void): () => Promise<void> {
   const conversation = mounted.parts.conversation;
   // Only a supervisor starts a loop with --supervised, so the flag is what
   // says the next loop will be started; a detached loop says why not.
@@ -828,6 +830,7 @@ function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: C
     workflow: profile.name,
     config: paths(home).config,
     restartMarker: restartMarkerOf(profile),
+    blocks: path.join(home, "chat", "blocks"),
     ...(unsupervised ? { unsupervised } : {}),
     pid: process.pid,
     exit: async (how) => exit(how),
@@ -835,6 +838,9 @@ function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: C
   return async () => {
     if (!conversation?.chat) return;
     try {
+      // Read afresh every pass: a skill installed, deleted or replaced on
+      // disk is what the next message sees, without a restart.
+      const table = chatSkillTable(config, home);
       const pass = await answerTheChat({
         conversation,
         harnesses: mounted.parts.harnesses,
@@ -842,6 +848,7 @@ function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: C
         directory: path.join(home, "chat"),
         commands: CHAT_COMMANDS,
         act,
+        ...(table.size > 0 ? { skills: table } : {}),
         ...(mounted.mountProblem ? { mountProblem: mounted.mountProblem } : {}),
         ...(mounted.spend ? { spend: mounted.spend } : {}),
         about: `This amy drives the workflow \`${profile.name}\` (${profile.workflow}); its state is in ${home}.`,
@@ -851,6 +858,19 @@ function chatReader(profile: Profile, mounted: { mountProblem?: string; parts: C
       console.error(`${new Date().toISOString()} the chat could not be read: ${(error as Error).message}`);
     }
   };
+}
+
+/**
+ * The skills the chat may start with, by name, each where this machine holds
+ * it: amy's own root first, then the roots the config names, then the
+ * harness's own directory, the same order a step's skill is looked up in.
+ *
+ * A name the ladder holds with no directory is kept with none: the turn says
+ * so, and names `amy skills` rather than answering without the method.
+ */
+function chatSkillTable(config: AmyConfig, home: string): ReadonlyMap<string, string | undefined> {
+  const roots = skillRoots(home, configuredSkillRoots(config));
+  return new Map(chatSkills(config).map((name) => [name, locateSkill(roots, name)]));
 }
 
 /** What a loop whose workflow did not mount waits to see change: the config, and the workflow's source. */
@@ -1345,15 +1365,18 @@ brief
   .argument("<id>", "the brief id, as the workflow named it")
   .argument("<section>", "a section the workflow's brief declares")
   .argument("[body]", "the answer; read from standard input when omitted or `-`")
+  .option("--from <file>", "read the answer from a file, which is how a body with newlines is written without a shell")
   .option("--explains <ids>", "the work ids the brief explains, comma-separated; kept from the stored brief when omitted")
-  .action(async (id: string, section: string, text: string | undefined, options: { explains?: string }) => {
+  .action(async (id: string, section: string, text: string | undefined, options: { from?: string; explains?: string }) => {
     const opened = await openBrief(selected());
     if (!opened.ok) return refuseBrief(opened.why);
     const declared = sectionsOf(opened.briefs).map((one) => one.section);
     if (!declared.includes(section)) {
       return refuseBrief(`\`${section}\` is not a section this workflow's brief declares — it asks for ${declared.map((name) => `\`${name}\``).join(", ")}`);
     }
-    const body = text === undefined || text === "-" ? await readStandardInput() : text;
+    const read = answerBody(text, options.from);
+    if (read !== undefined && "refused" in read) return refuseBrief(read.refused);
+    const body = read?.body ?? await readStandardInput();
     if (body.trim() === "") return refuseBrief(`the answer to \`${section}\` is empty: a blank section is one the brief does not answer`);
     // Read, then written whole through the port, which replaces the brief
     // atomically: the section order is the declaration's, never the order
@@ -1440,6 +1463,23 @@ async function readStandardInput(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   return Buffer.concat(chunks).toString("utf-8");
+}
+
+/**
+ * The answer as it was written: a body argument, a file `--from` names, or
+ * nothing, which is standard input.
+ *
+ * `--from` reads a file, so a section with newlines is written without a
+ * shell; a body and `--from` together is refused rather than one winning.
+ */
+function answerBody(text: string | undefined, from: string | undefined): { body: string } | { refused: string } | undefined {
+  if (from === undefined) return text === undefined || text === "-" ? undefined : { body: text };
+  if (text !== undefined) return { refused: "a body and `--from` were both given: `--from <file>` is how the answer arrives" };
+  try {
+    return { body: fs.readFileSync(path.resolve(from), "utf-8") };
+  } catch (error) {
+    return { refused: `could not read \`${from}\`: ${(error as Error).message}` };
+  }
 }
 
 program
@@ -2380,11 +2420,12 @@ async function moveEverything(
       return 1;
     }
 
-    if (movedList.moved.some((one) => one.root === "install" && one.name === "@amykit/cli")) {
-      const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
-      if (rewrite !== undefined) return rewrite;
-      for (const line of rewriteSkillsSaid) console.log(line);
-    }
+    // Every update writes the skills: the CLI moved or not, amy's own root
+    // travels with it, so an install whose copy was deleted is repaired here
+    // and a rewrite that cannot happen is the update's failure.
+    const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
+    if (rewrite !== undefined) return rewrite;
+    for (const line of rewriteSkillsSaid) console.log(line);
 
     if (release !== undefined) reportHeldBelow(belowRelease(copiesOnDisk(pluginsRoot, installRoot), release.version), release.version);
     console.log(`\n${movedList.moved.length} package(s) moved; every configured profile mounts. Run \`amy doctor\`, then \`amy start\`.`);
@@ -2563,7 +2604,10 @@ function reportOnly(moving: readonly Held[], pinned: boolean, forks: readonly Fo
     return 0;
 }
 
-/** The zero-move case, which still has to answer for a machine that will not boot. */
+/**
+ * The zero-move case, which still has to answer for a machine that will not
+ * boot, and still writes the skills every update promises.
+ */
 async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): Promise<number> {
     // The boot check runs even when nothing moved: an update on a machine
     // whose config already does not boot must say so, not report success
@@ -2574,6 +2618,14 @@ async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): 
       console.error("\nNothing moved; the config is what needs attention.");
       return 1;
     }
+    // Nothing moved, but the skills still travel: a deleted own root is
+    // repaired here, and a rewrite that cannot happen fails the update.
+    const said = deps.skillsInto();
+    if (said.length === 0) {
+      console.error("\namy could not rewrite its skills; an update writes them every time.");
+      return 1;
+    }
+    for (const line of said) console.log(line);
     if (!pinned) console.log("nothing to move");
     return 0;
 }
@@ -2880,13 +2932,19 @@ configCommand
 
 program
   .command("skills")
-  .description("Install amy's skills into the harnesses on this machine")
+  .description("Install amy's skills into ~/.amy/skills and the harnesses on this machine")
   .option("--all", "every harness found, without asking")
   .option("--harness <name>", "one harness by name, without asking")
   .option("--dir <path>", "a directory, for a harness this does not know")
-  .option("--recorded", "rewrite into the harnesses `amy skills` wrote to before, and nothing else")
+  .option("--recorded", "rewrite into amy's own root and the harnesses `amy skills` wrote to before, and nothing else")
   .action((options: { all?: boolean; harness?: string; dir?: string; recorded?: boolean }) => {
     const skills = shipped();
+    const own = ownSkillRoot(home);
+
+    // amy's own root is written first and always, unless this is the update's
+    // half: `writeSkills` writes it inside its own rollback, and writing it
+    // here would snapshot the rejected release into the rollback.
+    if (!options.recorded && !installOwn()) return;
 
     // The update's half: every harness the record names, and nothing else.
     // A harness that is installed but was never written to is not written to
@@ -2896,7 +2954,7 @@ program
       const wrote = writeSkills(home, install, () => skills, (name) =>
         harnesses().find((harness) => harness.name === name)?.skills,
       );
-      if (wrote.length === 0) console.log("nowhere recorded: run `amy skills` once, by hand, first.");
+      console.log(`${wrote.length} file(s): amy's own root, and every harness recorded before`);
       return;
     }
 
@@ -2914,8 +2972,7 @@ program
     }
 
     if (found.length === 0) {
-      console.error("no harness found. Pass --dir to write them somewhere anyway.");
-      process.exitCode = 1;
+      console.log(`no harness found: the skills are in ${own}. Pass --dir or --harness to write them into a harness too.`);
       return;
     }
 
@@ -2934,7 +2991,20 @@ program
     for (const harness of chosen) wrote(install(harness.skills, skills), harness.name);
     for (const harness of chosen) recordWrite(home, { harness: harness.name });
     console.log(`\n${skills.length} skill(s): ${skills.map(([name]) => `/${name}`).join(", ")}`);
+    console.log(`amy's own root: ${own}`);
     console.log("Recorded, so the next `amy update` rewrites them into the same places.");
+
+    function installOwn(): boolean {
+      try {
+        wrote(install(own, skills), own);
+        return true;
+      } catch (error) {
+        // A root amy cannot write is a failed install, named by its directory.
+        console.error(`could not write ${own}: ${(error as Error).message}`);
+        process.exitCode = 1;
+        return false;
+      }
+    }
 
     function wrote(files: string[], where: string): void {
       console.log(`${where}: ${files.length} skill(s)`);

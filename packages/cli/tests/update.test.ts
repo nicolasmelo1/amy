@@ -570,7 +570,7 @@ describe("the skills record", () => {
     expect(readSkills(home).directories).toEqual([path.join(home, "somewhere")]);
   });
 
-  it("rewrites into every recorded harness and directory, and nowhere else", () => {
+  it("rewrites into amy's own root and every recorded harness and directory, and nowhere else", () => {
     const into = path.join(home, "harness", "skills");
     fs.mkdirSync(into, { recursive: true });
     recordWrite(home, { harness: "claude" });
@@ -588,7 +588,9 @@ describe("the skills record", () => {
       (name: string) => (name === "claude" ? into : undefined),
     );
 
-    expect(wrote).toHaveLength(2);
+    // amy's own copy travels with every update, whether or not a harness was chosen.
+    expect(wrote).toHaveLength(3);
+    expect(fs.readFileSync(path.join(home, "skills", "amy", "SKILL.md"), "utf-8")).toBe("# the new version\n");
     expect(fs.readFileSync(path.join(into, "amy", "SKILL.md"), "utf-8")).toBe("# the new version\n");
     expect(fs.readFileSync(path.join(home, "mine", "amy", "SKILL.md"), "utf-8")).toBe("# the new version\n");
 
@@ -607,6 +609,11 @@ describe("the skills record", () => {
     recordWrite(home, { directory: second });
     fs.mkdirSync(path.join(first, "amy"), { recursive: true });
     fs.writeFileSync(path.join(first, "amy", "SKILL.md"), "# old\n", "utf-8");
+    // amy's own root is a target of the same transaction, so its body is
+    // put back with the rest rather than left describing a release that
+    // never survived.
+    fs.mkdirSync(path.join(home, "skills", "amy"), { recursive: true });
+    fs.writeFileSync(path.join(home, "skills", "amy", "SKILL.md"), "# own old\n", "utf-8");
 
     expect(() => writeSkills(
       home,
@@ -622,6 +629,7 @@ describe("the skills record", () => {
     )).toThrow("disk full");
 
     expect(fs.readFileSync(path.join(first, "amy", "SKILL.md"), "utf-8")).toBe("# old\n");
+    expect(fs.readFileSync(path.join(home, "skills", "amy", "SKILL.md"), "utf-8")).toBe("# own old\n");
     expect(fs.existsSync(path.join(second, "amy"))).toBe(false);
   });
 
@@ -635,7 +643,9 @@ describe("the skills record", () => {
       () => undefined,
     );
 
-    expect(wrote).toEqual([]);
+    // amy's own root is written; the directory the record names is not recreated.
+    expect(wrote).toEqual([path.join(home, "skills", "amy")]);
+    expect(fs.existsSync(path.join(home, "deleted"))).toBe(false);
   });
 });
 
@@ -1568,5 +1578,37 @@ describe("the workspace's keys, as the update folds them", () => {
     // Import the loader fresh so the update's own module graph is not used.
     const { loadConfig } = await import("../src/config.js");
     expect(() => loadConfig(home)).toThrow(/@amykit\/plugin-file-worktree/);
+  });
+});
+
+describe("an update that has nothing to move still writes the skills (A1)", () => {
+  it("rewrites them, and fails the update when it cannot", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-nothing-"));
+    try {
+      rootWith(home, {});
+      const { updateCommand } = await import("../src/index.js");
+      const deps = { mountProfiles: async () => ({ ok: true as const }) };
+      let asked = 0;
+
+      const code = await updateCommand(home, new ScriptedRunner(), undefined, false, {
+        ...deps,
+        skillsInto: () => {
+          asked += 1;
+          return ["amy: 7 skill(s) rewritten"];
+        },
+      });
+
+      expect(code).toBe(0);
+      expect(asked).toBe(1);
+
+      const failing = await updateCommand(home, new ScriptedRunner(), undefined, false, {
+        ...deps,
+        skillsInto: () => [],
+      });
+
+      expect(failing).toBe(1);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 });

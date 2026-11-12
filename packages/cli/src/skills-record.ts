@@ -1,5 +1,42 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+
+/**
+ * Where amy keeps every skill it ships, under its own state.
+ *
+ * Written on every install and every update, whether or not a harness was
+ * chosen: it is the copy amy owns, and the one the chat lends a skill from.
+ */
+export function ownSkillRoot(home: string): string {
+  return path.join(home, "skills");
+}
+
+/**
+ * Where an installed skill is looked for: amy's own root, the roots the
+ * config names, then the harness's own directory.
+ *
+ * The relay keeps the same order in `plugins/agent-relay/src/skills.ts`. It is
+ * written twice because a machine carries only the plugins it mounted, so the
+ * CLI cannot import one of them to ask.
+ */
+export function skillRoots(home: string, configured: readonly string[] = []): readonly string[] {
+  return [...new Set([ownSkillRoot(home), ...configured, "~/.claude/skills"])];
+}
+
+/** The directory a skill is installed in, from the first root that holds it; nothing when none does. */
+export function locateSkill(roots: readonly string[], skill: string): string | undefined {
+  for (const root of roots) {
+    const directory = path.join(expandHome(root), skill);
+    if (fs.existsSync(path.join(directory, "SKILL.md"))) return directory;
+  }
+  return undefined;
+}
+
+function expandHome(value: string): string {
+  if (value === "~") return os.homedir();
+  return value.startsWith("~/") ? path.join(os.homedir(), value.slice(2)) : value;
+}
 
 /**
  * Which harnesses amy's skills were written into, recorded when `amy skills`
@@ -68,7 +105,12 @@ export function writeSkills(
 ): string[] {
   const record = readSkills(home);
   const skills = shipped();
-  const targets: { label: string; into: string }[] = [];
+  // amy's own root is written on every install and every update, whether or
+  // not a harness was chosen: it is the copy amy owns, and the one the chat
+  // reads a skill from.
+  const own = ownSkillRoot(home);
+  fs.mkdirSync(own, { recursive: true });
+  const targets: { label: string; into: string }[] = [{ label: own, into: own }];
 
   for (const harness of record.harnesses) {
     const into = harnessSkills(harness);

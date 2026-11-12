@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commandsIn, refusedCommands, specOf, tokenize } from "../../src/index.js";
+import { ChatCommandSpec, commandsIn, refusedCommands, specOf, tokenize } from "../../src/index.js";
 
 const specs = [
   { words: ["status"], summary: "what is running" },
@@ -56,6 +56,43 @@ describe("only commands on the list run (A4)", () => {
     expect(refused).toEqual([
       { line: "status | sh", why: expect.stringMatching(/shell line/) },
       { line: "rm -rf /tmp/x", why: "`rm -rf` is not a command amy runs from the chat" },
+    ]);
+  });
+});
+
+describe("a flag reaches the chat only when the command declares it (A8)", () => {
+  const briefing: ChatCommandSpec[] = [
+    { words: ["brief", "sections"], flags: { "--json": false }, summary: "the sections" },
+    { words: ["brief", "write"], args: "<id> <section>", flags: { "--explains": true, "--from": true }, blocks: ["--from"], summary: "answer one" },
+    { words: ["brief", "check"], args: "<id>", flags: { "--json": false }, summary: "whether it is ready" },
+  ];
+
+  it("takes --json where the command declares it", () => {
+    expect(refusedCommands(commandsIn("```amy\nbrief sections --json\nbrief check TBO-1 --json\n```"), briefing)).toEqual([]);
+  });
+
+  it("refuses a flag the command does not declare, by name", () => {
+    expect(refusedCommands(commandsIn("```amy\nbrief sections --color\n```"), briefing)).toEqual([
+      { line: "brief sections --color", why: "`amy brief sections` does not take `--color` from the chat" },
+    ]);
+  });
+
+  it("takes a flag's value from a block the same answer carries", () => {
+    const asked = commandsIn("```markdown answer.md\nthe scope:\n- the api\n- the ui\n```\n```amy\nbrief write TBO-1 scope --from answer.md\n```");
+
+    expect(refusedCommands(asked, briefing)).toEqual([]);
+    expect(asked.blocks.get("answer.md")).toBe("the scope:\n- the api\n- the ui\n");
+  });
+
+  it("refuses a block the answer does not carry, before anything runs", () => {
+    expect(refusedCommands(commandsIn("```amy\nbrief write TBO-1 scope --from answer.md\n```"), briefing)).toEqual([
+      { line: "brief write TBO-1 scope --from answer.md", why: "`--from answer.md` names a block this answer does not carry" },
+    ]);
+  });
+
+  it("refuses a flag that needs a value and was given none", () => {
+    expect(refusedCommands(commandsIn("```amy\nbrief write TBO-1 scope --from\n```"), briefing)).toEqual([
+      { line: "brief write TBO-1 scope --from", why: "`--from` needs a value the chat can read" },
     ]);
   });
 });

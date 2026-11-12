@@ -23,7 +23,7 @@ import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
-import { DEFAULT_SKILL_ROOT, installedSkills, locateSkill, parseSkills, skillsNamed } from "./skills.js";
+import { installedSkills, locateSkill, parseSkills, skillRoots, skillsNamed } from "./skills.js";
 
 
 /** Dollars per million tokens, which is how a price list is written. */
@@ -296,10 +296,9 @@ function skillLadders(ctx: TypedContext): SkillLadders {
   return parsed.ladders;
 }
 
-/** Where installed skills are looked for: the configured roots, or the harness's own. */
+/** Where installed skills are looked for: amy's own root, the configured ones, then the harness's. */
 function skillRootsOf(ctx: TypedContext): readonly string[] {
-  const roots = ctx.config.skillRoots;
-  return roots.length > 0 ? roots : [DEFAULT_SKILL_ROOT];
+  return skillRoots(ctx.config.skillRoots, ctx.paths.state);
 }
 
 /**

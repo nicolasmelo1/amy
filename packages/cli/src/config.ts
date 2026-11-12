@@ -97,6 +97,35 @@ export function configuredAutoUpdateProblems(config: AmyConfig): string[] {
   return autoUpdateProblems(config.autoUpdateSource === undefined ? config.autoUpdate : config.autoUpdateSource);
 }
 
+/**
+ * The skills the chat may start with: the `skills` ladder's `chat` step, and
+ * nothing else.
+ *
+ * The relay checks the same ladder at boot, so a name here is a name that
+ * mounted; this read is for the chat, which asks for a skill by name and needs
+ * to know which ones a message may be answered with.
+ */
+export function chatSkills(config: AmyConfig): string[] {
+  // The operator's own slice wins every field it wrote, exactly as mounting
+  // reads it: a ladder written under the relay's settings is the effective
+  // one, and the top-level `skills` is only the default it replaces.
+  const given = config.plugins["@amykit/plugin-agent-relay"] as { skills?: unknown } | undefined;
+  const ladder = isRecord(given?.skills) ? given.skills : config.skills;
+  const chat = ladder.chat;
+  if (!Array.isArray(chat)) return [];
+  return chat.filter((name) => typeof name === "string").map((name) => name.replace(/^\//, ""));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The skill roots the relay was given, when the machine's config names any. */
+export function configuredSkillRoots(config: AmyConfig): string[] {
+  const held = config.plugins["@amykit/plugin-agent-relay"] as { skillRoots?: unknown } | undefined;
+  return Array.isArray(held?.skillRoots) ? held.skillRoots.filter((one): one is string => typeof one === "string") : [];
+}
+
 export interface AmyConfig {
   /**
    * The workflows this install can drive, by the name typed after

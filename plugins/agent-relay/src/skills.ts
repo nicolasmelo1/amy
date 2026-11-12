@@ -8,8 +8,32 @@ export type SkillsResult =
   | { ok: true; ladders: SkillLadders }
   | { ok: false; problems: string[] };
 
+/** The step the conversation itself is: a chat turn reaches the agent with no workflow action. */
+export const CHAT_STEP = "chat";
+
 /** Where a Claude Code skill is installed, unless the config says otherwise. */
 export const DEFAULT_SKILL_ROOT = "~/.claude/skills";
+
+/**
+ * Where amy installs the skills it ships, under the machine's own state.
+ *
+ * Every install writes them here, whether or not a harness directory was
+ * chosen: this is the copy amy owns, and the one the chat reads.
+ */
+export function ownSkillRoot(state: string): string {
+  return path.join(state, "skills");
+}
+
+/**
+ * Where installed skills are looked for, in order: amy's own root, the roots
+ * the config names, then the harness's own directory.
+ *
+ * The first root that holds a skill is where the harness is handed it, so
+ * this order is the answer to "which copy did a step use".
+ */
+export function skillRoots(configured: readonly string[], state: string): readonly string[] {
+  return [...new Set([ownSkillRoot(state), ...configured, DEFAULT_SKILL_ROOT])];
+}
 
 /**
  * Reads the `skills` setting: a ladder of skills per step.
@@ -27,8 +51,10 @@ export function parseSkills(value: unknown): SkillsResult {
   const ladders: Record<string, string[]> = {};
 
   for (const [step, named] of Object.entries(value)) {
-    if (!dispatchesTo(step, "agent")) {
-      problems.push(`\`skills.${step}\` is not a step an agent performs: ${agentSteps().join(", ")}`);
+    // The conversation is one more step an agent performs, named `chat`; its
+    // skills are what a message may start with.
+    if (step !== CHAT_STEP && !dispatchesTo(step, "agent")) {
+      problems.push(`\`skills.${step}\` is not a step an agent performs: ${agentSteps().join(", ")}, or \`${CHAT_STEP}\` for the conversation`);
       continue;
     }
 

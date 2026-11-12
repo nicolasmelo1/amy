@@ -252,3 +252,27 @@ describe("the chat block", () => {
     expect(configuredChatProblems(loadConfigFrom("/state", "retentionDays: 7\n"))).toEqual([]);
   });
 });
+
+describe("the chat's skills are the effective ladder", () => {
+  it("reads the step from the machine's ladder", async () => {
+    const { chatSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(chatSkills(loadConfigFrom("/state", "skills:\n  chat: [/amy-groom, amy-workflow]\n"))).toEqual(["amy-groom", "amy-workflow"]);
+    expect(chatSkills(loadConfigFrom("/state", "skills:\n  triage: [/logion]\n"))).toEqual([]);
+    expect(chatSkills(loadConfigFrom("/state", "retentionDays: 7\n"))).toEqual([]);
+  });
+
+  it("lets the relay's own slice win, as mounting does", async () => {
+    const { chatSkills, loadConfigFrom } = await import("../src/config.js");
+    const config = loadConfigFrom("/state", [
+      "skills:",
+      "  chat: [/amy-groom]",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    skills:",
+      "      chat: [/amy-workflow]",
+    ].join("\n"));
+
+    expect(chatSkills(config)).toEqual(["amy-workflow"]);
+  });
+});

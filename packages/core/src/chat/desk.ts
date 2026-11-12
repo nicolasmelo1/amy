@@ -51,6 +51,15 @@ export interface ChatDesk {
   /** What this amy is, for the harness to read before the conversation. */
   readonly about?: string;
   /**
+   * The skills a message may start with, by the name it writes after a slash,
+   * and the directory each is installed in. A name with no directory is on the
+   * ladder but gone: the turn is refused, naming `amy skills`.
+   *
+   * Which skills these are is the `skills` ladder's `chat` step, and nothing
+   * else names them; without it a slash is just a character in a question.
+   */
+  readonly skills?: ReadonlyMap<string, string | undefined>;
+  /**
    * Where the chat's agent runs are counted, when the person asked for them
    * to be. Unset, a conversation is a conversation: it is not held to the
    * ceilings and its runs are not in the ledger the work is admitted against.
@@ -220,23 +229,22 @@ async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: Chat
   const kept = transcripts.current(message.place);
   if (command.name === "harness") return void await switchHarness(desk, transcripts, kept, command.rest.trim(), say);
 
-  const action = command.name === "action";
-  const warning = desk.mountProblem ? `⚠️ The workflow did not mount, so only the chat is running: ${desk.mountProblem}\n\n` : "";
-  const at = (desk.now?.() ?? new Date()).toISOString();
+  const at = stamp(desk);
+  // The skill this turn is answered with, when the message starts with one on
+  // the chat's ladder or the thread was started with one (S11, S12).
+  const lent = await lentTurn(desk, transcripts, message, command, kept, at, say);
+  if (lent === "refused") return undefined;
+
+  const action = command.name === "action" || lent !== undefined;
+  const warning = mountWarning(desk);
   const progress = new ChatProgress(desk.conversation, message.place);
-  const reply = await readOnlyAnswer(desk, kept, action ? command.rest.trim() : message.text, action, progress);
-  if (typeof reply !== "string") {
-    await say(`${warning}${reply.refused}`);
-    // Kept too, so a harness switched to after a refusal is given the question it refused.
-    kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: reply.refused });
-    transcripts.save(kept);
-    return undefined;
-  }
+  const reply = await readOnlyAnswer(desk, kept, lent ? lent.text : action ? command.rest.trim() : message.text, action, progress, lent);
+  if (typeof reply !== "string") return void await refusalSaid(transcripts, kept, message, at, say, `${warning}${reply.refused}`);
 
   const { said, outcome } = await carriedOut(desk, reply, action, message.place, progress, turn);
-  const answer = message.unaddressed ? `That quoted message is not one I filed under a work, so I do not know which work it is about; answered as a question.\n\n${said}` : said;
+  const answer = quotedAnswer(message, said);
   const record = () => {
-    kept.turns.push({ at, who: "person", text: message.text }, { at: (desk.now?.() ?? new Date()).toISOString(), who: "amy", text: answer });
+    kept.turns.push({ at, who: "person", text: message.text }, { at: stamp(desk), who: "amy", text: answer });
     transcripts.save(kept);
   };
   // What ran is the conversation's even if saying so fails; a turn nothing ran in is kept only once said, so a retry is not doubled.
@@ -246,19 +254,142 @@ async function answerOne(desk: ChatDesk, transcripts: Transcripts, message: Chat
   return outcome;
 }
 
+function stamp(desk: ChatDesk): string {
+  return (desk.now?.() ?? new Date()).toISOString();
+}
+
+/** A mount that did not come up, said with every answer (S29); nothing otherwise. */
+function mountWarning(desk: ChatDesk): string {
+  return desk.mountProblem ? `⚠️ The workflow did not mount, so only the chat is running: ${desk.mountProblem}\n\n` : "";
+}
+
+/** What the person reads: a quote that reached no work was answered as a question, and says so. */
+function quotedAnswer(message: ChatMessage, said: string): string {
+  return message.unaddressed
+    ? `That quoted message is not one I filed under a work, so I do not know which work it is about; answered as a question.\n\n${said}`
+    : said;
+}
+
+/** A turn the harness would not answer is said, and stays part of the conversation. */
+async function refusalSaid(transcripts: Transcripts, kept: Kept, message: ChatMessage, at: string, say: (text: string) => Promise<string>, refused: string): Promise<undefined> {
+  await say(refused);
+  // Kept too, so a harness switched to after a refusal is given the question it refused.
+  kept.turns.push({ at, who: "person", text: message.text }, { at, who: "amy", text: refused });
+  transcripts.save(kept);
+  return undefined;
+}
+
+/**
+ * The skill this turn is answered with, kept for the thread, or `refused` when
+ * the ladder cannot answer with it and the refusal was said.
+ */
+async function lentTurn(
+  desk: ChatDesk,
+  transcripts: Transcripts,
+  message: ChatMessage,
+  command: { name?: "new" | "harness" | "action"; rest: string },
+  kept: Kept,
+  at: string,
+  say: (text: string) => Promise<string>,
+): Promise<{ name: string; path: string; text: string } | undefined | "refused"> {
+  const lent = skillFor(desk, message, command, kept);
+  if (lent && "refused" in lent) {
+    await refusalSaid(transcripts, kept, message, at, say, lent.refused);
+    return "refused";
+  }
+  // A thread started with a skill keeps it: the next message is answered with it lent too.
+  if (lent && kept.skill !== lent.name) {
+    kept.skill = lent.name;
+    transcripts.save(kept);
+  }
+  return lent;
+}
+
+/** The skill one turn is answered with, or why it cannot be. */
+function skillFor(
+  desk: ChatDesk,
+  message: ChatMessage,
+  command: { name?: "new" | "harness" | "action"; rest: string },
+  kept: Kept,
+): { name: string; path: string; text: string } | { refused: string } | undefined {
+  if (message.unaddressed) return undefined;
+  // A skill named on this message wins over the thread's: `/new` and `/harness`
+  // were already read, and anything else after a slash is a skill or nothing.
+  const started = command.name === undefined ? skillIn(message.text) : undefined;
+  if (started) return startedSkill(desk.skills, started, message);
+  return keptSkill(desk.skills, kept, command, message);
+}
+
+/** A skill the message itself starts with, when the ladder exists and holds it. */
+function startedSkill(
+  ladder: ReadonlyMap<string, string | undefined> | undefined,
+  started: { skill: string; rest: string },
+  message: ChatMessage,
+): { name: string; path: string; text: string } | { refused: string } | undefined {
+  if (!ladder || ladder.size === 0) return undefined;
+  if (!ladder.has(started.skill)) {
+    return { refused: `No skill named \`/${started.skill}\` is on this chat's ladder. The skills it names: ${ladderNames(ladder)}.` };
+  }
+  const path = ladder.get(started.skill);
+  if (path === undefined) return { refused: gone(started.skill) };
+  return { name: started.skill, path, text: started.rest.trim() || message.text };
+}
+
+/** The skill the thread was started with, when this message says nothing else. */
+function keptSkill(
+  ladder: ReadonlyMap<string, string | undefined> | undefined,
+  kept: Kept,
+  command: { name?: "new" | "harness" | "action"; rest: string },
+  message: ChatMessage,
+): { name: string; path: string; text: string } | { refused: string } | undefined {
+  if (kept.skill === undefined) return undefined;
+  if (!ladder?.has(kept.skill)) {
+    return { refused: `This conversation started with \`/${kept.skill}\`, which this chat's ladder no longer names, so nothing ran. \`/new\` starts another.` };
+  }
+  const path = ladder.get(kept.skill);
+  if (path === undefined) return { refused: gone(kept.skill) };
+  return { name: kept.skill, path, text: command.name === "action" ? command.rest.trim() : message.text };
+}
+
+/** A skill the ladder names but this machine does not hold. */
+function gone(skill: string): string {
+  return `\`/${skill}\` is on this chat's ladder, but it is not installed here: nothing ran. Run \`amy skills\`, and it answers next time.`;
+}
+
+function ladderNames(ladder: ReadonlyMap<string, string | undefined>): string {
+  return [...ladder.keys()].map((name) => `/${name}`).join(", ");
+}
+
 /** The harness's answer to one turn, run read-only, or what to say when there is none. */
-async function readOnlyAnswer(desk: ChatDesk, kept: Kept, text: string, action: boolean, progress: ChatProgress): Promise<string | { refused: string }> {
+async function readOnlyAnswer(
+  desk: ChatDesk,
+  kept: Kept,
+  text: string,
+  action: boolean,
+  progress: ChatProgress,
+  skill?: { name: string; path: string },
+): Promise<string | { refused: string }> {
   const chosen = harnessFor(desk, kept);
   if ("refused" in chosen) return chosen;
   const { name, harness } = chosen;
+  // A skill turn the harness cannot be handed a skill for would act without
+  // the method it was addressed to; it is refused rather than run bare.
+  const other = [...desk.harnesses].find(([other, one]) => other !== name && one.lendsSkill === true)?.[0];
+  if (skill && harness.lendsSkill !== true) {
+    return { refused: `${name} cannot be handed a skill, so nothing ran: a skill turn on it would act without the method.${other ? `\nAnother can: /harness ${other}` : ""}` };
+  }
   await progress.line(`${action ? "Acting" : "Thinking"} with ${name}…`);
   try {
-    const reply = await harness.ask(promptFor(desk, kept, text, action), desk.cwd, { readOnly: true, step: "chat" });
+    const reply = await harness.ask(promptFor(desk, kept, text, action, skill), desk.cwd, {
+      readOnly: true,
+      step: "chat",
+      ...(skill ? { skill: { name: skill.name, path: skill.path } } : {}),
+    });
     if (desk.spend && reply.run) charge(desk.spend.log, reply.run, desk.now?.() ?? new Date());
     return answerIn(reply, name, [...desk.harnesses.keys()]);
   } catch (error) {
-    const other = [...desk.harnesses.keys()].find((one) => one !== name);
-    return { refused: `${name} could not answer read-only, so nothing ran: ${messageOf(error)}${other ? `\nAnother can: /harness ${other}` : ""}` };
+    const another = [...desk.harnesses.keys()].find((one) => one !== name);
+    return { refused: `${name} could not answer read-only, so nothing ran: ${messageOf(error)}${another ? `\nAnother can: /harness ${another}` : ""}` };
   }
 }
 
@@ -297,10 +428,19 @@ function charge(log: EventLog, run: AgentRun, now: Date): void {
   });
 }
 
-/** `/new`: another conversation in a chat without threads; a thread stays one. */
+/** `/new`: another conversation in a chat without threads; a thread stays one, and loses its skill. */
 async function startAnother(transcripts: Transcripts, message: ChatMessage, say: (text: string) => Promise<string>): Promise<void> {
   if (message.threaded) {
-    await say("A thread is one conversation. Write in the chat, outside this thread, to start another.");
+    // A thread is one conversation, so `/new` cannot start another; it still
+    // ends the skill this thread was started with (S12, A5).
+    const kept = transcripts.current(message.place);
+    if (kept.skill === undefined) {
+      await say("A thread is one conversation. Write in the chat, outside this thread, to start another.");
+      return;
+    }
+    delete kept.skill;
+    transcripts.save(kept);
+    await say("A thread is one conversation, so this one goes on; the skill it was started with is no longer lent.");
     return;
   }
   transcripts.startAnother(message.place);
@@ -351,26 +491,48 @@ function leadingCommand(text: string): { name?: "new" | "harness" | "action"; re
   return { name, rest };
 }
 
+/** `/<name>` at the start of a message, when it is not one of the chat's own commands, and what follows it. */
+function skillIn(text: string): { skill: string; rest: string } | undefined {
+  const trimmed = text.trimStart();
+  const found = /^\/([\w-]+)/.exec(trimmed);
+  if (!found) return undefined;
+  const skill = found[1]!;
+  // The chat's own commands are read before any skill: `/new` starts a conversation, never a skill.
+  if (skill === "new" || skill === "harness" || skill === "action") return undefined;
+  const after = trimmed.slice(found[0].length);
+  // Addressed to the bot by name: /amy-groom@amy_work_bot.
+  if (after.startsWith("@")) return { skill, rest: after.slice(after.search(/\s|$/)) };
+  // A word that only starts with a slash, such as a path, is not a skill.
+  if (after !== "" && !/^\s/.test(after)) return undefined;
+  return { skill, rest: after };
+}
+
 /**
  * The whole conversation, each time (S21): what amy is, what this turn may
  * do, the list it may name, and every turn so far, then the new message.
+ *
+ * A skill turn is addressed to the skill the way a relay addresses one, so
+ * the harness it was lent to reads it as the method rather than as context.
  */
-function promptFor(desk: ChatDesk, kept: Kept, text: string, action: boolean): string {
+function promptFor(desk: ChatDesk, kept: Kept, text: string, action: boolean, skill?: { name: string }): string {
   const list = desk.commands.map((spec) => `  amy ${[...spec.words, spec.args].filter(Boolean).join(" ")} — ${spec.summary}`).join("\n");
   const history = kept.turns.map((turn) => `${turn.who === "person" ? "Person" : "amy"}: ${turn.text}`).join("\n\n");
-  return [
+  const body = [
     "You are amy, answering the person who runs it, in their chat. Be brief: this is read on a phone.",
     desk.about ?? "",
+    skill ? `This turn is answered by the skill \`/${skill.name}\`, which is lent to you for this run: follow it, one question at a time, and ask before writing anything.` : "",
     "This turn is read-only: read anything you need and change nothing — no file, no commit, no tracker or code host.",
     action
       ? "The person started this message with /action: to act on amy, end your answer with a fenced block tagged `amy`, one command per line, from the list below. amy runs them, not a shell; a line off the list refuses the whole block."
       : "To act on amy, the person starts a message with /action. If acting would help, say which command, in a fenced block tagged `amy`: it will not run this turn.",
     `The commands:\n${list}`,
     "To change amy's configuration, put the whole new config.yaml in a fenced block tagged `config.yaml` and name `config apply`: it is shown as a diff and written only if it mounts.",
+    "A command that takes a value from a block names it: put the body in a fenced block tagged with a file name, such as `answer.md`, and write `--from answer.md`. A heredoc is a shell line and is refused.",
     desk.mountProblem ? `The workflow did not mount: ${desk.mountProblem}` : "",
     history ? `The conversation so far:\n\n${history}` : "",
     `Person: ${text}`,
   ].filter(Boolean).join("\n\n");
+  return skill ? `/${skill.name}\n\n${body}` : body;
 }
 
 function claimFile(directory: string, id: string): string {

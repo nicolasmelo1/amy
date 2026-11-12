@@ -385,6 +385,11 @@
           "description": ""
         },
         {
+          "title": "A skill is asked for in the chat",
+          "path": "/design/a-skill-is-asked-for-in-the-chat",
+          "description": ""
+        },
+        {
           "title": "A Slack thread per piece of work",
           "path": "/design/a-slack-thread-per-piece-of-work",
           "description": ""
@@ -981,6 +986,11 @@
           "depth": 3,
           "title": "**A shipped workflow runs as a phase.** A project walking BRIEF → WORK → PROVE on amy's own pieces stopped three times in 0.7.1, and the whole-project example hid all three. It never ran ticket-to-qa (it set the WORK child to DONE by hand), and it ran actions without the boot check the daemon makes.",
           "slug": "a-shipped-workflow-runs-as-a-phase-a-project-walking-brief-work-prove-on-amys-own-pieces-stopped-three-times-in-071-and-the-whole-project-example-hid-all-three-it-never-ran-ticket-to-qa-it-set-the-work-child-to-done-by-hand-and-it-ran-actions-without-the-boot-check-the-daemon-makes"
+        },
+        {
+          "depth": 3,
+          "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now /amy-groom TBO-1 works from Slack or Telegram, and the thread goes on.",
+          "slug": "a-skill-is-asked-for-in-the-chat-grooming-needed-a-terminal-amys-skills-lived-only-in-a-harnesss-own-directory-and-the-chat-knew-three-commands-now-amy-groom-tbo-1-works-from-slack-or-telegram-and-the-thread-goes-on"
         },
         {
           "depth": 2,
@@ -2257,6 +2267,17 @@
       "file": "docs/design/a-shipped-workflow-runs-as-a-phase.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-shipped-workflow-runs-as-a-phase.md",
       "title": "A shipped workflow runs as a phase",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-skill-is-asked-for-in-the-chat",
+      "file": "docs/design/a-skill-is-asked-for-in-the-chat.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-skill-is-asked-for-in-the-chat.md",
+      "title": "A skill is asked for in the chat",
       "description": "",
       "group": "",
       "order": 999,
@@ -7191,6 +7212,10 @@
           ],
           "options": [
             {
+              "flags": "--from <file>",
+              "description": "read the answer from a file, which is how a body with newlines is written without a shell"
+            },
+            {
               "flags": "--explains <ids>",
               "description": "the work ids the brief explains, comma-separated; kept from the stored brief when omitted"
             }
@@ -7459,7 +7484,7 @@
           "path": [
             "skills"
           ],
-          "description": "Install amy's skills into the harnesses on this machine",
+          "description": "Install amy's skills into ~/.amy/skills and the harnesses on this machine",
           "arguments": [],
           "options": [
             {
@@ -7476,7 +7501,7 @@
             },
             {
               "flags": "--recorded",
-              "description": "rewrite into the harnesses `amy skills` wrote to before, and nothing else"
+              "description": "rewrite into amy's own root and the harnesses `amy skills` wrote to before, and nothing else"
             }
           ],
           "isDefault": false,
@@ -8176,14 +8201,14 @@
             "type": "string[]",
             "required": false,
             "default": [],
-            "description": "where installed skills are looked for. Empty means ~/.claude/skills, which is where the harness looks"
+            "description": "where installed skills are looked for, after amy's own ~/.amy/skills. Empty means ~/.claude/skills after amy's own, which is where the harness looks"
           },
           {
             "name": "skills",
             "type": "record",
             "required": false,
             "default": {},
-            "description": "which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {\"triage\": [\"/logion\"]}. A skill named here must be installed, or the mount is refused"
+            "description": "which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {\"triage\": [\"/logion\"]}. A step named `chat` is the conversation itself: those skills are the ones a message may start with, such as {\"chat\": [\"/amy-groom\"]}. A skill named here must be installed, or the mount is refused"
           }
         ],
         "environment": []
@@ -11406,6 +11431,30 @@
           {
             "package": "@amykit/workflow-ticket-to-qa",
             "level": "patch"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-skill-is-asked-for-in-the-chat",
+        "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.",
+        "body": "- **amy owns a copy of the skills it ships.** `amy skills` and every `amy\n  update` write every shipped skill into `~/.amy/skills`, whether or not a\n  harness directory was chosen; a harness's own directory stays an extra the\n  person asks for. A root amy cannot write is a failed install naming it.\n- **A step looks a skill up in a fixed order.** `~/.amy/skills` first, then the\n  roots the config names, then `~/.claude/skills`. The relay and the chat read\n  the same order from one function, so a skill the mount accepted is the one\n  handed to the harness.\n- **The conversation is a step in the skills ladder.** `skills: { chat:\n  [/amy-groom] }` mounts, a chat skill that is not installed is refused at boot\n  naming it and what is installed, and no other vocabulary names what the chat\n  may run.\n- **A message that starts with a skill is an `/action` turn.** After a leading\n  space or a bot's name, `/amy-groom <ticket>` is answered with the skill lent\n  to the harness and its commands run; the thread keeps the skill until `/new`.\n  A `/skill` the ladder does not name is answered with the ones it does, and\n  nothing runs. The harness stays read-only in a skill turn: what acts is the\n  `/action` list.\n- **A section with newlines arrives as a block, never a shell.** `brief\n  sections --json` and `brief check --json` are read from the chat, and `brief\n  write` takes `--explains` and `--from answer.md`, the fenced block in the\n  same answer. The chat checks the block is there before anything runs, writes\n  it to a file for the length of the command, and removes it after. `amy brief\n  write` takes `--from <file>` too, so the same spelling works in a terminal.\n- **A skill turn needs a harness that can be handed one.** The `Harness` port\n  gains `lendsSkill`, which claude sets: a chat addressed to a skill on a\n  harness that cannot load it is refused, naming one that can, rather than\n  acting without the method.\n- **The chat reads its ladder and its skills as the mount does.** A ladder\n  written under the relay's own settings wins, as the operator's slice does at\n  mount; the skill table is resolved every pass, so installing or deleting a\n  skill needs no restart. `/new` in a thread ends the skill it was started\n  with. `amy update` writes the skills on every successful run, moved or not,\n  and `amy skills --recorded` leaves the own-root write inside `writeSkills`'\n  rollback so a failed move restores the previous bodies.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
           }
         ],
         "level": "minor"

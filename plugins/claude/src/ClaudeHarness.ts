@@ -80,6 +80,8 @@ export function lend(tmpDir: string, skill: { name: string; path: string }): str
  */
 export class ClaudeHarness implements Harness {
   readonly name = "claude";
+  /** It is handed a skill by place: a fresh `--add-dir` whose skills link to it. */
+  readonly lendsSkill = true;
 
   constructor(
     private readonly runner: CommandRunner,
