@@ -35,6 +35,15 @@ touches:
   - packages/core/tests/chat/desk.test.ts
   - docs/start/installation.md
   - docs/concepts/harnesses.md
+  - plugins/agent-relay/src/index.ts
+  - plugins/agent-relay/README.md
+  - packages/cli/tests/chat-action.test.ts
+  - packages/cli/tests/update.test.ts
+  - docs/reference/cli.md
+  - docs/reference/plugins.md
+  - registry/cli.json
+  - registry/core.json
+  - registry/plugin-agent-relay.json
 criteria:
   - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
   - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, then ~/.claude/skills", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9] }
