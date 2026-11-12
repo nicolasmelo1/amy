@@ -16,6 +16,9 @@ sources:
   - { id: S10, kind: decision, said: "which skills the chat may run is the skills ladder already in the config, under the step `chat`; nothing else names them. Decided 2026-11-11" }
   - { id: S11, kind: decision, said: "a turn that starts with a skill is an /action turn: the commands its answer names run, under the same list. Decided 2026-11-11" }
   - { id: S12, kind: decision, said: "a thread started with a skill keeps it: every later message there is answered with the skill lent and acting, the way grooming asks one question at a time. Decided 2026-11-11" }
+  - { id: S16, kind: decision, said: "a harness's installed skills load through a config in .amy/config.yaml or agent-relay: a symlink in amy's skills folder, nothing copied; false removes it, true restores it; active only during run/tick. Decided 2026-11-12, on #216" }
+  - { id: S17, kind: decision, said: "the ~/.claude/skills fallback goes: a harness's skills reach amy only through that config; it is a map per harness (`harnessSkills: { claude: true }`), one link per skill, amy's own copy winning. Decided 2026-11-12" }
+  - { id: S18, kind: decision, said: "the harness names are not written in stone: they are the installed harness plugins' names, and agent-relay keeps no list of them. Decided 2026-11-12" }
 touches:
   - packages/cli/src/harnesses.ts
   - packages/cli/src/skills-record.ts
@@ -49,9 +52,16 @@ touches:
   - plugins/claude/tests/ClaudeHarness.test.ts
   - packages/cli/tests/config.test.ts
   - registry/plugin-claude.json
+  - packages/cli/src/assemble.ts
+  - packages/cli/src/slices.ts
+  - plugins/agent-relay/tests/plugin.test.ts
+  - plugins/codex/src/CodexHarness.ts
+  - plugins/codex/tests/CodexHarness.test.ts
+  - registry/plugin-codex.json
+  - .software-factory/evidence/amy-answers-in-the-chat/drive.ts
 criteria:
   - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
-  - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, then ~/.claude/skills", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9] }
+  - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, and never in ~/.claude/skills on its own", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9, S17] }
   - { id: A3, statement: "`skills: { chat: [amy-groom] }` mounts; a chat skill that is not installed is refused at boot, naming it and what is installed", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S4, S10] }
   - { id: A4, statement: "a message starting with /amy-groom, after any leading space or a bot's name, is answered with amy-groom lent to the harness, as an /action turn", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S1, S5, S6, S7, S8, S11] }
   - { id: A5, statement: "a later message in that thread, with no prefix, is answered with the same skill lent and acting; /new ends it", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S12] }
@@ -59,18 +69,25 @@ criteria:
   - { id: A7, statement: "the harness still runs read-only in a skill turn: what acts is the amy commands its answer names, from the /action list", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S7, S11] }
   - { id: A8, statement: "brief sections and brief check take --json from the chat, and brief write takes --explains and --from <block>, a fenced block in the same answer", proof: "deferred:test:packages/core/tests/chat/commands.test.ts", sources: [S7, S13, S14, S15] }
   - { id: A9, statement: "a skill turn writes a multiline section through --from and the next brief check reads it, on the fakes", proof: "deferred:test:packages/core/tests/chat/desk.test.ts", sources: [S1, S13, S15] }
+  - { id: A10, statement: "`harnessSkills` is read top-level or under the relay's settings, the relay winning; its keys are the mounted harness plugins' names", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S16, S18] }
+  - { id: A11, statement: "a name no harness plugin mounted, a value not true or false, or true for a harness reporting no skillsDirectory is refused at boot", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S17, S18] }
+  - { id: A12, statement: "at run, tick and each loop pass, each skill of a harness set to true is linked into ~/.amy/skills, one symlink per skill, amy's own copy winning", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S16, S17] }
+  - { id: A13, statement: "false, left out, or the harness's plugin no longer mounted removes only the links amy made", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S16] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:test:packages/cli/tests/harnesses.test.ts" }
   - { mechanism: config, answer: works, proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:test:packages/core/tests/chat/desk.test.ts" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the harness port gains an optional fact a harness reports about itself; nothing is written to a tracker or a host" }
 guarantee:
   - { holds: "a skill the chat runs is one amy installed and the config names for the chat", not_against: "a person editing a SKILL.md under ~/.amy/skills by hand until the next update" }
   - { holds: "a skill turn acts only through the /action list", not_against: "a skill whose instructions ask for a command off the list: it is refused, not run" }
+  - { holds: "a harness's skill reaches amy only as a link the config asked for, and amy never writes through one", not_against: "a person editing the harness's own SKILL.md, which the link shows as it is" }
 failures:
   - { step: chat, when: "the skill named is on the ladder but its directory is gone", goes_to: "an answer naming the skill and `amy skills`, and nothing runs" }
   - { step: chat, when: "--from names a block the answer does not carry", goes_to: "the whole block refused, naming the missing block, and nothing runs" }
   - { step: install, when: "~/.amy/skills cannot be written", goes_to: "a failed install naming the directory" }
+  - { step: run, when: "a harness's skills cannot be linked", goes_to: "a line naming harnessSkills, and the run goes on; a skill it leaves missing is refused where it is asked for" }
 cut:
   - "a skill shipped by a plugin rather than by amy: the plugin's own plan"
   - "a skill turn that writes files itself: the harness stays read-only"
@@ -80,6 +97,6 @@ exit: "from Slack, `/amy-groom` on a ticket grooms its brief in the thread until
 
 Grooming needs a terminal today: amy's skills live only in a harness's own
 directory, and the chat knows three commands. This plan gives amy its own
-skill root, lets the chat's step in the skills ladder name which skills a
-message may start with, and runs such a thread as /action, so `/amy-groom`
-in Slack grooms a brief in the thread.
+skill root, lets the chat's ladder name the skills a message may start with,
+and runs such a thread as /action. A harness's own skills reach amy only as
+links `harnessSkills` asks for, by the harness plugin's name, for each run.
