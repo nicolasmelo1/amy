@@ -23,6 +23,7 @@ sources:
   - { id: S20, kind: decision, said: "pace is the window's used share over the share of its time gone: above one runs out early, and the menu says when at that rate. Proposed 2026-11-12" }
   - { id: S21, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "the menubar surface holds a closed subset: Text, Badge, List, Link, Button; after every script step the harness compares the menu's title and item tree with the golden" }
   - { id: S22, kind: decision, said: "entering an attention state raises one system notification, on by default, opening the desktop app on that record" }
+  - { id: S24, kind: reference, ref: "plans/a-record-is-seen-everywhere.md", said: "every record has one summary line, computed from its record and log alone, read the same in the record view" }
   - { id: S23, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers views menubar.title and menubar.menu over the session stream, flipped to delivered in surface.yaml in the same pull request" }
 touches:
   - packages/ui/frame.yaml
@@ -66,6 +67,7 @@ criteria:
   - { id: A9, statement: "the menu bar runs with the desktop app quit and its window never opened, and its projection holds the menubar surface on every step; a primitive outside it is refused naming it", proof: "deferred:assertion:frame.the_menu_bar_holds_its_surface", sources: [S12, S13, S15, S21] }
   - { id: A10, statement: "choosing a record in the menu opens the installed desktop app on it through amy://; without the app, the menu says so and names the command that adds it", proof: "deferred:test:plugins/ui-desktop/tests/deep-link.test.ts", sources: [S14, S15] }
   - { id: A11, statement: "a record the daemon advances into attention moves in the menu with every window closed, and raises one notification, none when notifications are off", proof: "deferred:assertion:window.attention_is_notified_once", sources: [S22] }
+  - { id: A12, statement: "a record's notification and its menu bar row carry its summary line, the same string its record view shows", proof: "deferred:assertion:window.the_summary_line_is_one_string", sources: [S24] }
 crosses:
   - { mechanism: diagram, answer: works, proof: "deferred:A2" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A2" }
