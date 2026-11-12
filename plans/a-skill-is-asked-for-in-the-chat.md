@@ -1,4 +1,5 @@
 ---
+base: e7bbfc195435fdd386010fe44df871589e5807db
 sources:
   - { id: S1, kind: friction, said: "2026-11-11: grooming a feature means opening a terminal for /amy-groom; it should start from Slack, `/amy-groom let's groom X`, and go on in the thread" }
   - { id: S2, kind: code, ref: "packages/cli/src/harnesses.ts", symbol: "harnesses", said: "amy skills writes amy's skills only into a harness's own directory (~/.claude, ~/.codex, ~/.hermes skills); amy keeps no copy of its own" }
@@ -32,7 +33,8 @@ touches:
   - packages/cli/skills/amy-groom/SKILL.md
   - packages/core/src/chat/transcript.ts
   - packages/core/tests/chat/desk.test.ts
-  - docs/start/install.md
+  - docs/start/installation.md
+  - docs/concepts/harnesses.md
 criteria:
   - { id: A1, statement: "amy install and amy update write every shipped skill into ~/.amy/skills, each a directory with its SKILL.md, whether or not a harness directory was chosen", proof: "deferred:test:packages/cli/tests/harnesses.test.ts", sources: [S2, S9] }
   - { id: A2, statement: "a step's skills are looked up in ~/.amy/skills first, then the configured roots, then ~/.claude/skills", proof: "deferred:test:plugins/agent-relay/tests/skills.test.ts", sources: [S3, S9] }
