@@ -13,15 +13,16 @@ export function ownSkillRoot(home: string): string {
 }
 
 /**
- * Where an installed skill is looked for: amy's own root, the roots the
- * config names, then the harness's own directory.
+ * Where an installed skill is looked for: amy's own root, then the roots the
+ * config names. A harness's own skills are seen only when `harnessSkills`
+ * links them into amy's root.
  *
  * The relay keeps the same order in `plugins/agent-relay/src/skills.ts`. It is
  * written twice because a machine carries only the plugins it mounted, so the
  * CLI cannot import one of them to ask.
  */
 export function skillRoots(home: string, configured: readonly string[] = []): readonly string[] {
-  return [...new Set([ownSkillRoot(home), ...configured, "~/.claude/skills"])];
+  return [...new Set([ownSkillRoot(home), ...configured])];
 }
 
 /** The directory a skill is installed in, from the first root that holds it; nothing when none does. */

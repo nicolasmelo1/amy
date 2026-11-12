@@ -23,7 +23,7 @@ import { configSchema } from "./config.js";
 
 type TypedContext = PluginContext<ConfigOf<typeof configSchema>>;
 import { inertCeilingProblems } from "./pricing.js";
-import { installedSkills, locateSkill, parseSkills, skillRoots, skillsNamed } from "./skills.js";
+import { installedSkills, locateSkill, parseHarnessSkills, parseSkills, skillRoots, skillsNamed } from "./skills.js";
 
 
 /** Dollars per million tokens, which is how a price list is written. */
@@ -223,8 +223,8 @@ function build(ctx: TypedContext): HarnessRelay {
   return new HarnessRelay(rungs, {
     log: ctx.log,
     now: ctx.now,
-    skills: skillLadders(ctx),
-    locate: (skill) => locateSkill(skillRootsOf(ctx), skill),
+    skills: skillLadders(ctx, contributed),
+    locate: (skill) => locateSkill(skillRootsOf(ctx, contributed), skill),
   });
 }
 
@@ -279,11 +279,11 @@ function ladders<T extends Rung>(ctx: TypedContext, contributed: readonly T[]): 
  * agent nobody contributed is refused: a config that quietly means less than
  * it says is worse than one that will not load.
  */
-function skillLadders(ctx: TypedContext): SkillLadders {
+function skillLadders(ctx: TypedContext, contributed: readonly NamedHarness[]): SkillLadders {
   const parsed = parseSkills(ctx.config.skills);
   if (!parsed.ok) throw new Error(parsed.problems.join("; "));
 
-  const installed = installedSkills(skillRootsOf(ctx));
+  const installed = installedSkills(skillRootsOf(ctx, contributed));
 
   const missing = skillsNamed(parsed.ladders).filter((skill) => !installed.includes(skill));
   if (missing.length > 0) {
@@ -296,9 +296,18 @@ function skillLadders(ctx: TypedContext): SkillLadders {
   return parsed.ladders;
 }
 
-/** Where installed skills are looked for: amy's own root, the configured ones, then the harness's. */
-function skillRootsOf(ctx: TypedContext): readonly string[] {
-  return skillRoots(ctx.config.skillRoots, ctx.paths.state);
+/**
+ * Where installed skills are looked for: amy's own root, the configured ones,
+ * then the directories of the harnesses `harnessSkills` chooses.
+ *
+ * The run links a chosen harness's skills into amy's root, which is looked in
+ * first; the boot reads its directory too, so a ladder naming one mounts
+ * before the first run has linked it.
+ */
+function skillRootsOf(ctx: TypedContext, contributed: readonly NamedHarness[]): readonly string[] {
+  const chosen = parseHarnessSkills(ctx.config.harnessSkills, contributed.map((one) => ({ name: one.harness, skillsDirectory: one.cli.skillsDirectory })));
+  if (!chosen.ok) throw new Error(chosen.problems.join("; "));
+  return [...skillRoots(ctx.config.skillRoots, ctx.paths.state), ...chosen.directories];
 }
 
 /**

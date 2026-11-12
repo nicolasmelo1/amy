@@ -74,5 +74,14 @@ export interface Harness {
    * it rather than acting without the method it was told to follow.
    */
   readonly lendsSkill?: boolean;
+  /**
+   * Where this harness's own installed skills are, one directory per skill
+   * holding its `SKILL.md`, as its plugin knows it.
+   *
+   * Read when the config sets `harnessSkills.<name>: true`: amy links each of
+   * them into its own skill root for the run. A harness that leaves this unset
+   * cannot be chosen there.
+   */
+  readonly skillsDirectory?: string;
   ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
 }

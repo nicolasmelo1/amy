@@ -11,9 +11,6 @@ export type SkillsResult =
 /** The step the conversation itself is: a chat turn reaches the agent with no workflow action. */
 export const CHAT_STEP = "chat";
 
-/** Where a Claude Code skill is installed, unless the config says otherwise. */
-export const DEFAULT_SKILL_ROOT = "~/.claude/skills";
-
 /**
  * Where amy installs the skills it ships, under the machine's own state.
  *
@@ -25,14 +22,55 @@ export function ownSkillRoot(state: string): string {
 }
 
 /**
- * Where installed skills are looked for, in order: amy's own root, the roots
- * the config names, then the harness's own directory.
+ * Where installed skills are looked for, in order: amy's own root, then the
+ * roots the config names. A harness's own directory is not one of them: its
+ * skills are seen only when `harnessSkills` chooses it.
  *
  * The first root that holds a skill is where the harness is handed it, so
  * this order is the answer to "which copy did a step use".
  */
 export function skillRoots(configured: readonly string[], state: string): readonly string[] {
-  return [...new Set([ownSkillRoot(state), ...configured, DEFAULT_SKILL_ROOT])];
+  return [...new Set([ownSkillRoot(state), ...configured])];
+}
+
+/** A harness as `harnessSkills` reads it: its plugin's name, and where its own skills are. */
+export interface SkillfulHarness {
+  readonly name: string;
+  readonly skillsDirectory?: string;
+}
+
+export type HarnessSkillsResult =
+  | { ok: true; directories: string[] }
+  | { ok: false; problems: string[] };
+
+/**
+ * Reads `harnessSkills`: which mounted harnesses' own skills amy links in, by
+ * the name of the harness's plugin, and the directories that holds.
+ *
+ * The names are the harnesses that mounted, never a list kept here: a name no
+ * plugin contributed is a typo, and a harness whose plugin does not say where
+ * its skills are cannot be chosen.
+ */
+export function parseHarnessSkills(value: unknown, mounted: readonly SkillfulHarness[]): HarnessSkillsResult {
+  if (value === undefined) return { ok: true, directories: [] };
+  if (!isRecord(value)) return { ok: false, problems: ["`harnessSkills` must be a mapping of harness to true or false"] };
+
+  const names = [...new Set(mounted.map((one) => one.name))];
+  const problems: string[] = [];
+  const directories: string[] = [];
+  for (const [name, chosen] of Object.entries(value)) {
+    const harness = mounted.find((one) => one.name === name);
+    if (!harness) {
+      problems.push(`\`harnessSkills.${name}\` names no harness that mounted: ${names.join(", ") || "none"}`);
+    } else if (typeof chosen !== "boolean") {
+      problems.push(`\`harnessSkills.${name}\` must be true or false`);
+    } else if (chosen && !harness.skillsDirectory) {
+      problems.push(`\`harnessSkills.${name}\`: ${name} does not say where its skills are, so they cannot be linked`);
+    } else if (chosen && harness.skillsDirectory) {
+      directories.push(harness.skillsDirectory);
+    }
+  }
+  return problems.length > 0 ? { ok: false, problems } : { ok: true, directories };
 }
 
 /**

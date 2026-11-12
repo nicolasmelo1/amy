@@ -622,8 +622,18 @@ describe("what ran is remembered", () => {
   });
 });
 
+/** A skill installed where the chat's table says it is: a directory holding its SKILL.md. */
+const GROOM = installedSkill("amy-groom");
+
+function installedSkill(name: string): string {
+  const at = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-desk-skill-")), name);
+  fs.mkdirSync(at, { recursive: true });
+  fs.writeFileSync(path.join(at, "SKILL.md"), `# ${name}\n`);
+  return at;
+}
+
 describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
-  const groom = new Map<string, string | undefined>([["amy-groom", "/opt/skills/amy-groom"]]);
+  const groom = new Map<string, string | undefined>([["amy-groom", GROOM]]);
 
   it("answers a message starting with /amy-groom as an action turn, with the skill lent", async () => {
     const chat = chatOf();
@@ -637,7 +647,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     expect(claude.asked[0]!.context).toMatchObject({
       readOnly: true,
       step: "chat",
-      skill: { name: "amy-groom", path: "/opt/skills/amy-groom" },
+      skill: { name: "amy-groom", path: GROOM },
     });
     expect(acted.map((one) => one.asked.commands.map((command) => command.argv))).toEqual([[["status"]]]);
   });
@@ -653,7 +663,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     await answerTheChat(desk);
 
     expect(claude.asked[1]!.prompt.startsWith("/amy-groom\n\n")).toBe(true);
-    expect(claude.asked[1]!.context?.skill).toEqual({ name: "amy-groom", path: "/opt/skills/amy-groom" });
+    expect(claude.asked[1]!.context?.skill).toEqual({ name: "amy-groom", path: GROOM });
 
     chat.write("/new");
     await answerTheChat(desk);
@@ -750,7 +760,7 @@ describe("a harness that cannot be handed a skill (A4, A7)", () => {
       ask: async () => ({ text: "```amy\nstatus\n```", run: { outcome: "completed" } as never }),
     };
     const { desk, acted } = deskOf(chat.conversation, { codex, claude: harness("claude").cli }, {
-      skills: new Map<string, string | undefined>([["amy-groom", "/opt/skills/amy-groom"]]),
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
     });
     chat.write("/amy-groom TBO-1");
 
@@ -767,7 +777,7 @@ describe("a harness that cannot be handed a skill (A4, A7)", () => {
       ask: async () => ({ text: "Here is how.", run: { outcome: "completed" } as never }),
     };
     const { desk } = deskOf(chat.conversation, { codex }, {
-      skills: new Map<string, string | undefined>([["amy-groom", "/opt/skills/amy-groom"]]),
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
     });
     chat.write("what is running?");
 
@@ -782,7 +792,7 @@ describe("/new in a thread ends the skill it was started with (A5)", () => {
     const chat = chatOf();
     const claude = harness("claude", ["first", "second"]);
     const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
-      skills: new Map<string, string | undefined>([["amy-groom", "/opt/skills/amy-groom"]]),
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
     });
     chat.write("/amy-groom TBO-1", { threaded: true });
     await answerTheChat(desk);
@@ -794,5 +804,32 @@ describe("/new in a thread ends the skill it was started with (A5)", () => {
     expect(chat.said.some((one) => /no longer lent/.test(one.text))).toBe(true);
     expect(claude.asked[1]!.context?.skill).toBeUndefined();
     expect(claude.asked[1]!.prompt.startsWith("/amy-groom")).toBe(false);
+  });
+});
+
+describe("a skill deleted while its pass is still answering (failures: chat)", () => {
+  it("refuses the turns queued behind the deletion, naming amy skills, and nothing runs", async () => {
+    const skill = installedSkill("amy-groom");
+    const chat = chatOf();
+    const claude = harness("claude", ["```amy\nstatus\n```", "```amy\nstatus\n```"]);
+    const acted: ChatAction[] = [];
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
+      skills: new Map<string, string | undefined>([["amy-groom", skill]]),
+      act: async (action) => {
+        acted.push(action);
+        // The first turn's commands remove the skill from disk; the table
+        // this pass read still holds its path.
+        fs.rmSync(skill, { recursive: true, force: true });
+        return { text: "done" };
+      },
+    });
+    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom TBO-2");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked).toHaveLength(1);
+    expect(acted).toHaveLength(1);
+    expect(last(chat.said)).toMatch(/`\/amy-groom` is on this chat's ladder, but it is not installed here: nothing ran\. Run `amy skills`/);
   });
 });

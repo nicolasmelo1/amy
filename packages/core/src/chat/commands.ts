@@ -51,9 +51,11 @@ export function commandsIn(answer: string): Asked {
   const commands: NamedCommand[] = [];
   const unreadable: { line: string; why: string }[] = [];
   const blocks = new Map<string, string>();
-  for (const fence of answer.matchAll(/^```[ \t]*([^\n`]*)\n([\s\S]*?)^```[ \t]*$/gm)) {
-    const info = fence[1]!.trim().split(/\s+/).filter(Boolean);
-    const body = fence[2]!;
+  // A fence closes on a run of backticks at least as long as the one that
+  // opened it, so a block fenced with four holds a three-backtick example.
+  for (const fence of answer.matchAll(/^(`{3,})[ \t]*([^\n`]*)\n([\s\S]*?)^\1`*[ \t]*$/gm)) {
+    const info = fence[2]!.trim().split(/\s+/).filter(Boolean);
+    const body = fence[3]!;
     if (info[0] === "amy") {
       for (const raw of body.split("\n")) {
         const line = raw.trim();

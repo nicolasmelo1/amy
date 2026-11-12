@@ -107,12 +107,14 @@ async function runOne(actor: ChatActor, command: NamedCommand, asked: Asked, whe
   }
 
   await line(`Running amy ${command.argv.join(" ")}…`);
-  where.running();
   // `--from <block>` names a block of this answer: amy reads a file, so
-  // the block is written to one for the length of this command.
+  // the block is written to one for the length of this command. It is
+  // written before the turn is marked running: a block that cannot be
+  // written ran nothing, and the turn is asked again.
   const prepared = withBlocks(actor, command.argv, spec, asked.blocks);
   if ("refused" in prepared) return { text: prepared.refused };
   try {
+    where.running();
     const result = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, ...prepared.argv], {
       timeoutMs: 10 * 60 * 1000,
       ...(actor.env ? { env: actor.env } : {}),
@@ -149,6 +151,23 @@ function withBlocks(
   if (named.length === 0) return { argv: [...argv], files };
 
   const rewritten: string[] = [];
+  try {
+    return written(actor, argv, named, blocks, files, rewritten);
+  } catch (error) {
+    for (const file of files) fs.rmSync(file, { force: true });
+    throw error;
+  }
+}
+
+/** The rewrite itself, recording each file in `files` as it is written so a failure part way removes them. */
+function written(
+  actor: ChatActor,
+  argv: readonly string[],
+  named: readonly string[],
+  blocks: Asked["blocks"],
+  files: string[],
+  rewritten: string[],
+): { argv: string[]; files: string[] } | { refused: string } {
   for (let at = 0; at < argv.length; at += 1) {
     const token = argv[at]!;
     rewritten.push(token);

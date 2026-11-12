@@ -123,19 +123,18 @@ describe("the chat is a step too (A3)", () => {
 });
 
 describe("where an installed skill is looked for (A2)", () => {
-  it("is amy's own root first, then the configured roots, then the harness's", () => {
+  it("is amy's own root first, then the configured roots, and never a harness's own", () => {
     expect(ownSkillRoot("/home/a/.amy")).toBe("/home/a/.amy/skills");
     expect(skillRoots(["~/shared/skills"], "/home/a/.amy")).toEqual([
       "/home/a/.amy/skills",
       "~/shared/skills",
-      "~/.claude/skills",
     ]);
+    expect(skillRoots([], "/home/a/.amy")).toEqual(["/home/a/.amy/skills"]);
   });
 
   it("names no root twice, and keeps amy's own first", () => {
     expect(skillRoots(["/home/a/.amy/skills"], "/home/a/.amy")).toEqual([
       "/home/a/.amy/skills",
-      "~/.claude/skills",
     ]);
   });
 });

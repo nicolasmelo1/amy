@@ -82,6 +82,8 @@ export class ClaudeHarness implements Harness {
   readonly name = "claude";
   /** It is handed a skill by place: a fresh `--add-dir` whose skills link to it. */
   readonly lendsSkill = true;
+  /** The operator's own skills, where Claude Code installs them. */
+  readonly skillsDirectory = path.join(os.homedir(), ".claude", "skills");
 
   constructor(
     private readonly runner: CommandRunner,

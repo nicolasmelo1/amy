@@ -893,6 +893,68 @@ describe("the running loop", () => {
     expect(installs.map((call) => call.args.at(-1))).toEqual(["@amykit/cli@0.5.0", "@amykit/cli@0.4.0"]);
   });
 
+  it("writes the skills before the boot check, so a deleted own root a chat skill needs is repaired", async () => {
+    rootWith(home, {});
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "export const plugin = {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "up to date\n" } },
+    ]);
+    const { updateCommand } = await import("../src/index.js");
+    // The chat's ladder names a skill only ~/.amy/skills holds: the config
+    // mounts only once the skills are back.
+    let written = false;
+
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => (written ? { ok: true as const } : { ok: false as const, problems: ["chat: amy-groom is not installed"] }),
+      skillsInto: () => {
+        written = true;
+        return ["amy: 7 skill(s) rewritten"];
+      },
+      installRoot: install,
+    });
+
+    expect(code).toBe(0);
+  });
+
+  it("rewrites the skills through the rolled-back CLI when the moved one does not boot", async () => {
+    rootWith(home, {});
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "export const plugin = {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "up to date\n" } },
+    ]);
+    const { updateCommand } = await import("../src/index.js");
+    const order: string[] = [];
+
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => (order.push("mount"), { ok: false as const, problems: ["oncall: broken"] }),
+      skillsInto: () => (order.push(`skills after ${runner.callsTo("npm").filter((call) => call.args[0] === "install").length} install(s)`), ["amy: 7 skill(s) rewritten"]),
+      installRoot: install,
+    });
+
+    // The moved CLI's skills are written, the boot check refuses, the move
+    // goes back, and the CLI that is installed again writes its own.
+    expect(code).toBe(1);
+    expect(order).toEqual(["skills after 1 install(s)", "mount", "skills after 2 install(s)"]);
+  });
+
   it("probes the moved CLI by running its own bin, and rolls a broken one back", async () => {
     const plugins = rootWith(home, {});
     void plugins;
@@ -1582,6 +1644,27 @@ describe("the workspace's keys, as the update folds them", () => {
 });
 
 describe("an update that has nothing to move still writes the skills (A1)", () => {
+  it("writes them before the boot check, so a deleted own root a chat skill needs is repaired", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-nothing-"));
+    try {
+      rootWith(home, {});
+      const { updateCommand } = await import("../src/index.js");
+      let written = false;
+
+      const code = await updateCommand(home, new ScriptedRunner(), undefined, false, {
+        mountProfiles: async () => (written ? { ok: true as const } : { ok: false as const, problems: ["chat: amy-groom is not installed"] }),
+        skillsInto: () => {
+          written = true;
+          return ["amy: 7 skill(s) rewritten"];
+        },
+      });
+
+      expect(code).toBe(0);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it("rewrites them, and fails the update when it cannot", async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-update-nothing-"));
     try {

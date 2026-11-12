@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { ChatMessage, CommandResult, CommandRunner, Conversation, Harness, answerTheChat } from "@amykit/core";
+import { ChatMessage, CommandResult, CommandRunner, Conversation, Harness, answerTheChat, commandsIn } from "@amykit/core";
 import { CHAT_COMMANDS, chatAct, lineDiff } from "../src/chat-action.js";
 
 const dirs: string[] = [];
@@ -310,6 +310,8 @@ describe("a block an answer carries reaches the command as a file (A8, A9)", () 
       pid: 4242,
       exit: async () => undefined,
     });
+    fs.mkdirSync(path.join(home, "skills", "amy-groom"), { recursive: true });
+    fs.writeFileSync(path.join(home, "skills", "amy-groom", "SKILL.md"), "# amy-groom\n");
     const body = "the scope:\n- the api\n- the ui\n";
     const answer = `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``;
     const { conversation, said } = chatWith("/amy-groom TBO-1");
@@ -332,5 +334,39 @@ describe("a block an answer carries reaches the command as a file (A8, A9)", () 
     const file = seen[0]!.argv[seen[0]!.argv.indexOf("--from") + 1]!;
     expect(fs.existsSync(file)).toBe(false);
     expect(said.at(-1)).toMatch(/amy brief write TBO-1 scope --from answer.md: done/);
+  });
+
+  it("is not marked running when its block cannot be written, so the turn is asked again", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-chat-block-"));
+    dirs.push(home);
+    const config = path.join(home, "config.yaml");
+    fs.writeFileSync(config, "workflows:\n  billing:\n    workflow: ./billing\n");
+    // A file where the blocks directory should be: nothing can be written under it.
+    const blocks = path.join(home, "blocks");
+    fs.writeFileSync(blocks, "not a directory");
+    const ran: (readonly string[])[] = [];
+    const act = chatAct({
+      runner: { run: async (_command, args) => (ran.push(args), { ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      amy: ["node", "/amy.js"],
+      workflow: "billing",
+      config,
+      restartMarker: path.join(home, "billing", "restart.json"),
+      blocks,
+      pid: 4242,
+      exit: async () => undefined,
+    });
+    let running = 0;
+
+    await expect(act({
+      asked: commandsIn("```markdown answer.md\nthe api\n```\n```amy\nbrief write TBO-1 scope --from answer.md\n```"),
+      place: "chat",
+      progress: { line: async () => undefined } as never,
+      running: () => {
+        running += 1;
+      },
+    })).rejects.toThrow();
+
+    expect(running).toBe(0);
+    expect(ran).toEqual([]);
   });
 });

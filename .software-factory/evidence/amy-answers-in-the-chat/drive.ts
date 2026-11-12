@@ -69,6 +69,8 @@ const children: ChildProcess[] = [];
 const seen = new Set<string>();
 const env = { ...process.env, AMY_E2E_TSX: TSX, PATH: `${path.join(root, "bin")}:${process.env.PATH}`, HOME: home, AMY_E2E_WORLD: path.join(root, "world"), AMY_E2E_ORIGINS: path.join(root, "origins") } as Record<string, string>;
 delete env.AMY_HOME;
+// The harness's own skills are the stand-in HOME's, never the operator's.
+delete env.CLAUDE_CONFIG_DIR;
 
 const amy = (...args: string[]) => {
   const result = spawnSync(binary, args, { cwd: home, encoding: "utf-8", env });
@@ -109,6 +111,15 @@ try {
   fs.writeFileSync(configFile, config);
   fs.appendFileSync(path.join(home, ".env"), `TELEGRAM_BOT_TOKEN=${TOKEN}\n`);
   write(path.join(root, "world", "chat.json"), CHAT_SCRIPT);
+  // A skill the operator installed in their harness, and the config asking
+  // for the harness's skills to be linked for the run.
+  fs.mkdirSync(path.join(home, ".claude", "skills", "northwind-review"), { recursive: true });
+  fs.writeFileSync(path.join(home, ".claude", "skills", "northwind-review", "SKILL.md"), "# northwind-review\n");
+  // The chat later shows this config whole inside one Telegram message, so a
+  // comment the run does not need makes room for the line.
+  fs.writeFileSync(configFile, fs.readFileSync(configFile, "utf-8")
+    .replace(/^# The question the machine asks the person[\s\S]*?\n(?=notify:)/m, "")
+    .replace(/^defaultWorkflow: (.*)\n/m, "defaultWorkflow: $1\nharnessSkills: { claude: true }\n"));
   installPlugins();
   editRoster(root);
   amy("roster", "confirm");
@@ -120,6 +131,13 @@ try {
   const asked = await telegramWorld();
   const topicOf = (title: string) => Number(Object.entries(asked.topics).find(([, name]) => name === title)?.[0]);
   const firstPid = loop.pids.at(-1)!;
+
+  // The run linked the harness's skill into amy's own root, and copied nothing.
+  const linked = path.join(amyDir, "skills", "northwind-review");
+  const link = fs.lstatSync(linked, { throwIfNoEntry: false });
+  record("chat.a_harness_skill_is_linked_for_the_run",
+    link?.isSymbolicLink() === true && fs.readlinkSync(linked) === path.join(home, ".claude", "skills", "northwind-review"),
+    { linked: link?.isSymbolicLink() ? fs.readlinkSync(linked) : "no link" });
 
   // An ask: answered in the chat, read-only, and the stop its answer names is not run.
   const writesBefore = writes();

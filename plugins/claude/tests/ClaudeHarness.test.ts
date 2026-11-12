@@ -335,6 +335,13 @@ describe("a run apart from the operator's own Claude", () => {
   });
 });
 
+describe("where the harness's own skills are (A10)", () => {
+  it("says ~/.claude/skills, where Claude Code installs them", () => {
+    const runner = { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) };
+    expect(new ClaudeHarness(runner).skillsDirectory).toBe(path.join(os.homedir(), ".claude", "skills"));
+  });
+});
+
 describe("a skill is lent by place", () => {
   it("says it can be handed one, so the chat may address a skill to it", () => {
     const harness = new ClaudeHarness({ run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) });

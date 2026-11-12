@@ -17,7 +17,7 @@ const host: HostServices = {
 const asked: { prompt: string; by: string; context?: AskContext }[] = [];
 
 /** A stand-in harness plugin, contributing tiers without running anything. */
-function harnessPlugin(harness: string, models: string[]): Plugin {
+function harnessPlugin(harness: string, models: string[], skillsDirectory?: string): Plugin {
   return {
     name: `@amykit/plugin-${harness}-fake`,
     register(registry) {
@@ -29,6 +29,7 @@ function harnessPlugin(harness: string, models: string[]): Plugin {
           model,
           cli: {
             name: harness,
+            ...(skillsDirectory ? { skillsDirectory } : {}),
             ask: async (prompt: string, _cwd: string, context?: AskContext): Promise<HarnessReply> => {
               asked.push({ prompt, by: name, context });
               return { text: '{"clear": true}', run: fakeRun({ outcome: "completed", harness, model }) };
@@ -311,5 +312,76 @@ describe("mounting the skills", () => {
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok === false && outcome.problems.join("\n")).toContain("open-pull-request");
+  });
+});
+
+describe("a harness's own skills, chosen by its plugin's name (A10)", () => {
+  let machine: string;
+  let claudeSkills: string;
+
+  beforeAll(() => {
+    machine = fs.mkdtempSync(path.join(os.tmpdir(), "amy-harness-skills-"));
+    claudeSkills = path.join(machine, "claude-home", "skills");
+    fs.mkdirSync(path.join(claudeSkills, "northwind-code-review"), { recursive: true });
+    fs.writeFileSync(path.join(claudeSkills, "northwind-code-review", "SKILL.md"), "# review\n");
+  });
+
+  afterAll(() => {
+    fs.rmSync(machine, { recursive: true, force: true });
+  });
+
+  const relayWith = (settings: Record<string, unknown>) => ({ "@amykit/plugin-agent-relay": { ladder: [], ...settings } });
+  const state = (): HostServices => ({ ...host, paths: { state: path.join(machine, ".amy") } });
+
+  it("counts a chosen harness's skills as installed, so the ladder may name them", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"], claudeSkills)],
+      relayWith({ harnessSkills: { claude: true }, skills: { chat: ["/northwind-code-review"] } }),
+      state(),
+    );
+
+    expect(outcome.ok === false ? outcome.problems : []).toEqual([]);
+  });
+
+  it("does not count them when the harness is set to false", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"], claudeSkills)],
+      relayWith({ harnessSkills: { claude: false }, skills: { chat: ["/northwind-code-review"] } }),
+      state(),
+    );
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toContain("/northwind-code-review");
+  });
+
+  it("refuses a name no mounted plugin contributed as a harness, naming the ones that did", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet", "opus"], claudeSkills), harnessPlugin("codex", ["gpt-5"])],
+      relayWith({ harnessSkills: { cursor: true } }),
+      state(),
+    );
+
+    const said = outcome.ok === false ? outcome.problems.join("\n") : "";
+    expect(said).toMatch(/harnessSkills\.cursor/);
+    expect(said).toContain("claude, codex");
+  });
+
+  it("refuses a value that is not true or false", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"], claudeSkills)],
+      relayWith({ harnessSkills: { claude: "yes" } }),
+      state(),
+    );
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/harnessSkills\.claude.*true or false/);
+  });
+
+  it("refuses true for a harness whose plugin does not say where its skills are", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("codex", ["gpt-5"])],
+      relayWith({ harnessSkills: { codex: true } }),
+      state(),
+    );
+
+    expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/codex.*does not say where its skills are/);
   });
 });

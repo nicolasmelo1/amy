@@ -20,6 +20,13 @@ describe("the commands an answer names", () => {
     expect(asked.commands.map((one) => one.argv)).toEqual([["config", "apply"]]);
   });
 
+  it("keeps a block fenced longer than the code example inside it, whole", () => {
+    const body = "Run it like this:\n```sh\namy brief check TBO-1\n```\nthen answer.\n";
+    const asked = commandsIn(`\`\`\`\`markdown answer.md\n${body}\`\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``);
+    expect(asked.blocks.get("answer.md")).toBe(body);
+    expect(asked.commands.map((one) => one.argv)).toEqual([["brief", "write", "TBO-1", "scope", "--from", "answer.md"]]);
+  });
+
   it("names nothing in an answer with no block", () => {
     expect(commandsIn("amy status would tell you").commands).toEqual([]);
   });

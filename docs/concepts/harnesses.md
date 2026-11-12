@@ -130,10 +130,26 @@ The skill's invocation goes first and amy's instructions follow, so the answer
 comes back in the same shape whoever wrote it. A key must be a step that
 reaches the `agent` port, or `chat` for the conversation itself; any other key
 is refused. A skill must be installed, meaning a directory holding a `SKILL.md`
-under `~/.amy/skills`, the roots the config names, or `~/.claude/skills`, and
-otherwise the mount is refused, naming what there was to choose from. A step's
-skill is looked up in that order, so amy's own copy is the one a step uses when
-both hold it.
+under `~/.amy/skills` or the roots the config names, and otherwise the mount
+is refused, naming what there was to choose from. A step's skill is looked up
+in that order, so amy's own copy is the one a step uses when both hold it.
+
+A harness's own skills are not looked in unless the config asks for them, by
+the name of the harness's plugin:
+
+```yaml
+harnessSkills:
+  claude: true
+```
+
+At every `amy run`, `amy tick` and loop pass, each skill under that harness's
+own directory is linked into `~/.amy/skills`, one symlink per skill, and
+nothing is copied. `false`, or leaving the harness out, removes the links; a
+skill amy ships keeps amy's copy. Where the directory is, the harness's plugin
+says (`Harness.skillsDirectory`: claude under `~/.claude`, codex under
+`CODEX_HOME` or `~/.codex`), and a name no harness plugin mounted, or one whose
+plugin does not say, is refused at boot. Written
+under the relay's own settings, it wins over the top-level one.
 
 A `chat` ladder is what a message may start with:
 

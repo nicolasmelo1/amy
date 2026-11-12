@@ -8183,6 +8183,13 @@
             "description": "what the agents may spend, per window: perFiveHours and perWeek, each with tokens and/or costUsd, plus stopAt, the fraction of a ceiling at which new work stops being started"
           },
           {
+            "name": "harnessSkills",
+            "type": "record",
+            "required": false,
+            "default": {},
+            "description": "which harnesses' own installed skills amy links into ~/.amy/skills at each run and tick, by the harness plugin's name: {\"claude\": true}. amy's own copy of a skill wins; false, or leaving a harness out, removes its links. A name no harness plugin mounted is refused at boot"
+          },
+          {
             "name": "ladder",
             "type": "string[]",
             "required": false,
@@ -8201,7 +8208,7 @@
             "type": "string[]",
             "required": false,
             "default": [],
-            "description": "where installed skills are looked for, after amy's own ~/.amy/skills. Empty means ~/.claude/skills after amy's own, which is where the harness looks"
+            "description": "where installed skills are looked for, after amy's own ~/.amy/skills. A harness's own directory is never looked in unless harnessSkills chooses it"
           },
           {
             "name": "skills",
@@ -11438,7 +11445,7 @@
       {
         "id": "a-skill-is-asked-for-in-the-chat",
         "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.",
-        "body": "- **amy owns a copy of the skills it ships.** `amy skills` and every `amy\n  update` write every shipped skill into `~/.amy/skills`, whether or not a\n  harness directory was chosen; a harness's own directory stays an extra the\n  person asks for. A root amy cannot write is a failed install naming it.\n- **A step looks a skill up in a fixed order.** `~/.amy/skills` first, then the\n  roots the config names, then `~/.claude/skills`. The relay and the chat read\n  the same order from one function, so a skill the mount accepted is the one\n  handed to the harness.\n- **The conversation is a step in the skills ladder.** `skills: { chat:\n  [/amy-groom] }` mounts, a chat skill that is not installed is refused at boot\n  naming it and what is installed, and no other vocabulary names what the chat\n  may run.\n- **A message that starts with a skill is an `/action` turn.** After a leading\n  space or a bot's name, `/amy-groom <ticket>` is answered with the skill lent\n  to the harness and its commands run; the thread keeps the skill until `/new`.\n  A `/skill` the ladder does not name is answered with the ones it does, and\n  nothing runs. The harness stays read-only in a skill turn: what acts is the\n  `/action` list.\n- **A section with newlines arrives as a block, never a shell.** `brief\n  sections --json` and `brief check --json` are read from the chat, and `brief\n  write` takes `--explains` and `--from answer.md`, the fenced block in the\n  same answer. The chat checks the block is there before anything runs, writes\n  it to a file for the length of the command, and removes it after. `amy brief\n  write` takes `--from <file>` too, so the same spelling works in a terminal.\n- **A skill turn needs a harness that can be handed one.** The `Harness` port\n  gains `lendsSkill`, which claude sets: a chat addressed to a skill on a\n  harness that cannot load it is refused, naming one that can, rather than\n  acting without the method.\n- **The chat reads its ladder and its skills as the mount does.** A ladder\n  written under the relay's own settings wins, as the operator's slice does at\n  mount; the skill table is resolved every pass, so installing or deleting a\n  skill needs no restart. `/new` in a thread ends the skill it was started\n  with. `amy update` writes the skills on every successful run, moved or not,\n  and `amy skills --recorded` leaves the own-root write inside `writeSkills`'\n  rollback so a failed move restores the previous bodies.",
+        "body": "- **amy owns a copy of the skills it ships.** `amy skills` and every `amy\n  update` write every shipped skill into `~/.amy/skills`, whether or not a\n  harness directory was chosen; a harness's own directory stays an extra the\n  person asks for. A root amy cannot write is a failed install naming it.\n- **A step looks a skill up in a fixed order.** `~/.amy/skills` first, then the\n  roots the config names. `~/.claude/skills` is no longer looked in on its own:\n  a harness's skills reach amy only through `harnessSkills`. The relay and the\n  chat read the same order, so a skill the mount accepted is the one handed to\n  the harness.\n- **A harness's own skills are linked, never copied.** `harnessSkills: {\n  claude: true }`, top-level in `.amy/config.yaml` or under the relay's own\n  settings (which win), links each skill of that harness into `~/.amy/skills`,\n  one symlink per skill, at every `amy run`, `amy tick` and loop pass. `false`,\n  or leaving the harness out, removes the links; amy's own copy of a skill wins\n  over a link. The names are the harness plugins that mounted: the `Harness`\n  port gains `skillsDirectory`, which claude (`~/.claude/skills`) and codex\n  (under `CODEX_HOME` or `~/.codex`) report, and a name no harness plugin\n  mounted is refused at boot.\n- **The conversation is a step in the skills ladder.** `skills: { chat:\n  [/amy-groom] }` mounts, a chat skill that is not installed is refused at boot\n  naming it and what is installed, and no other vocabulary names what the chat\n  may run.\n- **A message that starts with a skill is an `/action` turn.** After a leading\n  space or a bot's name, `/amy-groom <ticket>` is answered with the skill lent\n  to the harness and its commands run; the thread keeps the skill until `/new`.\n  A `/skill` the ladder does not name is answered with the ones it does, and\n  nothing runs. The harness stays read-only in a skill turn: what acts is the\n  `/action` list.\n- **A section with newlines arrives as a block, never a shell.** `brief\n  sections --json` and `brief check --json` are read from the chat, and `brief\n  write` takes `--explains` and `--from answer.md`, the fenced block in the\n  same answer. The chat checks the block is there before anything runs, writes\n  it to a file for the length of the command, and removes it after. `amy brief\n  write` takes `--from <file>` too, so the same spelling works in a terminal.\n- **A skill turn needs a harness that can be handed one.** The `Harness` port\n  gains `lendsSkill`, which claude sets: a chat addressed to a skill on a\n  harness that cannot load it is refused, naming one that can, rather than\n  acting without the method.\n- **The chat reads its ladder and its skills as the mount does.** A ladder\n  written under the relay's own settings wins, as the operator's slice does at\n  mount; the skill table is resolved every pass, so installing or deleting a\n  skill needs no restart. `/new` in a thread ends the skill it was started\n  with. `amy update` writes the skills on every successful run, moved or not,\n  and `amy skills --recorded` leaves the own-root write inside `writeSkills`'\n  rollback so a failed move restores the previous bodies. The skills are\n  written before the boot check, so a deleted `~/.amy/skills` a chat skill\n  needs is repaired by the update, and a moved CLI that does not boot has the\n  rolled-back one write its own skills back.\n- **A skill turn checks its skill is still there.** A turn queued behind one\n  whose commands removed the skill is refused, naming `amy skills`, rather than\n  lent a directory that is gone. A block fenced with more backticks holds a\n  three-backtick example whole, and a block that cannot be written leaves the\n  turn to be asked again rather than settled.",
         "bumps": [
           {
             "package": "@amykit/cli",
@@ -11454,6 +11461,10 @@
           },
           {
             "package": "@amykit/plugin-claude",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-codex",
             "level": "minor"
           }
         ],

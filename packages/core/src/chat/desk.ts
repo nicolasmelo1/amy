@@ -331,7 +331,7 @@ function startedSkill(
     return { refused: `No skill named \`/${started.skill}\` is on this chat's ladder. The skills it names: ${ladderNames(ladder)}.` };
   }
   const path = ladder.get(started.skill);
-  if (path === undefined) return { refused: gone(started.skill) };
+  if (!held(path)) return { refused: gone(started.skill) };
   return { name: started.skill, path, text: started.rest.trim() || message.text };
 }
 
@@ -347,8 +347,19 @@ function keptSkill(
     return { refused: `This conversation started with \`/${kept.skill}\`, which this chat's ladder no longer names, so nothing ran. \`/new\` starts another.` };
   }
   const path = ladder.get(kept.skill);
-  if (path === undefined) return { refused: gone(kept.skill) };
+  if (!held(path)) return { refused: gone(kept.skill) };
   return { name: kept.skill, path, text: command.name === "action" ? command.rest.trim() : message.text };
+}
+
+/**
+ * Whether a skill's directory still holds its SKILL.md, read at the turn.
+ *
+ * The table is read once a pass, so a turn queued behind one whose commands
+ * removed the skill would otherwise be lent a directory that is gone, and a
+ * harness that cannot lend it would act without the method.
+ */
+function held(directory: string | undefined): directory is string {
+  return directory !== undefined && fs.existsSync(path.join(directory, "SKILL.md"));
 }
 
 /** A skill the ladder names but this machine does not hold. */

@@ -46,6 +46,7 @@ import { statusView, usageThenNow, type StatusRecord, type StatusSnapshot, type 
 import {
   AmyConfig,
   chatSkills,
+  harnessSkills,
   configuredAutoUpdateProblems,
   configuredChatProblems,
   configuredSkillRoots,
@@ -67,7 +68,7 @@ import { LoopSpec, MachineFacts, RESTART_EXIT, findSupervisor, labelFor } from "
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
-import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf } from "./assemble.js";
+import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf, linkableHarnesses } from "./assemble.js";
 import { pricedForTheCeiling } from "./chat-pricing.js";
 import { parseSetupFlags, resolveSetupPlugin, runSetupWalk } from "./setup.js";
 import { PhaseBrief, asksForABrief, briefMoved, briefsOf, checkBrief, operationsOffered, phasesOf, sectionsOf, withSection } from "./project.js";
@@ -92,7 +93,7 @@ import {
   workflowProfileName,
 } from "./add.js";
 import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "./daemon.js";
-import { Harness as HarnessTarget, harnesses, install, installedHarnesses } from "./harnesses.js";
+import { Harness as HarnessTarget, harnesses, install, installedHarnesses, linkHarnessSkills } from "./harnesses.js";
 import { shipped } from "./skills.js";
 import { amyHome } from "./home.js";
 import { paths, profileDaemonPids, profilePaths } from "./paths.js";
@@ -250,7 +251,24 @@ function runningSharedDaemon(): ReturnType<typeof running> {
 }
 
 /** Assembles, or prints why it could not and stops. */
-async function engineOrExit(): Promise<Engine> {
+/**
+ * Links the chosen harnesses' own skills into amy's root, as `harnessSkills`
+ * says now, for this run or tick: the setting is acted on here and nowhere
+ * else. The relay already refused, at the mount, a name no harness plugin
+ * contributed. A link that cannot be made is said, and the run goes on: a
+ * skill it leaves missing is refused where it is asked for.
+ */
+function linkForTheRun(config: AmyConfig, mounted: Mounted): void {
+  try {
+    for (const line of linkHarnessSkills(ownSkillRoot(home), path.join(home, "harness-skills.json"), harnessSkills(config), linkableHarnesses(mounted))) {
+      console.log(`harnessSkills: ${line}`);
+    }
+  } catch (error) {
+    console.error(`harnessSkills: the harness skills could not be linked: ${(error as Error).message}`);
+  }
+}
+
+async function engineOrExit(run = false): Promise<Engine> {
   const config = loadConfig(home);
   const scheduleProblems = configuredAutoUpdateProblems(config);
   if (scheduleProblems.length > 0) {
@@ -261,7 +279,10 @@ async function engineOrExit(): Promise<Engine> {
   }
 
   const outcome = await assemble(selected(config));
-  if (outcome.ok) return outcome.engine;
+  if (outcome.ok) {
+    if (run) linkForTheRun(config, outcome.mounted);
+    return outcome.engine;
+  }
 
   console.error("amy could not start:");
   for (const problem of outcome.problems) console.error(`  ${problem}`);
@@ -691,6 +712,11 @@ program
         return;
       }
       const { engine, mountProblem, parts } = mounted;
+      // Every pass is a tick: the harness skills are linked as the config says
+      // before the chat and the work read them.
+      const link = () => {
+        if (mounted.mounted) linkForTheRun(config, mounted.mounted);
+      };
       const reader = chatReader(profile, config, mounted, options.supervised === true, (how) => {
         exit = how;
         stopping = true;
@@ -710,6 +736,7 @@ program
         stopping: () => stopping,
         paused: () => stopSwitch.isRequested(),
         turn: async () => {
+          link();
           // The chat first, then the work: a message that arrives mid-turn
           // waits for the next one (S20).
           await chat();
@@ -764,10 +791,10 @@ program
  * workflow does not mount (S29), which says what failed. Nothing when there
  * is neither and no supervisor would only start it again.
  */
-async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
+async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mounted?: Mounted; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
   const assembled = await assembleOrSay(profile, config);
   if (assembled.ok) {
-    return { engine: assembled.engine, ...chargedTo(config, profile, chatPartsOf(assembled.mounted)) };
+    return { engine: assembled.engine, mounted: assembled.mounted, ...chargedTo(config, profile, chatPartsOf(assembled.mounted)) };
   }
   const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
   const chat = parts.conversation?.chat !== undefined;
@@ -1232,7 +1259,7 @@ program
   .action(async () => {
     const profile = selected();
     await aroundWorkflow(profile, async () => {
-      const engine = await engineOrExit();
+      const engine = await engineOrExit(true);
       // Discovery is every pass of the loop, so a single move looks first too:
       // work appears in the world rather than being handed over, and a tick
       // that only moved what was already queued would do nothing on an empty
@@ -1257,7 +1284,7 @@ program
       return;
     }
     await aroundWorkflow(profile, async () => {
-      const engine = await engineOrExit();
+      const engine = await engineOrExit(true);
       const max = Number(options.max);
 
       // Refusing the next tick is not stopping while an agent call is still
@@ -2410,6 +2437,14 @@ async function moveEverything(
       }
     }
 
+    // Every update writes the skills: the CLI moved or not, amy's own root
+    // travels with it, so an install whose copy was deleted is repaired here
+    // and a rewrite that cannot happen is the update's failure. They are
+    // written before the boot check, since a config whose chat names a skill
+    // only that root held boots only once it is back.
+    const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
+    if (rewrite !== undefined) return rewrite;
+
     // Every configured profile mounts before the update is called done: an
     // update that leaves a config that cannot boot has not worked, and
     // finding that out at the next tick means finding it out from the daemon.
@@ -2417,14 +2452,11 @@ async function moveEverything(
     if (!booted.ok) {
       reportUnbootable(booted.problems);
       await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
+      // The skills written were the moved CLI's: the one installed again
+      // writes its own back, so none describe a CLI that did not stay.
+      if (deps.skillsInto().length === 0) console.error("\nthe rolled-back CLI could not rewrite its skills; run `amy skills --recorded`.");
       return 1;
     }
-
-    // Every update writes the skills: the CLI moved or not, amy's own root
-    // travels with it, so an install whose copy was deleted is repaired here
-    // and a rewrite that cannot happen is the update's failure.
-    const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
-    if (rewrite !== undefined) return rewrite;
     for (const line of rewriteSkillsSaid) console.log(line);
 
     if (release !== undefined) reportHeldBelow(belowRelease(copiesOnDisk(pluginsRoot, installRoot), release.version), release.version);
@@ -2609,6 +2641,15 @@ function reportOnly(moving: readonly Held[], pinned: boolean, forks: readonly Fo
  * boot, and still writes the skills every update promises.
  */
 async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): Promise<number> {
+    // Nothing moved, but the skills still travel: a deleted own root is
+    // repaired here, before the boot check that may need it, and a rewrite
+    // that cannot happen fails the update. The CLI did not move, so what is
+    // written is what was there.
+    const said = deps.skillsInto();
+    if (said.length === 0) {
+      console.error("\namy could not rewrite its skills; an update writes them every time.");
+      return 1;
+    }
     // The boot check runs even when nothing moved: an update on a machine
     // whose config already does not boot must say so, not report success
     // over a config the next tick would refuse.
@@ -2616,13 +2657,6 @@ async function nothingMoved(deps: MountProfiles & SkillsInto, pinned: boolean): 
     if (!booted.ok) {
       reportUnbootable(booted.problems);
       console.error("\nNothing moved; the config is what needs attention.");
-      return 1;
-    }
-    // Nothing moved, but the skills still travel: a deleted own root is
-    // repaired here, and a rewrite that cannot happen fails the update.
-    const said = deps.skillsInto();
-    if (said.length === 0) {
-      console.error("\namy could not rewrite its skills; an update writes them every time.");
       return 1;
     }
     for (const line of said) console.log(line);

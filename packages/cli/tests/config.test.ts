@@ -275,4 +275,19 @@ describe("the chat's skills are the effective ladder", () => {
 
     expect(chatSkills(config)).toEqual(["amy-workflow"]);
   });
+
+  it("reads which harnesses' skills are linked, the relay's own slice winning (A10)", async () => {
+    const { harnessSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills:\n  claude: true\n  codex: false\n"))).toEqual({ claude: true, codex: false });
+    expect(harnessSkills(loadConfigFrom("/state", [
+      "harnessSkills:",
+      "  claude: true",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    harnessSkills:",
+      "      claude: false",
+    ].join("\n")))).toEqual({ claude: false });
+    expect(harnessSkills(loadConfigFrom("/state", "workflows: {}\n"))).toEqual({});
+  });
 });

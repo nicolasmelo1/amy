@@ -35,16 +35,26 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 ### **A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.
 
-`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-claude`
+`minor` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-claude`, `@amykit/plugin-codex`
 
 - **amy owns a copy of the skills it ships.** `amy skills` and every `amy
   update` write every shipped skill into `~/.amy/skills`, whether or not a
   harness directory was chosen; a harness's own directory stays an extra the
   person asks for. A root amy cannot write is a failed install naming it.
 - **A step looks a skill up in a fixed order.** `~/.amy/skills` first, then the
-  roots the config names, then `~/.claude/skills`. The relay and the chat read
-  the same order from one function, so a skill the mount accepted is the one
-  handed to the harness.
+  roots the config names. `~/.claude/skills` is no longer looked in on its own:
+  a harness's skills reach amy only through `harnessSkills`. The relay and the
+  chat read the same order, so a skill the mount accepted is the one handed to
+  the harness.
+- **A harness's own skills are linked, never copied.** `harnessSkills: {
+  claude: true }`, top-level in `.amy/config.yaml` or under the relay's own
+  settings (which win), links each skill of that harness into `~/.amy/skills`,
+  one symlink per skill, at every `amy run`, `amy tick` and loop pass. `false`,
+  or leaving the harness out, removes the links; amy's own copy of a skill wins
+  over a link. The names are the harness plugins that mounted: the `Harness`
+  port gains `skillsDirectory`, which claude (`~/.claude/skills`) and codex
+  (under `CODEX_HOME` or `~/.codex`) report, and a name no harness plugin
+  mounted is refused at boot.
 - **The conversation is a step in the skills ladder.** `skills: { chat:
   [/amy-groom] }` mounts, a chat skill that is not installed is refused at boot
   naming it and what is installed, and no other vocabulary names what the chat
@@ -71,7 +81,15 @@ npm run docs:changelog     # refresh the cache from GitHub
   skill needs no restart. `/new` in a thread ends the skill it was started
   with. `amy update` writes the skills on every successful run, moved or not,
   and `amy skills --recorded` leaves the own-root write inside `writeSkills`'
-  rollback so a failed move restores the previous bodies.
+  rollback so a failed move restores the previous bodies. The skills are
+  written before the boot check, so a deleted `~/.amy/skills` a chat skill
+  needs is repaired by the update, and a moved CLI that does not boot has the
+  rolled-back one write its own skills back.
+- **A skill turn checks its skill is still there.** A turn queued behind one
+  whose commands removed the skill is refused, naming `amy skills`, rather than
+  lent a directory that is gone. A block fenced with more backticks holds a
+  three-backtick example whole, and a block that cannot be written leaves the
+  turn to be asked again rather than settled.
 
 <!-- amy:end changelog-unreleased -->
 
