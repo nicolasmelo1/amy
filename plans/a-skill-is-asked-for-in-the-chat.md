@@ -84,7 +84,7 @@ crosses:
 guarantee:
   - { holds: "a skill the chat runs is one amy installed and the config names for the chat", not_against: "a person editing a SKILL.md under ~/.amy/skills by hand until the next update" }
   - { holds: "a skill turn acts only through the /action list", not_against: "a skill whose instructions ask for a command off the list: it is refused, not run" }
-  - { holds: "a harness's skill reaches amy only as a link the config asked for, and amy never writes through one", not_against: "a person editing the harness's own SKILL.md, which the link shows as it is" }
+  - { holds: "a harness's skill reaches amy only as a link the config asked for, and amy never writes through one", not_against: "a person editing the harness's own SKILL.md, which the link shows as it is; two profile loops linking at the same moment, which share one record of the links" }
 failures:
   - { step: chat, when: "the skill named is on the ladder but its directory is gone", goes_to: "an answer naming the skill and `amy skills`, and nothing runs" }
   - { step: chat, when: "--from names a block the answer does not carry", goes_to: "the whole block refused, naming the missing block, and nothing runs" }
