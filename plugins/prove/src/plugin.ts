@@ -17,6 +17,7 @@ import {
   defineWorkflow,
   optional,
   port,
+  unitOf,
 } from "@amykit/core";
 import { StepResult } from "./assertions.js";
 import { Effect, Observation, Policy, ProveRecord, decide, stepsBlocking, verdictOf } from "./decide.js";
@@ -63,11 +64,6 @@ export const needs = {
 type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
 type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
 type Work = ActionContext<ProveRecord, Observation>;
-
-/** The unit a run proves: the work the proving phase was called for, its brief's id. */
-export function unitOf(record: { readonly id: string }): string {
-  return record.id.split("/")[0]!;
-}
 
 /** Where a mount keeps its proofs: the project's artifact root, beside the briefs, or the profile's own state. */
 export function proofsAt(paths: { readonly state: string; readonly profile?: string; readonly artifacts?: string }): string {
@@ -172,37 +168,9 @@ const actions = {
     work.outcomes.prepared = true;
   },
 
-  "run-step": async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "run-step" }>) => {
-    renew(scope, work.record);
-    const record = work.record;
-    const step = record.scenario?.steps.find((one) => one.id === effect.step);
-    if (!step) throw new Error(`the scenario has no step \`${effect.step}\``);
-    const { replays } = stores(scope);
-    const operate = scope.operate;
-    let result: StepResult | undefined;
-    if (step.kind === "deterministic") result = await runDeterministic(step, { operate });
-    else if (step.kind === "agent") {
-      const agent = scope.ports.agent;
-      const ran = await runAgent(record.scenario!.name, step, {
-        operate,
-        replays,
-        offered: offeredTo(scope),
-        ...(agent ? { ask: (prompt: string) => agent.ask(prompt, scope.ctx.paths.profile ?? scope.ctx.paths.state, { workId: record.id, step: step.id }) } : {}),
-      });
-      result = ran.result;
-      work.outcomes.agentCalls = { ...record.agentCalls, [step.id]: [...ran.calls] };
-    } else if (step.kind === "wait-until") {
-      const since = record.untilSince?.[step.id] ?? scope.ctx.now().toISOString();
-      const checked = await checkUntil(step, { operate });
-      // Measured once the check answered: a check that only finishes past
-      // the deadline is past it, whatever it found.
-      const late = scope.ctx.now().getTime() - Date.parse(since) > step.deadlineMs;
-      if (late) result = untilMissed(step, checked.result);
-      else if (checked.holds) result = checked.result;
-      else work.outcomes.untilSince = { ...record.untilSince, [step.id]: since };
-    }
-    if (result) work.outcomes.result = { step: step.id, result };
-  },
+  "run-step": async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "run-step" }>) => runStep(scope, work, effect),
+
+  "run-agent-step": async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "run-agent-step" }>) => runStep(scope, work, effect),
 
   ask: async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "ask" }>) => {
     const record = work.record;
@@ -234,7 +202,7 @@ const actions = {
     };
   },
 
-  escalate: async (scope: ActionScope, work: Work) => {
+  "give-up": async (scope: ActionScope, work: Work) => {
     const asking = work.record.asking;
     await scope.ports.notifier.announce({
       workId: work.record.id,
@@ -270,6 +238,39 @@ const actions = {
     for (const line of said) await scope.announce(line);
   },
 };
+
+/** A step of the scenario, run once: by its operation, by the agent, or checked until it holds. */
+async function runStep(scope: ActionScope, work: Work, effect: { readonly step: string }): Promise<void> {
+  renew(scope, work.record);
+  const record = work.record;
+  const step = record.scenario?.steps.find((one) => one.id === effect.step);
+  if (!step) throw new Error(`the scenario has no step \`${effect.step}\``);
+  const { replays } = stores(scope);
+  const operate = scope.operate;
+  let result: StepResult | undefined;
+  if (step.kind === "deterministic") result = await runDeterministic(step, { operate });
+  else if (step.kind === "agent") {
+    const agent = scope.ports.agent;
+    const ran = await runAgent(record.scenario!.name, step, {
+      operate,
+      replays,
+      offered: offeredTo(scope),
+      ...(agent ? { ask: (prompt: string) => agent.ask(prompt, scope.ctx.paths.profile ?? scope.ctx.paths.state, { workId: record.id, step: step.id }) } : {}),
+    });
+    result = ran.result;
+    work.outcomes.agentCalls = { ...record.agentCalls, [step.id]: [...ran.calls] };
+  } else if (step.kind === "wait-until") {
+    const since = record.untilSince?.[step.id] ?? scope.ctx.now().toISOString();
+    const checked = await checkUntil(step, { operate });
+    // Measured once the check answered: a check that only finishes past
+    // the deadline is past it, whatever it found.
+    const late = scope.ctx.now().getTime() - Date.parse(since) > step.deadlineMs;
+    if (late) result = untilMissed(step, checked.result);
+    else if (checked.holds) result = checked.result;
+    else work.outcomes.untilSince = { ...record.untilSince, [step.id]: since };
+  }
+  if (result) work.outcomes.result = { step: step.id, result };
+}
 
 /**
  * Takes down what the run brought up and gives back its seats. A resource
@@ -474,6 +475,13 @@ export const plugin = defineWorkflow({
     return { ...policy, resources, fixtures: readFixtures(config.fixtures) };
   },
   operations: proofOperations,
+  // Its own actions, catalogued here so a project calling it as a phase
+  // mounts them. Only an agent step spends the agent, so the budget counts
+  // `run-agent-step` alone; the rest write no tracker, on the notifier every run has.
+  catalogue: {
+    ...Object.fromEntries(["lease", "renew", "prepare", "run-step", "ask", "finish", "give-up"].map((name) => [name, { port: "notifier", method: "announce" }])),
+    "run-agent-step": { port: "agent", method: "ask" },
+  },
   record: () => ({}),
   discover: async () => [],
   observe,

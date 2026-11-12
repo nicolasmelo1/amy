@@ -1,5 +1,12 @@
 import { WorkflowRuntime, WorkRecord } from "@amykit/core";
 
+/** One thing a port was asked, in the order it was asked. */
+export interface PortCall {
+  readonly port: string;
+  readonly method: string;
+  readonly args: readonly unknown[];
+}
+
 /**
  * One situation the machine is put in, supplied by whoever wrote the workflow.
  *
@@ -36,6 +43,18 @@ export interface World<R extends WorkRecord = WorkRecord> {
    * was already there.
    */
   readonly meanwhile?: readonly (() => void | Promise<void>)[];
+  /**
+   * The same situation again, fresh, for the walk called as a phase. Left
+   * out, this world is walked a second time, which is right only for one
+   * that keeps no state.
+   */
+  readonly again?: () => World<R> | Promise<World<R>>;
+  /**
+   * Everything the world's tracker, code host and conversation were asked so
+   * far, in order: `watched` keeps it. Both walks must ask them the same,
+   * naming the unit the work is for, never the call it runs under.
+   */
+  readonly said?: () => readonly PortCall[];
 }
 
 export interface ConformanceOptions<R extends WorkRecord, O, W extends World<R>> {

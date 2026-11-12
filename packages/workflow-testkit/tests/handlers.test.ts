@@ -110,7 +110,8 @@ describe("handlers", () => {
     });
 
     expect(findings).toEqual([]);
-    expect(calls).toEqual([{ type: "hand-off-to-qa" }]);
+    // Once standing alone, and once called as a phase.
+    expect(calls).toEqual([{ type: "hand-off-to-qa" }, { type: "hand-off-to-qa" }]);
   });
 
   it("fails a port-and-method action whose port the world never handed over", async () => {

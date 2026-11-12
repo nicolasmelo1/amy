@@ -8,7 +8,29 @@ import { ParsedRun, parseRun } from "./envelope.js";
 export interface ClaudeHarnessConfig {
   /** Passed to the CLI as --model. Omit to use whatever the CLI defaults to. */
   model?: string;
+  /** What a run that may write passes as --permission-mode; `acceptEdits` unless set. */
+  permissionMode?: WritingMode;
   timeoutMs?: number;
+}
+
+/**
+ * The permission modes under which a print-mode run can write.
+ *
+ * With the user's settings dropped, no allow rule reaches the run, so
+ * `default` and `dontAsk` deny every edit and `plan` blocks them: a writing
+ * run handed one of those answers and changes nothing.
+ * https://code.claude.com/docs/en/permission-modes
+ */
+export const WRITING_MODES = ["acceptEdits", "auto", "bypassPermissions"] as const;
+export type WritingMode = (typeof WRITING_MODES)[number];
+
+/** The configured mode, or why it is refused, naming the setting. */
+export function writingMode(value: unknown): WritingMode {
+  if (typeof value === "string" && (WRITING_MODES as readonly string[]).includes(value)) return value as WritingMode;
+  throw new Error(
+    `permissionMode is ${JSON.stringify(value ?? "")}, under which a run cannot write: ` +
+      `set it to ${WRITING_MODES.map((mode) => `\`${mode}\``).join(", ")}`,
+  );
 }
 
 /**
@@ -72,7 +94,8 @@ export class ClaudeHarness implements Harness {
       args.push("--model", this.config.model);
     }
     // Plan mode reads and does not edit or run anything, enforced by the CLI.
-    if (context.readOnly) args.push("--permission-mode", "plan");
+    // A mode is always passed: with no mode a print-mode run may not write.
+    args.push("--permission-mode", context.readOnly ? "plan" : (this.config.permissionMode ?? "acceptEdits"));
     args.push(...ISOLATED);
 
     const lent = context.skill ? lend(this.tmpDir, context.skill) : undefined;

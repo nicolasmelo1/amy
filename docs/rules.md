@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**69 rules shipped**, 58 enabled here, 11 switched off, 58 carrying a mutation fixture, 1 violations frozen.
+**70 rules shipped**, 59 enabled here, 11 switched off, 59 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -19,7 +19,7 @@ A layer with nothing enabled is a deliberate choice, and
 <!-- sf:generated layer-index -->
 | | Layer | What it checks | Shipped | Enabled here |
 | :-- | :-- | :-- | --: | --: |
-| **L0** | Shape | where things live | 20 | 18 |
+| **L0** | Shape | where things live | 21 | 19 |
 | **L1** | Grain | how the code reads | 7 | 6 |
 | **L2** | Contract | no drift from the source of truth | 9 | 8 |
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
@@ -50,6 +50,16 @@ Nothing in packages/agent-kit or in any plugin calls `prepareBranch` or `commitA
 **Why.** When work is committed and when it reaches the remote are a workflow's decisions. One workflow pushes after every attempt, another pushes once per cycle so nobody reviews half-done work, a third never pushes at all. An agent that pushes by itself makes the second and third impossible without replacing the checkout, which is exactly what a private workflow had to do.
 
 **Fix.** Return the answer and let the caller commit. A helper in agent-kit that needs to commit takes the commit as a function its caller passes in, the way `implementStep` does. See docs/design/an-agent-only-answers.md.
+
+### L0.A_CALLED_RECORD_NAMES_ITS_UNIT
+
+**Only the core says what unit a record is for**
+
+No source outside packages/core splits a record id or a work id on `/` or `#`; the unit a record is for is the core's `unitOf`.
+
+**Why.** A called workflow's record id is `<caller id>/<STATE>#<n>`, and that shape is the core's. Three packages each kept a private split on `/`, and the one that kept none took `SHOP-1/WORK#1` for a ticket id, so a project calling it as a phase stopped on its first look. A copy of the shape is a copy that goes wrong the day the shape moves, or the day a new workflow forgets it.
+
+**Fix.** Call `unitOf(record)` from @amykit/core for what a tracker, a code host or a person is told, and keep `record.id` for what keys a run, a checkout or an agent's context. See docs/design/a-workflow-calls-another.md.
 
 ### L0.A_RENDERER_NAMES_NO_COLOUR
 

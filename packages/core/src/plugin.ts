@@ -74,6 +74,12 @@ export interface Workflow<Observation = unknown, Policy = unknown> {
    */
   readonly trackerWrites?: readonly string[];
   /**
+   * The actions this workflow and every workflow it calls catalogue, each on
+   * the port as this workflow's mount names it: what the boot check reads
+   * beside the actions plugins register.
+   */
+  readonly catalogue?: Readonly<Record<string, ActionSpec>>;
+  /**
    * The forge writes this workflow claims, by capability name.
    *
    * Like tracker writes, this is a hand-written permission boundary: the host

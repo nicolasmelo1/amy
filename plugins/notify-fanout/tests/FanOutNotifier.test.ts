@@ -35,11 +35,32 @@ describe("FanOutNotifier", () => {
     const open = vi.fn().mockResolvedValue({ id: "thread-1" });
     const post = vi.fn().mockResolvedValue("message-1");
 
-    await new FanOutNotifier([channel], () => {}, { open, post, replies: async () => [] }).announce(announcement);
+    await new FanOutNotifier([channel], () => {}, { known: async () => undefined, open, post, replies: async () => [] }).announce(announcement);
 
     expect(open).toHaveBeenCalledWith("ACME-1", "ACME-1");
     expect(post).toHaveBeenCalledWith({ id: "thread-1" }, { text: announcement.text });
     expect(channel.delivered).toBe(0);
+  });
+
+  it("speaks for a called phase in its unit's thread, keeping the title the workflow gave it", async () => {
+    const threads = new Map([["ACME-1", { id: "thread-1", title: "Invoices say when they are paid" }]]);
+    const opened: string[] = [];
+    const post = vi.fn().mockResolvedValue("message-1");
+    const conversation = {
+      known: async (workId: string) => threads.get(workId),
+      open: async (workId: string, title: string) => {
+        opened.push(`${workId}: ${title}`);
+        return { id: `thread-of-${workId}` };
+      },
+      post,
+      replies: async () => [],
+    };
+
+    await new FanOutNotifier([], () => {}, conversation).announce({ ...announcement, workId: "ACME-1/WORK#1" });
+    await new FanOutNotifier([], () => {}, conversation).announce({ ...announcement, workId: "ACME-2/PROVE#1/LANE#2" });
+
+    expect(post.mock.calls.map(([thread]) => thread.id)).toEqual(["thread-1", "thread-of-ACME-2"]);
+    expect(opened).toEqual(["ACME-2: ACME-2"]);
   });
 
   it("keeps going when one channel is down", async () => {

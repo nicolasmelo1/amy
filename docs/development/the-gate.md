@@ -34,6 +34,7 @@ held to a gate that is proven to work.
 
 | Rule | What it holds |
 | :-- | :-- |
+| `L0.A_CALLED_RECORD_NAMES_ITS_UNIT` | Only the core says what unit a record is for (docs/design/a-workflow-calls-another.md) |
 | `L0.A_RENDERER_NAMES_NO_COLOUR` | A renderer spells no colour outside its theme-token file (docs/design/the-frame-is-closed.md) |
 | `L0.A_RENDERER_ONLY_TRANSLATES` | A renderer imports the primitives and the frame, and nothing else of amy (docs/design/the-frame-is-closed.md) |
 | `L0.A_TICKET_REQUIRES_WHAT_EVERY_TRACKER_HAS` | A ticket requires only what every tracker has (docs/design/an-agent-only-answers.md) |
@@ -150,7 +151,7 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **58 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **59 rules**, and `sf verify` proves every one fires against a broken fixture.
 
 **28 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 

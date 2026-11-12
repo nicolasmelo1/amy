@@ -13,6 +13,12 @@ export const configSchema = {
       "the model tiers to offer the relay, cheapest first. One agent is contributed per tier, named `claude:<model>`. Empty means a single agent using `model`",
     default: [],
   },
+  permissionMode: {
+    type: "string",
+    description:
+      "passed to the CLI as --permission-mode on a run that may write: `acceptEdits`, `auto` or `bypassPermissions`. A read-only run is always `plan`",
+    default: "acceptEdits",
+  },
   timeoutMs: {
     type: "number",
     description: "how long one agent call may run before it is given up on",

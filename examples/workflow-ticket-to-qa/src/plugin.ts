@@ -20,6 +20,7 @@ import {
   optional,
   port,
   scopeOf,
+  unitOf,
 } from "@amykit/core";
 import { z } from "zod";
 import { after, before, decide } from "./machine.js";
@@ -270,7 +271,7 @@ export const plugin = defineWorkflow({
       },
     }),
     SELF_REVIEW: call(selfReviewLane, {
-      input: (work: TicketRecord) => ({ ...checkInput(work), ticketId: splitWorkId(work.id).ticketId }),
+      input: (work: TicketRecord) => ({ ...checkInput(work), ticketId: splitWorkId(unitOf(work)).ticketId }),
       revision: (work: TicketRecord) => work.implemented?.revision,
       output: {
         APPROVED: (work: TicketRecord, found: Finding) => ({ ...work, lastSelfReview: { ...found, verdict: "APPROVED" as const } }),

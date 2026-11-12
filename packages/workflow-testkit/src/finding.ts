@@ -13,6 +13,7 @@ export const PROPERTIES = {
   folds: "an empty collection concludes nothing",
   escalation: "giving up has a way out, and only one",
   transitions: "every move is one the diagram draws",
+  called: "called as a phase, it does what it does standing alone",
 } as const;
 
 export type Property = keyof typeof PROPERTIES;

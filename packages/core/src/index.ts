@@ -46,7 +46,7 @@ export type { Deferred } from "./deferred.js";
 
 export { act, advance, declaredCallee, declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, notWrittenIn, optional, planning, policyFor, port, settled, wait, withDiagram, withDiagramBeside, workflowActions } from "./define-workflow.js";
 export type { ActionDuties, Operated } from "./action-ports.js";
-export { CALLED, LANED, LEASE_WAIT, activeCall, call, callPath, callStanding, isCall, laneMoved, laneStanding } from "./calls.js";
+export { CALLED, LANED, LEASE_WAIT, activeCall, call, callPath, callStanding, isCall, laneMoved, laneStanding, unitOf } from "./calls.js";
 export { FileLeases, LeaseHeld } from "./leases.js";
 export type { BranchLeases } from "./leases.js";
 export { processAlive, takeLock } from "./process-lock.js";

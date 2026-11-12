@@ -28,6 +28,18 @@ describe("a topic per piece of work", () => {
     ]);
   });
 
+  it("knows a work's topic without opening one, and knows none for a work that has none", async () => {
+    const telegram = botApiStandIn();
+    const { amy, directory } = amyWith(telegram);
+
+    expect(await amy.known("BILL-7")).toBeUndefined();
+    expect(telegram.topics.size).toBe(0);
+    const opened = await amy.open("BILL-7", "The invoice total");
+
+    expect(await amyWith(telegram, directory).amy.known("BILL-7")).toEqual(opened);
+    expect(telegram.topics.size).toBe(1);
+  });
+
   it("reopens the topic after a restart instead of opening a second", async () => {
     const telegram = botApiStandIn();
     const { amy, directory } = amyWith(telegram);

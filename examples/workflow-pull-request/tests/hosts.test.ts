@@ -23,7 +23,7 @@ import {
   settled,
   withDiagram,
 } from "@amykit/core";
-import { conformance } from "@amykit/workflow-testkit";
+import { World, conformance } from "@amykit/workflow-testkit";
 import { plugin as pullRequest } from "../src/index.js";
 
 const HOST: HostServices = {
@@ -316,10 +316,16 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
     const refuses = await mounted([shipping(), forge(new MergeRequestHost({ refuse: "no" }))]);
 
     const findings = await conformance(opens.workflow, {
-      runtime: (world: { name: string; workId: string; runtime: WorkflowRuntime }) => world.runtime,
+      runtime: (world: World & { workId: string; runtime: WorkflowRuntime }) => world.runtime,
       worlds: [
-        { name: "a host that opens it", workId: "TBO-7", runtime: opens.runtime },
-        { name: "a host that refuses it", workId: "TBO-7", runtime: refuses.runtime },
+        {
+          name: "a host that opens it", workId: "TBO-7", runtime: opens.runtime,
+          again: async () => ({ name: "a host that opens it", workId: "TBO-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost())])).runtime }),
+        },
+        {
+          name: "a host that refuses it", workId: "TBO-7", runtime: refuses.runtime,
+          again: async () => ({ name: "a host that refuses it", workId: "TBO-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost({ refuse: "no" }))])).runtime }),
+        },
       ],
       everyEdge: true,
     });

@@ -1121,6 +1121,9 @@ rules:
   # L0 — An agent never prepares a branch, commits or pushes (docs/design/an-agent-only-answers.md)
   L0.AN_AGENT_NEVER_TOUCHES_GIT:
     enabled: true
+  # L0 — Only the core says what unit a record is for (docs/design/a-workflow-calls-another.md)
+  L0.A_CALLED_RECORD_NAMES_ITS_UNIT:
+    enabled: true
   # L0 — The agent and gate ports live in their own files (docs/design/an-agent-only-answers.md)
   L0.PORTS_LIVE_IN_THEIR_OWN_FILE:
     enabled: true

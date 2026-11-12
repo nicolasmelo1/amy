@@ -2,9 +2,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { CommandResult } from "@amykit/core";
+import { CommandResult, HostServices, mount } from "@amykit/core";
+import { Granted, harnessConformance } from "@amykit/agent-kit";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { ClaudeHarness, ISOLATED, lend } from "../src/ClaudeHarness.js";
+import { ClaudeHarness, ISOLATED, WRITING_MODES, lend } from "../src/ClaudeHarness.js";
+import { plugin } from "../src/plugin.js";
+
+const HOST: HostServices = {
+  runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+  now: () => new Date("2026-11-11T12:00:00.000Z"),
+  paths: { state: "/state" },
+};
 
 /**
  * The envelope `claude -p --output-format json` prints, shaped from a real
@@ -63,7 +71,7 @@ describe("how it calls the CLI", () => {
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual([...ISOLATED, "--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual(["--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "json", "-p"]);
   });
 
   it("selects the model with the long flag the CLI actually accepts", async () => {
@@ -71,7 +79,7 @@ describe("how it calls the CLI", () => {
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", ...ISOLATED, "--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", "--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "json", "-p"]);
   });
 
   it("streams the prompt over stdin, in the directory it was handed", async () => {
@@ -199,7 +207,41 @@ describe("a step that must change nothing", () => {
 
     const [readOnly, writing] = runner.callsTo("claude");
     expect(readOnly!.args.join(" ")).toContain("--permission-mode plan");
-    expect(writing!.args).not.toContain("--permission-mode");
+    expect(writing!.args.join(" ")).toContain("--permission-mode acceptEdits");
+  });
+});
+
+/** What a run's arguments let it do, as the CLI reads `--permission-mode`. */
+function grantedBy(args: readonly string[] | undefined): Granted {
+  const at = args?.indexOf("--permission-mode") ?? -1;
+  const mode = at >= 0 ? args![at + 1] : undefined;
+  if (mode === undefined) return "nothing";
+  return (WRITING_MODES as readonly string[]).includes(mode) ? "write" : "read-only";
+}
+
+describe("a step that may write", () => {
+  it("passes the configured writing mode, and conforms as a harness whatever writing mode is set", async () => {
+    for (const permissionMode of WRITING_MODES) {
+      const findings = await harnessConformance(() => {
+        const runner = new ScriptedRunner([claudeReturns(envelope())]);
+        return { harness: new ClaudeHarness(runner, { permissionMode }), granted: () => grantedBy(runner.callsTo("claude")[0]?.args) };
+      });
+      expect(findings).toEqual([]);
+    }
+  });
+
+  it("is refused at mount under a mode that is empty, unknown or cannot write, naming the setting and the writing modes", async () => {
+    for (const permissionMode of ["", "manual", "plan", "dontAsk", "yolo"]) {
+      const outcome = await mount([plugin], { "@amykit/plugin-claude": { permissionMode } }, HOST);
+      expect(outcome.ok).toBe(false);
+      expect(outcome.ok ? "" : outcome.problems.join("\n")).toContain(
+        `permissionMode is ${JSON.stringify(permissionMode)}, under which a run cannot write: set it to \`acceptEdits\`, \`auto\`, \`bypassPermissions\``,
+      );
+    }
+  });
+
+  it("mounts with acceptEdits when nothing is set", async () => {
+    expect((await mount([plugin], {}, HOST)).ok).toBe(true);
   });
 });
 

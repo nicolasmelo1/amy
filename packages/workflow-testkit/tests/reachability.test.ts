@@ -139,7 +139,15 @@ describe("reachability", () => {
           apply: (record, outcomes) =>
             (outcomes.implementation as { done?: boolean } | undefined)?.done ? { ...record, implemented: true } : record,
         }),
-      worlds: [{ name: "a quota that clears", meanwhile: [() => { quota.exhausted = false; }] }],
+      worlds: [{
+        name: "a quota that clears",
+        meanwhile: [() => { quota.exhausted = false; }],
+        // The quota is the world's state: the walk called as a phase starts it exhausted again.
+        again: () => {
+          quota.exhausted = true;
+          return { name: "a quota that clears", meanwhile: [() => { quota.exhausted = false; }] };
+        },
+      }],
     });
 
     expect(findings).toEqual([]);

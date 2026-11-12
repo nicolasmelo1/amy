@@ -22,6 +22,8 @@ async function world(
     runtime: mounted.runtime,
     ...(record ? { start: (now: Date) => record(mounted.runtime, now) } : {}),
     meanwhile: Array.from({ length: 16 }, () => () => undefined),
+    said: () => fake.said,
+    again: () => world(name, shape, record),
   };
 }
 

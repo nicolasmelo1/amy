@@ -25,8 +25,12 @@ import {
   port,
   runAction,
   settled,
+  portReachedBy,
+  unitOf,
   withDiagram,
 } from "../src/index.js";
+import { calledStore } from "../src/calls.js";
+import type { Store } from "../src/ports/Store.js";
 
 const HOST: HostServices = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
@@ -464,6 +468,170 @@ describe("the smallest call", () => {
 
     expect(callPath(record).map((step) => `${step.id}@${step.state}`)).toEqual(["W-2@OPEN", "W-2/OPEN#1@OPENING"]);
     expect(record.calls!["W-2/OPEN#1"]!.input).toEqual({ branch: "amy/first" });
+  });
+
+  it("hands a called workflow a store of its own records under every root, never its caller's roots", async () => {
+    const seen: string[][] = [];
+    const counter = defineWorkflow({
+      name: "counter",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: { store: port<Store>() },
+      decide: { COUNTING: () => settled("counted"), COUNTED: () => settled("done") },
+      record: () => ({}),
+      observe: async (scope) => {
+        seen.push(scope.ports.store.all().map((record) => record.id));
+        return {};
+      },
+      actions: {},
+    });
+    const roots = new Map<string, WorkRecord>();
+    const store: Plugin = {
+      name: "store",
+      register: (registry) => registry.store({ load: (id) => roots.get(id) ?? null, save: (record) => void roots.set(record.id, record), all: () => [...roots.values()] }),
+    };
+    const shop = withDiagram(defineWorkflow({
+      name: "shop",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WORK: call(withDiagram(counter, "stateDiagram-v2\n[*] --> COUNTING\nCOUNTING --> COUNTED\nCOUNTED --> [*]\n")) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: COUNTED\nDONE --> [*]\nclass WORK call\n");
+    const { runtime } = await mounted([shop, store]);
+    for (const id of ["SHOP-1", "SHOP-2"]) roots.set(id, runtime.newRecord(id, HOST.now()));
+
+    await runtime.observe(roots.get("SHOP-1")!);
+
+    expect(seen).toEqual([["SHOP-1/WORK#1", "SHOP-2/WORK#1"]]);
+  });
+
+  it("scopes the store a callee asks for by name, whatever port its call binds it to", async () => {
+    const seen: string[][] = [];
+    const counter = defineWorkflow({
+      name: "counter",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: { store: port<Store>() },
+      decide: { COUNTING: () => settled("counted"), COUNTED: () => settled("done") },
+      record: () => ({}),
+      observe: async (scope) => {
+        seen.push(scope.ports.store.all().map((record) => record.id));
+        return {};
+      },
+      actions: {},
+    });
+    const roots = new Map<string, WorkRecord>();
+    const records: Plugin = {
+      name: "records",
+      register: (registry) => registry.port("records", { load: (id: string) => roots.get(id) ?? null, save: (record: WorkRecord) => void roots.set(record.id, record), all: () => [...roots.values()] }),
+    };
+    const shop = withDiagram(defineWorkflow({
+      name: "shop",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WORK: call(withDiagram(counter, "stateDiagram-v2\n[*] --> COUNTING\nCOUNTING --> COUNTED\nCOUNTED --> [*]\n"), { ports: { store: "records" } }) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: COUNTED\nDONE --> [*]\nclass WORK call\n");
+    const { runtime } = await mounted([shop, records]);
+    for (const id of ["SHOP-1", "SHOP-2"]) roots.set(id, runtime.newRecord(id, HOST.now()));
+
+    await runtime.observe(roots.get("SHOP-1")!);
+
+    expect(seen).toEqual([["SHOP-1/WORK#1", "SHOP-2/WORK#1"]]);
+  });
+
+  it("keeps a workflow's own agent action counted as spending the agent when it draws a fork, standing alone and called", async () => {
+    const lane = withDiagram(defineWorkflow({
+      name: "lane",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      decide: { WORKING: () => advance("DONE", "worked"), DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORKING\nWORKING --> DONE\nDONE --> [*]\n");
+    const forker = withDiagram(defineWorkflow({
+      name: "forker",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: { agent: port<object>() },
+      catalogue: { draft: { port: "agent", method: "ask" } },
+      calls: { A: call(lane), B: call(lane) },
+      decide: { PLANNED: () => advance("split", "planned", { type: "draft" }), merge: () => advance("FINISHED", "met"), FINISHED: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: { draft: async () => {} },
+    }), "stateDiagram-v2\n    state split <<fork>>\n    state merge <<join>>\n    [*] --> PLANNED\n    PLANNED --> split\n    split --> A\n    split --> B\n    A --> merge: DONE\n    B --> merge: DONE\n    merge --> FINISHED\n    FINISHED --> [*]\n    class A, B call\n");
+    const caller = withDiagram(defineWorkflow({
+      name: "caller",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { WORK: call(forker) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> WORK\nWORK --> DONE: FINISHED\nDONE --> [*]\nclass WORK call\n");
+    const agent: Plugin = { name: "agent", register: (registry) => registry.port("agent", { ask: async () => ({ text: "", run: {} }) }) };
+
+    for (const root of [forker, caller]) {
+      const { runtime } = await mounted([root, agent]);
+      expect(portReachedBy(implementationOf(runtime, "draft"))).toBe("agent");
+    }
+  });
+
+  it("lists only the calls still running: not one its caller returned from, nor a lane its caller left the fork with", () => {
+    const record = (id: string, state: string, more: Partial<WorkRecord> = {}): WorkRecord => ({ id, state, updatedAt: "", attempts: {}, history: [], ...more });
+    const child = (id: string) => record(id, "WORKING");
+    const roots: WorkRecord[] = [
+      record("SHOP-1", "WORK", { calling: "SHOP-1/WORK#1", calls: { "SHOP-1/WORK#1": child("SHOP-1/WORK#1") } }),
+      record("SHOP-2", "DONE", { calls: { "SHOP-2/WORK#1": child("SHOP-2/WORK#1") } }),
+      record("SHOP-3", "split", { lanes: { A: { call: "SHOP-3/A#1" } }, calls: { "SHOP-3/A#1": child("SHOP-3/A#1") } }),
+      record("SHOP-4", "ESCALATED", { lanes: { A: { call: "SHOP-4/A#1" } }, calls: { "SHOP-4/A#1": child("SHOP-4/A#1") } }),
+    ];
+    const store = { load: () => null, save: () => {}, all: () => roots };
+
+    expect(calledStore(store, "WORK").all().map((one) => one.id)).toEqual(["SHOP-1/WORK#1"]);
+    expect(calledStore(store, "A", "split").all().map((one) => one.id)).toEqual(["SHOP-3/A#1"]);
+  });
+
+  it("refuses a called workflow saving through its store: its records are saved with its caller's", () => {
+    const view = calledStore({ load: () => null, save: () => {}, all: () => [] }, "WORK");
+
+    expect(() => view.save({ id: "SHOP-1/WORK#1", state: "COUNTING", updatedAt: "", attempts: {}, history: [] })).toThrow(
+      "SHOP-1/WORK#1 is a called record: it is saved with its caller's, never on its own",
+    );
+  });
+
+  it("names the unit a called record is for at any depth, the id it was called under being the run's", async () => {
+    const { runtime } = await mounted([withDiagram(defineWorkflow({
+      name: "starts-calling",
+      configSchema: NO_SETTINGS,
+      policy: {},
+      needs: {},
+      calls: { OPEN: call(opener({ needs: "none" }), { input: () => ({ branch: "amy/first" }) }) },
+      decide: { DONE: () => settled("done") },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), "stateDiagram-v2\n[*] --> OPEN\nOPEN --> DONE: OPENED\nOPEN --> DONE: REFUSED\nDONE --> [*]\nclass OPEN call\n")]);
+    const minted = runtime.newRecord("SHOP-1@acme%2Fshop", HOST.now()).calls!["SHOP-1@acme%2Fshop/OPEN#1"]!;
+
+    expect(unitOf(minted)).toBe("SHOP-1@acme%2Fshop");
+    expect(unitOf({ id: "SHOP-1/WORK#1/X#2" })).toBe("SHOP-1");
+    expect(unitOf({ id: "SHOP-1" })).toBe("SHOP-1");
+    // A slash that is no call's stays: only `/<STATE>#<n>` is a call's part.
+    expect(unitOf({ id: "notes/2026-11-11.md/DRAFT#3" })).toBe("notes/2026-11-11.md");
   });
 
   it("folds what the callee returned into its caller, which takes the edge named for the end", async () => {

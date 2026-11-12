@@ -1,4 +1,5 @@
 import { Workflow, WorkRecord } from "@amykit/core";
+import { CalledPair, called, calledId } from "./called.js";
 import { ceilings } from "./ceilings.js";
 import { escalation } from "./escalation.js";
 import { Finding, PROPERTIES, Property, distinct } from "./finding.js";
@@ -6,7 +7,7 @@ import { folds } from "./folds.js";
 import { handlers } from "./handlers.js";
 import { reachability } from "./reachability.js";
 import { transitions } from "./transitions.js";
-import { AnyRuntime, AnyWorkflow, walk } from "./walk.js";
+import { AnyRuntime, AnyWorkflow, Walk, WalkOptions, walk } from "./walk.js";
 import { ConformanceOptions, World } from "./world.js";
 
 /** A Thursday, so a roster that is only confirmed on workdays is confirmed. */
@@ -27,16 +28,18 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
     return [{ property: "walk", message: "no world was given, so nothing was walked" }];
   }
 
+  const walking = {
+    runtime: (w: World, now: () => Date) => options.runtime(w as W, now) as unknown as AnyRuntime,
+    ports: (w: World) => options.ports?.(w as W) ?? {},
+    maxLooks: options.maxLooks ?? 200,
+    start: options.start ?? THURSDAY_NOON,
+  };
   const walks = [];
+  const pairs: CalledPair[] = [];
   for (const world of options.worlds) {
-    walks.push(
-      await walk(machine, world, {
-        runtime: (w, now) => options.runtime(w as W, now) as unknown as AnyRuntime,
-        ports: (w) => options.ports?.(w as W) ?? {},
-        maxLooks: options.maxLooks ?? 200,
-        start: options.start ?? THURSDAY_NOON,
-      }),
-    );
+    const alone = await walk(machine, world, walking);
+    walks.push(alone);
+    pairs.push(await walkedCalled(machine, world, alone, walking));
   }
 
   const extraLooks = options.extraLooks ?? 10;
@@ -49,7 +52,31 @@ export async function conformance<R extends WorkRecord, O, P, W extends World<R>
     ...folds(machine, walks),
     ...escalation(machine, walks, options.givesUp ?? []),
     ...transitions(machine, walks, options.everyEdge ?? false),
+    // What broke only under a call is reported under the world it broke in.
+    ...pairs.flatMap((pair) => onlyCalled(pair).map((finding) => ({ ...finding, message: `called as \`${calledId(pair.unit)}\`, ${finding.message}` }))),
+    ...called(pairs),
   ]).sort((a, b) => order(a.property) - order(b.property));
+}
+
+/**
+ * The same world again, as a phase another workflow calls: its record's id is
+ * the call's, and the unit it is for is the world's own work.
+ */
+async function walkedCalled(machine: AnyWorkflow, world: World, alone: Walk, walking: WalkOptions): Promise<CalledPair> {
+  const saidAlone = [...(world.said?.() ?? [])];
+  // The unit is the record the walk standing alone started from: a world's
+  // `start` may name it, and its name is only the last resort.
+  const unit = alone.looks[0]?.record.id ?? world.workId ?? world.name;
+  const again = (await world.again?.()) ?? world;
+  const before = again.said?.().length ?? 0;
+  const called = await walk(machine, again, { ...walking, calledAs: calledId(unit) });
+  return { world: world.name, unit, alone, called, saidAlone, saidCalled: (again.said?.() ?? []).slice(before) };
+}
+
+/** What the walk called as a phase found that the one standing alone did not: the rest is already said. */
+function onlyCalled(pair: CalledPair): Finding[] {
+  const alone = new Set(pair.alone.findings.map((finding) => `${finding.property}\u0000${finding.message}`));
+  return pair.called.findings.filter((finding) => !alone.has(`${finding.property}\u0000${finding.message}`));
 }
 
 function order(property: Property): number {

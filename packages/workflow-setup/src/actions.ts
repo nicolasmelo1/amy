@@ -4,6 +4,7 @@ import {
   Plan,
   WorkflowActionScope,
   actionsOf,
+  unitOf,
 } from "@amykit/core";
 import { fieldOf, parseSetting, recordFieldIn, spelledFlag } from "./asks.js";
 import { channelsIn, given, harnessIn, queueOf, workflowIn } from "./answers.js";
@@ -56,7 +57,7 @@ export const actions = {
   post: async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "post" }>): Promise<void> => {
     const conversation = scope.ports.conversation;
     if (!conversation) throw new Error(`the ${effect.ask.id} ask was posted with no conversation mounted`);
-    const thread = await conversation.open(work.record.id, "amy setup");
+    const thread = await conversation.open(unitOf(work.record), "amy setup");
     const since = scope.ctx.now().toISOString();
     await conversation.post(thread, { text: effect.ask.prompt, ask: effect.ask });
     work.outcomes.post = { thread: thread.id, since };
@@ -65,7 +66,7 @@ export const actions = {
   "ask-setting": async (scope: ActionScope, work: Work, effect: Extract<Effect, { type: "ask-setting" }>): Promise<void> => {
     const conversation = scope.ports.conversation;
     if (!conversation) throw new Error(`${effect.plugin}.${effect.field} was asked with no conversation mounted`);
-    const thread = await conversation.open(work.record.id, "amy setup");
+    const thread = await conversation.open(unitOf(work.record), "amy setup");
     const since = scope.ctx.now().toISOString();
     await conversation.post(thread, { text: effect.text });
     work.outcomes["ask-setting"] = { thread: thread.id, since };

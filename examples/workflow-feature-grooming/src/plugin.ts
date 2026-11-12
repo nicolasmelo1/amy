@@ -1,4 +1,4 @@
-import { BRANCH_SETTINGS, BriefStore, ConfigSchema, WorkRecord, advance, defineWorkflow, port, wait } from "@amykit/core";
+import { BRANCH_SETTINGS, BriefStore, ConfigSchema, WorkRecord, advance, defineWorkflow, port, unitOf, wait } from "@amykit/core";
 import { BRIEF_SECTIONS, checkBrief, criteriaOf } from "./brief.js";
 
 export const configSchema = {
@@ -17,11 +17,6 @@ interface Observation {
   readonly unit: string;
   readonly refusals: readonly string[];
   readonly criteria: readonly string[];
-}
-
-/** The feature a record grooms: the work it was called for, the brief's id. */
-function unitOf(record: { readonly id: string }): string {
-  return record.id.split("/")[0]!;
 }
 
 /**

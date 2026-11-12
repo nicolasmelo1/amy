@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { NodeCommandRunner } from "@amykit/core";
+import { harnessConformance } from "@amykit/agent-kit";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import {
   CodexAppServer,
@@ -52,6 +53,7 @@ const reply = (id, result) => process.stdout.write(JSON.stringify({jsonrpc:"2.0"
 const hasOnly = (value, keys) => Object.keys(value).sort().join(",") === keys.sort().join(",");
 const send = value => { const line = Buffer.from(JSON.stringify(value)+"\\n"); const marker = Buffer.from("é"); const at = line.indexOf(marker); if (${JSON.stringify(mode)} === "split-utf8" && at >= 0) { process.stdout.write(line.subarray(0, at + 1)); setTimeout(() => process.stdout.write(line.subarray(at + 1)), 2); } else process.stdout.write(line); };
 const complete = (limited = false) => { send({jsonrpc:"2.0",method:"thread/tokenUsage/updated",params:{threadId:"thread-1",turnId:"turn-1",tokenUsage:{total:{input_tokens:17571,cached_input_tokens:11008,output_tokens:5},last:{input_tokens:2,cached_input_tokens:1,output_tokens:1}}}}); if (${JSON.stringify(mode)} === "streamed-limit") send({jsonrpc:"2.0",method:"item/completed",params:{item:{type:"agentMessage",text:"half-done é"}}}); send({jsonrpc:"2.0",method:"turn/completed",params:{turn:{status:limited?"failed":"completed",items:${JSON.stringify(mode)} === "streamed-limit"?[]:[{type:"agentMessage",text:${JSON.stringify(mode)} === "split-utf8"?"café":(fs.existsSync(process.env.CODEX_HOME + "/config.toml") ? "contaminated" : (fs.existsSync(process.env.CODEX_HOME + "/auth.json") ? "authenticated" : "unauthenticated"))}],error: limited ? {message:"limited",codexErrorInfo:"usageLimitExceeded"} : null}}}); };
+if (process.env.AMY_SANDBOX_FILE) process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (line && JSON.parse(line).method === "thread/start") fs.writeFileSync(process.env.AMY_SANDBOX_FILE, JSON.parse(line).params.sandbox); } });
 if (${JSON.stringify(mode)} === "ignore-term") process.on("SIGTERM", () => {});
 if (${JSON.stringify(mode)} === "split-stderr") { const bytes=Buffer.from("café"); process.stderr.write(bytes.subarray(0,4)); setTimeout(() => process.stderr.write(bytes.subarray(4)), 2); }
 process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { const f=r.params.config?.features; const valid = r.params.approvalPolicy === "never" && r.params.sandbox === "read-only" && r.params.ephemeral === true && hasOnly(r.params, ["cwd","model","sandbox","ephemeral","config","approvalPolicy"]) && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false && hasOnly(f, ["hooks","plugins","apps","memories"]); if (${JSON.stringify(mode)} === "protocol-config" && !valid) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { if (${JSON.stringify(mode)} === "protocol-config" && (!hasOnly(r.params, ["threadId","input"]) || !Array.isArray(r.params.input) || r.params.input.length !== 1 || r.params.input[0]?.type !== "text" || r.params.input[0]?.text !== "read it" || requests.map(request => request.method).join(",") !== "initialize,thread/start,turn/start")) process.exit(9); reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit" || ${JSON.stringify(mode)} === "rate-cancellable"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else if (${JSON.stringify(mode)} !== "rate-cancellable") reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
@@ -68,6 +70,19 @@ process.stdin.on("data", chunk => { for (const line of String(chunk).trim().spli
 }
 
 describe("the app-server harness", () => {
+  it("hands a writing run a workspace it may write and a read-only run none, read off what reached the app-server", async () => {
+    const findings = await harnessConformance(() => {
+      const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-sandbox-")), "sandbox");
+      const server = fakeServer("normal", { AMY_SANDBOX_FILE: file });
+      const sandbox = () => (fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "");
+      return {
+        harness: new CodexHarness(new ScriptedRunner(), { model: "gpt-5" }, server),
+        granted: () => (sandbox() === "workspace-write" ? "write" : sandbox() === "read-only" ? "read-only" : "nothing"),
+      };
+    });
+    expect(findings).toEqual([]);
+  });
+
   it("preserves app-server usage, computed pricing and completed outcome", async () => {
     const reply = await harnessFor({ turn: completed }).ask("fix it", "/work");
     expect(reply).toMatchObject({

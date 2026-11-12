@@ -5,3 +5,5 @@ export type { ConformsOptions, Runner } from "./conforms.js";
 export { PROPERTIES } from "./finding.js";
 export type { Finding, Property } from "./finding.js";
 export type { ConformanceOptions, World } from "./world.js";
+export { calledId, watched } from "./called.js";
+export type { PortCall } from "./world.js";

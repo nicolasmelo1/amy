@@ -217,6 +217,7 @@ describe("asking structured triage questions", () => {
     const post = vi.fn().mockResolvedValue("message-1");
     const conversation: Conversation = {
       asks: true,
+      known: vi.fn().mockResolvedValue(thread),
       open: vi.fn().mockResolvedValue(thread),
       post,
       replies: vi.fn().mockResolvedValue([]),
@@ -253,6 +254,7 @@ describe("asking structured triage questions", () => {
     const thread = { id: "thread-PROJ-1239" };
     const post = vi.fn().mockResolvedValue("message-1");
     const conversation: Conversation = {
+      known: vi.fn().mockResolvedValue(thread),
       open: vi.fn().mockResolvedValue(thread),
       post,
       replies: vi.fn().mockResolvedValue([]),
@@ -1314,6 +1316,7 @@ describe("a discussion, driven through the engine", () => {
     const thread = { id: "thread-PROJ-1239" };
     const post = vi.fn<Conversation["post"]>().mockResolvedValue("answer-ts");
     const conversation: Conversation = {
+      known: async () => thread,
       open: vi.fn<Conversation["open"]>().mockResolvedValue(thread),
       post,
       replies: async (_thread, since) => said.filter((reply) => reply.at > since),
@@ -1475,6 +1478,7 @@ describe("what a clarification settled", () => {
       { at: "2026-09-03T10:06:00.000Z", author: "ada", text: "use that", files: [], kind: "decision" },
     ];
     const conversation: Conversation = {
+      known: async () => ({ id: "t" }),
       open: async () => ({ id: "t" }),
       post: async () => "m",
       replies: async (_thread, since) => replies.filter((reply) => reply.at > since),

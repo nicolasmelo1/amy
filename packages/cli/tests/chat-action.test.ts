@@ -33,6 +33,7 @@ function chatWith(text: string) {
   const said: string[] = [];
   const pending: ChatMessage[] = [{ id: `m-${Math.random()}`, at: new Date().toISOString(), author: "op", text, place: "chat" }];
   const conversation: Conversation = {
+    known: async () => undefined,
     open: async () => ({ id: "x" }),
     post: async () => "x",
     replies: async () => [],

@@ -137,8 +137,8 @@ describe("a workflow of your own", () => {
 
     const run = suiteOf(directory);
 
-    // Either reporter: TAP writes `# pass 7`, the spec reporter `ℹ pass 7`: one per property the kit checks.
-    expect(run.stdout).toMatch(/[#ℹ] pass 7\b/);
+    // Either reporter: TAP writes `# pass 8`, the spec reporter `ℹ pass 8`: one per property the kit checks.
+    expect(run.stdout).toMatch(/[#ℹ] pass 8\b/);
     expect(run.status, run.stdout + run.stderr).toBe(0);
   });
 

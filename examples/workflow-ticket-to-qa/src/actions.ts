@@ -13,6 +13,7 @@ import {
   WorkflowActionScope,
   WorkflowPieceContext,
   parseBudget,
+  unitOf,
 } from "@amykit/core";
 import type { Git } from "@amykit/core";
 import { implementStep, judgeStep } from "@amykit/agent-kit";
@@ -86,7 +87,8 @@ export async function discover(scope: Scope): Promise<FoundWork[]> {
 }
 
 export async function observe(scope: Scope, current: TicketRecord): Promise<Observation> {
-  const ticket = await requireTicketWithBrief(scope, current.id);
+  // The ticket is the unit's: called as a phase, the record's own id is the call's.
+  const ticket = await requireTicketWithBrief(scope, unitOf(current));
   // A ticket whose tracker derived no branch is refused here, on its
   // first look, before any branch is prepared for it.
   const pullRequest = await pullRequestFor(scope, ticket, current.state);
@@ -181,7 +183,7 @@ const ACTIONS: TicketActions = {
   "ask-question": async (scope, work, effect) => {
     const { conversation, tracker, brief } = scope.ports;
     if (conversation) {
-      const thread = await conversation.open(work.record.id, work.observation.ticket.title);
+      const thread = await conversation.open(unitOf(work.record), work.observation.ticket.title);
       if (conversation.asks) {
         for (const question of effect.questions) {
           if (typeof question === "string") {
@@ -200,7 +202,7 @@ const ACTIONS: TicketActions = {
         numberedQuestions(effect.questions),
       );
     }
-    await scope.announce(`${work.record.id} needs an answer before I can start.`);
+    await scope.announce(`${unitOf(work.record)} needs an answer before I can start.`);
 
     // The same question, appended to the brief it is about, with this
     // ticket's id and the time — the one channel a later sibling reads.
@@ -211,7 +213,7 @@ const ACTIONS: TicketActions = {
       for (const question of effect.questions) {
         await brief.appendQuestion({
           id: briefId,
-          question: { workId: work.record.id, question: questionText(question), at: scope.ctx.now().toISOString() },
+          question: { workId: unitOf(work.record), question: questionText(question), at: scope.ctx.now().toISOString() },
           at: scope.ctx.now().toISOString(),
         });
       }
@@ -304,7 +306,7 @@ const ACTIONS: TicketActions = {
     const { conversation } = scope.ports;
     const ticket = work.observation.ticket;
     if (!conversation) {
-      throw new Error(`${work.record.id} has a discussion to answer and no conversation is mounted to answer it in`);
+      throw new Error(`${unitOf(work.record)} has a discussion to answer and no conversation is mounted to answer it in`);
     }
     // Without a worktree the checkout is shared, and another ticket may have
     // moved it while this one waited: the work's own branch is put back
@@ -319,7 +321,7 @@ const ACTIONS: TicketActions = {
       { workId: work.record.id, step: "discuss", brief: ticket.brief, readOnly: true },
     );
     refuseAnIncompleteRun("discuss", reply.run);
-    const thread = await conversation.open(work.record.id, ticket.title);
+    const thread = await conversation.open(unitOf(work.record), ticket.title);
     await conversation.post(thread, { text: reply.text });
     outcomesOf(work).discussed = {
       since: effect.since,
@@ -350,7 +352,7 @@ const ACTIONS: TicketActions = {
       followUpTicketId,
     };
 
-    await scope.announce(`${work.record.id} is parked, ${followUpTicketId} has the details.`);
+    await scope.announce(`${unitOf(work.record)} is parked, ${followUpTicketId} has the details.`);
   },
 
   "hand-off-to-qa": async (scope, work, effect) => {
@@ -371,7 +373,7 @@ const ACTIONS: TicketActions = {
       { conversation: scope.ports.conversation, notifier: scope.ports.notifier },
       {
         text: effect.turns.map((turn) => describeWrite(scope, turn.write, work)).join("\n\n"),
-        workId: work.record.id,
+        workId: unitOf(work.record),
         title: work.observation.ticket.title,
         state: work.record.state,
       },
@@ -469,7 +471,7 @@ async function answersFor(
   if (!awaitingAnswer && !awaitingOwner) return { conversation: [], escalationAnswered: false };
 
   const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
-  const said = await saidSince(scope, current.id, ticket, since);
+  const said = await saidSince(scope, unitOf(current), ticket, since);
   // A button carries the question it answered. A press from an earlier wait
   // is evidence for that earlier question, never an escalation decision.
   const relevant = said?.filter((reply) => !reply.answer || (awaitingAnswer && current.triage!.askedQuestions.includes(reply.answer.ask)));
@@ -488,8 +490,8 @@ async function answersFor(
  * ticket. Null where the machine comments on the ticket too, and the
  * tracker's own reading of who wrote what is the one to trust.
  */
-async function saidSince(scope: Scope, workId: string, ticket: Ticket, since: string): Promise<Said[] | null> {
-  if (scope.ports.conversation) return repliesFor(scope.ports.conversation, workId, ticket.title, since);
+async function saidSince(scope: Scope, unit: string, ticket: Ticket, since: string): Promise<Said[] | null> {
+  if (scope.ports.conversation) return repliesFor(scope.ports.conversation, unit, since);
   if (scope.policy.writes !== "operator") return null;
   return (await scope.ports.tracker.comments(ticket.id, since)).map((comment) => ({ ...comment, fromAmy: false }));
 }
@@ -605,8 +607,11 @@ export function splitWorkId(workId: string): { ticketId: string; repo?: string }
   return { ticketId: workId.slice(0, at), repo: decodeURIComponent(workId.slice(at + 1)) };
 }
 
-function repliesFor(conversation: Conversation, workId: string, title: string, since: string): Promise<Said[]> {
-  return conversation.open(workId, title).then((thread) => conversation.replies(thread, since)).then((replies) =>
+/** What was said in the unit's thread since a turn: a look only reads, so a unit with no thread yet has said nothing. */
+async function repliesFor(conversation: Conversation, unit: string, since: string): Promise<Said[]> {
+  const thread = await conversation.known(unit);
+  if (!thread) return [];
+  return conversation.replies(thread, since).then((replies) =>
     replies.map((reply) => ({
       author: reply.author,
       body: [reply.text, ...reply.files.map((file) => `Attachment: ${file}`)].filter(Boolean).join("\n"),

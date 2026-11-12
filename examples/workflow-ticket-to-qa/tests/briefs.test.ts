@@ -222,7 +222,7 @@ describe("a runtime whose tickets carry a brief", () => {
         at: new Date(clock.getTime() + 1).toISOString(),
       },
     ]);
-    const conversation: Conversation = { open, post, replies };
+    const conversation: Conversation = { known: async (workId) => open(workId, ""), open, post, replies };
     const agent = fakeAgent({
       triage: vi.fn().mockResolvedValue({
         value: { clear: false, questions: ["Which currency?"], askedQuestions: ["Which currency?"], at: clock.toISOString() },

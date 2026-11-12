@@ -1,3 +1,4 @@
+import { PortCall, watched } from "@amykit/workflow-testkit";
 import {
   Ask,
   CommandResult,
@@ -62,6 +63,10 @@ export class ScriptedConversation implements Conversation {
   /** The script: what the person types at the next plain post. */
   reply(line: string): void {
     this.lines.push(line);
+  }
+
+  async known(workId: string): Promise<ThreadRef> {
+    return { id: `thread-${workId}` };
   }
 
   async open(workId: string, _title: string): Promise<ThreadRef> {
@@ -161,6 +166,8 @@ export class SetupWorld {
   setupFindings: Record<string, readonly CheckFinding[]> = {};
   /** The scripted conversation; absent, the machine has no terminal. */
   conversation: ScriptedConversation | undefined;
+  /** What the conversation was asked, in order. */
+  readonly said: PortCall[] = [];
 
   // What the fakes were asked to do.
   readonly installed: string[] = [];
@@ -244,7 +251,8 @@ export class SetupWorld {
           return ok(this.findings[plugin] ?? []);
         },
       },
-      ...(this.conversation ? { conversation: this.conversation } : {}),
+      // Watched, so a walk called as a phase is held to the conversation it opens.
+      ...(this.conversation ? { conversation: watched("conversation", this.conversation, this.said) } : {}),
     };
     return Object.entries(ports).map(([kind, impl]) => ({
       name: `fake-${kind}`,

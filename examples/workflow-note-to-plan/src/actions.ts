@@ -6,6 +6,7 @@ import {
   Store,
   WorkflowActionScope,
   WorkflowPieceContext,
+  unitOf,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
@@ -35,8 +36,8 @@ export async function discover(scope: Scope): Promise<string[]> {
 }
 
 export async function observe(scope: Scope, current: PlanRecord): Promise<Observation> {
-  const note = scope.ports.notes.get(current.id);
-  if (!note) throw new Error(`the note ${current.id} is not in the notes directory any more`);
+  const note = scope.ports.notes.get(unitOf(current));
+  if (!note) throw new Error(`the note ${unitOf(current)} is not in the notes directory any more`);
 
   return {
     note,
@@ -60,11 +61,14 @@ export async function draftPlan(
   const outcomes = work.outcomes as EffectOutcomes;
   const { note } = work.observation;
   const slug = slugFor(note);
-  await git.prepareBranch(note.repo, branchFor(slug), note.id);
+  // The checkout is the record's own, the unit's lookup aside: a lane of a
+  // fork holds the tree its record leases.
+  const tree = work.record.id;
+  await git.prepareBranch(note.repo, branchFor(slug), tree);
 
   const reply = await scope.ports.agent.ask(
     draftPrompt(note, slug, effect.finding),
-    git.pathFor(note.repo, note.id),
+    git.pathFor(note.repo, tree),
     { workId: work.record.id, step: "draft-plan" },
   );
 
@@ -77,7 +81,7 @@ export async function draftPlan(
   // A run that changed nothing is a failure here rather than a success:
   // the machine's notion of "drafted" means the plan is on the remote,
   // because that is what a pull request can be opened against.
-  const pushed = await git.commitAndPush(note.repo, branchFor(slug), `docs(plans): ${slug.replace(/-/g, " ")}`, note.id);
+  const pushed = await git.commitAndPush(note.repo, branchFor(slug), `docs(plans): ${slug.replace(/-/g, " ")}`, tree);
 
   outcomes.draft = pushed
     ? { ok: true, output: reply.run.output, at }
@@ -91,7 +95,7 @@ export async function draftPlan(
 export async function checkPlan(scope: ActionScope, work: Work): Promise<void> {
   (work.outcomes as EffectOutcomes).check = await scope.ports["plan-check"].check(
     work.observation.note.repo,
-    work.observation.note.id,
+    work.record.id,
   );
 }
 

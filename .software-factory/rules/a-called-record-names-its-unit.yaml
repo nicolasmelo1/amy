@@ -1,0 +1,31 @@
+id: L0.A_CALLED_RECORD_NAMES_ITS_UNIT
+layer: L0
+title: Only the core says what unit a record is for
+severity: high
+statement: >-
+  No source outside packages/core splits a record id or a work id on `/` or
+  `#`; the unit a record is for is the core's `unitOf`.
+why: >-
+  A called workflow's record id is `<caller id>/<STATE>#<n>`, and that shape
+  is the core's. Three packages each kept a private split on `/`, and the one
+  that kept none took `SHOP-1/WORK#1` for a ticket id, so a project calling it
+  as a phase stopped on its first look. A copy of the shape is a copy that
+  goes wrong the day the shape moves, or the day a new workflow forgets it.
+fix: >-
+  Call `unitOf(record)` from @amykit/core for what a tracker, a code host or a
+  person is told, and keep `record.id` for what keys a run, a checkout or an
+  agent's context. See docs/design/a-workflow-calls-another.md.
+ratchet: allowlist
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "packages/*/src/**"
+    - "plugins/*/src/**"
+    - "examples/*/src/**"
+  exclude:
+    - "packages/core/src/**"
+  ignore_comment_lines: true
+  forbidden:
+    - regex: '(\.id|\b[wW]orkId)\s*\.\s*(split|indexOf|lastIndexOf|startsWith)\(\s*["''`][/#]["''`]'
+      message: "A record id's call parts are the core's: ask `unitOf` for the unit it is for."

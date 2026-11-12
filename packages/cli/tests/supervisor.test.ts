@@ -176,7 +176,7 @@ describe("with no working systemd, a restart is refused and the chat still answe
     const said: string[] = [];
     const pending: ChatMessage[] = [];
     const conversation: Conversation = {
-      open: async () => ({ id: "x" }), post: async () => "x", replies: async () => [],
+      known: async () => undefined, open: async () => ({ id: "x" }), post: async () => "x", replies: async () => [],
       chat: async () => [...pending],
       settle: async (id) => void pending.splice(pending.findIndex((one) => one.id === id), 1),
       say: async (_place, text) => {

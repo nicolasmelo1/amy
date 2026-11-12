@@ -175,6 +175,11 @@ export class TelegramConversation implements Conversation {
     this.source = `telegram:${path.basename(this.shared())}`;
   }
 
+  known(workId: string): Promise<ThreadRef | undefined> {
+    const known = this.topicOfWork(workId);
+    return Promise.resolve(known === undefined ? undefined : { id: known });
+  }
+
   open(workId: string, title: string): Promise<ThreadRef> {
     const known = this.topicOfWork(workId);
     if (known !== undefined) {

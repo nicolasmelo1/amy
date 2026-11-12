@@ -40,6 +40,14 @@ describe("the terminal conversation", () => {
     expect(out.text()).toBe("Set up amy\n\n");
   });
 
+  it("knows a work's thread once it is open, and says nothing on the screen to know it", async () => {
+    const { amy, out } = conversation();
+    await expect(amy.known("SETUP")).resolves.toBeUndefined();
+    await amy.open("SETUP", "Set up amy");
+    await expect(amy.known("SETUP")).resolves.toEqual({ id: "SETUP" });
+    expect(out.text()).toBe("Set up amy\n\n");
+  });
+
   it("answers an approval ask typed y with the decision Slack and Telegram return", async () => {
     const { amy, type, out } = conversation();
     expect(amy.asks).toBe(true);

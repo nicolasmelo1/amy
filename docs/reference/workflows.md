@@ -45,7 +45,7 @@ Proves a phase against the real system: one workflow walks the scenario each bri
 | Starts in | `READING` |
 | Terminal | `refused`, `PROVEN` |
 | Waits in | `READING`, `LEASING`, `ASKING` |
-| Actions it emits | `ask`, `escalate`, `finish`, `lease`, `prepare`, `renew`, `run-step` |
+| Actions it emits | `ask`, `finish`, `give-up`, `lease`, `prepare`, `renew`, `run-agent-step`, `run-step` |
 
 | # | State | Kind |
 | :-- | :-- | :-- |

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Workflow, mount, unmetNeeds } from "@amykit/core";
 import { Leases } from "../src/lease.js";
 import { holderOf, leasesAt } from "../src/plugin.js";
-import { ProveWorld, newRun, operationsPlugin, walk } from "./world.js";
+import { ProveWorld, newRun, operationsPlugin, prove, walk } from "./world.js";
 
 const ok = () => ({ ok: true, output: "" });
 const SCENARIO = [
@@ -57,7 +58,17 @@ describe("a human step", () => {
     expect(done.record.results?.look).toEqual({ status: "done", output: { answer: "yes, the refund is there", by: "ada" } });
   });
 
-  it("escalates at its deadline and releases the leases", async () => {
+  it("catalogues its own actions, gives up as `give-up`, and passes the daemon's boot check with no tracker mounted", async () => {
+    const world = new ProveWorld({}, {});
+    const outcome = await mount([prove, ...world.ports()], { [prove.name]: {} }, world.host());
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.ports.has("tracker")).toBe(false);
+    expect(Object.keys(outcome.mounted.workflow!.catalogue ?? {}).sort()).toEqual(["ask", "finish", "give-up", "lease", "prepare", "renew", "run-agent-step", "run-step"]);
+    expect(unmetNeeds(outcome.mounted, outcome.mounted.workflow as Workflow<never, never>)).toEqual([]);
+  });
+
+  it("gives up at its deadline and releases the leases", async () => {
     const { world, mounted, record } = await asking();
     world.clock += 3600000 + 1;
 

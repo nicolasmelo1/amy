@@ -30,6 +30,7 @@ function chatOf(edit = false) {
   const said: { place: string; text: string }[] = [];
   let next = 0;
   const conversation: Conversation = {
+    known: async () => undefined,
     open: async () => ({ id: "x" }),
     post: async () => "x",
     replies: async () => [],
@@ -252,7 +253,7 @@ describe("a message is answered once", () => {
   });
 
   it("answers nothing on a conversation that has no chat", async () => {
-    const { desk } = deskOf({ open: async () => ({ id: "x" }), post: async () => "x", replies: async () => [] }, {});
+    const { desk } = deskOf({ known: async () => undefined, open: async () => ({ id: "x" }), post: async () => "x", replies: async () => [] }, {});
     expect(await answerTheChat(desk)).toEqual({ answered: 0, after: [] });
   });
 

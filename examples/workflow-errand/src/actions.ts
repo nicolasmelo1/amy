@@ -6,6 +6,7 @@ import {
   Store,
   WorkflowActionScope,
   WorkflowPieceContext,
+  unitOf,
 } from "@amykit/core";
 import type { PullRequestInput } from "@amykit/workflow-pull-request";
 import type { Effect } from "./decide.js";
@@ -31,8 +32,8 @@ export async function discover(scope: Scope): Promise<string[]> {
 }
 
 export async function observe(scope: Scope, current: ErrandRecord): Promise<Observation> {
-  const task = scope.ports.tasks.get(current.id);
-  if (!task) throw new Error(`the task ${current.id} is not in the tasks directory any more`);
+  const task = scope.ports.tasks.get(unitOf(current));
+  if (!task) throw new Error(`the task ${unitOf(current)} is not in the tasks directory any more`);
 
   return {
     task,
@@ -55,11 +56,14 @@ export async function runErrand(
   const outcomes = work.outcomes as EffectOutcomes;
   const { task } = work.observation;
   const slug = slugFor(task);
-  await git.prepareBranch(task.repo, branchFor(slug), task.id);
+  // The checkout is the record's own, the unit's lookup aside: a lane of a
+  // fork holds the tree its record leases.
+  const tree = work.record.id;
+  await git.prepareBranch(task.repo, branchFor(slug), tree);
 
   const reply = await scope.ports.agent.ask(
     errandPrompt(task, effect.finding),
-    git.pathFor(task.repo, task.id),
+    git.pathFor(task.repo, tree),
     { workId: work.record.id, step: "run-errand" },
   );
 
@@ -79,7 +83,7 @@ export async function runErrand(
     // The refusal stands even when the tree cannot be cleaned; the
     // operator is told what is still in the checkout instead.
     try {
-      await git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, task.id);
+      await git.setAside(task.repo, `amy: what the refused errand ${task.id} left behind`, tree);
     } catch (error) {
       const said = error instanceof Error ? error.message : String(error);
       outcomes.declined = `${declined}\n\nWhat it left in the checkout could not be set aside: ${said}`;
@@ -93,13 +97,13 @@ export async function runErrand(
   // not it carries a commit — so "the push moved something" answered
   // yes for every errand that was a question, and opened a pull request
   // with no diff in it.
-  const committed = await git.commit(task.repo, `chore: ${pullRequestTitle(task).toLowerCase()}`, task.id);
-  const changed = committed || (await git.commitsAhead(task.repo, baseBranchFor(layout, task.repo), task.id)) > 0;
+  const committed = await git.commit(task.repo, `chore: ${pullRequestTitle(task).toLowerCase()}`, tree);
+  const changed = committed || (await git.commitsAhead(task.repo, baseBranchFor(layout, task.repo), tree)) > 0;
 
   // Nothing to publish is a finished errand, not a failed one: pushing a
   // branch that carries no commit only creates a pull request nobody can
   // act on.
-  if (changed) await git.push(task.repo, branchFor(slug), task.id);
+  if (changed) await git.push(task.repo, branchFor(slug), tree);
 
   outcomes.attempt = { ok: true, output: reply.run.output, at };
   outcomes.changed = changed;
