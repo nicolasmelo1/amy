@@ -70,6 +70,10 @@ export type {
 export { isReady } from "./queue-item.js";
 export type { QueueItem } from "./queue-item.js";
 
+// Outside text travels in one envelope, so every workflow fences the same way.
+export { HIDDEN_CHARS_NOTE, OUTSIDE_TEXT_MAX_CHARS, OUTSIDE_TEXT_NOTICE, outsideText, withOutsideNotice } from "./outside-text.js";
+export type { OutsideTextOptions } from "./outside-text.js";
+
 export type { EnqueueRequest, Queue } from "./ports/Queue.js";
 export type { Store } from "./ports/Store.js";
 export type { Announcement, AnnouncementKind, Notifier } from "./ports/Notifier.js";

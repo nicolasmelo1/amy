@@ -306,10 +306,15 @@ const six = [
   "You answered: answer 3",
 ];
 const decisionLine = `${OWNER} decided, and this settles it: change the test, keep the code`;
-const block = [...six, decisionLine].map((line) => `- ${line}`).join("\n");
+const discussionLines = [...six, decisionLine];
+// The whole discussion, oldest first, decision last — each line inside its own
+// envelope, so the order is read off where each line starts.
+const inOrder = discussionLines.every(
+  (line, index) => index === 0 || implement.indexOf(line) > implement.indexOf(discussionLines[index - 1]!),
+);
 record(
   "conversation.decision_carries_the_discussion",
-  implement.includes(block) && implement.lastIndexOf(OWNER) === implement.indexOf(decisionLine),
+  inOrder && implement.lastIndexOf(OWNER) === implement.indexOf(decisionLine),
   { implement },
 );
 discuss.cleanup();

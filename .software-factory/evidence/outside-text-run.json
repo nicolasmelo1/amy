@@ -1,0 +1,42 @@
+{
+  "scenario": "outside-text",
+  "status": "passed",
+  "goal": "A ticket whose body says to ignore the instructions above reaches triage, implement, thread and discuss prompts inside one closed envelope, after a line saying it is data.",
+  "artifact": {
+    "package": "@amykit/workflow-ticket-to-qa",
+    "entry": "the built dist of core and ticket-to-qa, imported from dist in another process"
+  },
+  "observed": {
+    "assertions_run": 1,
+    "assertions_failed": 0,
+    "node": "v22.22.2"
+  },
+  "assertions": [
+    {
+      "type": "prompt.fences_outside_text_in_every_step",
+      "status": "passed",
+      "detail": {
+        "triage": {
+          "fenced": true,
+          "noticed": true,
+          "balanced": true
+        },
+        "implement": {
+          "fenced": true,
+          "noticed": true,
+          "balanced": true
+        },
+        "thread": {
+          "fenced": true,
+          "noticed": true,
+          "balanced": true
+        },
+        "discuss": {
+          "fenced": true,
+          "noticed": true,
+          "balanced": true
+        }
+      }
+    }
+  ]
+}
