@@ -418,6 +418,8 @@ function failedTurn(error: unknown, stderr = ""): CodexTurn {
 
 export class CodexHarness implements Harness {
   readonly name = "codex";
+  /** The operator's own skills, where Codex installs them: under CODEX_HOME, or ~/.codex. */
+  readonly skillsDirectory = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "skills");
   private readonly app: CodexAppServer;
   constructor(
     _runner: CommandRunner,

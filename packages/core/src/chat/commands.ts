@@ -4,6 +4,23 @@ export interface ChatCommandSpec {
   readonly words: readonly string[];
   /** How its arguments read, for the harness: `<spec>`. */
   readonly args?: string;
+  /**
+   * The flags it takes from the chat, each with whether it carries a value:
+   * `{ "--json": false, "--from": true }`.
+   *
+   * A command that declares none takes no argument at all: a chat turn has no
+   * shell to read a line the way the command line would, so a flag is a thing
+   * the command itself has to say it accepts.
+   */
+  readonly flags?: Readonly<Record<string, boolean>>;
+  /**
+   * The flags whose value names a fenced block in the same answer, such as
+   * `--from answer.md`.
+   *
+   * A block is how a body with a newline in it arrives: one line of a chat
+   * answer is one command, and a heredoc is a shell line the chat refuses.
+   */
+  readonly blocks?: readonly string[];
   readonly summary: string;
 }
 
@@ -34,9 +51,11 @@ export function commandsIn(answer: string): Asked {
   const commands: NamedCommand[] = [];
   const unreadable: { line: string; why: string }[] = [];
   const blocks = new Map<string, string>();
-  for (const fence of answer.matchAll(/^```[ \t]*([^\n`]*)\n([\s\S]*?)^```[ \t]*$/gm)) {
-    const info = fence[1]!.trim().split(/\s+/).filter(Boolean);
-    const body = fence[2]!;
+  // A fence closes on a run of backticks at least as long as the one that
+  // opened it, so a block fenced with four holds a three-backtick example.
+  for (const fence of answer.matchAll(/^(`{3,})[ \t]*([^\n`]*)\n([\s\S]*?)^\1`*[ \t]*$/gm)) {
+    const info = fence[2]!.trim().split(/\s+/).filter(Boolean);
+    const body = fence[3]!;
     if (info[0] === "amy") {
       for (const raw of body.split("\n")) {
         const line = raw.trim();
@@ -111,19 +130,55 @@ export function specOf(command: NamedCommand, specs: readonly ChatCommandSpec[])
 }
 
 /**
- * Every line that may not run, by name (A4): a command off the list, and a
- * line no command can be read from. One refused line refuses the turn's
- * whole batch, so nothing runs half of what was meant.
+ * Every line that may not run, by name (A4): a command off the list, a flag it
+ * does not take, a block it names that the answer does not carry, and a line
+ * no command can be read from. One refused line refuses the turn's whole
+ * batch, so nothing runs half of what was meant.
  */
 export function refusedCommands(asked: Asked, specs: readonly ChatCommandSpec[]): { line: string; why: string }[] {
   return [
     ...asked.unreadable,
-    ...asked.commands.flatMap((command) => {
-      const spec = specOf(command, specs);
-      if (!spec) return [{ line: command.line, why: `\`${command.argv.slice(0, 2).join(" ")}\` is not a command amy runs from the chat` }];
-      // A command declared with no arguments runs exactly as declared: one it would drop is refused.
-      if (spec.args === undefined && command.argv.length > spec.words.length) return [{ line: command.line, why: `\`amy ${spec.words.join(" ")}\` takes no arguments from the chat` }];
-      return [];
-    }),
+    ...asked.commands.flatMap((command) => refusals(command, specs, asked)),
   ];
+}
+
+/** What one line's command cannot run as it was written. */
+function refusals(command: NamedCommand, specs: readonly ChatCommandSpec[], asked: Asked): { line: string; why: string }[] {
+  const spec = specOf(command, specs);
+  if (!spec) return [{ line: command.line, why: `\`${command.argv.slice(0, 2).join(" ")}\` is not a command amy runs from the chat` }];
+
+  const rest = command.argv.slice(spec.words.length);
+  // A command declared with no arguments runs exactly as declared: one it would drop is refused.
+  if (spec.flags === undefined && spec.args === undefined) {
+    return rest.length > 0 ? [{ line: command.line, why: `\`amy ${spec.words.join(" ")}\` takes no arguments from the chat` }] : [];
+  }
+  return flagRefusals(command, spec, rest, asked);
+}
+
+/** What its flags cannot do: one it does not take, one with no value, one naming a block the answer lacks. */
+function flagRefusals(command: NamedCommand, spec: ChatCommandSpec, rest: readonly string[], asked: Asked): { line: string; why: string }[] {
+  const refusals: { line: string; why: string }[] = [];
+  for (let at = 0; at < rest.length; at += 1) {
+    const token = rest[at]!;
+    // Anything that is not a flag is an argument the command's own help describes.
+    if (!token.startsWith("--")) continue;
+    const takesValue = spec.flags?.[token];
+    if (takesValue === undefined) {
+      refusals.push({ line: command.line, why: `\`amy ${spec.words.join(" ")}\` does not take \`${token}\` from the chat` });
+      continue;
+    }
+    if (!takesValue) continue;
+    const value = rest[at + 1];
+    if (value === undefined || value.startsWith("--")) {
+      refusals.push({ line: command.line, why: `\`${token}\` needs a value the chat can read` });
+      continue;
+    }
+    at += 1;
+    // A block is a named fenced block in this same answer, so a missing one is
+    // known before anything runs rather than after half the batch did.
+    if (spec.blocks?.includes(token) && !asked.blocks.has(value)) {
+      refusals.push({ line: command.line, why: `\`${token} ${value}\` names a block this answer does not carry` });
+    }
+  }
+  return refusals;
 }

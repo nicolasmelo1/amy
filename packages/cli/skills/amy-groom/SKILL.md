@@ -107,6 +107,29 @@ EOF
 amy brief check <id> --json
 ```
 
+In amy's chat — a conversation with no shell — the heredoc is refused and the
+body arrives beside the command instead: a fenced block tagged with a file
+name, which `--from` names. Write both blocks in one answer, and amy runs the
+command with the block's body as its file:
+
+````
+The answer:
+
+```markdown answer.md
+…the answer…
+```
+
+```amy
+brief write <id> <section> --explains <work ids> --from answer.md
+brief check <id> --json
+```
+````
+
+`brief sections --json` and `brief check <id> --json` are read from the chat
+too, so a chat turn can learn the sections and read the check the same way a
+terminal does. Nothing else about the chat changes the method: still one
+question, still written through `amy brief write`, never a file edited by hand.
+
 `--explains` is needed only on the first write; later ones keep it. Then read
 the check:
 

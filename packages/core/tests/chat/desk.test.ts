@@ -15,6 +15,7 @@ function harness(name: string, answers: string[] = [], refuse?: string) {
   const asked: { prompt: string; context?: AskContext }[] = [];
   const cli: Harness = {
     name,
+    lendsSkill: true,
     ask: async (prompt, _cwd, context) => {
       asked.push({ prompt, context });
       if (refuse) throw new Error(refuse);
@@ -618,5 +619,217 @@ describe("what ran is remembered", () => {
 
     expect(runs).toBe(1);
     expect(chat.pending).not.toContain(message);
+  });
+});
+
+/** A skill installed where the chat's table says it is: a directory holding its SKILL.md. */
+const GROOM = installedSkill("amy-groom");
+
+function installedSkill(name: string): string {
+  const at = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-desk-skill-")), name);
+  fs.mkdirSync(at, { recursive: true });
+  fs.writeFileSync(path.join(at, "SKILL.md"), `# ${name}\n`);
+  return at;
+}
+
+describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
+  const groom = new Map<string, string | undefined>([["amy-groom", GROOM]]);
+
+  it("answers a message starting with /amy-groom as an action turn, with the skill lent", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["Ask away.\n```amy\nstatus\n```"]);
+    const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
+    chat.write("  /amy-groom@amy_work_bot TBO-1");
+
+    expect(await answerTheChat(desk)).toMatchObject({ answered: 1 });
+    expect(claude.asked[0]!.prompt.startsWith("/amy-groom\n\n")).toBe(true);
+    expect(claude.asked[0]!.prompt).toMatch(/Person: TBO-1$/);
+    expect(claude.asked[0]!.context).toMatchObject({
+      readOnly: true,
+      step: "chat",
+      skill: { name: "amy-groom", path: GROOM },
+    });
+    expect(acted.map((one) => one.asked.commands.map((command) => command.argv))).toEqual([[["status"]]]);
+  });
+
+  it("keeps the skill for the thread, and /new ends it", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["first", "second", "third"]);
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
+
+    chat.write("/amy-groom TBO-1");
+    await answerTheChat(desk);
+    chat.write("the scope is the api");
+    await answerTheChat(desk);
+
+    expect(claude.asked[1]!.prompt.startsWith("/amy-groom\n\n")).toBe(true);
+    expect(claude.asked[1]!.context?.skill).toEqual({ name: "amy-groom", path: GROOM });
+
+    chat.write("/new");
+    await answerTheChat(desk);
+    chat.write("hello");
+    await answerTheChat(desk);
+
+    expect(claude.asked[2]!.context?.skill).toBeUndefined();
+    expect(claude.asked[2]!.prompt.startsWith("/amy-groom")).toBe(false);
+  });
+
+  it("names the ladder when the skill is not on it, and nothing runs", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
+    chat.write("/northwind-code-review TBO-1");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked).toEqual([]);
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toBe("No skill named `/northwind-code-review` is on this chat's ladder. The skills it names: /amy-groom.");
+  });
+
+  it("refuses a skill the ladder names but this machine does not hold, naming amy skills", async () => {
+    const chat = chatOf();
+    const claude = harness("claude");
+    const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: new Map([["amy-groom", undefined]]) });
+    chat.write("/amy-groom TBO-1");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked).toEqual([]);
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toMatch(/`\/amy-groom` is on this chat's ladder, but it is not installed here: nothing ran\. Run `amy skills`/);
+  });
+
+  it("stays read-only in a skill turn, and refuses a command off the list", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["```amy\nstatus\nrm -rf /\n```"]);
+    const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
+    chat.write("/amy-groom TBO-1");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked[0]!.context?.readOnly).toBe(true);
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toMatch(/Refused, and nothing ran:/);
+  });
+
+  it("writes a multiline section from a block, and the next check reads it", async () => {
+    const chat = chatOf();
+    const body = "the scope:\n- the api\n- the ui\n";
+    const written = new Map<string, string>();
+    const claude = harness("claude", [
+      `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``,
+      "```amy\nbrief check TBO-1 --json\n```",
+    ]);
+    const ran: string[] = [];
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
+      skills: groom,
+      commands: [
+        { words: ["brief", "write"], args: "<id> <section>", flags: { "--from": true }, blocks: ["--from"], summary: "answer one section" },
+        { words: ["brief", "check"], args: "<id>", flags: { "--json": false }, summary: "whether it is ready" },
+      ],
+      act: async ({ asked }) => {
+        for (const command of asked.commands) {
+          const name = command.argv.slice(0, 2).join(" ");
+          if (name === "brief write") {
+            const from = command.argv[command.argv.indexOf("--from") + 1]!;
+            written.set(`${command.argv[2]}/scope`, asked.blocks.get(from)!);
+            ran.push(`wrote ${command.argv[3]}`);
+          }
+          if (name === "brief check") ran.push(written.get(`${command.argv[2]}/scope`) ?? "no brief");
+        }
+        return { text: ran.join("\n") };
+      },
+    });
+
+    chat.write("/amy-groom TBO-1");
+    await answerTheChat(desk);
+    chat.write("and the check?");
+    await answerTheChat(desk);
+
+    expect(written.get("TBO-1/scope")).toBe(body);
+    expect(last(chat.said)).toContain(body);
+  });
+});
+
+describe("a harness that cannot be handed a skill (A4, A7)", () => {
+  it("refuses a skill turn on it, names one that can, and runs nothing", async () => {
+    const chat = chatOf();
+    const codex: Harness = {
+      name: "codex",
+      ask: async () => ({ text: "```amy\nstatus\n```", run: { outcome: "completed" } as never }),
+    };
+    const { desk, acted } = deskOf(chat.conversation, { codex, claude: harness("claude").cli }, {
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
+    });
+    chat.write("/amy-groom TBO-1");
+
+    await answerTheChat(desk);
+
+    expect(acted).toEqual([]);
+    expect(last(chat.said)).toMatch(/codex cannot be handed a skill, so nothing ran: a skill turn on it would act without the method\.\nAnother can: \/harness claude/);
+  });
+
+  it("still answers a plain question on it", async () => {
+    const chat = chatOf();
+    const codex: Harness = {
+      name: "codex",
+      ask: async () => ({ text: "Here is how.", run: { outcome: "completed" } as never }),
+    };
+    const { desk } = deskOf(chat.conversation, { codex }, {
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
+    });
+    chat.write("what is running?");
+
+    await answerTheChat(desk);
+
+    expect(last(chat.said)).toBe("Here is how.");
+  });
+});
+
+describe("/new in a thread ends the skill it was started with (A5)", () => {
+  it("clears the lent skill even though the thread goes on", async () => {
+    const chat = chatOf();
+    const claude = harness("claude", ["first", "second"]);
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
+      skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
+    });
+    chat.write("/amy-groom TBO-1", { threaded: true });
+    await answerTheChat(desk);
+    chat.write("/new", { threaded: true });
+    await answerTheChat(desk);
+    chat.write("hello", { threaded: true });
+    await answerTheChat(desk);
+
+    expect(chat.said.some((one) => /no longer lent/.test(one.text))).toBe(true);
+    expect(claude.asked[1]!.context?.skill).toBeUndefined();
+    expect(claude.asked[1]!.prompt.startsWith("/amy-groom")).toBe(false);
+  });
+});
+
+describe("a skill deleted while its pass is still answering (failures: chat)", () => {
+  it("refuses the turns queued behind the deletion, naming amy skills, and nothing runs", async () => {
+    const skill = installedSkill("amy-groom");
+    const chat = chatOf();
+    const claude = harness("claude", ["```amy\nstatus\n```", "```amy\nstatus\n```"]);
+    const acted: ChatAction[] = [];
+    const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
+      skills: new Map<string, string | undefined>([["amy-groom", skill]]),
+      act: async (action) => {
+        acted.push(action);
+        // The first turn's commands remove the skill from disk; the table
+        // this pass read still holds its path.
+        fs.rmSync(skill, { recursive: true, force: true });
+        return { text: "done" };
+      },
+    });
+    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom TBO-2");
+
+    await answerTheChat(desk);
+
+    expect(claude.asked).toHaveLength(1);
+    expect(acted).toHaveLength(1);
+    expect(last(chat.said)).toMatch(/`\/amy-groom` is on this chat's ladder, but it is not installed here: nothing ran\. Run `amy skills`/);
   });
 });

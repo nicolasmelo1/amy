@@ -114,6 +114,7 @@ Everything amy knows lives in one directory:
 ~/.amy/
 ├── config.yaml            what to drive, and what to mount
 ├── .env                   credentials, never committed, never logged
+├── skills/                amy's own copy of every skill it ships
 ├── log/                   the append-only event log, one file per day
 ├── PAUSED                 the handbrake, while it is pulled
 ├── plugins/               the npm root every plugin resolves from
@@ -122,6 +123,14 @@ Everything amy knows lives in one directory:
     ├── records/           one file per piece of work
     └── queue/             one file per queued item
 ```
+
+`skills/` is written on every install and every update, whether or not a
+harness directory was chosen: it is the copy amy owns, the one the chat lends
+a skill from, and the first root a step's skill is looked up in. A harness's
+own directory (`~/.claude/skills`) is an extra the person asks for with
+`amy skills`. The other way round, `harnessSkills: { claude: true }` links each
+skill the harness holds into `skills/`, one symlink per skill, at every run and
+tick; `false` removes the links, and amy's own copy of a skill always wins.
 
 A workflow keeps its own files in its profile's directory; ticket-to-qa's
 `roster.yaml` is one ([the roster belongs to its workflow](../design/the-roster-belongs-to-its-workflow.md)).
