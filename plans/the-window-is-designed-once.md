@@ -1,6 +1,10 @@
 ---
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "menu bar, desktop app and terminal are built together, bit by bit: a system design first, then each component proven alone on every surface it renders on, then the window in slices landing on all three. Decided 2026-11-09" }
+  - { id: S39, kind: decision, said: "the menu bar is a renderer of its own, @amykit/ui-menubar, so anyone can write another; the desktop app no longer draws it. Decided 2026-11-12" }
+  - { id: S40, kind: reference, ref: "https://www.electronjs.org/docs/latest/api/tray", said: "a Tray is made in the main process and the documented example makes one with no window, so a menu bar needs no desktop window to run" }
+  - { id: S41, kind: decision, said: "a node of the canvas is a surface of its own in frame.yaml, holding Text, Badge, Button, Link, Input, Row and Stack, at most 8 rows by 36 cells or 280 by 180 px. Proposed 2026-11-12" }
   - { id: S2, kind: decision, said: "so the window does not turn into slop, amy has a design system: each component looked at on its own, on the desktop, in the browser and in the terminal. Decided 2026-11-04" }
   - { id: S3, kind: reference, ref: "packages/ui/src/vocabulary.ts", symbol: "VOCABULARY", said: "the closed set of primitives every renderer translates, and `catalogue()` lists them with their props; a component of the design system is one of these primitives, so there is no second list to keep" }
   - { id: S4, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "frame.yaml declares the surfaces a renderer may draw: window holds every primitive, menubar only Text, Badge, List, Link and Button; a renderer declares which it draws, and the gate reads that declaration" }
@@ -25,7 +29,7 @@ sources:
   - { id: S23, kind: decision, said: "a desktop app, not a page: a tab is one among forty, with no menu-bar place or global shortcut, and amy runs all day. macOS first; Windows and Linux are the same app built for them" }
   - { id: S24, kind: decision, said: "Electron, because the engine the gate measures must be the one that ships: its pinned Chromium on every platform is what the projection reads. Tauri's WebKit/WebView2/WebKitGTK make one green gate say nothing of the others" }
   - { id: S25, kind: decision, said: "Electron is JavaScript end to end, as amy is; its larger download is paid once, named in the dependency lock, only by whoever installs this renderer" }
-  - { id: S26, kind: decision, said: "the web page and the desktop app share one webview renderer, plugins/ui-webview; plugins/ui-desktop is the Electron shell around it, adding only what a page cannot have: the menu bar item, the global shortcut, staying resident. Decided 2026-11-09" }
+  - { id: S26, kind: decision, said: "the web page and the desktop app share one webview renderer, plugins/ui-webview; plugins/ui-desktop is the Electron shell around it, adding only what a page cannot have: the global shortcut, staying resident, the amy:// address. Decided 2026-11-12" }
   - { id: S27, kind: reference, ref: "https://pele.run", said: "the webview renderer draws StateMachine, which carries the diagram text, with Pele, Obsidian's Mermaid renderer: MIT, no dependencies, synchronous, SVG string out" }
   - { id: S28, kind: decision, said: "only pele/core and pele/diagrams/state are registered, about 130 KB minified and 52 KB gzipped, against 712 KB for the full bundle" }
   - { id: S29, kind: decision, said: "theme tokens become Pele's CSS variables (--pele-bg, --pele-fg, --pele-line, --pele-accent, …): no renderer names a colour, a theme switch recolours without re-rendering, classDef is not read (kept for GitHub, Obsidian). It draws what Obsidian would" }
@@ -37,22 +41,55 @@ sources:
   - { id: S37, kind: code, ref: "plugins/terminal/src/plugin.ts", said: "terminal.screen answers text, rows and columns, no image; in a terminal the drawing is the grid. Pixels are the webview's and the desktop app's evidence" }
   - { id: S35, kind: decision, said: "the desktop app is driven by agent-desktop, with agent-browser joining its DevTools port for pixels; the menu bar by agent-desktop reading the menu as an item tree. Decided 2026-11-09" }
   - { id: S36, kind: decision, said: "a changed baseline is an approval: made with --approve, its lock in the same commit. Decided 2026-11-09" }
-  - { id: S33, kind: decision, said: "the desktop renderer declares it draws menubar; the terminal and the web page do not, so their absence is a declaration the gate reads, not a disagreement it forgives" }
+  - { id: S33, kind: decision, said: "the menu bar renderer declares it draws menubar and nothing else; the desktop app, the terminal and the web page do not, so their absence is a declaration the gate reads, not a disagreement it forgives" }
 touches:
   - plugins/agent-browser/src/plugin.ts
   - plugins/agent-browser/tests/connect.test.ts
   - plugins/agent-desktop/src/plugin.ts
   - plugins/agent-desktop/tests/launch.test.ts
   - packages/ui/tokens.json
-  - packages/ui/design/**
+  - packages/ui/design/Stack.tsx
+  - packages/ui/design/Row.tsx
+  - packages/ui/design/Section.tsx
+  - packages/ui/design/Text.tsx
+  - packages/ui/design/Badge.tsx
+  - packages/ui/design/List.tsx
+  - packages/ui/design/Table.tsx
+  - packages/ui/design/Tabs.tsx
+  - packages/ui/design/Button.tsx
+  - packages/ui/design/Link.tsx
+  - packages/ui/design/Input.tsx
+  - packages/ui/design/Timeline.tsx
+  - packages/ui/design/StateMachine.tsx
+  - packages/ui/design/Log.tsx
+  - packages/ui/design/Code.tsx
+  - packages/ui/design/Diff.tsx
+  - packages/ui/design/Empty.tsx
   - packages/ui/frame.yaml
-  - packages/ui/src/**
+  - packages/ui/conformance/golden.json
+  - packages/ui/src/tokens.ts
+  - packages/ui/src/index.ts
+  - packages/ui/src/frame/frame.ts
   - packages/ui/tests/design.test.ts
   - packages/ui/tests/tokens.test.ts
-  - packages/ui-conformance/src/**
-  - plugins/ui-ink/**
-  - plugins/ui-webview/**
-  - plugins/ui-desktop/**
+  - packages/ui/tests/node-surface.test.ts
+  - packages/ui-conformance/src/checks.ts
+  - packages/ui-conformance/src/projection.ts
+  - packages/ui-conformance/src/script.ts
+  - plugins/ui-ink/package.json
+  - plugins/ui-ink/src/index.ts
+  - plugins/ui-ink/src/primitives.tsx
+  - plugins/ui-ink/tests/primitives.test.ts
+  - plugins/ui-webview/package.json
+  - plugins/ui-webview/src/index.ts
+  - plugins/ui-webview/src/primitives.tsx
+  - plugins/ui-webview/tests/bundle.test.ts
+  - plugins/ui-desktop/package.json
+  - plugins/ui-desktop/src/main.ts
+  - plugins/ui-menubar/package.json
+  - plugins/ui-menubar/src/main.ts
+  - plugins/ui-menubar/src/primitives.ts
+  - plugins/ui-menubar/tests/primitives.test.ts
   - scripts/design.ts
   - scripts/design-proof.ts
   - package.json
@@ -60,6 +97,7 @@ touches:
   - docs/development/the-design-system.md
   - .software-factory/policy.yaml
   - .software-factory/locks/dependencies.lock.json
+  - .software-factory/locks/generated.lock.json
 criteria:
   - { id: A1, statement: "every primitive in the vocabulary has a file of examples, every example is valid against the vocabulary, and a primitive added with none fails the build naming it", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S2, S3, S9, S15] }
   - { id: A2, statement: "every example of every primitive is a scenario on every surface whose declaration holds that primitive, and the proof covers each pair exactly once: a primitive the menubar subset leaves out has no menubar scenario, and one it holds has", proof: "deferred:assertion:design.every_component_is_proven_where_it_renders", sources: [S1, S4, S6, S33] }
@@ -79,6 +117,8 @@ criteria:
   - { id: A13, statement: "the web page and the desktop app draw every example through the same webview renderer, and their structure agrees on every one", proof: "deferred:assertion:design.web_and_desktop_are_one_renderer", sources: [S23, S24, S25, S26] }
   - { id: A14, statement: "Pele is a dependency of @amykit/ui-webview and of no other package, only its state diagram is bundled, and the StateMachine examples draw every state and edge their text declares", proof: "deferred:test:plugins/ui-webview/tests/bundle.test.ts", sources: [S27, S28, S29] }
   - { id: A15, statement: "every primitive has a terminal drawing, a new one without it fails the build, and the terminal StateMachine says every state and labelled edge of its example", proof: "deferred:test:plugins/ui-ink/tests/primitives.test.ts", sources: [S30, S31] }
+  - { id: A20, statement: "the menu bar renderer runs with no desktop window, draws only the menubar surface, and every primitive of its subset is proven there by agent-desktop reading the menu", proof: "deferred:test:plugins/ui-menubar/tests/primitives.test.ts", sources: [S39, S40, S33] }
+  - { id: A21, statement: "every primitive the node surface holds is proven there at its size limit, and one past 8 rows or 36 cells fails structure naming the example", proof: "deferred:test:packages/ui/tests/node-surface.test.ts", sources: [S41] }
   - { id: A16, statement: "no renderer package exports a view, a snapshot or a rule: each one's public surface is the primitive translations alone, so a view written for one draws in the others unchanged", proof: "deferred:test:packages/ui/tests/design.test.ts", sources: [S32] }
 crosses:
   - { mechanism: rendering, answer: works, proof: "deferred:A2, A4, A13, A15" }
@@ -96,8 +136,8 @@ cut:
   - "Tauri: refused, a gate green in one system webview says nothing of the other two (S24)"
   - "a graph layout in characters (beautiful-mermaid box art): refused; it brings elkjs, 7.7 MB, runs sixty lines for seven states and merges two opposite edges; wanted, it is a plugin's canvas tab"
   - "a screen of the window: none here; the work list, the record, what needs you and the workflows each come in their own slice, on all three surfaces at once"
-exit: "`npm run design` opens every primitive's examples in the terminal, the browser and the desktop app, and the gate is green only when each example matched its structure and approved baseline on every surface declaring it"
+exit: "`npm run design` opens every primitive's examples in the terminal, the browser, the desktop app, the menu bar and a node; the gate is green only when each matched its structure and approved baseline on every surface declaring it"
 ---
 # The window is designed once
 
-The menu bar, the desktop app and the terminal are one window drawn three ways, so they are built together, a piece at a time. This row builds the three renderers and nothing on them but the primitives: each example of each primitive is walked on every surface that declares it, the way a proving phase walks a scenario, so a component that looks wrong is caught on its own before any screen hides it.
+The menu bar, the desktop app and the terminal are one window drawn by four renderers, so they are built together, a piece at a time. This row builds the renderers and nothing on them but the primitives: each example of each primitive is walked on every surface that declares it, the way a proving phase walks a scenario, so a component that looks wrong is caught on its own before any screen hides it.

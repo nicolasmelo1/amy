@@ -1,65 +1,75 @@
 ---
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
-  - { id: S1, kind: reference, ref: "plans/the-work-is-listed-everywhere.md", said: "the window it ships is one nobody can extend; a window any plugin can rearrange is unrecognisable after the third install, so the frame is fixed and the places a plugin can put something are named" }
-  - { id: S2, kind: reference, ref: "docs/concepts/plugins.md", said: "registry.contribute(collection, name, impl) is how a plugin adds to what another reads, and mount() refuses a collision by name; the window is six new collections, not a new plugin model" }
-  - { id: S3, kind: decision, said: "ui-nav: a section in nav 1, after the three that ship; the same name refused" }
-  - { id: S4, kind: decision, said: "ui-tab: a tab in a record's canvas for the workflows and states it names; a state the workflow lacks is refused by name, read from its diagram, else its declared states; same name refused" }
-  - { id: S5, kind: decision, said: "ui-panel: an entry in the right panel's rail, with a home view, a view for the open record, or both; the same name refused" }
-  - { id: S6, kind: decision, said: "ui-action: an entry in a row's ⋯; the same name refused" }
-  - { id: S7, kind: decision, said: "ui-decoration: a badge on a row in nav 2; several allowed, ordered" }
-  - { id: S8, kind: reference, ref: "plans/what-needs-you-is-counted-everywhere.md", said: "ui-menubar: a line in the menu bar, under the work; the same name refused" }
-  - { id: S9, kind: decision, said: "each contribution is a view (a view is data) plus the slice of the snapshot it reads, so the host recomputes it only when that slice moves" }
-  - { id: S10, kind: reference, ref: "https://developers.google.com/workspace/add-ons/concepts/homepages", said: "Gmail add-ons open beside the mail: a rail of icons picks one; each has a homepage shown whatever is open, and contextual cards for the open thread, dropped on leaving; it never touches the mail" }
-  - { id: S11, kind: decision, said: "the rail is a strip at the window's right edge, visible while the panel is closed: one entry per ui-panel after log and thread; choosing an entry opens the panel on it, choosing the open one closes it" }
-  - { id: S12, kind: decision, said: "a rail entry names an icon from a closed set and a label; the terminal draws the label's first letter" }
-  - { id: S13, kind: decision, said: "home is the view an entry shows with no record open (a notebook, a calendar, the tickets waiting in the tracker); it reads the snapshot and no record" }
-  - { id: S14, kind: decision, said: "record is the view for the open record, declared for workflows and states like a ui-tab; an entry without home is hidden from the rail on other records; opening another record swaps the view, keeping the entry chosen" }
-  - { id: S15, kind: decision, said: "an entry declares at least one of the two; log and thread ship as record views, so the window looks as a-record-is-seen-everywhere draws it until a plugin adds an entry" }
-  - { id: S16, kind: decision, said: "frame.yaml gains the rail region (place: right, spans: full-height, holds: [panel-entry]), the panel opening between canvas and rail, and slot panel.rail: { fixed: [log, thread], extended-by: ui-panel } replacing panel" }
-  - { id: S17, kind: decision, said: "frame.yaml gains actions panel.next and panel.prev on ]p and [p; a click on an entry is panel.select; an edit to a locked file plus sf lock, in this row's pull request" }
-  - { id: S18, kind: decision, said: "a ui-action declares what it writes, as a workflow declares trackerWrites and codeHostWrites; one reaching a mutating port unclaimed is refused at boot naming action and capability: never a second road to a write" }
-  - { id: S19, kind: decision, said: "the three sections that ship (Work, Workflows, Settings) cannot be replaced or removed, only reordered; a plugin wanting a whole page adds a section, it does not take Work over" }
-  - { id: S20, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "the conformance world already mounts one plugin contributing to every collection; ui-frame asserts where each lands, ui-window that it arrives from an install, and the refusals are mount() unit tests" }
-  - { id: S21, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers the actions domain (listActions, runAction) and plugin contributions in listViews, flipped to delivered in surface.yaml in the same pull request" }
+  - { id: S1, kind: friction, said: "the window ships with nobody able to extend it, yet a window any plugin can rearrange is unrecognisable after the third install; so the frame is fixed and the places a plugin can fill are named" }
+  - { id: S2, kind: reference, ref: "docs/concepts/plugins.md", said: "registry.contribute(collection, name, impl) is how a plugin adds to what another reads, and mount() refuses a collision by name; the window is collections, not a new plugin model" }
+  - { id: S3, kind: decision, said: "every node is a view: its header is the state, its body is what a plugin fills, with buttons, links and inputs, within a size limit per node. Decided 2026-11-12" }
+  - { id: S4, kind: decision, said: "one plugin can fill many nodes generically, or one node alone, as a richer code diff would. Decided 2026-11-12" }
+  - { id: S5, kind: decision, said: "ui-node fills a node's body for the workflows and states it names, or every state; the most specific wins (workflow and state, then state, then every state) and two at one level are refused naming both. Proposed 2026-11-12" }
+  - { id: S6, kind: decision, said: "a node's body is the frame's node surface: at most 8 rows by 36 cells, 280 by 180 px, and 40 elements; past it, the default body shows with a badge naming the plugin. Proposed 2026-11-12" }
+  - { id: S7, kind: decision, said: "ui-sidebar fills the sidebar for the states it names, with the same specificity; it is given the visit chosen, so one view draws the current state and a past one. Decided 2026-11-12" }
+  - { id: S8, kind: decision, said: "the UI and the metadata it needs are both a plugin's: a ui-node or ui-sidebar declares the slice of the record and the event fields it reads, and is recomputed only when they move. Decided 2026-11-12" }
+  - { id: S9, kind: reference, ref: "https://developers.google.com/workspace/add-ons/concepts/homepages", said: "Gmail add-ons have a homepage shown whatever is open, and contextual cards for the open thread" }
+  - { id: S10, kind: decision, said: "ui-corner adds an icon to the top corner after the core's (what needs you, sidebar, settings), opening a floating window with its home view; the same name refused. Proposed 2026-11-12" }
+  - { id: S11, kind: decision, said: "ui-action adds an entry to a node's ⋯ and declares what it writes, as a workflow declares trackerWrites and codeHostWrites; one reaching a mutating port unclaimed is refused at boot" }
+  - { id: S12, kind: decision, said: "ui-menubar adds rows to the menu bar beneath the core's; it never changes the title. Decided 2026-11-12" }
+  - { id: S13, kind: decision, said: "the server sends how the UI is built, so a plugin added or removed appears or leaves in an open app on the next patch, with no rebuild and no restart. Decided 2026-11-12" }
+  - { id: S14, kind: decision, said: "the app keeps the views it drew, to open fast next time, keyed by the server's instance, its contract hash and a digest of the mounted plugin set; a different key drops them before drawing. Decided 2026-11-12" }
+  - { id: S15, kind: reference, ref: "docs/design/a-view-is-data.md", said: "a plugin does not render: it describes in a closed vocabulary and the renderer draws, so a phone never installs a package" }
+  - { id: S16, kind: reference, ref: "plans/a-page-is-drawn-only-where-it-can-be.md", said: "a contribution may declare the surfaces it draws; elsewhere the default shows and says why" }
+  - { id: S17, kind: reference, ref: "docs/design/the-frame-is-closed.md", said: "the conformance world mounts one plugin contributing to every collection; ui-frame asserts where each lands, ui-window that it arrives from an install, and the refusals are mount() unit tests" }
+  - { id: S18, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers the actions domain (listActions, runAction) and plugin contributions in listViews, flipped to delivered in surface.yaml in the same pull request" }
 touches:
   - packages/ui/frame.yaml
-  - packages/ui/src/**
-  - plugins/ui-*/src/**
-  - packages/ui-conformance/src/**
+  - packages/ui/conformance/golden.json
+  - packages/ui/src/frame/frame.ts
+  - packages/ui/tests/frame.test.ts
+  - packages/ui/tests/node.property.test.ts
+  - packages/ui-conformance/src/world.ts
+  - packages/ui-conformance/src/checks.ts
   - packages/core/src/mount.ts
-  - packages/server/src/**
-  - packages/server/surface.yaml
-  - packages/server/tests/surface.test.ts
-  - packages/cli/tests/ui-plugins.test.ts
   - packages/core/tests/mount.test.ts
   - packages/core/tests/mount.property.test.ts
-  - .software-factory/locks/**
+  - packages/services/surface.yaml
+  - packages/services/src/domains/views.ts
+  - packages/services/tests/surface.test.ts
+  - packages/sdk/src/cache.ts
+  - packages/sdk/tests/cache.property.test.ts
+  - packages/cli/tests/ui-plugins.test.ts
+  - .software-factory/locks/generated.lock.json
+  - packages/sdk/package.json
 criteria:
-  - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S21] }
-  - { id: A2, statement: "a contribution lands only in the slot frame.yaml declares for its collection, in every renderer", proof: "deferred:assertion:frame.a_slot_takes_only_what_it_declares", sources: [S1, S7, S16, S20] }
-  - { id: A3, statement: "plugin sections come after Work, Workflows and Settings, whatever order they mounted in", proof: "deferred:assertion:frame.the_fixed_sections_come_first", sources: [S3, S19] }
-  - { id: A4, statement: "a canvas tab declared for one workflow appears on no other workflow's records", proof: "deferred:assertion:window.a_tab_appears_only_where_it_is_declared", sources: [S4] }
-  - { id: A5, statement: "with no plugin mounted, the rail holds log and thread and the window projects as it did before this row", proof: "deferred:assertion:frame.renderers_agree_on_every_region", sources: [S15, S16] }
-  - { id: A6, statement: "a panel entry with only a home view shows it with no record open, and keeps showing it when a record opens", proof: "deferred:assertion:window.a_panel_home_needs_no_record", sources: [S10, S13] }
-  - { id: A7, statement: "a panel entry's record view follows the open record, and an entry declared for one workflow is not on the rail for another's records", proof: "deferred:assertion:window.a_panel_follows_the_open_record", sources: [S10, S14] }
-  - { id: A8, statement: "a panel entry that declares neither view, or a state its workflow does not draw, is refused at boot by name", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S4, S15] }
-  - { id: A9, statement: "]p and [p walk the rail and a click on an entry opens it, in every renderer", proof: "deferred:assertion:frame.renderers_agree_on_every_region", sources: [S11, S12, S17] }
-  - { id: A10, statement: "two plugins contributing the same name are refused at boot, naming both", proof: "deferred:property:packages/core/tests/mount.property.test.ts#collision_checked_across_collections", sources: [S2, S3, S5, S6, S8] }
-  - { id: A11, statement: "a ui-action reaching a mutation it did not claim is refused at boot", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S18] }
-  - { id: A12, statement: "a contribution replacing Work, Workflows or Settings is refused", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S19] }
-  - { id: A13, statement: "a view reading only the budget is not recomputed when a record moves", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S9] }
-  - { id: A14, statement: "a plugin installed with amy plugin add from outside the workspace appears only once mounted", proof: "deferred:assertion:window.a_plugin_from_outside_appears_only_when_mounted", sources: [S1, S20] }
+  - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S18] }
+  - { id: A2, statement: "a contribution lands only in the place frame.yaml names for its collection, in every renderer", proof: "deferred:assertion:frame.a_slot_takes_only_what_it_declares", sources: [S1, S2, S16, S17] }
+  - { id: A3, statement: "for any set of ui-node and ui-sidebar contributions, each state gets the most specific one, and two at one level are refused naming both", proof: "deferred:property:packages/core/tests/mount.property.test.ts#generic_beats_specific", sources: [S4, S5, S7] }
+  - { id: A4, statement: "for any body tree, one within the node surface's rows, size and element count is drawn, and one past any limit shows the default body with a badge naming its plugin", proof: "deferred:property:packages/ui/tests/node.property.test.ts#element_count_unchecked", sources: [S3, S6] }
+  - { id: A5, statement: "a ui-sidebar view given a past visit draws it from that visit's slice, and the same view draws the current one", proof: "deferred:assertion:window.a_sidebar_draws_any_visit", sources: [S7] }
+  - { id: A6, statement: "a view reading only a record's state is not recomputed when only the budget moves, nor one reading the budget when a record moves", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S8] }
+  - { id: A7, statement: "a corner icon opens its home view whatever is chosen, after the core's icons, which no plugin removes or reorders", proof: "deferred:assertion:frame.the_core_icons_come_first", sources: [S9, S10] }
+  - { id: A8, statement: "a ui-action reaching a mutation it did not claim is refused at boot", proof: "deferred:test:packages/cli/tests/ui-plugins.test.ts", sources: [S11] }
+  - { id: A9, statement: "menu bar rows from plugins come beneath the core's, and the title is the same with and without them", proof: "deferred:assertion:window.the_menu_bar_title_is_the_cores", sources: [S12] }
+  - { id: A10, statement: "two plugins contributing one name to one collection are refused at boot, naming both", proof: "deferred:test:packages/core/tests/mount.test.ts", sources: [S2, S10, S12] }
+  - { id: A11, statement: "with the app open, a plugin installed with amy plugin add appears on the next patch, and removed it leaves, with no rebuild or restart", proof: "deferred:assertion:window.a_plugin_comes_and_goes_live", sources: [S13, S15] }
+  - { id: A12, statement: "for any two plugin sets, the cache key is equal exactly when the sets are, whatever order they mounted in; a different key draws nothing cached", proof: "deferred:property:packages/sdk/tests/cache.property.test.ts#a_removed_plugin_keeps_the_key", sources: [S14] }
+  - { id: A13, statement: "the app opened a second time draws its cached views before the server answers, then the live patch replaces them", proof: "deferred:assertion:window.a_second_open_draws_the_cache_first", sources: [S14] }
 crosses:
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A10, A11" }
-  - { mechanism: rendering, answer: works, proof: "deferred:A2, A9" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A3, A8, A10" }
+  - { mechanism: rendering, answer: works, proof: "deferred:A2, A4, A11" }
 guarantee:
   - { holds: "the window is never a second road to a write the config did not allow", not_against: "a ui-action that claims the capability it uses" }
+  - { holds: "nothing cached is drawn under another plugin set", not_against: "a plugin whose views change without its digest, which only a reinstall shows" }
+failures:
+  - { step: draw, when: "a node body is past the node surface", goes_to: "the default body, with a badge naming the plugin" }
 cut:
-  - "a whole new way of seeing a section (a board, an office) as a panel: refused; that is plans/a-section-can-be-seen-another-way.md"
-  - "a plugin replacing or removing Work, Workflows or Settings: refused; it adds a section instead"
-  - "a plugin shipping a frame.yaml of its own: refused; the frame is the core's, one per surface, and a plugin changes what a canvas shows and how it looks, never where the regions are"
-exit: "via amy plugin add, an outside plugin's nav 1 section, canvas tab, ⋯ action and home-and-record rail entry appear only once mounted, land alike in the desktop app and text renderer, and the record view follows the open record"
+  - "a plugin replacing the breadcrumb, the canvas's place, or a core corner icon: refused; the frame is the core's"
+  - "a plugin shipping a frame.yaml of its own: refused"
+  - "a whole other way of seeing the canvas (a board, an office): the-canvas-can-be-seen-another-way"
+  - "React Server Components: refused; views are data the server sends (S15)"
+exit: "with the app open, amy plugin add puts a fixture's node body, sidebar view and corner icon in place; amy remove takes them away live; the next open draws from the cache only when the set is unchanged"
 ---
 # The window takes plugins
 
-The window ships with nobody able to extend it, yet a window any plugin can rearrange is unrecognisable after the third install. So the frame stays fixed and the places a plugin can put something are named.
+The frame stays fixed and the places a plugin can fill are named: a node's
+body, a state's sidebar, a corner icon, a node's ⋯, a menu bar row. The
+server sends them, so plugins come and go live, and the app's cache follows
+the mounted set.
