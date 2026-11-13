@@ -633,6 +633,37 @@ describe("the skills record", () => {
     expect(fs.existsSync(path.join(second, "amy"))).toBe(false);
   });
 
+  it("puts a harness's link back as a link, not a copy, if a later skills write fails", () => {
+    const harness = path.join(home, "claude-skills", "northwind-code-review");
+    fs.mkdirSync(harness, { recursive: true });
+    fs.writeFileSync(path.join(harness, "SKILL.md"), "# the harness's own\n", "utf-8");
+    fs.mkdirSync(path.join(home, "skills"), { recursive: true });
+    fs.symlinkSync(harness, path.join(home, "skills", "northwind-code-review"), "dir");
+    const second = path.join(home, "second");
+    fs.mkdirSync(second, { recursive: true });
+    recordWrite(home, { directory: second });
+
+    expect(() => writeSkills(
+      home,
+      (target, skills) => {
+        if (target === second) throw new Error("disk full");
+        // As install does: a link of the same name is replaced, never written through.
+        const directory = path.join(target, skills[0]![0]);
+        if (fs.lstatSync(directory, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(directory);
+        fs.mkdirSync(directory, { recursive: true });
+        fs.writeFileSync(path.join(directory, "SKILL.md"), skills[0]![1], "utf-8");
+        return [path.join(directory, "SKILL.md")];
+      },
+      () => [["northwind-code-review", "# amy ships one now\n"]],
+      () => undefined,
+    )).toThrow("disk full");
+
+    const at = path.join(home, "skills", "northwind-code-review");
+    expect(fs.lstatSync(at).isSymbolicLink()).toBe(true);
+    expect(fs.readlinkSync(at)).toBe(harness);
+    expect(fs.readFileSync(path.join(harness, "SKILL.md"), "utf-8")).toBe("# the harness's own\n");
+  });
+
   it("skips a recorded directory that is gone, rather than recreating it", () => {
     recordWrite(home, { directory: path.join(home, "deleted") });
 
@@ -953,6 +984,53 @@ describe("the running loop", () => {
     // goes back, and the CLI that is installed again writes its own.
     expect(code).toBe(1);
     expect(order).toEqual(["skills after 1 install(s)", "mount", "skills after 2 install(s)"]);
+  });
+
+  it("takes away a skill only the rejected release shipped when the moved CLI does not boot", async () => {
+    rootWith(home, {});
+    const install = path.join(home, "lib", "amy");
+    fs.mkdirSync(install, { recursive: true });
+    fs.writeFileSync(
+      path.join(install, "package.json"),
+      `${JSON.stringify({ name: "amy-install", private: true, dependencies: { "@amykit/cli": "latest" } })}\n`,
+      "utf-8",
+    );
+    packageAt(install, "@amykit/cli", "0.4.0", "export const plugin = {};", { amy: "./index.js" });
+    fs.writeFileSync(path.join(install, "node_modules", "@amykit", "cli", "index.js"), "export const plugin = {};");
+    const runner = new ScriptedRunner([
+      { match: whenArgsInclude("view", "@amykit/cli@latest"), result: { stdout: '"0.5.0"\n' } },
+      { match: whenArgsInclude("install"), result: { stdout: "up to date\n" } },
+    ]);
+    const mine = path.join(home, "mine");
+    fs.mkdirSync(mine, { recursive: true });
+    recordWrite(home, { directory: mine });
+    const write = (into: string, name: string, body: string) => {
+      fs.mkdirSync(path.join(into, name), { recursive: true });
+      fs.writeFileSync(path.join(into, name, "SKILL.md"), body, "utf-8");
+    };
+    for (const into of [path.join(home, "skills"), mine]) write(into, "amy", "# 0.4\n");
+    let calls = 0;
+    const { updateCommand } = await import("../src/index.js");
+
+    const code = await updateCommand(home, runner, undefined, false, {
+      mountProfiles: async () => ({ ok: false as const, problems: ["oncall: broken"] }),
+      // The moved CLI ships one skill more; the one installed again does not know it.
+      skillsInto: () => {
+        calls += 1;
+        for (const into of [path.join(home, "skills"), mine]) {
+          write(into, "amy", calls === 1 ? "# 0.5\n" : "# 0.4\n");
+          if (calls === 1) write(into, "amy-new", "# only in 0.5\n");
+        }
+        return ["rewritten"];
+      },
+      installRoot: install,
+    });
+
+    expect(code).toBe(1);
+    for (const into of [path.join(home, "skills"), mine]) {
+      expect(fs.existsSync(path.join(into, "amy-new"))).toBe(false);
+      expect(fs.readFileSync(path.join(into, "amy", "SKILL.md"), "utf-8")).toBe("# 0.4\n");
+    }
   });
 
   it("probes the moved CLI by running its own bin, and rolls a broken one back", async () => {

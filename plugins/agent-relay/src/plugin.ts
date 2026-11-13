@@ -224,7 +224,10 @@ function build(ctx: TypedContext): HarnessRelay {
     log: ctx.log,
     now: ctx.now,
     skills: skillLadders(ctx, contributed),
-    locate: (skill) => locateSkill(skillRootsOf(ctx, contributed), skill),
+    // Lent only from amy's own root and the configured ones: a harness's skill
+    // is lent through the link the run made, so one it could not link is not
+    // lent from the harness's directory behind the setting's back.
+    locate: (skill) => locateSkill(skillRoots(ctx.config.skillRoots, ctx.paths.state), skill),
   });
 }
 
@@ -300,9 +303,10 @@ function skillLadders(ctx: TypedContext, contributed: readonly NamedHarness[]): 
  * Where installed skills are looked for: amy's own root, the configured ones,
  * then the directories of the harnesses `harnessSkills` chooses.
  *
- * The run links a chosen harness's skills into amy's root, which is looked in
- * first; the boot reads its directory too, so a ladder naming one mounts
- * before the first run has linked it.
+ * For the boot only: the run links a chosen harness's skills into amy's
+ * root, and the boot reads the harness's directory too, so a ladder naming
+ * one mounts before the first run has linked it. A skill is lent from amy's
+ * own and configured roots alone.
  */
 function skillRootsOf(ctx: TypedContext, contributed: readonly NamedHarness[]): readonly string[] {
   const chosen = parseHarnessSkills(ctx.config.harnessSkills, contributed.map((one) => ({ name: one.harness, skillsDirectory: one.cli.skillsDirectory })));

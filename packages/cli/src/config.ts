@@ -122,9 +122,9 @@ export function chatSkills(config: AmyConfig): string[] {
  * top-level setting. The relay checks the names against the harnesses that
  * mounted, so what is read here already booted.
  */
-export function harnessSkills(config: AmyConfig): Record<string, unknown> {
+export function harnessSkills(config: AmyConfig): unknown {
   const given = config.plugins["@amykit/plugin-agent-relay"] as { harnessSkills?: unknown } | undefined;
-  return isRecord(given?.harnessSkills) ? given.harnessSkills : config.harnessSkills;
+  return given?.harnessSkills !== undefined ? given.harnessSkills : config.harnessSkills;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -497,7 +497,9 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     ...autoUpdateFrom(parsed),
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
-    harnessSkills: isRecord(parsed.harnessSkills) ? parsed.harnessSkills : {},
+    // Kept as given: a value that is not a mapping is the relay's to refuse at
+    // the mount, never read as every harness turned off.
+    harnessSkills: parsed.harnessSkills ?? {},
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
     // Only a boolean true charges the chat; anything else is refused by configuredChatProblems.

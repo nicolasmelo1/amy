@@ -375,6 +375,27 @@ describe("a harness's own skills, chosen by its plugin's name (A10)", () => {
     expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/harnessSkills\.claude.*true or false/);
   });
 
+  it("lends a chosen harness's skill only through its link in amy's root, never from the harness's directory", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"], claudeSkills)],
+      relayWith({ ladder: ["claude:sonnet"], harnessSkills: { claude: true }, skills: { triage: ["/northwind-code-review"] } }),
+      state(),
+    );
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const agent = outcome.mounted.ports.get("agent") as AgentPort;
+
+    // The run could not link it: nothing is lent from the harness's own directory.
+    await agent.ask("review it", "/w", { step: "triage" });
+    expect(asked.at(-1)?.context?.skill).toBeUndefined();
+
+    const link = path.join(machine, ".amy", "skills", "northwind-code-review");
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(path.join(claudeSkills, "northwind-code-review"), link, "dir");
+    await agent.ask("review it", "/w", { step: "triage" });
+    expect(asked.at(-1)?.context?.skill).toEqual({ name: "northwind-code-review", path: link });
+    fs.unlinkSync(link);
+  });
+
   it("refuses true for a harness whose plugin does not say where its skills are", async () => {
     const outcome = await mount(
       [relay, harnessPlugin("codex", ["gpt-5"])],

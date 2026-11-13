@@ -89,6 +89,72 @@ export function recordWrite(home: string, write: { harness?: string; directory?:
   fs.writeFileSync(recordPath(home), `${JSON.stringify({ harnesses, directories }, null, 2)}\n`, "utf-8");
 }
 
+/** amy's own root, then every harness and directory the record names that is still there. */
+function skillTargets(home: string, harnessSkills: (name: string) => string | undefined, say: (line: string) => void = () => undefined): { label: string; into: string }[] {
+  const record = readSkills(home);
+  const own = ownSkillRoot(home);
+  const targets: { label: string; into: string }[] = [{ label: own, into: own }];
+  for (const harness of record.harnesses) {
+    const into = harnessSkills(harness);
+    if (!into) {
+      say(`${harness}: no longer a harness this amy knows, skipped`);
+      continue;
+    }
+    targets.push({ label: harness, into });
+  }
+  for (const directory of record.directories) {
+    if (!fs.existsSync(directory)) {
+      say(`${directory}: gone, skipped`);
+      continue;
+    }
+    targets.push({ label: directory, into: directory });
+  }
+  return targets;
+}
+
+/** One skill as it stood: a link, or a directory and the SKILL.md it held. */
+type Kept = { link: string } | { body: string | undefined };
+
+/**
+ * What every skills target holds now, put back whole by the function it
+ * returns: each skill's SKILL.md, a harness's skill linked in as the link it
+ * was, and a skill that was not there taken away. Nothing is written through
+ * a link.
+ */
+export function keepSkills(home: string, harnessSkills: (name: string) => string | undefined): () => void {
+  const kept = skillTargets(home, harnessSkills).map(({ into }) => ({ into, skills: skillsAt(into) }));
+  return () => {
+    for (const { into, skills } of kept) {
+      for (const [name] of skillsAt(into)) {
+        if (!skills.has(name)) fs.rmSync(path.join(into, name), { recursive: true, force: true });
+      }
+      for (const [name, was] of skills) {
+        const directory = path.join(into, name);
+        if ("link" in was) {
+          fs.rmSync(directory, { recursive: true, force: true });
+          fs.symlinkSync(was.link, directory, "dir");
+        } else if (was.body !== undefined) {
+          if (fs.lstatSync(directory, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(directory);
+          fs.mkdirSync(directory, { recursive: true });
+          fs.writeFileSync(path.join(directory, "SKILL.md"), was.body, "utf-8");
+        }
+      }
+    }
+  };
+}
+
+/** The skills a target holds, by name: each link, and each directory with a SKILL.md. */
+function skillsAt(into: string): Map<string, Kept> {
+  const skills = new Map<string, Kept>();
+  if (!fs.existsSync(into)) return skills;
+  for (const name of fs.readdirSync(into)) {
+    const directory = path.join(into, name);
+    if (fs.lstatSync(directory).isSymbolicLink()) skills.set(name, { link: fs.readlinkSync(directory) });
+    else if (fs.existsSync(path.join(directory, "SKILL.md"))) skills.set(name, { body: fs.readFileSync(path.join(directory, "SKILL.md"), "utf-8") });
+  }
+  return skills;
+}
+
 /**
  * Writes the skills into every harness and directory the record names.
  *
@@ -104,39 +170,17 @@ export function writeSkills(
   shipped: () => readonly [string, string][],
   harnessSkills: (name: string) => string | undefined,
 ): string[] {
-  const record = readSkills(home);
   const skills = shipped();
   // amy's own root is written on every install and every update, whether or
   // not a harness was chosen: it is the copy amy owns, and the one the chat
   // reads a skill from.
-  const own = ownSkillRoot(home);
-  fs.mkdirSync(own, { recursive: true });
-  const targets: { label: string; into: string }[] = [{ label: own, into: own }];
+  fs.mkdirSync(ownSkillRoot(home), { recursive: true });
+  const targets = skillTargets(home, harnessSkills, (line) => console.log(line));
 
-  for (const harness of record.harnesses) {
-    const into = harnessSkills(harness);
-    if (!into) {
-      console.log(`${harness}: no longer a harness this amy knows, skipped`);
-      continue;
-    }
-    targets.push({ label: harness, into });
-  }
-  for (const directory of record.directories) {
-    if (!fs.existsSync(directory)) {
-      console.log(`${directory}: gone, skipped`);
-      continue;
-    }
-    targets.push({ label: directory, into: directory });
-  }
-
-  // The CLI is rolled back when this rewrite fails. Preserve every managed
-  // file first, so a failure on a later target cannot leave earlier harnesses
+  // The CLI is rolled back when this rewrite fails. Keep every target as it
+  // is first, so a failure on a later target cannot leave earlier harnesses
   // describing the CLI version that did not survive.
-  const before = targets.flatMap(({ into }) => skills.map(([name]) => {
-    const directory = path.join(into, name);
-    const file = path.join(directory, "SKILL.md");
-    return { directory, file, directoryExisted: fs.existsSync(directory), body: fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : undefined };
-  }));
+  const putBack = keepSkills(home, harnessSkills);
   const wrote: string[] = [];
   try {
     for (const target of targets) {
@@ -145,15 +189,7 @@ export function writeSkills(
     }
     return wrote;
   } catch (error) {
-    for (const saved of before.reverse()) {
-      if (saved.body !== undefined) {
-        fs.mkdirSync(saved.directory, { recursive: true });
-        fs.writeFileSync(saved.file, saved.body, "utf-8");
-      } else {
-        fs.rmSync(saved.file, { force: true });
-        if (!saved.directoryExisted) fs.rmSync(saved.directory, { recursive: true, force: true });
-      }
-    }
+    putBack();
     throw error;
   }
 }

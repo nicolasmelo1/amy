@@ -5,6 +5,9 @@ import path from "node:path";
 import { harnesses, install, installedHarnesses, linkHarnessSkills } from "../src/harnesses.js";
 import { shipped } from "../src/skills.js";
 import { locateSkill, readSkills, recordWrite, skillRoots, writeSkills } from "../src/skills-record.js";
+import { HARNESS_COLLECTION } from "@amykit/agent-kit";
+import { Harness, Plugin } from "@amykit/core";
+import { linkableHarnesses, recoverChatParts } from "../src/assemble.js";
 
 describe("the harnesses on a machine", () => {
   let home: string;
@@ -217,6 +220,39 @@ describe("a harness's own skills are linked into amy's root by the config (A10, 
 
     expect(() => linkHarnessSkills(own, record, { codex: true }, table)).not.toThrow();
     expect(links()).toEqual({});
+  });
+
+  it("leaves every link as it is when harnessSkills is not a mapping", () => {
+    linkHarnessSkills(own, record, { claude: true }, table);
+
+    expect(() => linkHarnessSkills(own, record, true, table)).toThrow(/harnessSkills.*mapping/);
+    expect(() => linkHarnessSkills(own, record, ["claude"], table)).toThrow(/harnessSkills.*mapping/);
+    expect(Object.keys(links())).toEqual(["northwind-code-review"]);
+  });
+
+  it("makes no link it could not record, so false can always remove what amy made", () => {
+    // The record cannot be written: a directory sits where the file goes.
+    fs.mkdirSync(record, { recursive: true });
+
+    expect(() => linkHarnessSkills(own, record, { claude: true }, table)).toThrow();
+    expect(links()).toEqual({});
+
+    fs.rmSync(record, { recursive: true });
+    linkHarnessSkills(own, record, { claude: true }, table);
+    linkHarnessSkills(own, record, { claude: false }, table);
+    expect(links()).toEqual({});
+  });
+
+  it("links from the harnesses a chat recovered without the workflow, so the setting holds there too", async () => {
+    const cli = { name: "claude", skillsDirectory: path.join(machine, ".claude", "skills"), ask: async () => ({ text: "", run: { outcome: "completed" } }) } as unknown as Harness;
+    const claude: Plugin = { name: "@amykit/plugin-claude", register: (registry) => registry.contribute(HARNESS_COLLECTION, "claude:sonnet", { name: "claude:sonnet", harness: "claude", model: "sonnet", cli }) };
+    const broken: Plugin = { name: "@amykit/plugin-broken", register: () => { throw new Error("will not mount"); } };
+    const host = { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now: () => new Date(), paths: { state: path.join(machine, ".amy") } };
+
+    const parts = await recoverChatParts([broken, claude], {}, host);
+    linkHarnessSkills(own, record, { claude: true }, linkableHarnesses(parts));
+
+    expect(Object.keys(links())).toEqual(["northwind-code-review"]);
   });
 
   it("writes a shipped skill over a link of the same name without touching the harness's copy", () => {

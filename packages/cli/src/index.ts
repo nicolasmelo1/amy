@@ -117,7 +117,7 @@ import { addWorkflowInto } from "./workflow-add.js";
 import { ForkTarget, applyForkUpdates, treeDigest, forkTargets, mergeForks, prepareForks, profileForkDirectories, readRecord, readTree, writeMarkedMerges, writeRecord, writeTree } from "./fork.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, migrateSettingsFile, move, Release, restore, Root, roots, survey } from "./update.js";
 import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
-import { locateSkill, ownSkillRoot, recordWrite, skillRoots, writeSkills } from "./skills-record.js";
+import { keepSkills, locateSkill, ownSkillRoot, recordWrite, skillRoots, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
 // harness you are in, from wherever you happen to be standing.
@@ -258,9 +258,9 @@ function runningSharedDaemon(): ReturnType<typeof running> {
  * contributed. A link that cannot be made is said, and the run goes on: a
  * skill it leaves missing is refused where it is asked for.
  */
-function linkForTheRun(config: AmyConfig, mounted: Mounted): void {
+function linkForTheRun(config: AmyConfig, linkable: ReturnType<typeof linkableHarnesses>): void {
   try {
-    for (const line of linkHarnessSkills(ownSkillRoot(home), path.join(home, "harness-skills.json"), harnessSkills(config), linkableHarnesses(mounted))) {
+    for (const line of linkHarnessSkills(ownSkillRoot(home), path.join(home, "harness-skills.json"), harnessSkills(config), linkable)) {
       console.log(`harnessSkills: ${line}`);
     }
   } catch (error) {
@@ -280,7 +280,7 @@ async function engineOrExit(run = false): Promise<Engine> {
 
   const outcome = await assemble(selected(config));
   if (outcome.ok) {
-    if (run) linkForTheRun(config, outcome.mounted);
+    if (run) linkForTheRun(config, linkableHarnesses(chatPartsOf(outcome.mounted)));
     return outcome.engine;
   }
 
@@ -713,10 +713,9 @@ program
       }
       const { engine, mountProblem, parts } = mounted;
       // Every pass is a tick: the harness skills are linked as the config says
-      // before the chat and the work read them.
-      const link = () => {
-        if (mounted.mounted) linkForTheRun(config, mounted.mounted);
-      };
+      // before the chat and the work read them, from whichever harnesses came
+      // up, the chat's own when the workflow did not mount.
+      const link = () => linkForTheRun(config, mounted.linkable);
       const reader = chatReader(profile, config, mounted, options.supervised === true, (how) => {
         exit = how;
         stopping = true;
@@ -791,10 +790,11 @@ program
  * workflow does not mount (S29), which says what failed. Nothing when there
  * is neither and no supervisor would only start it again.
  */
-async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mounted?: Mounted; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
+async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boolean): Promise<{ engine?: Engine; mounted?: Mounted; linkable: ReturnType<typeof linkableHarnesses>; mountProblem?: string; parts: ChatParts; spend?: ChatDesk["spend"] } | undefined> {
   const assembled = await assembleOrSay(profile, config);
   if (assembled.ok) {
-    return { engine: assembled.engine, mounted: assembled.mounted, ...chargedTo(config, profile, chatPartsOf(assembled.mounted)) };
+    const parts = chatPartsOf(assembled.mounted);
+    return { engine: assembled.engine, mounted: assembled.mounted, linkable: linkableHarnesses(parts), ...chargedTo(config, profile, parts) };
   }
   const parts = await assembleChat(home, config, profile, { runner, load: (specs) => loadMountable(specs, profile.name), log: (file) => new FileEventLog(file, undefined, build), host: [] });
   const chat = parts.conversation?.chat !== undefined;
@@ -803,7 +803,7 @@ async function mountForLoop(profile: Profile, config: AmyConfig, supervised: boo
   // loop waits instead, and a change to the config or the workflow is the
   // restart that mounts it.
   console.error(`${new Date().toISOString()} ${chat ? "only the chat runs" : "nothing runs"} until the workflow mounts${supervised ? "; a change to the config or the workflow restarts the loop" : ""}`);
-  return { mountProblem: assembled.problems.join("; "), ...chargedTo(config, profile, parts) };
+  return { mountProblem: assembled.problems.join("; "), linkable: linkableHarnesses(parts), ...chargedTo(config, profile, parts) };
 }
 
 /**
@@ -2385,7 +2385,7 @@ export async function updateCommand(
     const targets = forkTargets(home, Object.keys(profiles(loadConfig(home), home)), versionAfterUpdate(moving, everything, release?.version));
     if (check) return reportOnly(moving, pinned, targets);
 
-    return withForksMerged(runner, targets, () => moving.length === 0 ? nothingMoved(deps, pinned) : moveEverything(runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
+    return withForksMerged(runner, targets, () => moving.length === 0 ? nothingMoved(deps, pinned) : moveEverything(home, runner, where.plugins, installRoot, moving, deps, release === undefined ? undefined : {
       version: release.version,
       heldPast: new Set(everything.filter((one) => firstParty(one.name) && compareVersions(one.have, release.version) > 0).map((one) => one.name)),
     }));
@@ -2405,6 +2405,7 @@ export async function updateCommand(
  * of a CLI move: a refusal fails the update and rolls the CLI move back.
  */
 async function moveEverything(
+    home: string,
     runner: CommandRunner,
     pluginsRoot: string,
     installRoot: Root | undefined,
@@ -2442,6 +2443,9 @@ async function moveEverything(
     // and a rewrite that cannot happen is the update's failure. They are
     // written before the boot check, since a config whose chat names a skill
     // only that root held boots only once it is back.
+    //
+    // Kept first, so a release that does not boot takes away what only it shipped.
+    const putBack = keepSkills(home, (name) => harnesses().find((harness) => harness.name === name)?.skills);
     const rewrite = await rewriteSkillsOrRollBack(runner, pluginsRoot, installRoot, movedList.moved, deps);
     if (rewrite !== undefined) return rewrite;
 
@@ -2452,8 +2456,10 @@ async function moveEverything(
     if (!booted.ok) {
       reportUnbootable(booted.problems);
       await rollBackAll(runner, pluginsRoot, installRoot, movedList.moved);
-      // The skills written were the moved CLI's: the one installed again
-      // writes its own back, so none describe a CLI that did not stay.
+      // The skills written were the moved CLI's: they are put back as they
+      // were, a skill only it shipped taken away, and the one installed again
+      // writes its own over them, so none describe a CLI that did not stay.
+      putBack();
       if (deps.skillsInto().length === 0) console.error("\nthe rolled-back CLI could not rewrite its skills; run `amy skills --recorded`.");
       return 1;
     }

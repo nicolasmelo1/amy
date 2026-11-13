@@ -290,4 +290,18 @@ describe("the chat's skills are the effective ladder", () => {
     ].join("\n")))).toEqual({ claude: false });
     expect(harnessSkills(loadConfigFrom("/state", "workflows: {}\n"))).toEqual({});
   });
+
+  it("keeps a harnessSkills that is not a mapping as it was given, for the mount to refuse (A11)", async () => {
+    const { harnessSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills: true\n"))).toBe(true);
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills: [claude]\n"))).toEqual(["claude"]);
+    expect(harnessSkills(loadConfigFrom("/state", [
+      "harnessSkills:",
+      "  claude: true",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    harnessSkills: true",
+    ].join("\n")))).toBe(true);
+  });
 });

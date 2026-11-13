@@ -113,11 +113,11 @@ export interface ChatParts {
  * plugin's harness name: what `harnessSkills` may link from. Every one that
  * mounted, before anything the chat leaves out for its budget.
  */
-export function linkableHarnesses(mounted: Mounted): { name: string; skills: string }[] {
-  const contributed = [...(mounted.contributions.get(HARNESS_COLLECTION) ?? new Map<string, object>()).values()] as NamedHarness[];
+export function linkableHarnesses(parts: ChatParts): { name: string; skills: string }[] {
   const linkable = new Map<string, string>();
-  for (const rung of contributed) {
-    if (rung.cli.skillsDirectory && !linkable.has(rung.harness)) linkable.set(rung.harness, rung.cli.skillsDirectory);
+  for (const [key, rung] of parts.rungs) {
+    const skills = parts.harnesses.get(key)?.skillsDirectory;
+    if (skills && !linkable.has(rung.harness)) linkable.set(rung.harness, skills);
   }
   return [...linkable].map(([name, skills]) => ({ name, skills }));
 }
