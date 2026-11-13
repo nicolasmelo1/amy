@@ -1,5 +1,5 @@
 ---
-base: b14c78d6ff17ffbb893e208b1ef39741886788cc
+base: d3f76a652761f40d24ec1f8e67f83993d47aae83
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: ticket-to-qa hands the agent text other people wrote, verbatim beside its instructions, and the run that reads it may write: nothing tells the two apart" }
   - { id: S2, kind: code, ref: "examples/workflow-ticket-to-qa/src/agent-steps.ts", symbol: "bodyLines", said: "the ticket body joins every prompt as written, between the ticket line and the instructions" }
@@ -21,10 +21,14 @@ touches:
   - examples/workflow-ticket-to-qa/src/machine.ts
   - examples/workflow-ticket-to-qa/src/discussion.ts
   - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
+  - examples/workflow-ticket-to-qa/tests/machine.test.ts
   - examples/workflow-ticket-to-qa/tests/outside-text.property.test.ts
   - docs/start/security.md
+  - docs/development/the-gate.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/outside-text-scenario.sh
+  - registry/core.json
+  - registry/workflow-ticket-to-qa.json
 untouched:
   - packages/agent-kit/src/HarnessRelay.ts
 criteria:
