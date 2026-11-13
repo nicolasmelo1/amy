@@ -61,7 +61,7 @@ See [Workflows and profiles](../start/workflows-and-profiles.md).
 | [`amy remove`](#amy-remove) | Remove a workflow profile or a plugin, refusing what the machine would not survive |
 | [`amy run`](#amy-run) | Keep advancing until nothing is due |
 | [`amy setup`](#amy-setup) | Set the machine up: the harness, the workflow, the channels, one question at a time |
-| [`amy skills`](#amy-skills) | Install amy's skills into the harnesses on this machine |
+| [`amy skills`](#amy-skills) | Install amy's skills into ~/.amy/skills and the harnesses on this machine |
 | [`amy start`](#amy-start) | Start the loop under the machine's supervisor, which keeps it running |
 | [`amy status`](#amy-status) | Show where every piece of work stands and what the queue holds |
 | [`amy stop`](#amy-stop) | Stop the background loop; --all pulls the machine's handbrake |
@@ -168,6 +168,7 @@ amy brief write [options] <id> <section> [body]
 
 | Option | Default | What it does |
 | :-- | :-- | :-- |
+| `--from <file>` |  | read the answer from a file, which is how a body with newlines is written without a shell |
 | `--explains <ids>` |  | the work ids the brief explains, comma-separated; kept from the stored brief when omitted |
 
 ### `amy budget`
@@ -319,7 +320,7 @@ amy setup [options] [plugin]
 
 ### `amy skills`
 
-Install amy's skills into the harnesses on this machine
+Install amy's skills into ~/.amy/skills and the harnesses on this machine
 
 ```sh
 amy skills [options]
@@ -330,7 +331,7 @@ amy skills [options]
 | `--all` |  | every harness found, without asking |
 | `--harness <name>` |  | one harness by name, without asking |
 | `--dir <path>` |  | a directory, for a harness this does not know |
-| `--recorded` |  | rewrite into the harnesses `amy skills` wrote to before, and nothing else |
+| `--recorded` |  | rewrite into amy's own root and the harnesses `amy skills` wrote to before, and nothing else |
 
 ### `amy start`
 

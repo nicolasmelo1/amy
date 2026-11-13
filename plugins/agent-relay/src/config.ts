@@ -17,14 +17,20 @@ export const configSchema = {
   skills: {
     type: "record",
     description:
-      "which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {\"triage\": [\"/logion\"]}. A skill named here must be installed, or the mount is refused",
+      "which skills answer for a step, in the order they are tried, keyed by the workflow's action name: {\"triage\": [\"/logion\"]}. A step named `chat` is the conversation itself: those skills are the ones a message may start with, such as {\"chat\": [\"/amy-groom\"]}. A skill named here must be installed, or the mount is refused",
     default: {},
   },
   skillRoots: {
     type: "string[]",
     description:
-      "where installed skills are looked for. Empty means ~/.claude/skills, which is where the harness looks",
+      "where installed skills are looked for, after amy's own ~/.amy/skills. A harness's own directory is never looked in unless harnessSkills chooses it",
     default: [],
+  },
+  harnessSkills: {
+    type: "record",
+    description:
+      "which harnesses' own installed skills amy links into ~/.amy/skills at each run and tick, by the harness plugin's name: {\"claude\": true}. amy's own copy of a skill wins; false, or leaving a harness out, removes its links. A name no harness plugin mounted is refused at boot",
+    default: {},
   },
   budget: {
     type: "record",

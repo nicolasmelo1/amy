@@ -112,6 +112,7 @@ function derivedSlices(
       ladderByStep: agent.ladderByStep ?? {},
       budget: agent.budget ?? {},
       skills: config.skills,
+      harnessSkills: config.harnessSkills,
     },
     "@amykit/plugin-command-gate": {
       defaultBranch: workspace.defaultBranch,
