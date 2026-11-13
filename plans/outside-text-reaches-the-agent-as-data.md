@@ -1,5 +1,5 @@
 ---
-base: d91948702b111be2075c6fdb65488e8ebdd2044a
+base: b14c78d6ff17ffbb893e208b1ef39741886788cc
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: ticket-to-qa hands the agent text other people wrote, verbatim beside its instructions, and the run that reads it may write: nothing tells the two apart" }
   - { id: S2, kind: code, ref: "examples/workflow-ticket-to-qa/src/agent-steps.ts", symbol: "bodyLines", said: "the ticket body joins every prompt as written, between the ticket line and the instructions" }
