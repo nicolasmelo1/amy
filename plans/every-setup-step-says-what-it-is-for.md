@@ -22,6 +22,8 @@ sources:
   - { id: S19, kind: reference, ref: "https://core.telegram.org/bots/api-changelog", said: "Bot API 9.1 brought topics to private chats with a bot; 9.3 added has_topics_enabled to getMe; the owner turns the mode on in @BotFather's bot settings" }
   - { id: S20, kind: decision, said: "the Telegram setup gets its own step by step too, the way Hermes documents it. Decided 2026-11-12" }
   - { id: S21, kind: decision, said: "Telegram's steps: /newbot at t.me/BotFather; the token into ~/.amy/.env as TELEGRAM_BOT_TOKEN; topics on in BotFather or topics false; the user id from @userinfobot as operator; /start sent to the bot. Proposed 2026-11-12" }
+  - { id: S22, kind: reference, ref: "docs/design/telegram-is-a-conversation.md", said: "one getUpdates reader per token, a second gets 409 Conflict; a token another program polls cannot be shared, doctor says so from the 409, and the plugin wants its own bot" }
+  - { id: S23, kind: decision, said: "the guide also says the bot is amy's alone, gives getUpdates as the second way to the user id, checks has_topics_enabled with getMe, and ends with doctor, then start. Decided 2026-11-13" }
 touches:
   - packages/workflow-setup/src/asks.ts
   - packages/workflow-setup/src/ports/Catalog.ts
@@ -62,8 +64,9 @@ criteria:
   - { id: A7, statement: "Slack, Telegram, Linear and GitHub each ship a guide saying where to go, what to create, what to grant and where the secret is kept", proof: "deferred:test:scripts/docs/tests/plugin-readme.test.ts", sources: [S3, S8, S10, S12] }
   - { id: A8, statement: "the built CLI, in another process on fakes, walks setup to doctor; every ask it printed has its line, and the amy add line names exactly the packages mounted at the end", proof: "assertion:setup.every_step_says_what_it_is_for", sources: [S1, S2, S14] }
   - { id: A9, statement: "Telegram's guide lists, in order and each with its link: /newbot at @BotFather, the token into ~/.amy/.env as TELEGRAM_BOT_TOKEN, topics on or topics false, operator from @userinfobot, and /start sent to the bot", proof: "deferred:test:plugins/telegram/tests/guide.test.ts", sources: [S16, S17, S19, S20, S21] }
-  - { id: A10, statement: "each failing Telegram doctor check names the guide step that fixes it: a refused token, topics off, an operator the bot cannot reach yet, a chat that is not a person", proof: "deferred:test:plugins/telegram/tests/doctor.test.ts", sources: [S18, S21] }
+  - { id: A10, statement: "each failing Telegram doctor check names the guide step that fixes it: a refused token, a token another program polls, topics off, an operator the bot cannot reach yet, a chat that is not a person", proof: "deferred:test:plugins/telegram/tests/doctor.test.ts", sources: [S18, S21, S22] }
   - { id: A11, statement: "the built CLI, on a stand-in Bot API, walks setup choosing Telegram, prints its steps in order, and ends with doctor green once each is done", proof: "assertion:setup.telegram_is_set_up_from_its_steps", sources: [S20, S21] }
+  - { id: A12, statement: "Telegram's guide says the bot is amy's alone because a polled token answers 409, gives getUpdates' message.from.id beside @userinfobot, checks has_topics_enabled with getMe, and ends with doctor then start", proof: "deferred:test:plugins/telegram/tests/guide.test.ts", sources: [S22, S23] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:test:packages/cli/tests/add.test.ts" }
   - { mechanism: events-and-notifications, answer: n/a, why: "the Slack plugin only gains a manifest it prints; nothing it posts or reads changes" }
