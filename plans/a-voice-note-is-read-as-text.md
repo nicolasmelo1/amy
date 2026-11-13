@@ -20,7 +20,7 @@ sources:
   - { id: S17, kind: reference, ref: "https://github.com/ggml-org/whisper.cpp/releases", said: "each build release ships whisper-bin-x64.zip and whisper-bin-win-cpu-arm64.zip for Windows, and whisper-bin-ubuntu-x64.tar.gz and -arm64 for Linux" }
   - { id: S18, kind: reference, ref: "https://ffmpeg.org/download.html", said: "FFmpeg ships source only and links builds: Debian and Ubuntu packages, RPM Fusion, BtbN static builds, gyan.dev for Windows (winget install --id Gyan.FFmpeg -e), evermeet.cx for macOS" }
   - { id: S19, kind: reference, ref: "https://huggingface.co/ggerganov/whisper.cpp", said: "ggml models from tiny (75 MiB) to large-v3; base is 142 MiB; download-ggml-model.sh fetches resolve/main/ggml-<model>.bin; each has a published SHA" }
-  - { id: S20, kind: decision, said: "the plugin downloads its model itself, base by default and multilingual, into its state directory, and checks the published SHA; the binaries it never installs, it says how. Proposed 2026-11-13" }
+  - { id: S20, kind: decision, said: "nothing is installed by default: the plugin downloads and installs nothing, the model included; it shows what to install, from where, and how, and the person runs it. Decided 2026-11-13" }
   - { id: S21, kind: decision, said: "doctor and setup show only this machine's steps, chosen by its platform and architecture: macOS by Homebrew, Linux by Homebrew or the release tarball and the distro's ffmpeg, Windows by the release zip and winget. Proposed 2026-11-13" }
 touches:
   - packages/core/src/ports/Transcriber.ts
@@ -70,7 +70,7 @@ criteria:
   - { id: A6, statement: "the plugin converts the audio to 16 kHz mono 16-bit WAV, runs whisper-cli with the model and language without a shell, and returns the trimmed text; a failing command is named with its stderr", proof: "deferred:test:plugins/transcribe/tests/WhisperTranscriber.test.ts", sources: [S9, S12, S15] }
   - { id: A7, statement: "doctor checks ffmpeg and whisper-cli, found on the PATH or at a configured path, and the model, each failure naming the step that fixes it", proof: "deferred:test:plugins/transcribe/tests/plugin.test.ts", sources: [S9, S12, S21] }
   - { id: A9, statement: "for each of darwin, linux and win32 on x64 and arm64, the guide gives that machine's steps for whisper-cli and ffmpeg, each with its link, and no other platform's", proof: "deferred:test:plugins/transcribe/tests/guide.test.ts", sources: [S15, S16, S17, S18, S21] }
-  - { id: A10, statement: "setup downloads the chosen model into the plugin's state directory and keeps it only when its SHA matches; a mismatch or a failed download keeps no file and says why", proof: "deferred:test:plugins/transcribe/tests/model.test.ts", sources: [S19, S20] }
+  - { id: A10, statement: "the guide names the model, its URL, size and SHA, and this platform's command to download it; doctor accepts the file only when its SHA matches, and the plugin itself fetches nothing", proof: "deferred:test:plugins/transcribe/tests/model.test.ts", sources: [S19, S20] }
   - { id: A8, statement: "the built CLI, on a stand-in Bot API and a stand-in whisper-cli, answers a voice note sent in the chat from what it said", proof: "assertion:transcribe.a_voice_note_is_answered", sources: [S1, S12, S15] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the new port writes nothing; it reads a local file and returns text" }
@@ -81,12 +81,12 @@ guarantee:
 failures:
   - { step: transcribe, when: "ffmpeg or whisper-cli exits non-zero or the model is missing", goes_to: "the reply carries a line naming the file and the command that failed; the chat answers that it could not hear it" }
   - { step: transcribe, when: "the transcript is empty", goes_to: "the text says no words were heard, with the file kept" }
-  - { step: setup, when: "the model download fails or its SHA does not match", goes_to: "no model is kept, and the step says to run setup again or set model to a file of their own" }
+  - { step: doctor, when: "the model file is missing or its SHA does not match", goes_to: "FAIL naming the guide's model step; nothing is downloaded" }
   - { step: reading a voice note, when: "it is over the Bot API's 20 MB download limit", goes_to: "a line naming the file too large, as replies already say for any file" }
 cut:
   - "amy answering with a voice note (text to speech): another plugin, if asked"
   - "a hosted engine (OpenAI, Groq): another plugin mounting the same port (S11)"
-  - "installing whisper-cli or ffmpeg for the person: the plugin says how, by platform, and the person runs it"
+  - "installing or downloading anything for the person, the model included: the plugin says how, by platform, and the person runs it (S20)"
   - "a GPU build (CUDA, Metal tuning): the CPU build is the default; a configured path takes any other"
   - "the window's chat panel recording audio: once the window takes files"
   - "a voice note in a tracker comment: tracker comments carry no audio today"
