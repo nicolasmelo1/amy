@@ -29,9 +29,10 @@ const ENVELOPE = "external_data";
  * The markers that may not appear inside a body: this envelope's, and the
  * ones older prompts used. Case, surrounding whitespace and anything after
  * the name before the closing angle are ignored, because a marker with an
- * attribute is still a marker.
+ * attribute is still a marker. A marker left open, with no `>` before the
+ * line ends, is a marker too: a reader can start an envelope with it.
  */
-const MARKER = /<\s{0,8}\/{0,1}\s{0,8}(?:external_data|outside_text|untrusted_data|email_content|page_content)\b[^>]{0,200}>/gi;
+const MARKER = /<\s*\/?\s*(?:external_data|outside_text|untrusted_data|email_content|page_content)\b[^>\n]*(?:>|$)/gim;
 
 /** Whether one character hides or reorders what a reader sees: bidi controls, the marks that carry them, and tag characters. */
 function hidden(character: string): boolean {
@@ -53,8 +54,19 @@ function withoutHidden(text: string): string {
   return out;
 }
 
-/** Characters a marker is disguised with: zero-width joiners, BOM and the word joiner. */
-const INVISIBLE = /[\u180E\u200B-\u200D\u2060\uFEFF]/u;
+/** Code points a marker is disguised with: Unicode's default-ignorable characters a tag can carry. */
+const INVISIBLE = new Set([
+  0x00ad, 0x034f, 0x115f, 0x1160, 0x17b4, 0x17b5, 0x180b, 0x180c, 0x180d, 0x180e,
+  0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e,
+  0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0x2066, 0x2067, 0x2068, 0x2069,
+  0x206a, 0x206b, 0x206c, 0x206d, 0x206e, 0x206f, 0x3164, 0xfeff, 0xffa0,
+]);
+
+/** Whether one character may sit inside a marker without being read as part of it. */
+function invisible(character: string): boolean {
+  const point = character.codePointAt(0)!;
+  return INVISIBLE.has(point) || (point >= 0xfe00 && point <= 0xfe0f);
+}
 
 /**
  * Letters that read as the ASCII ones a marker is written with. Full-width
@@ -116,9 +128,15 @@ function skeletonOf(text: string): { text: string; at: number[] } {
     const folded = character.normalize("NFKC");
     const mapped = LOOK_ALIKE[folded] ?? folded;
     for (const one of mapped) {
-      if (INVISIBLE.test(one)) continue;
-      chars.push(one.toLowerCase());
-      at.push(index);
+      if (invisible(one)) continue;
+      const lower = one.toLowerCase();
+      // One entry per UTF-16 unit, so a match offset in the joined skeleton is
+      // an index into `at` even when a character is astral or lower-cases into
+      // two units.
+      for (let unit = 0; unit < lower.length; unit += 1) {
+        chars.push(lower[unit]!);
+        at.push(index);
+      }
     }
     index += character.length;
   }
@@ -179,8 +197,8 @@ export function outsideText(text: string, options: OutsideTextOptions): string {
   ].join("\n");
 }
 
-/** The first line of a prompt that carries an envelope. */
-const ENVELOPE_OPENS = `<${ENVELOPE}`;
+/** The shape outsideText writes on its own line; a mention of an envelope is not one. */
+const ENVELOPE_LINE = new RegExp(`^<${ENVELOPE} source="[^"]*">$`);
 
 /**
  * A prompt's lines, with the notice said once, immediately before the first
@@ -189,7 +207,8 @@ const ENVELOPE_OPENS = `<${ENVELOPE}`;
  */
 export function withOutsideNotice(lines: readonly string[]): string[] {
   if (lines.some((line) => line === OUTSIDE_TEXT_NOTICE)) return [...lines];
-  const first = lines.findIndex((line) => line.includes(ENVELOPE_OPENS));
+  // An envelope is several lines; only its first one says what it is.
+  const first = lines.findIndex((line) => ENVELOPE_LINE.test(line.split("\n", 1)[0]!));
   if (first < 0) return [...lines];
   return [...lines.slice(0, first), OUTSIDE_TEXT_NOTICE, ...lines.slice(first)];
 }
