@@ -1,5 +1,5 @@
 ---
-base: d91948702b111be2075c6fdb65488e8ebdd2044a
+base: af5864fcf44077836a3c81ce473f86318dd4cc88
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/usage.ts", symbol: "oauthToken", said: "the reader takes Claude Code's OAuth token from CLAUDE_CODE_OAUTH_TOKEN, ~/.claude/.credentials.json or the macOS Keychain through security find-generic-password" }
   - { id: S2, kind: code, ref: "plugins/claude/src/usage.ts", symbol: "read", said: "it then sends that token with curl to api.anthropic.com/api/oauth/usage under an oauth beta header" }
