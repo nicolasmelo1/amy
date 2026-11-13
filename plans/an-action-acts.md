@@ -4,7 +4,7 @@ sources:
   - { id: S1, kind: decision, said: "/action means perform something: any change the harness can make, editing code or dropping a database, not only amy commands; today's read-only /action is a bug. Decided 2026-11-12" }
   - { id: S2, kind: code, ref: "packages/core/src/chat/desk.ts", symbol: "readOnlyAnswer", said: "every chat turn, /action included, asks its harness with readOnly true, and promptFor tells it the turn is read-only" }
   - { id: S3, kind: reference, ref: "docs/design/amy-answers-in-the-chat.md", said: "S12, Proposed 2026-11-09: under /action too the harness runs read-only, and its answer names amy commands from a fixed list" }
-  - { id: S4, kind: reference, ref: "plans/a-skill-is-asked-for-in-the-chat.md", said: "A7: the harness still runs read-only in a skill turn, and what acts is the amy commands its answer names" }
+  - { id: S4, kind: reference, ref: "docs/design/a-skill-is-asked-for-in-the-chat.md", said: "A7: the harness still runs read-only in a skill turn, and what acts is the amy commands its answer names" }
   - { id: S5, kind: code, ref: "packages/cli/src/index.ts", symbol: "chatReader", said: "a chat turn runs in the profile's project root, or in amy's home when the profile has no project" }
   - { id: S6, kind: code, ref: "plugins/claude/src/config.ts", symbol: "permissionMode", said: "a writing Claude run goes under acceptEdits, auto or bypassPermissions; a read-only one under plan" }
   - { id: S7, kind: reference, ref: "https://code.claude.com/docs/en/permission-modes", said: "acceptEdits runs edits and common filesystem commands only; under -p a call needing approval is denied; auto sends shell commands to a classifier; bypassPermissions runs everything" }
@@ -50,4 +50,4 @@ exit: "in Slack, /action add a line to README.md edits the file in the project r
 ---
 # An action acts
 
-`/action` runs today with the harness read-only: all it can do is name amy commands. The person meant "do it": edit code, run a migration, drop a database. This plan lets an action turn write under the harness's own writing mode and records each one. It supersedes A7 of *a skill is asked for in the chat* once that lands.
+`/action` runs today with the harness read-only: all it can do is name amy commands. The person meant "do it": edit code, run a migration, drop a database. This plan lets an action turn write under the harness's own writing mode and records each one. It supersedes A7 of *a skill is asked for in the chat*, now delivered.

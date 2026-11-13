@@ -97,6 +97,46 @@ export function configuredAutoUpdateProblems(config: AmyConfig): string[] {
   return autoUpdateProblems(config.autoUpdateSource === undefined ? config.autoUpdate : config.autoUpdateSource);
 }
 
+/**
+ * The skills the chat may start with: the `skills` ladder's `chat` step, and
+ * nothing else.
+ *
+ * The relay checks the same ladder at boot, so a name here is a name that
+ * mounted; this read is for the chat, which asks for a skill by name and needs
+ * to know which ones a message may be answered with.
+ */
+export function chatSkills(config: AmyConfig): string[] {
+  // The operator's own slice wins every field it wrote, exactly as mounting
+  // reads it: a ladder written under the relay's settings is the effective
+  // one, and the top-level `skills` is only the default it replaces.
+  const given = config.plugins["@amykit/plugin-agent-relay"] as { skills?: unknown } | undefined;
+  const ladder = isRecord(given?.skills) ? given.skills : config.skills;
+  const chat = ladder.chat;
+  if (!Array.isArray(chat)) return [];
+  return chat.filter((name) => typeof name === "string").map((name) => name.replace(/^\//, ""));
+}
+
+/**
+ * Which harnesses' own skills are linked into amy's root, by the name of the
+ * harness's plugin, as mounting reads it: the relay's own slice wins over the
+ * top-level setting. The relay checks the names against the harnesses that
+ * mounted, so what is read here already booted.
+ */
+export function harnessSkills(config: AmyConfig): unknown {
+  const given = config.plugins["@amykit/plugin-agent-relay"] as { harnessSkills?: unknown } | undefined;
+  return given?.harnessSkills !== undefined ? given.harnessSkills : config.harnessSkills;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The skill roots the relay was given, when the machine's config names any. */
+export function configuredSkillRoots(config: AmyConfig): string[] {
+  const held = config.plugins["@amykit/plugin-agent-relay"] as { skillRoots?: unknown } | undefined;
+  return Array.isArray(held?.skillRoots) ? held.skillRoots.filter((one): one is string => typeof one === "string") : [];
+}
+
 export interface AmyConfig {
   /**
    * The workflows this install can drive, by the name typed after
@@ -177,6 +217,12 @@ export interface AmyConfig {
    * workflow's action name. A skill named here has to be installed.
    */
   skills: Record<string, string[]>;
+  /**
+   * Which harnesses' own installed skills amy links into its skill root, by
+   * the name of the harness's plugin: `{ claude: true }`. Linked at each run
+   * and tick; `false`, or left out, removes the links.
+   */
+  harnessSkills: Record<string, unknown>;
   notify: NotifyConfig;
   /**
    * One slice per plugin, keyed by package name.
@@ -200,6 +246,7 @@ export const DEFAULT_CONFIG: AmyConfig = {
   maxItemAttempts: 5,
   agent: {},
   skills: {},
+  harnessSkills: {},
   // A tracker comment is for a question that needs a person, and the workflow
   // posts those itself — announcements are the operator's channels' job.
   notify: { hermes: null, inbox: true },
@@ -314,6 +361,11 @@ export const machineSchema: ConfigSchema = {
   skills: {
     type: "record",
     description: "which skills answer for a step, in the order they are tried, keyed by the workflow's action name",
+    default: {},
+  },
+  harnessSkills: {
+    type: "record",
+    description: "which harnesses' own installed skills are linked into ~/.amy/skills at each run and tick, by the harness plugin's name: {\"claude\": true}. false, or left out, removes the links",
     default: {},
   },
   "notify.hermes": {
@@ -445,6 +497,9 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
     ...autoUpdateFrom(parsed),
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
+    // Kept as given: a value that is not a mapping is the relay's to refuse at
+    // the mount, never read as every harness turned off.
+    harnessSkills: parsed.harnessSkills ?? {},
     plugins: parsed.plugins ?? {},
     agent: { ...DEFAULT_CONFIG.agent, ...(parsed.agent ?? {}) },
     // Only a boolean true charges the chat; anything else is refused by configuredChatProblems.
@@ -565,9 +620,9 @@ agent:
 
 # Who does each step. A step with no entry is done by the agent in amy's own
 # words, which is every step until you say otherwise. A skill named here must
-# be installed under ~/.claude/skills, or the mount is refused at boot: a
-# ladder that quietly means less than it says would first show up as a ticket
-# escalating for no reason.
+# be installed under ~/.amy/skills or a skillRoots entry, or the mount is
+# refused at boot: a ladder that quietly means less than it says would first
+# show up as a ticket escalating for no reason.
 #
 # The skills are tried in order, and each one is tried across the harness
 # ladder above before the next gets a turn. Only the three steps an agent
@@ -575,6 +630,12 @@ agent:
 # skills:
 #   address-threads: [/northwind-code-review, /logion]
 #   triage: [/logion]
+
+# A harness's own installed skills, linked into ~/.amy/skills at each run and
+# tick, by the name of the harness's plugin. amy's own copy of a skill wins;
+# false, or leaving a harness out, removes its links.
+# harnessSkills:
+#   claude: true
 
 # Where the machine reaches you. It needs at least one of these.
 #

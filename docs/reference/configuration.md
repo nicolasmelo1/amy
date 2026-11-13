@@ -35,6 +35,7 @@ against the schema it declares, and the plugin reads them back typed by it:
 | `maxItemAttempts` | `number` | `5` |  |
 | `agent` | `{ model?: string; /** Model tiers offered to the relay, cheapest first. */ models?: string[]; /** * Which contributed agents to try, in order, such as * `[claude:sonnet, claude:opus, codex:gpt-5]`. Empty means every agent * that was contributed, in mounting order. * * Naming a harness here is also what mounts it, so a ladder is the one * place an operator says which harnesses they have. */ ladder?: string[]; /** * A ladder for one step, keyed by the workflow's action name, overriding * the one above. * * Reading a ticket to decide whether it is clear enough to start is not * the same job as writing the change, and one list for both means paying * the expensive model to do the cheap step. A name here mounts its * harness exactly as a name in `ladder` does. */ ladderByStep?: Record<string, string[]>; reviewerHints?: Record<string, string>; timeoutMs?: number; /** * What the agents may spend, per window. Read by the relay, which is the * only thing here that spends one. Shape checked at boot, not here. */ budget?: Record<string, unknown>; }` | `{}` |  |
 | `skills` | `Record<string, string[]>` | `{}` | Which skills answer for a step, in the order they are tried, keyed by the workflow's action name. A skill named here has to be installed. |
+| `harnessSkills` | `Record<string, unknown>` | `{}` | Which harnesses' own installed skills amy links into its skill root, by the name of the harness's plugin: `{ claude: true }`. Linked at each run and tick; `false`, or left out, removes the links. |
 | `notify` | `NotifyConfig` | `{ hermes: null, inbox: true }` |  |
 | `plugins` | `Record<string, unknown>` | `{}` | One slice per plugin, keyed by package name. |
 
@@ -173,9 +174,9 @@ agent:
 
 # Who does each step. A step with no entry is done by the agent in amy's own
 # words, which is every step until you say otherwise. A skill named here must
-# be installed under ~/.claude/skills, or the mount is refused at boot: a
-# ladder that quietly means less than it says would first show up as a ticket
-# escalating for no reason.
+# be installed under ~/.amy/skills or a skillRoots entry, or the mount is
+# refused at boot: a ladder that quietly means less than it says would first
+# show up as a ticket escalating for no reason.
 #
 # The skills are tried in order, and each one is tried across the harness
 # ladder above before the next gets a turn. Only the three steps an agent
@@ -183,6 +184,12 @@ agent:
 # skills:
 #   address-threads: [/northwind-code-review, /logion]
 #   triage: [/logion]
+
+# A harness's own installed skills, linked into ~/.amy/skills at each run and
+# tick, by the name of the harness's plugin. amy's own copy of a skill wins;
+# false, or leaving a harness out, removes its links.
+# harnessSkills:
+#   claude: true
 
 # Where the machine reaches you. It needs at least one of these.
 #

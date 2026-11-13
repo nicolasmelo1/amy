@@ -16,6 +16,13 @@ export interface Kept {
   generation: number;
   /** The harness `/harness` chose; unset, the default answers. */
   harness?: string;
+  /**
+   * The skill this conversation was started with, by the name the message
+   * wrote after a slash. A thread that starts with a skill keeps it: every
+   * later message is answered with the same one lent and acting, until
+   * `/new` starts another conversation.
+   */
+  skill?: string;
   turns: ChatTurn[];
 }
 

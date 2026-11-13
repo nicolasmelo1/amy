@@ -252,3 +252,56 @@ describe("the chat block", () => {
     expect(configuredChatProblems(loadConfigFrom("/state", "retentionDays: 7\n"))).toEqual([]);
   });
 });
+
+describe("the chat's skills are the effective ladder", () => {
+  it("reads the step from the machine's ladder", async () => {
+    const { chatSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(chatSkills(loadConfigFrom("/state", "skills:\n  chat: [/amy-groom, amy-workflow]\n"))).toEqual(["amy-groom", "amy-workflow"]);
+    expect(chatSkills(loadConfigFrom("/state", "skills:\n  triage: [/logion]\n"))).toEqual([]);
+    expect(chatSkills(loadConfigFrom("/state", "retentionDays: 7\n"))).toEqual([]);
+  });
+
+  it("lets the relay's own slice win, as mounting does", async () => {
+    const { chatSkills, loadConfigFrom } = await import("../src/config.js");
+    const config = loadConfigFrom("/state", [
+      "skills:",
+      "  chat: [/amy-groom]",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    skills:",
+      "      chat: [/amy-workflow]",
+    ].join("\n"));
+
+    expect(chatSkills(config)).toEqual(["amy-workflow"]);
+  });
+
+  it("reads which harnesses' skills are linked, the relay's own slice winning (A10)", async () => {
+    const { harnessSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills:\n  claude: true\n  codex: false\n"))).toEqual({ claude: true, codex: false });
+    expect(harnessSkills(loadConfigFrom("/state", [
+      "harnessSkills:",
+      "  claude: true",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    harnessSkills:",
+      "      claude: false",
+    ].join("\n")))).toEqual({ claude: false });
+    expect(harnessSkills(loadConfigFrom("/state", "workflows: {}\n"))).toEqual({});
+  });
+
+  it("keeps a harnessSkills that is not a mapping as it was given, for the mount to refuse (A11)", async () => {
+    const { harnessSkills, loadConfigFrom } = await import("../src/config.js");
+
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills: true\n"))).toBe(true);
+    expect(harnessSkills(loadConfigFrom("/state", "harnessSkills: [claude]\n"))).toEqual(["claude"]);
+    expect(harnessSkills(loadConfigFrom("/state", [
+      "harnessSkills:",
+      "  claude: true",
+      "plugins:",
+      "  \"@amykit/plugin-agent-relay\":",
+      "    harnessSkills: true",
+    ].join("\n")))).toBe(true);
+  });
+});

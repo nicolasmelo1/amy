@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { ChatAction, ChatActOutcome, ChatCommandSpec, CommandRunner, specOf, takeLock } from "@amykit/core";
+import { Asked, ChatAction, ChatActOutcome, ChatCommandSpec, ChatProgress, CommandRunner, NamedCommand, specOf, takeLock } from "@amykit/core";
 
 /**
  * The commands an answer may name under `/action`, as the command line
@@ -20,13 +20,19 @@ export const CHAT_COMMANDS: readonly ChatCommandSpec[] = [
   { words: ["config", "apply"], summary: "write the config.yaml block beside it: shown as a diff, written only if it mounts" },
   { words: ["config", "explain"], args: "[plugin]", summary: "what a plugin's settings are" },
   { words: ["plugin", "list"], summary: "what is mounted, and what is not" },
-  { words: ["add"], args: "<spec>", summary: "add a workflow or a plugin: install it, mount it, and check the machine boots" },
-  { words: ["remove"], args: "<spec> [--keep-state]", summary: "remove a workflow profile or a plugin, refusing what the machine would not survive" },
+  { words: ["add"], args: "<spec>", flags: { "--fork": false, "--package": false, "--to": true }, summary: "add a workflow or a plugin: install it, mount it, and check the machine boots" },
+  { words: ["remove"], args: "<spec>", flags: { "--keep-state": false, "--yes": false }, summary: "remove a workflow profile or a plugin, refusing what the machine would not survive" },
   { words: ["workflow", "list"], summary: "the workflows this machine drives" },
-  { words: ["brief", "sections"], summary: "the sections the workflow's brief asks for, in the order grooming asks them" },
+  { words: ["brief", "sections"], flags: { "--json": false }, summary: "the sections the workflow's brief asks for, in the order grooming asks them" },
   { words: ["brief", "show"], args: "<id>", summary: "a brief as the workflow keeps it" },
-  { words: ["brief", "write"], args: "<id> <section> \"<answer>\"", summary: "answer one section of a brief, through the workflow's brief port" },
-  { words: ["brief", "check"], args: "<id>", summary: "whether a brief is ready, and the next section to ask" },
+  {
+    words: ["brief", "write"],
+    args: "<id> <section>",
+    flags: { "--explains": true, "--from": true },
+    blocks: ["--from"],
+    summary: "answer one section of a brief, through the workflow's brief port, from the block `--from` names",
+  },
+  { words: ["brief", "check"], flags: { "--json": false }, args: "<id>", summary: "whether a brief is ready, and the next section to ask" },
 ];
 
 /** What acting needs of the process around it, so a test can be any process. */
@@ -43,6 +49,8 @@ export interface ChatActor {
   readonly unsupervised?: string;
   /** Ends this loop for its supervisor to start the next one; `amy stop` too. */
   readonly exit: (how: "restart" | "stop") => Promise<void>;
+  /** Where a block an answer carries is written so a command can read it as a file. */
+  readonly blocks?: string;
   readonly pid: number;
   readonly env?: Record<string, string>;
 }
@@ -58,36 +66,127 @@ export function chatAct(actor: ChatActor): (action: ChatAction) => Promise<ChatA
   return async ({ asked, progress, place, running, source }) => {
     const said: string[] = [];
     for (const [index, command] of asked.commands.entries()) {
-      const spec = specOf(command, CHAT_COMMANDS);
-      const name = spec?.words.join(" ") ?? command.argv[0];
-      if (name === "config apply") {
-        said.push(await applyConfig(actor, asked.blocks.get("config.yaml"), (line) => progress.line(line), running));
-        continue;
-      }
       // A stop or an accepted restart ends the batch: nothing after it can fail and lose it.
-      const lifecycle = name === "restart"
-        ? await restartFromChat(actor, place, source, (line) => progress.line(line))
-        : name === "stop"
-          ? { text: "Stopping this loop once this is said. Nothing starts it again until `amy start`.", after: () => actor.exit("stop") }
-          : undefined;
-      if (lifecycle) {
-        said.push(lifecycle.text);
-        if (!lifecycle.after) continue;
-        running();
-        const left = asked.commands.slice(index + 1).map((one) => `\`${one.line}\``);
-        if (left.length > 0) said.push(`Not run, as the loop is ending: ${left.join(", ")}.`);
-        return { text: said.join("\n\n"), after: lifecycle.after };
-      }
-      await progress.line(`Running amy ${command.argv.join(" ")}…`);
-      running();
-      const result = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, ...command.argv], {
-        timeoutMs: 10 * 60 * 1000,
-        ...(actor.env ? { env: actor.env } : {}),
-      });
-      said.push(`amy ${command.argv.join(" ")}: ${result.ok ? "done" : `failed (exit ${result.exitCode})`}${fenced(`${result.stdout}\n${result.stderr}`)}`);
+      const ran = await runOne(actor, command, asked, { progress, place, source, running });
+      said.push(ran.text);
+      if (!ran.end) continue;
+      const left = asked.commands.slice(index + 1).map((one) => `\`${one.line}\``);
+      if (left.length > 0) said.push(`Not run, as the loop is ending: ${left.join(", ")}.`);
+      return { text: said.join("\n\n"), after: ran.end };
     }
     return { text: said.join("\n\n") };
   };
+}
+
+/** What one command of a turn needs of the place it was asked in. */
+interface TurnWhere {
+  readonly progress: ChatProgress;
+  readonly place: string;
+  readonly source?: string;
+  /** Said the moment something with an effect is about to run. */
+  readonly running: () => void;
+}
+
+/** One command, as it ran: what to say, and what ends the loop once it is said. */
+interface RanCommand {
+  readonly text: string;
+  readonly end?: () => Promise<void>;
+}
+
+/** One command of the batch, whether it is a special one or amy's own with arguments. */
+async function runOne(actor: ChatActor, command: NamedCommand, asked: Asked, where: TurnWhere): Promise<RanCommand> {
+  const spec = specOf(command, CHAT_COMMANDS);
+  const name = spec?.words.join(" ") ?? command.argv[0];
+  const line = (text: string) => where.progress.line(text);
+
+  if (name === "config apply") return { text: await applyConfig(actor, asked.blocks.get("config.yaml"), line, where.running) };
+  if (name === "restart") return handingOver(await restartFromChat(actor, where.place, where.source, line), where.running);
+  if (name === "stop") {
+    where.running();
+    return { text: "Stopping this loop once this is said. Nothing starts it again until `amy start`.", end: () => actor.exit("stop") };
+  }
+
+  await line(`Running amy ${command.argv.join(" ")}…`);
+  // `--from <block>` names a block of this answer: amy reads a file, so
+  // the block is written to one for the length of this command. It is
+  // written before the turn is marked running: a block that cannot be
+  // written ran nothing, and the turn is asked again.
+  const prepared = withBlocks(actor, command.argv, spec, asked.blocks);
+  if ("refused" in prepared) return { text: prepared.refused };
+  try {
+    where.running();
+    const result = await actor.runner.run(actor.amy[0]!, [...actor.amy.slice(1), "--workflow", actor.workflow, ...prepared.argv], {
+      timeoutMs: 10 * 60 * 1000,
+      ...(actor.env ? { env: actor.env } : {}),
+    });
+    return { text: `amy ${command.argv.join(" ")}: ${result.ok ? "done" : `failed (exit ${result.exitCode})`}${fenced(`${result.stdout}\n${result.stderr}`)}` };
+  } finally {
+    for (const file of prepared.files) fs.rmSync(file, { force: true });
+  }
+}
+
+/** An accepted restart: said, then handed to the supervisor once the answer is out. */
+function handingOver(outcome: ChatActOutcome, running: () => void): RanCommand {
+  if (!outcome.after) return { text: outcome.text };
+  running();
+  return { text: outcome.text, end: outcome.after };
+}
+
+/**
+ * One command line with every `--from <block>` standing for a file that holds
+ * that block's body.
+ *
+ * A chat answer is read one line per command, so a body with a newline in it
+ * cannot be one of its arguments; the block beside the commands is. The files
+ * are named by this turn and removed once the command has run.
+ */
+function withBlocks(
+  actor: ChatActor,
+  argv: readonly string[],
+  spec: ChatCommandSpec | undefined,
+  blocks: Asked["blocks"],
+): { argv: string[]; files: string[] } | { refused: string } {
+  const named = spec?.blocks ?? [];
+  const files: string[] = [];
+  if (named.length === 0) return { argv: [...argv], files };
+
+  const rewritten: string[] = [];
+  try {
+    return written(actor, argv, named, blocks, files, rewritten);
+  } catch (error) {
+    for (const file of files) fs.rmSync(file, { force: true });
+    throw error;
+  }
+}
+
+/** The rewrite itself, recording each file in `files` as it is written so a failure part way removes them. */
+function written(
+  actor: ChatActor,
+  argv: readonly string[],
+  named: readonly string[],
+  blocks: Asked["blocks"],
+  files: string[],
+  rewritten: string[],
+): { argv: string[]; files: string[] } | { refused: string } {
+  for (let at = 0; at < argv.length; at += 1) {
+    const token = argv[at]!;
+    rewritten.push(token);
+    if (!named.includes(token)) continue;
+    const name = argv[at + 1];
+    const body = name === undefined ? undefined : blocks.get(name);
+    if (name === undefined || body === undefined) {
+      for (const file of files) fs.rmSync(file, { force: true });
+      return { refused: `amy ${argv.join(" ")}: \`${token}${name === undefined ? "" : ` ${name}`}\` names a block this answer does not carry, so nothing ran.` };
+    }
+    const directory = actor.blocks ?? path.join(path.dirname(actor.config), "chat", "blocks");
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    const file = path.join(directory, `${randomUUID()}-${name}`);
+    fs.writeFileSync(file, body, { mode: 0o600 });
+    files.push(file);
+    rewritten.push(file);
+    at += 1;
+  }
+  return { argv: rewritten, files };
 }
 
 /**

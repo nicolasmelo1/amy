@@ -311,3 +311,18 @@ describe("usage mapping", () => {
     expect(tokensOfTurn({ status: "completed", items: [] })).toBeUndefined();
   });
 });
+
+describe("where the harness's own skills are (A10)", () => {
+  it("says CODEX_HOME's skills, ~/.codex/skills when it is unset", () => {
+    const before = process.env.CODEX_HOME;
+    try {
+      delete process.env.CODEX_HOME;
+      expect(new CodexHarness(new ScriptedRunner()).skillsDirectory).toBe(path.join(os.homedir(), ".codex", "skills"));
+      process.env.CODEX_HOME = "/elsewhere/codex";
+      expect(new CodexHarness(new ScriptedRunner()).skillsDirectory).toBe(path.join("/elsewhere/codex", "skills"));
+    } finally {
+      if (before === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = before;
+    }
+  });
+});

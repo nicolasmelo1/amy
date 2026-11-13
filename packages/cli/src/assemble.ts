@@ -108,6 +108,20 @@ export interface ChatParts {
   readonly budget?: Budget;
 }
 
+/**
+ * The mounted harnesses whose plugins say where their own skills are, by the
+ * plugin's harness name: what `harnessSkills` may link from. Every one that
+ * mounted, before anything the chat leaves out for its budget.
+ */
+export function linkableHarnesses(parts: ChatParts): { name: string; skills: string }[] {
+  const linkable = new Map<string, string>();
+  for (const [key, rung] of parts.rungs) {
+    const skills = parts.harnesses.get(key)?.skillsDirectory;
+    if (skills && !linkable.has(rung.harness)) linkable.set(rung.harness, skills);
+  }
+  return [...linkable].map(([name, skills]) => ({ name, skills }));
+}
+
 /** The chat's parts of a mount that came up. */
 export function chatPartsOf(mounted: Mounted): ChatParts {
   const conversation = mounted.ports.get("conversation") as Conversation | undefined;

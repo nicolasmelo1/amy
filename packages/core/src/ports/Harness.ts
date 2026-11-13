@@ -65,5 +65,23 @@ export interface AskContext {
  */
 export interface Harness {
   readonly name: string;
+  /**
+   * Whether this harness can be handed a skill by place, as `AskContext.skill`
+   * asks.
+   *
+   * A harness whose CLI reads skills from its own home and offers no way to
+   * add one leaves this unset, and a turn addressed to a skill is refused on
+   * it rather than acting without the method it was told to follow.
+   */
+  readonly lendsSkill?: boolean;
+  /**
+   * Where this harness's own installed skills are, one directory per skill
+   * holding its `SKILL.md`, as its plugin knows it.
+   *
+   * Read when the config sets `harnessSkills.<name>: true`: amy links each of
+   * them into its own skill root for the run. A harness that leaves this unset
+   * cannot be chosen there.
+   */
+  readonly skillsDirectory?: string;
   ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply>;
 }

@@ -11,7 +11,7 @@ sources:
   - { id: S8, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "mod+k opens an ask about the selection; an ask writes nothing; an ask about a record runs in that record's worktree; asks are kept one file per conversation" }
   - { id: S9, kind: reference, ref: "plans/an-action-acts.md", said: "an action turn asks its harness to write under its configured writing mode, and is recorded as chat.action" }
   - { id: S10, kind: code, ref: "packages/ui/frame.yaml", said: "the frame is closed and hash-locked: regions, actions, keys and slots are declared there; the palette opened by mod+k holds the ask" }
-  - { id: S11, kind: reference, ref: "plans/a-skill-is-asked-for-in-the-chat.md", said: "the skills the chat may run are the skills ladder under the step chat, installed in ~/.amy/skills" }
+  - { id: S11, kind: reference, ref: "docs/design/a-skill-is-asked-for-in-the-chat.md", said: "the skills the chat may run are the skills ladder under the step chat, installed in ~/.amy/skills" }
   - { id: S12, kind: code, ref: "packages/cli/skills/amy-workflow/SKILL.md", said: "amy ships a skill that designs a workflow by asking one question at a time; none for a plugin" }
   - { id: S13, kind: reference, ref: "docs/guides/write-a-plugin.md", said: "how a plugin is written, contributed and installed, the material a plugin skill reads" }
   - { id: S14, kind: decision, said: "the button and mod+k open one chat: the same conversations, files and harness choice as the ask. Proposed 2026-11-12" }
