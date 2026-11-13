@@ -10,7 +10,7 @@ sources:
   - { id: S7, kind: code, ref: "plugins/command/src/plugin.ts", said: "plugin-command mounts the commands port and the run-command action, and runs only what its allow list names; a workflow passes arguments, never the line" }
   - { id: S8, kind: code, ref: "examples/workflow-errand/src/plugin.ts", symbol: "captureTask", said: "errand.capture-task writes a task and enqueues it, declares writes: [queue], and answers POST /errand/tasks" }
   - { id: S9, kind: reference, ref: "plans/a-person-unblocks-a-proof-from-anywhere.md", said: "tailscale serve shares a port with the tailnet's devices only; funnel is the public one" }
-  - { id: S10, kind: reference, ref: "https://github.com/nicolasmelo1/amy/pull/217", said: "the plan Outside text reaches the agent as data, not yet on main: text the operator did not write reaches a prompt inside one closed envelope" }
+  - { id: S10, kind: reference, ref: "plans/outside-text-reaches-the-agent-as-data.md", said: "text the operator did not write reaches a prompt inside one closed envelope" }
   - { id: S11, kind: decision, said: "a send names a peer and an operation from that peer's allow list in the sender's config; the peer runs it only when it writes only the queue and its owner granted that machine send-work. Proposed 2026-11-12" }
   - { id: S12, kind: decision, said: "a send is signed with the sender's install key over the body, the peer, a nonce and a time; the receiver refuses a nonce it has seen or a time five minutes off. Proposed 2026-11-12" }
   - { id: S13, kind: decision, said: "peer.sent, peer.received and peer.refused name both machines; peer.received is published, so a workflow's [*] edge may name it. Proposed 2026-11-12" }
