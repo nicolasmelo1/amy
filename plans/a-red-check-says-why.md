@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "ChecksView", said: "what the forge's checks say is a state and the commit they ran on; nothing names a check, a link or why it failed" }
   - { id: S2, kind: code, ref: "plugins/github/src/GitHubCodeHost.ts", symbol: "toChecks", said: "the GitHub host asks statusCheckRollup for its state only, never its contexts" }

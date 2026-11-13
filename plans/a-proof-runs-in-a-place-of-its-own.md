@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: proof resources are seats; at capacity one a second proof waits (`waiting for a seat on api, app`), so proofs run one at a time on the machine" }
   - { id: S2, kind: friction, said: "2026-11-12: a project's resource script boots its API and app on fixed ports 3001 and 3000 from one checkout under ~/.amy/prove, seeds one local database, and refuses when a port is taken, so it collides with the person's dev servers" }

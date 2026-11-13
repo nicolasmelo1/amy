@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "the window ships with nobody able to extend it, yet a window any plugin can rearrange is unrecognisable after the third install; so the frame is fixed and the places a plugin can fill are named" }
   - { id: S2, kind: reference, ref: "docs/concepts/plugins.md", said: "registry.contribute(collection, name, impl) is how a plugin adds to what another reads, and mount() refuses a collision by name; the window is collections, not a new plugin model" }

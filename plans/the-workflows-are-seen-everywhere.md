@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: reference, ref: "plans/a-record-is-seen-everywhere.md", said: "a chosen record is its workflow's nodes with where it is; this slice draws the workflow chosen with no record, and Settings" }
   - { id: S2, kind: decision, said: "choosing only the workflow in the breadcrumb shows the workflow alone, as if to configure it: its states as nodes, no record's data on them. Decided 2026-11-12" }

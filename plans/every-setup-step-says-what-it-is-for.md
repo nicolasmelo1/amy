@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: setup walks steps one, two and three for each thing; somebody who does not know what each workflow does is lost, and following the error messages alone is confusing" }
   - { id: S2, kind: decision, said: "nothing is installed by default, but setup shows the one command that installs every plugin each workflow of the project needs. Decided 2026-11-12" }

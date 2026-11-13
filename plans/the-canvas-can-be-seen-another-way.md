@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: reference, ref: "plans/the-window-takes-plugins.md", said: "a plugin fills a node, a sidebar, a corner icon, a ⋯ or a menu bar row; none lets a person see the whole canvas another way" }
   - { id: S2, kind: decision, said: "the canvas's nodes can be laid out top to bottom or left to right, and the canvas can be switched to a Kanban of every record's state. Decided 2026-11-12" }

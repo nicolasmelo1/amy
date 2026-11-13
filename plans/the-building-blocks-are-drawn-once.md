@@ -1,5 +1,5 @@
 ---
-base: 42e8103c7fbc8ca82efbeeddb439bb310f72e042
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "a Composition page shows each building block amy has with a pictogram and two lines; it feeds the guided setup, the chat's create-workflow tab and the nodes' pictograms. Decided 2026-11-12" }
   - { id: S2, kind: reference, ref: "https://joydle.github.io/borg/", said: "Borg's Composition grid: one card per node type with a pictogram, its call and two lines; sequencing, fan-out, control and recovery as filters" }

@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "after the harness step, setup branches: an agent guides the person through configuring a project, or the current step-by-step walk, kept. Decided 2026-11-12" }
   - { id: S2, kind: decision, said: "the agent fills the person with questions and configures a project, not a workflow; opinionated: the work first, then how grooming starts it, then how the result is proven. Decided 2026-11-12" }

@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "/action means perform something: any change the harness can make, editing code or dropping a database, not only amy commands; today's read-only /action is a bug. Decided 2026-11-12" }
   - { id: S2, kind: code, ref: "packages/core/src/chat/desk.ts", symbol: "readOnlyAnswer", said: "every chat turn, /action included, asks its harness with readOnly true, and promptFor tells it the turn is read-only" }

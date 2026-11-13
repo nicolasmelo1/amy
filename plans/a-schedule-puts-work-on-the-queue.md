@@ -1,11 +1,11 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "a cron only puts work on the queue; almost every harness has one, and a state machine should be started by one too. Decided 2026-11-12" }
   - { id: S2, kind: decision, said: "a schedule fires only while the machine and its loop run; a firing missed while it slept runs once on wake or is skipped, as the plugin's own block in ~/.amy/config.yaml says. Decided 2026-11-12" }
   - { id: S3, kind: decision, said: "a schedule is an event source and enters amy through the events plans. Decided 2026-11-12" }
   - { id: S4, kind: code, ref: "examples/workflow-errand/src/plugin.ts", symbol: "captureTask", said: "errand.capture-task writes a task and puts it on the queue, declaring writes: [queue]; amy btw is its command" }
-  - { id: S5, kind: code, ref: "packages/cli/src/index.ts", symbol: "runLoop", said: "each turn of a profile's loop reads the chat, runs discovery, then makes one tick; nothing else is asked each turn" }
+  - { id: S5, kind: code, ref: "packages/cli/src/index.ts", symbol: "runLoop", said: "each turn of a profile's loop links the harnesses' skills, reads the chat, runs discovery, then makes one tick; nothing else is asked each turn" }
   - { id: S6, kind: code, ref: "packages/core/events.json", said: "the event log takes only the kinds this contract lists, each with the fields it requires" }
   - { id: S7, kind: reference, ref: "plans/a-workflow-starts-on-an-event.md", said: "an event named on a workflow's [*] edge starts one record, keyed by the workflow's key" }
   - { id: S8, kind: reference, ref: "https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/ScheduledJobs.html", said: "a launchd calendar job missed while the Mac sleeps runs when it wakes; one missed while it is off waits for its next time" }

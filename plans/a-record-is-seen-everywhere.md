@@ -1,5 +1,5 @@
 ---
-base: bf221baf76d544453b7538861967a258cf962222
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: reference, ref: "plans/the-work-is-listed-everywhere.md", said: "the breadcrumb chooses a record; this slice draws it: its workflow's nodes with where it is, and the sidebar that opens on a node" }
   - { id: S2, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "a record's diagram is its workflow.mmd with the current state marked" }

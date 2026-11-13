@@ -1,5 +1,5 @@
 ---
-base: 42e8103c7fbc8ca82efbeeddb439bb310f72e042
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: reference, ref: "plans/a-workflow-learns-from-its-mistakes.md", said: "one install's 715 agent.run events: SELF_REVIEW on Opus was 73% of the spend, 0.71 US$ a run against 0.21 for IMPLEMENTING on Sonnet, and nothing showed it" }
   - { id: S2, kind: code, ref: "packages/core/src/budget.ts", symbol: "budgetDecision", said: "the budget has one ceiling per window for the whole install, read from agent.run events; no state can be held to less than the rest" }

@@ -1,5 +1,5 @@
 ---
-base: bf221baf76d544453b7538861967a258cf962222
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "a run can be replayed in the browser without calling any model, carrying its proofs: videos and pictures for screen work, the calls and the contract for API work. Decided 2026-11-12" }
   - { id: S2, kind: reference, ref: "https://joydle.github.io/borg/", said: "Borg's Run section plays a scripted run in the browser and calls no model: a pipeline of steps with their tokens, a timeline of spans, a budget panel and a one-line summary" }

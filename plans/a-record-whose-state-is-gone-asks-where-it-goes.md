@@ -1,5 +1,5 @@
 ---
-base: 42e8103c7fbc8ca82efbeeddb439bb310f72e042
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: a record saved in a state the workflow.mmd no longer draws, removed or renamed, cannot move, and amy never says the workflow changed under it" }
   - { id: S2, kind: code, ref: "packages/core/src/define-workflow.ts", symbol: "plan", said: "a record in a state with no decision throws `has no decision for state X` at the look, not at the mount" }

@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "diff and code in the window are links to the person's editor rather than a richer view: VS Code, Cursor, Zed and Neovim, Neovim mostly from the terminal; chosen per person in config. Decided 2026-11-12" }
   - { id: S2, kind: reference, ref: "plans/the-workplace-opens-where-you-work.md", said: "Diff is a canvas tab drawing git diff <base>... as a Diff primitive; openers start in the record's checkout; host editors are offered only on the local socket" }

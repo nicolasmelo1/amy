@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: decision, said: "two floating buttons at the window's bottom right: a question mark that lists every command, and beside it the chat. Decided 2026-11-12" }
   - { id: S2, kind: decision, said: "the chat opens in plan mode, and its top switches to action mode. Decided 2026-11-12" }

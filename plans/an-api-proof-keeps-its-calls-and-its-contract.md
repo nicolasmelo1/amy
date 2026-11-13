@@ -1,5 +1,5 @@
 ---
-base: 42e8103c7fbc8ca82efbeeddb439bb310f72e042
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: a private project's screen proofs keep a picture and a video a reviewer opens, while its API proofs keep only which assertions passed: nobody can see what the API answered" }
   - { id: S2, kind: reference, ref: "plans/a-proof-runs-against-its-own-branch.md", said: "http.request returns status, headers and body; a screenshot or a recording is written in the project's artifact root and the proof record names the file" }

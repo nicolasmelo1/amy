@@ -1,5 +1,5 @@
 ---
-base: 3fee6a5ce1a6dedd1039e0cf4007659e7c0536e2
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: the shared vocabulary caps what a plugin can draw; a richer code diff needs HTML, which a terminal cannot draw" }
   - { id: S2, kind: decision, said: "a plugin may work on some platforms and not others; the core stays multi-platform as far as it can. Decided 2026-11-12" }

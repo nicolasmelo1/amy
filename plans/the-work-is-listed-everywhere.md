@@ -1,5 +1,5 @@
 ---
-base: 1471c13ea5a21e998b417b336683844b0932092f
+base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
 sources:
   - { id: S1, kind: reference, ref: "plans/the-window-is-designed-once.md", said: "the renderers exist and every primitive is proven on every surface that declares it; this is the first slice of the window, landing on the desktop app and the terminal at once" }
   - { id: S2, kind: decision, said: "the window an install ships is small on purpose: amy is a workflow builder, so it shows the work and lets a person talk to it; everything beyond is a plugin" }
