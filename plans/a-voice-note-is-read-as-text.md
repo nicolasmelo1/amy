@@ -12,9 +12,16 @@ sources:
   - { id: S9, kind: reference, ref: "https://github.com/ggml-org/whisper.cpp", said: "whisper-cli -m MODEL -f FILE reads 16-bit WAV only; convert with ffmpeg -ar 16000 -ac 1 -c:a pcm_s16le; ggml models from download-ggml-model.sh" }
   - { id: S10, kind: reference, ref: "https://hermes-agent.nousresearch.com/docs/user-guide/features/tts", said: "Hermes transcribes voice notes locally by default, takes other engines as providers, and with none passes the voice note through with a note to the user" }
   - { id: S11, kind: decision, said: "core gains a transcriber port, transcribe(path, language?) returning text; any plugin may mount it, so a hosted engine is another plugin, never a setting here. Proposed 2026-11-13" }
-  - { id: S12, kind: decision, said: "@amykit/plugin-transcribe mounts it locally: ffmpeg to 16 kHz WAV, then whisper-cli with a configured model; no key, and no audio leaves the machine. Proposed 2026-11-13" }
+  - { id: S12, kind: decision, said: "@amykit/plugin-transcribe mounts it locally: ffmpeg to 16 kHz WAV, then whisper-cli with a model; no key, and no audio leaves the machine. Decided 2026-11-13" }
   - { id: S13, kind: decision, said: "a heard voice note is read as the operator's own words, the caption first, with the audio kept among the reply's files; amy answers in text. Proposed 2026-11-13" }
   - { id: S14, kind: decision, said: "with no transcriber mounted, a voice note is never dropped: the chat answers once naming the plugin, and a reply carries a line naming the unheard file. Proposed 2026-11-13" }
+  - { id: S15, kind: decision, said: "it works on Windows, Linux and macOS, and the plugin itself gives the steps to install whatever else it needs. Decided 2026-11-13" }
+  - { id: S16, kind: reference, ref: "https://formulae.brew.sh/formula/whisper.cpp", said: "brew install whisper.cpp installs whisper-cli, 1.9.5, bottled for Apple Silicon macOS and for Linux on x86_64 and ARM64; models are not downloaded with it" }
+  - { id: S17, kind: reference, ref: "https://github.com/ggml-org/whisper.cpp/releases", said: "each build release ships whisper-bin-x64.zip and whisper-bin-win-cpu-arm64.zip for Windows, and whisper-bin-ubuntu-x64.tar.gz and -arm64 for Linux" }
+  - { id: S18, kind: reference, ref: "https://ffmpeg.org/download.html", said: "FFmpeg ships source only and links builds: Debian and Ubuntu packages, RPM Fusion, BtbN static builds, gyan.dev for Windows (winget install --id Gyan.FFmpeg -e), evermeet.cx for macOS" }
+  - { id: S19, kind: reference, ref: "https://huggingface.co/ggerganov/whisper.cpp", said: "ggml models from tiny (75 MiB) to large-v3; base is 142 MiB; download-ggml-model.sh fetches resolve/main/ggml-<model>.bin; each has a published SHA" }
+  - { id: S20, kind: decision, said: "the plugin downloads its model itself, base by default and multilingual, into its state directory, and checks the published SHA; the binaries it never installs, it says how. Proposed 2026-11-13" }
+  - { id: S21, kind: decision, said: "doctor and setup show only this machine's steps, chosen by its platform and architecture: macOS by Homebrew, Linux by Homebrew or the release tarball and the distro's ffmpeg, Windows by the release zip and winget. Proposed 2026-11-13" }
 touches:
   - packages/core/src/ports/Transcriber.ts
   - packages/core/src/index.ts
@@ -26,8 +33,12 @@ touches:
   - plugins/transcribe/src/plugin.ts
   - plugins/transcribe/src/config.ts
   - plugins/transcribe/src/WhisperTranscriber.ts
+  - plugins/transcribe/src/guide.ts
+  - plugins/transcribe/src/model.ts
   - plugins/transcribe/tests/WhisperTranscriber.test.ts
   - plugins/transcribe/tests/plugin.test.ts
+  - plugins/transcribe/tests/guide.test.ts
+  - plugins/transcribe/tests/model.test.ts
   - plugins/telegram/src/TelegramConversation.ts
   - plugins/telegram/src/plugin.ts
   - plugins/telegram/tests/TelegramConversation.test.ts
@@ -56,9 +67,11 @@ criteria:
   - { id: A3, statement: "a Telegram voice or audio reply in a work's topic comes back as a Reply whose text is the caption then the transcript, with the audio among its files", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.test.ts", sources: [S1, S3, S7, S13] }
   - { id: A4, statement: "a Slack audio clip in the chat is answered from its transcript, and one in a work's thread comes back as a Reply read the same way", proof: "deferred:test:plugins/slack/tests/SlackConversation.test.ts", sources: [S1, S4, S8, S13] }
   - { id: A5, statement: "with no transcriber mounted, a voice note in the chat gets one answer naming @amykit/plugin-transcribe, and a reply carries a line naming the unheard file", proof: "deferred:test:plugins/telegram/tests/TelegramConversation.chat.test.ts", sources: [S10, S14] }
-  - { id: A6, statement: "the plugin converts the audio to 16 kHz mono 16-bit WAV, runs whisper-cli with the model and language, and returns the trimmed text; a failing command is named with its stderr", proof: "deferred:test:plugins/transcribe/tests/WhisperTranscriber.test.ts", sources: [S9, S12] }
-  - { id: A7, statement: "doctor checks ffmpeg and whisper-cli on the PATH and the model file, each failure naming what to install or download", proof: "deferred:test:plugins/transcribe/tests/plugin.test.ts", sources: [S9, S12] }
-  - { id: A8, statement: "the built CLI, on a stand-in Bot API and a stand-in whisper-cli, answers a voice note sent in the chat from what it said", proof: "assertion:transcribe.a_voice_note_is_answered", sources: [S1, S12] }
+  - { id: A6, statement: "the plugin converts the audio to 16 kHz mono 16-bit WAV, runs whisper-cli with the model and language without a shell, and returns the trimmed text; a failing command is named with its stderr", proof: "deferred:test:plugins/transcribe/tests/WhisperTranscriber.test.ts", sources: [S9, S12, S15] }
+  - { id: A7, statement: "doctor checks ffmpeg and whisper-cli, found on the PATH or at a configured path, and the model, each failure naming the step that fixes it", proof: "deferred:test:plugins/transcribe/tests/plugin.test.ts", sources: [S9, S12, S21] }
+  - { id: A9, statement: "for each of darwin, linux and win32 on x64 and arm64, the guide gives that machine's steps for whisper-cli and ffmpeg, each with its link, and no other platform's", proof: "deferred:test:plugins/transcribe/tests/guide.test.ts", sources: [S15, S16, S17, S18, S21] }
+  - { id: A10, statement: "setup downloads the chosen model into the plugin's state directory and keeps it only when its SHA matches; a mismatch or a failed download keeps no file and says why", proof: "deferred:test:plugins/transcribe/tests/model.test.ts", sources: [S19, S20] }
+  - { id: A8, statement: "the built CLI, on a stand-in Bot API and a stand-in whisper-cli, answers a voice note sent in the chat from what it said", proof: "assertion:transcribe.a_voice_note_is_answered", sources: [S1, S12, S15] }
 crosses:
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "the new port writes nothing; it reads a local file and returns text" }
   - { mechanism: events-and-notifications, answer: n/a, why: "a heard voice note is filed as the message it replaces, so no event and no notification is added or changed" }
@@ -68,13 +81,16 @@ guarantee:
 failures:
   - { step: transcribe, when: "ffmpeg or whisper-cli exits non-zero or the model is missing", goes_to: "the reply carries a line naming the file and the command that failed; the chat answers that it could not hear it" }
   - { step: transcribe, when: "the transcript is empty", goes_to: "the text says no words were heard, with the file kept" }
+  - { step: setup, when: "the model download fails or its SHA does not match", goes_to: "no model is kept, and the step says to run setup again or set model to a file of their own" }
   - { step: reading a voice note, when: "it is over the Bot API's 20 MB download limit", goes_to: "a line naming the file too large, as replies already say for any file" }
 cut:
   - "amy answering with a voice note (text to speech): another plugin, if asked"
   - "a hosted engine (OpenAI, Groq): another plugin mounting the same port (S11)"
+  - "installing whisper-cli or ffmpeg for the person: the plugin says how, by platform, and the person runs it"
+  - "a GPU build (CUDA, Metal tuning): the CPU build is the default; a configured path takes any other"
   - "the window's chat panel recording audio: once the window takes files"
   - "a voice note in a tracker comment: tracker comments carry no audio today"
-exit: "with @amykit/plugin-transcribe installed, a voice note sent to amy on Telegram outside any work is answered from what it said, and one sent in a work's topic is read as the answer"
+exit: "on Windows, Linux or macOS, with @amykit/plugin-transcribe installed by its own steps, a Telegram voice note is answered outside any work and read as the answer in a work's topic"
 ---
 # A voice note is read as text
 
