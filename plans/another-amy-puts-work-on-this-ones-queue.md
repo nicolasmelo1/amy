@@ -1,5 +1,5 @@
 ---
-base: 1cdf02d36b1442092f7d199250f5c9a6b0af14f0
+base: b824b744940cc2ba4222a1ba3b58ad698f42ae4a
 sources:
   - { id: S1, kind: decision, said: "amy runs on several of the operator's own machines, never another person's; an event from one amy puts work on another amy's queue. Decided 2026-11-12" }
   - { id: S2, kind: decision, said: "during a state a workflow reaches another amy the way it runs an amy command, and the work enters that amy as an event; its server takes work in and sends it out. Decided 2026-11-12" }
