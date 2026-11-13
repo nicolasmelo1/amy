@@ -16,6 +16,7 @@ sources:
   - { id: S13, kind: reference, ref: "plans/the-window-takes-plugins.md", said: "a plugin fills a node's body for the workflows and states it names, generically or for one node, within the node's size" }
   - { id: S14, kind: decision, said: "in the terminal a node is its state's name, its records and its cost by model as lines, with its labelled edges beneath; the app places nodes by the diagram's layout" }
   - { id: S15, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "delivers domains machine, workflows, settings (getHandbrake, setHandbrake, removeWorkflow, getConfig, saveConfig, saveWorkflowDiagram) and views workflows.list, workflows.detail, workflows.handbrake, local-only settings.config" }
+  - { id: S16, kind: decision, said: "Settings edits the general config.yaml, or the chosen workflow's own profiles/<name>/config.yaml (plans/a-profile-keeps-its-own-config.md); a save writes only the file shown. Decided 2026-11-13" }
 touches:
   - packages/services/surface.yaml
   - packages/services/src/domains/workflows.ts
@@ -45,6 +46,7 @@ criteria:
   - { id: A8, statement: "saving a config that would not mount keeps the old file and shows every refusal; one whose assemble throws for any other reason keeps it and shows an internal error", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S11, S12] }
   - { id: A9, statement: "removing a workflow from its dropdown leaves what amy remove leaves, and is refused as amy remove refuses", proof: "deferred:test:packages/cli/tests/ui-actions.test.ts", sources: [S9] }
   - { id: A10, statement: "pulling the handbrake from the workflow view or the menu bar stops every workflow, and the menu bar's title says it is paused", proof: "deferred:assertion:window.the_menu_bar_says_it_is_paused", sources: [S10] }
+  - { id: A11, statement: "with a workflow chosen Settings opens and saves that profile's own config.yaml, with none the general one, and a save never writes the other file", proof: "deferred:test:packages/cli/tests/ui-config.test.ts", sources: [S16] }
 crosses:
   - { mechanism: config, answer: works, proof: "deferred:A8" }
   - { mechanism: rendering, answer: works, proof: "deferred:A2, A3, A7" }
