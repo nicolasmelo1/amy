@@ -163,3 +163,54 @@ describe("loadEnv", () => {
     expect(env.EXPORTED_KEY).toBe("from-shell");
   });
 });
+
+describe("review of #222: a spawned child keeps the precedence its parent read", () => {
+  let home: string;
+  let project: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-env-review-"));
+    project = path.join(home, "project");
+    fs.mkdirSync(project, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  function profileFile(name: string, contents: string): void {
+    const file = profileEnv(home, name);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, contents);
+  }
+
+  // HIGH — A5 in every process: the detached daemon and the reaper are
+  // spawned through environmentFor, which drops any file-read key a sibling
+  // profile also names and re-reads only the profile's and the machine's
+  // files — never the project's. The child then sees the profile's value
+  // where the project's should win, or nothing at all.
+  it("[high] keeps the project's value over the profile's in the child it spawns for that profile (A5)", () => {
+    fs.writeFileSync(path.join(project, ".env"), "SHARED_KEY=from-project\n");
+    profileFile("work", "SHARED_KEY=from-work\n");
+    profileFile("home", "SHARED_KEY=from-home\n");
+
+    const env = environmentFor(home, "work", {
+      base: { SHARED_KEY: "from-project", AMY_PROJECT_ENV: project },
+      fromFiles: ["SHARED_KEY"],
+    });
+
+    expect(env.SHARED_KEY).toBe("from-project");
+  });
+
+  it("[high] keeps a project-only key a sibling profile also names in the child it spawns (A5)", () => {
+    fs.writeFileSync(path.join(project, ".env"), "PROJECT_KEY=from-project\n");
+    profileFile("home", "PROJECT_KEY=from-home\n");
+
+    const env = environmentFor(home, "work", {
+      base: { PROJECT_KEY: "from-project", AMY_PROJECT_ENV: project },
+      fromFiles: ["PROJECT_KEY"],
+    });
+
+    expect(env.PROJECT_KEY).toBe("from-project");
+  });
+});

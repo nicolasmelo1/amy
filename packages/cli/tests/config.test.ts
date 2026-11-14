@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_CONFIG,
   addModeFor,
@@ -413,4 +415,98 @@ describe("a profile's own config file", () => {
 
     expect(() => loadConfig(root, "work")).toThrow(`${file}:2`);
   });
+});
+
+/** Runs this CLI from source against one state directory, stdout and stderr together. */
+function runCli(home: string, args: readonly string[]): string {
+  const result = spawnSync(process.execPath, ["--import", "tsx", fileURLToPath(new URL("../src/index.ts", import.meta.url)), ...args], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    env: { ...process.env, AMY_HOME: home, AMY_SUPERVISOR: "none", AMY_PROJECT_ENV: "" },
+    encoding: "utf-8",
+    input: "",
+    timeout: 60_000,
+  });
+  return `${result.stdout}${result.stderr}`;
+}
+
+describe("review of #222: a profile's own file survives every path that reads config", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-config-review-"));
+    fs.mkdirSync(paths(root).base, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  function profileFile(name: string, text: string): string {
+    const file = path.join(paths(root).base, "profiles", name, "config.yaml");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+    return file;
+  }
+
+  // CRITICAL — A1 and the plan's exit. A chat change is mount-checked from the
+  // candidate machine bytes and the restarted loop boots from them
+  // (`restartingConfig`, `mount-check --config`): both go through
+  // loadConfigFrom, which never lays the profile's file over the bytes, so the
+  // first chat restart drops every slice the profile keeps for itself.
+  it("[critical] lays the profile's own file over config bytes, as loadConfig lays it over config.yaml (A1)", async () => {
+    const { loadConfigFrom } = await import("../src/config.js");
+    profileFile("work", "plugins:\n  \"@amykit/plugin-slack\":\n    channel: from-profile\n");
+    const machine = "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\nplugins:\n  \"@amykit/plugin-linear\":\n    team: from-machine\n";
+
+    const read = (loadConfigFrom as (root: string, text: string, profile?: string) => ReturnType<typeof loadConfig>)(root, machine, "work");
+
+    expect(read.plugins).toEqual({
+      "@amykit/plugin-linear": { team: "from-machine" },
+      "@amykit/plugin-slack": { channel: "from-profile" },
+    });
+  });
+
+  it("[critical] refuses config bytes for a profile whose own file names a machine key (A3)", async () => {
+    const { loadConfigFrom } = await import("../src/config.js");
+    const file = profileFile("work", "defaultWorkflow: work\n");
+    const machine = "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\n";
+
+    expect(() => (loadConfigFrom as (root: string, text: string, profile?: string) => unknown)(root, machine, "work"))
+      .toThrow(file);
+  });
+
+  it("[critical] the chat restart and mount-check read config bytes for a named profile, never the machine's alone (A1)", () => {
+    const source = fs.readFileSync(new URL("../src/index.ts", import.meta.url), "utf-8");
+    const calls: string[] = [];
+    for (let at = source.indexOf("loadConfigFrom(home,"); at !== -1; at = source.indexOf("loadConfigFrom(home,", at + 1)) {
+      let depth = 0;
+      let end = at + "loadConfigFrom".length;
+      for (; end < source.length; end += 1) {
+        if (source[end] === "(") depth += 1;
+        if (source[end] === ")" && --depth === 0) break;
+      }
+      calls.push(source.slice(at, end + 1));
+    }
+    const topLevelArgs = (call: string) => {
+      let depth = 0;
+      let commas = 0;
+      for (const char of call.slice(call.indexOf("(") + 1, -1)) {
+        if ("([{".includes(char)) depth += 1;
+        if (")]}".includes(char)) depth -= 1;
+        if (char === "," && depth === 0) commas += 1;
+      }
+      return commas + 1;
+    };
+
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => topLevelArgs(call) < 3)).toEqual([]);
+  });
+
+  // LOW — A1. `queue prune` reads retentionDays from the machine's file alone.
+  it("[low] `queue prune` keeps the retention the profile's own file sets (A1)", () => {
+    fs.writeFileSync(paths(root).config, "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\n");
+    profileFile("work", "retentionDays: 3\n");
+
+    expect(runCli(root, ["--workflow", "work", "queue", "prune"])).toContain("older than 3 day(s)");
+  }, 60_000);
 });
