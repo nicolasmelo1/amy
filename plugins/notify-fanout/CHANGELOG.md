@@ -1,5 +1,12 @@
 # @amykit/plugin-notify-fanout
 
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [e7a5a2e]
+  - @amykit/core@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes

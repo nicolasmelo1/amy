@@ -1,5 +1,29 @@
 # @amykit/cli
 
+## 0.8.1
+
+### Patch Changes
+
+- e7a5a2e: The examples in the docs, the tests and the prove plugin's help name tickets
+  `PROJ-`, the placeholder the rest of the suite already used. A private term
+  can now be denied as a whole word, so a three-letter key is caught in
+  `XYZ-12` without also firing on every identifier that contains those letters.
+- Updated dependencies [e7a5a2e]
+  - @amykit/core@0.8.1
+  - @amykit/agent-kit@0.8.1
+  - @amykit/model-specs@0.8.1
+  - @amykit/services@0.8.1
+  - @amykit/ui@0.8.1
+  - @amykit/workflow-setup@0.8.1
+  - @amykit/plugin-file-log@0.8.1
+  - @amykit/plugin-file-notes@0.8.1
+  - @amykit/plugin-file-queue@0.8.1
+  - @amykit/plugin-file-store@0.8.1
+  - @amykit/plugin-file-tasks@0.8.1
+  - @amykit/plugin-notify-fanout@0.8.1
+  - @amykit/plugin-serial-engine@0.8.1
+  - @amykit/plugin-terminal-conversation@0.8.1
+
 ## 0.8.0
 
 ### Minor Changes

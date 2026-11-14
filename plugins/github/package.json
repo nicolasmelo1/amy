@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-github",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "GitHub as the code host, through the gh CLI.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when the code lives on GitHub. It mounts the code-host port that ticket-to-qa and pull-request need to open pull requests, request reviews and read review threads, and that errand and note-to-plan reach when they open their drafts. It talks to GitHub through the gh CLI, so gh must be installed and logged in."
   },
   "dependencies": {
-    "@amykit/core": "^0.8.0"
+    "@amykit/core": "^0.8.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

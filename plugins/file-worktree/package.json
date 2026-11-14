@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-worktree",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when work changes code and each item should get a checkout of its own. It mounts the worktree port, which creates or reuses an isolated worktree per piece of work and prunes old ones after a retention period, and the workspace port, which says where each repository's checkout lives. With it mounted, command-gate, plan-check and the agents run in the item's own tree, and its operations list, remove and prune those trees."
   },
   "dependencies": {
-    "@amykit/core": "^0.8.0",
+    "@amykit/core": "^0.8.1",
     "zod": "^4.6.7"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-agent-browser",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when a proof has to look at a web page. It adds browser operations a prove scenario can call: open a URL, read the accessibility tree, click or type on a ref, and compare the page with a baseline. Its UI check settles on structure and pixels first and asks the mounted agent only when those disagree, so mount agent-relay beside it for that last step. It needs the agent-browser CLI on the machine."
   },
   "dependencies": {
-    "@amykit/core": "^0.8.0",
+    "@amykit/core": "^0.8.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

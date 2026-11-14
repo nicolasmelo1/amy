@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-hermes-agent",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Hermes as the agent, over its one-shot mode and usage report.",
   "type": "module",
   "license": "MIT",
@@ -31,9 +31,9 @@
     "about": "Use it when the agent should be Hermes, run in one-shot mode under a profile of its own so amy never touches your personal Hermes setup. It contributes a harness and a usage reader to agent-relay, so install the relay beside it. amy add prepares the profile and amy doctor checks it."
   },
   "dependencies": {
-    "@amykit/core": "^0.8.0",
-    "@amykit/agent-kit": "^0.8.0",
-    "@amykit/model-specs": "^0.8.0"
+    "@amykit/core": "^0.8.1",
+    "@amykit/agent-kit": "^0.8.1",
+    "@amykit/model-specs": "^0.8.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

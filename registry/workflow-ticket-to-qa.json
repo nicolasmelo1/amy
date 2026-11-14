@@ -5,17 +5,17 @@
   "title": "@amykit/workflow-ticket-to-qa",
   "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
   "dependencies": [
-    "@amykit/agent-kit@^0.8.0",
-    "@amykit/core@^0.8.0",
+    "@amykit/agent-kit@^0.8.1",
+    "@amykit/core@^0.8.1",
     "yaml@^2.8.1",
     "zod@^4.6.7"
   ],
   "devDependencies": [
-    "@amykit/plugin-file-queue@^0.8.0",
-    "@amykit/plugin-file-store@^0.8.0",
-    "@amykit/plugin-serial-engine@^0.8.0",
+    "@amykit/plugin-file-queue@^0.8.1",
+    "@amykit/plugin-file-store@^0.8.1",
+    "@amykit/plugin-serial-engine@^0.8.1",
     "fast-check@^4.10.2",
-    "@amykit/workflow-testkit@^0.8.0"
+    "@amykit/workflow-testkit@^0.8.1"
   ],
   "files": [
     {
@@ -28,7 +28,7 @@
       "path": "examples/workflow-ticket-to-qa/package.json",
       "type": "registry:file",
       "target": "forks/workflow-ticket-to-qa/package.json",
-      "content": "{\n  \"name\": \"@amykit/workflow-ticket-to-qa\",\n  \"version\": \"0.8.0\",\n  \"description\": \"The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"examples/workflow-ticket-to-qa\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"workflow.mmd\"\n  ],\n  \"dependencies\": {\n    \"@amykit/agent-kit\": \"^0.8.0\",\n    \"@amykit/core\": \"^0.8.0\",\n    \"yaml\": \"^2.8.1\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/plugin-file-queue\": \"^0.8.0\",\n    \"@amykit/plugin-file-store\": \"^0.8.0\",\n    \"@amykit/plugin-serial-engine\": \"^0.8.0\",\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"fast-check\": \"^4.10.2\",\n    \"@amykit/workflow-testkit\": \"^0.8.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/workflow-ticket-to-qa\",\n  \"version\": \"0.8.1\",\n  \"description\": \"The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"examples/workflow-ticket-to-qa\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\",\n    \"workflow.mmd\"\n  ],\n  \"dependencies\": {\n    \"@amykit/agent-kit\": \"^0.8.1\",\n    \"@amykit/core\": \"^0.8.1\",\n    \"yaml\": \"^2.8.1\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/plugin-file-queue\": \"^0.8.1\",\n    \"@amykit/plugin-file-store\": \"^0.8.1\",\n    \"@amykit/plugin-serial-engine\": \"^0.8.1\",\n    \"@amykit/test-fixtures\": \"^0.1.0\",\n    \"fast-check\": \"^4.10.2\",\n    \"@amykit/workflow-testkit\": \"^0.8.1\"\n  }\n}\n"
     },
     {
       "path": "examples/workflow-ticket-to-qa/src/actions.ts",
@@ -141,9 +141,9 @@
   ],
   "meta": {
     "package": "@amykit/workflow-ticket-to-qa",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "examples/workflow-ticket-to-qa",
-    "tag": "@amykit/workflow-ticket-to-qa@0.8.0"
+    "tag": "@amykit/workflow-ticket-to-qa@0.8.1"
   }
 }
