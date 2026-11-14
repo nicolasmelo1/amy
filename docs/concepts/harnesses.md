@@ -107,6 +107,11 @@ it did not try. The engine then waits for the provider's reset without
 charging an attempt. Why:
 [a usage limit is not an attempt](../design/a-usage-limit-is-not-an-attempt.md).
 
+Claude Code says a turn's limit and its reset on the stream the harness reads,
+so a run its plan refused arrives as `rate-limited` with that reset rather than
+as a failed run with nothing to wait for. Why:
+[Claude says its limit while it runs](../design/claude-says-its-limit-while-it-runs.md).
+
 ## A run carries only what amy hands it
 
 A harness runs apart from the operator's own setup. The Claude harness loads

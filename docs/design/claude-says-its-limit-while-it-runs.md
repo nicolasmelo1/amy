@@ -29,19 +29,19 @@ touches:
   - .software-factory/policy.yaml
   - .software-factory/evidence/claude-limits-scenario.sh
 criteria:
-  - { id: A1, statement: "the harness asks for --output-format stream-json with --verbose, keeping its model, mode, isolation and stdin prompt", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S2, S4] }
-  - { id: A2, statement: "the recorded completed stream gives the same text, tokens, cost, model, duration and outcome the json envelope gave for that run", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S4, S7, S8] }
-  - { id: A3, statement: "a stream with a rejected rate_limit_event is rate-limited with retryAfterMs to its resetsAt, whatever its result line says", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S3, S5, S7] }
-  - { id: A4, statement: "for any stream, the outcome is rate-limited exactly when a rejected rate_limit_event or a 429 appears, wherever in the stream it is", proof: "deferred:property:plugins/claude/tests/envelope.property.test.ts#rejected_read_only_on_the_last_line", sources: [S3, S5, S6] }
-  - { id: A5, statement: "allowed and allowed_warning events never make a run rate-limited", proof: "deferred:property:plugins/claude/tests/envelope.property.test.ts#a_warning_reads_as_a_limit", sources: [S6] }
-  - { id: A6, statement: "a rejected event with no resetsAt is rate-limited with no retryAfterMs, so the policy backoff applies", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S3] }
-  - { id: A7, statement: "a stream with no result line and no rejected event reads as a missing envelope does today: completed on a clean exit, abandoned otherwise", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S7] }
-  - { id: A10, statement: "a run killed by amy stop before its result is abandoned and starts no next rung; a rejected event before the kill still makes it rate-limited", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S5, S9] }
-  - { id: A8, statement: "a single Claude rung limited twice then failed twice escalates after the second failure, not the second limit, and waits until the reset", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts", sources: [S3] }
-  - { id: A9, statement: "the built plugin, imported from dist in another process, classifies both recorded streams as A2 and A3 say", proof: "assertion:claude.a_rejected_limit_waits_for_its_reset", sources: [S3, S8] }
+  - { id: A1, statement: "the harness asks for --output-format stream-json with --verbose, keeping its model, mode, isolation and stdin prompt", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S2, S4], done: true }
+  - { id: A2, statement: "the recorded completed stream gives the same text, tokens, cost, model, duration and outcome the json envelope gave for that run", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S4, S7, S8], done: true }
+  - { id: A3, statement: "a stream with a rejected rate_limit_event is rate-limited with retryAfterMs to its resetsAt, whatever its result line says", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S3, S5, S7], done: true }
+  - { id: A4, statement: "for any stream, the outcome is rate-limited exactly when a rejected rate_limit_event or a 429 appears, wherever in the stream it is", proof: "property:plugins/claude/tests/envelope.property.test.ts#rejected_read_only_on_the_last_line", sources: [S3, S5, S6], done: true }
+  - { id: A5, statement: "allowed and allowed_warning events never make a run rate-limited", proof: "property:plugins/claude/tests/envelope.property.test.ts#a_warning_reads_as_a_limit", sources: [S6], done: true }
+  - { id: A6, statement: "a rejected event with no resetsAt is rate-limited with no retryAfterMs, so the policy backoff applies", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S3], done: true }
+  - { id: A7, statement: "a stream with no result line and no rejected event reads as a missing envelope does today: completed on a clean exit, abandoned otherwise", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S7], done: true }
+  - { id: A10, statement: "a run killed by amy stop before its result is abandoned and starts no next rung; a rejected event before the kill still makes it rate-limited", proof: "test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S5, S9], done: true }
+  - { id: A8, statement: "a single Claude rung limited twice then failed twice escalates after the second failure, not the second limit, and waits until the reset", proof: "test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts", sources: [S3], done: true }
+  - { id: A9, statement: "the built plugin, imported from dist in another process, classifies both recorded streams as A2 and A3 say", proof: "assertion:claude.a_rejected_limit_waits_for_its_reset", sources: [S3, S8], done: true }
 crosses:
-  - { mechanism: agent-replies, answer: works, proof: "deferred:A2, A3, A7, A10" }
-  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts" }
+  - { mechanism: agent-replies, answer: works, proof: "A2, A3, A7, A10" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts" }
 guarantee:
   - { holds: "a Claude run the plan refused, as its stream says, charges no attempt and waits for the reset it reported", not_against: "a Claude Code release that renames rate_limit_event or its fields: the run reads as failed, as today" }
   - { holds: "a run that completed reads exactly as it did under json", not_against: "a field present only in the json envelope and not on the result line" }
@@ -56,8 +56,16 @@ exit: "a Claude run its plan refuses reads as rate-limited, charges no attempt, 
 ---
 # Claude says its limit while it runs
 
-The harness reads Claude Code's `stream-json` after exit: a rejected
-`rate_limit_event` makes the run `rate-limited` with the reset it reported, and
-a rejected window with `overageStatus: "allowed"` is no refusal — the turn runs
-on credits and completes. The fixtures are a 2.1.325 stand-in, not a recording:
-S8 stays pending until an authenticated CLI records one.
+The Claude harness reads Claude Code's `stream-json` after the run exits: a
+`rate_limit_event` with `status: rejected` makes the run `rate-limited` with
+the reset it reported, whatever its result line says, so the workflow waits for
+that reset instead of charging an attempt. A rejected window with
+`overageStatus: "allowed"` is not a refusal: 2.1.325 runs that turn on usage
+credits and finishes it, so the run is `completed` with no wait.
+
+The fixtures are a 2.1.325 stand-in, not a recording (S8 stays pending: no
+credential reaches the implementer). The completed one is the envelope the
+harness tests already carried; the refused one is the refusal the CLI prints —
+the rejected event, a synthetic reply with `error: "rate_limit"` and the limit
+text, and a result with `is_error: true` and `api_error_status: 429`. Recording
+a real stream is listed on `next-steps.md`.
