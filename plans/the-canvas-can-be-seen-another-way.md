@@ -52,7 +52,7 @@ guarantee:
 cut:
   - "a view replacing the whole window, as a herdr layout does: refused, the frame stays closed (S12)"
   - "a Kanban across every workflow at once: later; a column is a state, and states belong to one workflow"
-exit: "a person flips the canvas to left-right, then to Kanban and opens TBO-1 from its card, then to an outside plugin's office view where the escalated worker stands out; the terminal shows Kanban and says why not the office"
+exit: "a person flips the canvas to left-right, then to Kanban and opens PROJ-1 from its card, then to an outside plugin's office view where the escalated worker stands out; the terminal shows Kanban and says why not the office"
 ---
 # The canvas can be seen another way
 

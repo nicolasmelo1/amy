@@ -9,7 +9,7 @@ sources:
   - { id: S7, kind: friction, said: "repair by hand, per record: stop the loop, copy the file aside, set state to where it stopped, empty attempts, drop the workflow-folded fields, append a history entry, restart the loop" }
   - { id: S8, kind: friction, said: "the daemon can rewrite the record in the same second, with no lock and no is-this-claimed to ask, so that window is the whole risk" }
   - { id: S9, kind: friction, said: "the stale fields are known only by reading the workflow's apply (its remember, once a workflow is one declaration lands); they are not core fields, and an operator cannot enumerate them" }
-  - { id: S10, kind: decision, said: "amy withdraw <workId>... [--to <state>] (e.g. amy withdraw TBO-1241 TBO-1242 --to COPILOT_FIX) refuses while the work is claimed or in flight: the half a person cannot do safely by hand, why it is a command" }
+  - { id: S10, kind: decision, said: "amy withdraw <workId>... [--to <state>] (e.g. amy withdraw PROJ-1241 PROJ-1242 --to COPILOT_FIX) refuses while the work is claimed or in flight: the half a person cannot do safely by hand, why it is a command" }
   - { id: S11, kind: decision, said: "it backs the record up beside it (the store is one file per record; a sibling with another extension is invisible to all()) and prints what changed" }
   - { id: S12, kind: reference, ref: "docs/design/waiting-is-not-trying.md", said: "a withdrawal clears the attempts and the looks of the state it resumes into, and of the state it leaves" }
   - { id: S13, kind: decision, said: "a withdrawal appends a history entry saying a person resumed it, so amy status and the log still tell the truth about how it got there" }

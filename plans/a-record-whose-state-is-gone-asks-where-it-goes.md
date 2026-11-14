@@ -65,7 +65,7 @@ failures:
 cut:
   - "moving a record automatically to a renamed state's likely heir: the person decides (S9)"
   - "a migration map in the workflow from old states to new: later, if escalations prove frequent"
-exit: "TBO-1 saved in a state since removed from its workflow.mmd: one question with the drawn states and give it up, a reply naming IMPLEMENTING moves it there, no attempt charged"
+exit: "PROJ-1 saved in a state since removed from its workflow.mmd: one question with the drawn states and give it up, a reply naming IMPLEMENTING moves it there, no attempt charged"
 ---
 # A record whose state is gone asks where it goes
 

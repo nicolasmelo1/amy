@@ -78,7 +78,7 @@ cut:
   - "a stored snapshot of each state's view: refused; a visit is rebuilt from the record and the log (S5)"
   - "a full diff drawn by amy: refused; the editor shows it (S8)"
   - "retiring one record from the window: waits for work-that-is-over-goes-away"
-exit: "TBO-1 chosen in app and terminal: READY passed shows its visit's log, IMPLEMENTING its files opening in the editor, its tokens and retry badge; a bar per visit and one summary line; poked from the terminal, it moves"
+exit: "PROJ-1 chosen in app and terminal: READY passed shows its visit's log, IMPLEMENTING its files opening in the editor, its tokens and retry badge; a bar per visit and one summary line; poked from the terminal, it moves"
 ---
 # A record is seen everywhere
 

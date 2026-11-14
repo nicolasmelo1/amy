@@ -41,7 +41,7 @@ sources:
   - { id: S39, kind: decision, said: "getWorkflowDiagram GET /v1/workflows/{profile}/diagram → { text (workflow.mmd), revision (digest), editable (only under ~/.amy/workflows) }, what amy workflow export prints; 404 workflows.not_found; 404 workflows.no_diagram for one written without a diagram" }
   - { id: S74, kind: reference, ref: "docs/design/a-workflow-is-a-mermaid-diagram.md", said: "the profile's workflow.mmd that getWorkflowDiagram returns and saveWorkflowDiagram writes" }
   - { id: S75, kind: reference, ref: "plans/the-window-is-served.md", said: "a paired device is never offered running an agent, and an ask runs on the window's own server: so startAsk and addAskTurn are local-only, never routed over TCP" }
-  - { id: S76, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "an ask's about names the server its record lives on as well as profile and workId; absent, this server, so two servers' TBO-1 are two targets" }
+  - { id: S76, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "an ask's about names the server its record lives on as well as profile and workId; absent, this server, so two servers' PROJ-1 are two targets" }
   - { id: S77, kind: reference, ref: "plans/the-window-is-served.md", said: "startGrooming and addGroomingTurn are local-only: grooming is an agent conversation, and no agent runs for a client over TCP" }
   - { id: S78, kind: reference, ref: "plans/a-conversation-before-the-work.md", said: "over TCP addThreadTurn takes decisions only: a discussion turn is answered by an agent, so a paired device's is 403 threads.discussion_local_only" }
   - { id: S79, kind: reference, ref: "plans/the-window-is-served.md", said: "unpairing a device ends its open sessions and their streams at once; its next request answers 401" }
@@ -95,7 +95,7 @@ touches:
   - packages/services/surface.yaml
   - packages/services/tests/surface.test.ts
   - .software-factory/policy.yaml
-  - .software-factory/mutations/**
+  - .software-factory/mutations/L2.GENERATED_FILES_ARE_LOCKED/packages/services/surface.yaml
   - packages/core/src/operation-schema.ts
   - packages/core/src/mount.ts
   - packages/core/tests/operation-schema.test.ts
@@ -104,15 +104,15 @@ untouched:
   - packages/ui/src/vocabulary.ts
 criteria:
   - { id: A1, statement: "surface.yaml lists every operation and fixed view above, with its domain, method, path, cli words, local-only flag, writes and plan — or its params, slot, surface and plan — all planned", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S1, S2, S8, S9, S10, S11, S12, S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S26, S27, S28, S29, S30, S31, S32, S33, S36, S37, S38, S39, S40, S41, S42, S43, S44, S45, S46, S47, S48, S49, S50, S51, S52, S53, S54, S55, S56, S57, S58, S59, S60, S61, S62, S63, S64, S65, S66, S67, S69, S70, S71, S72, S73, S74, S85] }
-  - { id: A2, statement: "a delivered operation missing from the document, or one in the document the registry does not list, fails the build naming it", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S4] }
-  - { id: A3, statement: "a delivered fixed view listViews does not answer, or one it answers the registry does not list, fails the build naming the view", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S5, S6] }
-  - { id: A4, statement: "an operation whose local-only flag or writes differ from the registry fails the build", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S4] }
-  - { id: A5, statement: "a planned entry naming a plan that is not a row of next-steps.md, or a delivered one naming no design note under docs/design/, fails the build", proof: "deferred:test:mutation fixture for the-surface-is-the-registry", sources: [S7] }
+  - { id: A2, statement: "a delivered operation missing from the document, or one in the document the registry does not list, fails the build naming it", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S4] }
+  - { id: A3, statement: "a delivered fixed view listViews does not answer, or one it answers the registry does not list, fails the build naming the view", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S5, S6] }
+  - { id: A4, statement: "an operation whose local-only flag or writes differ from the registry fails the build", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S4] }
+  - { id: A5, statement: "a planned entry naming a plan that is not a row of next-steps.md, or a delivered one naming no design note under docs/design/, fails the build", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S7] }
   - { id: A6, statement: "an ask's answer and a shell's output reach only the session in the request's X-Amy-Session, with two clients on one token", proof: "deferred:assertion:server.an_event_reaches_only_its_session", sources: [S13, S14, S54, S68] }
   - { id: A7, statement: "a view whose intent names an operationId the registry does not list fails the build", proof: "deferred:assertion:server.every_intent_names_an_operation", sources: [S34, S35] }
-  - { id: A8, statement: "editing surface.yaml without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S3] }
+  - { id: A8, statement: "editing surface.yaml without sf lock fails the build", proof: "deferred:test:.software-factory/mutations/L2.GENERATED_FILES_ARE_LOCKED/packages/services/surface.yaml", sources: [S3] }
   - { id: A9, statement: "startAsk and addAskTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_ask_runs_for_a_tcp_client", sources: [S51, S54, S75] }
-  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about TBO-1 on two servers start from two different records", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S51, S76] }
+  - { id: A10, statement: "startAsk's about carries the record's server, and two asks about PROJ-1 on two servers start from two different records", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S51, S76] }
   - { id: A11, statement: "startGrooming and addGroomingTurn called over TCP are not routed, 404, and no harness runs", proof: "deferred:assertion:server.no_grooming_runs_for_a_tcp_client", sources: [S60, S62, S77] }
   - { id: A12, statement: "a discussion turn sent over TCP is refused 403 and no agent answers it, while a decision from a device granted acting is taken", proof: "deferred:assertion:server.a_remote_discussion_runs_no_agent", sources: [S57, S78] }
   - { id: A13, statement: "unpairing a device closes its stream and answers its next request 401, while another device's session keeps receiving", proof: "deferred:assertion:server.unpairing_ends_the_session", sources: [S14, S79] }
