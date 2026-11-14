@@ -45,12 +45,11 @@ const RAW_EVENT = /\{"type":"(system|user|assistant|rate_limit_event|result)"/;
 
 describe("CRITICAL: a stream with no result line hands its raw events to the next prompt", () => {
   // A7 + guarantee "a run that completed reads exactly as it did under json".
-  // Under json a run killed before its envelope printed nothing on stdout; under
+  // Under json, a run killed before its envelope printed nothing; under
   // stream-json --verbose it printed every event, tool results included. The
-  // ticket workflow puts a rate-limited run's output into the next prompt
+  // ticket workflow puts a limited run's output into the next prompt
   // (examples/workflow-ticket-to-qa/src/actions.ts, "Its partial reply was:"),
-  // so a refusal before the result line ships the whole raw stream, file
-  // contents and secrets from tool results included, into the rerun.
+  // so a refusal before the result line ships the raw stream, secrets and all.
   it("a refused run killed before its result gives no raw event as its text or output", async () => {
     const stdout = [INIT, TOOL, REFUSED(1_893_456_000)].join("\n");
 
@@ -198,8 +197,17 @@ describe("LOW: A9's scenario proves the completed stream only by its outcome", (
   it("compares the whole completed account the built plugin gives", () => {
     const scenario = fs.readFileSync(path.join(ROOT, ".software-factory/evidence/claude-limits-scenario.sh"), "utf8");
 
-    for (const field of ["text", "tokens", "costUsd", "model", "durationMs"]) {
-      expect(scenario, `the scenario never checks completed.${field}`).toMatch(new RegExp(`completed\\.${field}|deepStrictEqual\\(\\s*completed\\s*,`));
+    // Each field's own assertion, or the whole-account comparison that covers
+    // it: spelled as literals so the check itself reads as one.
+    const covered = /deepStrictEqual\(\s*completed\s*,/;
+    for (const [field, own] of [
+      ["text", /completed\.text/],
+      ["tokens", /completed\.tokens/],
+      ["costUsd", /completed\.costUsd/],
+      ["model", /completed\.model/],
+      ["durationMs", /completed\.durationMs/],
+    ] as const) {
+      expect(scenario, `the scenario never checks completed.${field}`).toMatch(own.test(scenario) ? own : covered);
     }
   });
 });

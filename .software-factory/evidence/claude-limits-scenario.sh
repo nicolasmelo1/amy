@@ -35,7 +35,21 @@ const now = Date.parse("2026-11-14T12:00:00.000Z");
 const completed = claude.parseRun(recorded("completed"), true, "sonnet", now);
 const refused = claude.parseRun(recorded("rate-limited"), true, "sonnet", now);
 
-deepStrictEqual(completed.outcome, "completed");
+// A2 and A9: the whole completed account, not only its outcome — the answer,
+// the tokens, the cost the harness reported, the model and the duration.
+deepStrictEqual(completed, {
+  outcome: "completed",
+  text: "done",
+  model: "claude-sonnet-4-5[1m]",
+  tokens: { input: 2, output: 4, cacheRead: 10617, cacheWrite: 7551 },
+  costUsd: 0.0809285,
+  costSource: "reported",
+  durationMs: 3411,
+});
+// The same recording read as the json envelope the stream ended with, which is
+// what `--output-format json` printed before the harness moved to the stream.
+const envelope = recorded("completed").trim().split("\n").at(-1);
+deepStrictEqual(claude.parseRun(envelope, true, "sonnet", now), completed);
 deepStrictEqual(refused.outcome, "rate-limited");
 deepStrictEqual(refused.retryAfterMs, 1_893_456_000 * 1000 - now);
 

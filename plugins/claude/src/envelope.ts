@@ -42,6 +42,8 @@ export interface ClaudeStream {
   result: ClaudeEnvelope | null;
   /** A rate_limit_event said the plan refused this turn. */
   rejected: boolean;
+  /** A result line reported a 429, wherever in the stream it was. */
+  throttled: boolean;
   /** The epoch-second reset that event reported, when it reported one. */
   resetsAt?: number;
 }
@@ -86,6 +88,7 @@ export function parseEnvelope(stdout: string): ClaudeEnvelope | null {
 export function parseStream(stdout: string): ClaudeStream {
   let result: ClaudeEnvelope | null = null;
   let rejected = false;
+  let throttled = false;
   let resetsAt: number | undefined;
 
   for (const line of stdout.split("\n")) {
@@ -99,16 +102,41 @@ export function parseStream(stdout: string): ClaudeStream {
       continue;
     }
 
-    if (event.type === "result") result = event as ClaudeEnvelope;
+    if (event.type === "result") {
+      result = event as ClaudeEnvelope;
+      if (isRateLimit((event as ClaudeEnvelope).api_error_status)) throttled = true;
+    }
     if (event.type !== "rate_limit_event") continue;
 
-    const info = event.rate_limit_info as { status?: unknown; resetsAt?: unknown } | undefined;
-    if (info?.status !== "rejected") continue;
+    const refusal = refusalOf(event);
+    if (!refusal) continue;
+
     rejected = true;
-    resetsAt = typeof info.resetsAt === "number" && Number.isFinite(info.resetsAt) ? info.resetsAt : undefined;
+    // The latest reset any refusal reported: two windows can refuse at once
+    // and a step may only rerun once every one of them reopened, so an event
+    // that reports no reset must not erase the one another named.
+    if (refusal.resetsAt !== undefined) {
+      resetsAt = resetsAt === undefined ? refusal.resetsAt : Math.max(resetsAt, refusal.resetsAt);
+    }
   }
 
-  return { result, rejected, ...(resetsAt === undefined ? {} : { resetsAt }) };
+  return { result, rejected, throttled, ...(resetsAt === undefined ? {} : { resetsAt }) };
+}
+
+/**
+ * The refusal a `rate_limit_event` reports, or nothing when it reports none.
+ *
+ * A rejected window with `overageStatus: "allowed"` is not a refusal: the turn
+ * runs on usage credits and finishes, so there is nothing to wait for.
+ */
+function refusalOf(event: Record<string, unknown>): { resetsAt?: number } | undefined {
+  const info = event.rate_limit_info as
+    | { status?: unknown; resetsAt?: unknown; overageStatus?: unknown }
+    | undefined;
+  if (info?.status !== "rejected" || info.overageStatus === "allowed") return undefined;
+
+  const resetsAt = typeof info.resetsAt === "number" && Number.isFinite(info.resetsAt) ? info.resetsAt : undefined;
+  return resetsAt === undefined ? {} : { resetsAt };
 }
 
 /**
@@ -136,7 +164,7 @@ export function classify(envelope: ClaudeEnvelope | null, exitOk: boolean): Agen
  * abandoned run that would start another child over the same quota.
  */
 export function classifyStream(stream: ClaudeStream, exitOk: boolean): AgentOutcome {
-  if (stream.rejected) return "rate-limited";
+  if (stream.rejected || stream.throttled) return "rate-limited";
   return classify(stream.result, exitOk);
 }
 
@@ -158,6 +186,18 @@ function isRateLimit(status: number | string | null | undefined): boolean {
   if (status === undefined || status === null) return false;
   if (typeof status === "number") return status === 429;
   return status.includes("429");
+}
+
+/**
+ * What the CLI printed that was not an event line.
+ *
+ * A stream that ended without a result line has no answer to hand back, and
+ * its events are not one: they carry tool calls and tool results, file
+ * contents among them, and a rerun would fold all of that into its prompt.
+ */
+function prose(stdout: string): string {
+  const kept = stdout.split("\n").filter((line) => line.trim() !== "" && !line.trim().startsWith("{"));
+  return kept.join("\n").trim();
 }
 
 /** The token counts, if the envelope carried them. */
@@ -196,9 +236,9 @@ export function parseRun(stdout: string, exitOk: boolean, asked: string, now = D
 
   return {
     outcome: classifyStream(stream, exitOk),
-    // The envelope puts the answer in `result`; without one, the raw output
-    // is all there is.
-    text: envelope?.result ?? stdout,
+    // The envelope puts the answer in `result`; without one, the CLI's prose
+    // is all there is, never the events themselves.
+    text: envelope?.result ?? prose(stdout),
     model: modelOf(envelope, asked),
     tokens,
     costUsd: typeof reported === "number" ? reported : undefined,

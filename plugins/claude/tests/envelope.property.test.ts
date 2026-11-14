@@ -35,7 +35,7 @@ function readStream(stdout: string): ClaudeStream {
   if (planted === LAST_ONLY) {
     const lines = stdout.split("\n").filter((line) => line.trim().startsWith("{"));
     const last = parseStream(lines.at(-1) ?? "");
-    return { result: parsed.result, rejected: last.rejected, ...(last.resetsAt === undefined ? {} : { resetsAt: last.resetsAt }) };
+    return { result: parsed.result, rejected: last.rejected, throttled: last.throttled, ...(last.resetsAt === undefined ? {} : { resetsAt: last.resetsAt }) };
   }
 
   if (planted === WARNING) {
