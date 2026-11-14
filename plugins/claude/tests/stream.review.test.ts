@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,36 +84,89 @@ describe("HIGH: a clean exit with no result line is not read as a missing envelo
   });
 });
 
-describe("HIGH: the recorded streams are not what S8 says they are", () => {
-  // S8: "the fixtures are a real 2.1.322 stream recorded at execution". A2 and
-  // A9 prove only as much as the recording is real; these ids are typed by
-  // hand (sequential uuids, a placeholder session), so A2 compares the helper
-  // envelope with a stream written to match it.
-  it("the completed stream carries ids a real run generated, not placeholders", () => {
-    const ids = lines(recorded("completed")).map((line) => JSON.parse(line) as { uuid?: string });
+/**
+ * A stand-in for Claude Code 2.1.325 in print mode, built from the CLI itself
+ * rather than a recording (no credential reaches the implementer, so S8's real
+ * recording stays pending). Verified against:
+ * - @anthropic-ai/claude-agent-sdk 0.3.325 sdk.d.ts: SDKRateLimitEvent
+ *   { type, rate_limit_info, uuid, session_id }; SDKRateLimitInfo.status is
+ *   allowed | allowed_warning | rejected, resetsAt optional, overageStatus
+ *   optional; SDKResultSuccess carries is_error and api_error_status.
+ * - the 2.1.325 binary: rate_limit_info copies only the fields it has
+ *   (resetsAt in epoch seconds, from anthropic-ratelimit-unified-reset); a 429
+ *   becomes a synthetic assistant message with error "rate_limit" and text
+ *   "You've hit your ... · resets ..."; the result line then has is_error true,
+ *   the limit text as result and api_error_status 429; and a request is
+ *   refused only when status is rejected and overageStatus is absent or
+ *   rejected (with overage allowed the run goes on, on usage credits).
+ */
+const claude = (() => {
+  const session = randomUUID();
+  const line = (value: object) => event({ ...value, uuid: randomUUID(), session_id: session });
+  const init = () =>
+    line({ type: "system", subtype: "init", cwd: "/w", tools: ["Read"], mcp_servers: [], model: "claude-sonnet-4-5", permissionMode: "acceptEdits", slash_commands: [], apiKeySource: "none", claude_code_version: "2.1.325", output_style: "default", skills: [], plugins: [] });
+  const limit = (info: Record<string, unknown>) => line({ type: "rate_limit_event", rate_limit_info: info });
+  const said = (text: string, error?: string) =>
+    line({ type: "assistant", message: { id: `msg_${randomUUID()}`, type: "message", role: "assistant", model: "claude-sonnet-4-5", content: [{ type: "text", text }], stop_reason: null, usage: { input_tokens: 2, output_tokens: 4 } }, parent_tool_use_id: null, ...(error ? { error } : {}) });
+  const result = (text: string, isError: boolean, status?: number) =>
+    line({ type: "result", subtype: "success", is_error: isError, ...(status === undefined ? {} : { api_error_status: status }), duration_ms: 812, duration_api_ms: 640, num_turns: 1, result: text, stop_reason: null, total_cost_usd: 0.01, usage: { input_tokens: 2, output_tokens: 4 }, modelUsage: { "claude-sonnet-4-5": { inputTokens: 2, outputTokens: 4, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: 0, costUSD: 0.01, contextWindow: 200000, maxOutputTokens: 32000 } }, permission_denials: [] });
+  return {
+    /** The plan refused the turn: the event, the synthetic reply, the error result. */
+    refused(resetsAt: number) {
+      const text = "You've hit your session limit · resets 3pm";
+      return [init(), limit({ status: "rejected", resetsAt, rateLimitType: "five_hour", utilization: 1, isUsingOverage: false }), said(text, "rate_limit"), result(text, true, 429)].join("\n");
+    },
+    /** The plan window is spent but usage credits carry the turn: it completes. */
+    onCredits(resetsAt: number) {
+      return [init(), limit({ status: "rejected", resetsAt, rateLimitType: "five_hour", overageStatus: "allowed", isUsingOverage: true }), said("done"), result("done", false)].join("\n");
+    },
+  };
+})();
 
-    for (const { uuid } of ids) {
-      expect(uuid, "a sequential placeholder uuid is not a recording").not.toMatch(/-0000-4000-8000-0000000000\d\d$/);
+describe("HIGH: the refused fixture is not what Claude prints when its plan refuses", () => {
+  // S8 stays pending (no credential to record), so the fixture has to be the
+  // stand-in's shape: a refusal is never a success result with is_error false.
+  it("carries the synthetic rate_limit reply and a 429 error result, as 2.1.325 prints", () => {
+    const events = lines(recorded("rate-limited")).map((line) => JSON.parse(line) as Record<string, unknown>);
+
+    expect(events.some((e) => e.type === "assistant" && e.error === "rate_limit")).toBe(true);
+    expect(events.find((e) => e.type === "result")).toMatchObject({ is_error: true, api_error_status: 429 });
+  });
+
+  it("every line of both fixtures belongs to the one session the init line opened", () => {
+    for (const name of ["completed", "rate-limited"] as const) {
+      const events = lines(recorded(name)).map((line) => JSON.parse(line) as { session_id?: string; uuid?: string });
+      expect(new Set(events.map((e) => e.session_id)).size).toBe(1);
+      expect(events.every((e) => typeof e.uuid === "string")).toBe(true);
     }
   });
 });
 
-describe("MEDIUM: the refused recording is not the completed one with status and resetsAt edited", () => {
-  // S8: "the rejected one is that recording with its status and resetsAt
-  // edited". Here session ids, uuids and message ids differ too, so the pair
-  // no longer isolates the one change the proof is about.
-  it("differs from the completed recording only in rate_limit_info.status and resetsAt", () => {
-    const strip = (stdout: string) =>
-      lines(stdout).map((line) => {
-        const parsed = JSON.parse(line) as { type?: string; rate_limit_info?: Record<string, unknown> };
-        if (parsed.type === "rate_limit_event" && parsed.rate_limit_info) {
-          const { status: _s, resetsAt: _r, ...rest } = parsed.rate_limit_info;
-          return { ...parsed, rate_limit_info: rest };
-        }
-        return parsed;
-      });
+describe("HIGH: a turn carried by usage credits reads as refused", () => {
+  // Exit: "a Claude run its plan refuses reads as rate-limited". 2.1.325 does
+  // not refuse when overageStatus is allowed: the turn runs on credits and
+  // completes. Reading status alone throws the finished work away and reruns
+  // the step after a reset that may be days off.
+  it("is completed, with no wait, when overageStatus is allowed", () => {
+    const now = Date.parse("2026-11-14T12:00:00.000Z");
+    const parsed = parseRun(claude.onCredits(now / 1000 + 3_600), true, "sonnet", now);
 
-    expect(strip(recorded("rate-limited"))).toEqual(strip(recorded("completed")));
+    expect(parsed.outcome).toBe("completed");
+    expect(parsed.retryAfterMs).toBeUndefined();
+  });
+});
+
+describe("a refusal as the 2.1.325 stand-in prints it (A3, A6)", () => {
+  it("is rate-limited, waits for the reset it reported, and answers with the limit text", () => {
+    const now = Date.parse("2026-11-14T12:00:00.000Z");
+    const resetsAt = now / 1000 + 3_600;
+
+    for (const exitOk of [true, false]) {
+      const parsed = parseRun(claude.refused(resetsAt), exitOk, "sonnet", now);
+      expect(parsed.outcome).toBe("rate-limited");
+      expect(parsed.retryAfterMs).toBe(3_600_000);
+      expect(parsed.text).toBe("You've hit your session limit · resets 3pm");
+    }
   });
 });
 
