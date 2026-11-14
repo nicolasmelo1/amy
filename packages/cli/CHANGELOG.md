@@ -17,7 +17,7 @@
   fails a profile file no declared profile names.
 - 9a9ac0a: **A skill is asked for in the chat.** Grooming needed a terminal: amy's skills
   lived only in a harness's own directory, and the chat knew three commands. Now
-  `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.
+  `/amy-groom PROJ-1` works from Slack or Telegram, and the thread goes on.
   
   - **amy owns a copy of the skills it ships.** `amy skills` and every `amy
     update` write every shipped skill into `~/.amy/skills`, whether or not a
@@ -316,7 +316,7 @@
   marks a state `class X call`, and `calls` binds it to the workflow it calls:
   `call(review, { input, config, ports, output, effects })`, every member
   optional. The callee runs as a child record kept inside its caller's
-  (`TBO-1/REVIEW#1`), with its own history and attempts, and only the deepest
+  (`PROJ-1/REVIEW#1`), with its own history and attempts, and only the deepest
   record in a call is observed. When the child ends, the caller takes the edge
   named for that end, folding what it returned. Before this, composing
   workflows meant importing another's states and record fields in TypeScript,

@@ -390,6 +390,11 @@
           "description": ""
         },
         {
+          "title": "A short private name is a whole word",
+          "path": "/design/a-short-private-name-is-a-whole-word",
+          "description": ""
+        },
+        {
           "title": "A skill is asked for in the chat",
           "path": "/design/a-skill-is-asked-for-in-the-chat",
           "description": ""
@@ -991,6 +996,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "The examples in the docs, the tests and the prove plugin's help name tickets PROJ-, the placeholder the rest of the suite already used. A private term can now be denied as a whole word, so a three-letter key is caught in XYZ-12 without also firing on every identifier that contains those letters.",
+          "slug": "the-examples-in-the-docs-the-tests-and-the-prove-plugins-help-name-tickets-proj--the-placeholder-the-rest-of-the-suite-already-used-a-private-term-can-now-be-denied-as-a-whole-word-so-a-three-letter-key-is-caught-in-xyz-12-without-also-firing-on-every-identifier-that-contains-those-letters"
         },
         {
           "depth": 2,
@@ -2278,6 +2288,17 @@
       "file": "docs/design/a-shipped-workflow-runs-as-a-phase.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-shipped-workflow-runs-as-a-phase.md",
       "title": "A shipped workflow runs as a phase",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-short-private-name-is-a-whole-word",
+      "file": "docs/design/a-short-private-name-is-a-whole-word.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-short-private-name-is-a-whole-word.md",
+      "title": "A short private name is a whole word",
       "description": "",
       "group": "",
       "order": 999,
@@ -5493,6 +5514,11 @@
           "depth": 2,
           "title": "L6 — Hazard: the defect classes this repository hunts",
           "slug": "l6-hazard-the-defect-classes-this-repository-hunts"
+        },
+        {
+          "depth": 3,
+          "title": "L6.A_PRIVATE_NAME_STAYS_PRIVATE",
+          "slug": "l6aprivatenamestaysprivate"
         },
         {
           "depth": 3,
@@ -11317,6 +11343,13 @@
         "reason": ""
       },
       {
+        "id": "L6.A_PRIVATE_NAME_STAYS_PRIVATE",
+        "enabled": true,
+        "settings": {},
+        "title": "A private name stays out of this public repository (docs/design/a-short-private-name-is-a-whole-word.md)",
+        "reason": ""
+      },
+      {
         "id": "L6.A_PUSH_NEVER_FORCES",
         "enabled": true,
         "settings": {},
@@ -11435,7 +11468,28 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "a-short-private-name-is-a-whole-word",
+        "title": "The examples in the docs, the tests and the prove plugin's help name tickets `PROJ-`, the placeholder the rest of the suite already used. A private term can now be denied as a whole word, so a three-letter key is caught in `XYZ-12` without also firing on every identifier that contains those letters.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-prove",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

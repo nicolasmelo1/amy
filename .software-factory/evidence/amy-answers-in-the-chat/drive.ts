@@ -342,14 +342,14 @@ async function withoutTopics(): Promise<[boolean, unknown]> {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-chat-unthreaded-"));
   try {
     const chat = new TelegramConversation(new BotApi(TOKEN, { transport: telegram.transport, sleep: async () => {} }), { operator: String(OPERATOR), directory: path.join(directory, "profile"), shared: path.join(directory, "bot"), topics: false });
-    const one = await chat.open("TBO-1", "Totals");
-    const two = await chat.open("TBO-2", "Taxes");
+    const one = await chat.open("PROJ-1", "Totals");
+    const two = await chat.open("PROJ-2", "Taxes");
     const since = new Date(telegram.now() * 1000).toISOString();
     const forOne = Number(await chat.post(one, { text: "Which currency?" }));
     await chat.post(two, { text: "Which tax?" });
 
     telegram.say("BRL", { quotes: forOne });
-    telegram.say("TBO-2: the federal one");
+    telegram.say("PROJ-2: the federal one");
     telegram.say("remember the word kiwi");
     const prompts: string[] = [];
     const harness = { name: "claude", ask: async (prompt: string) => (prompts.push(prompt), { text: `answer ${prompts.length}`, run: { outcome: "completed" } as never }) };

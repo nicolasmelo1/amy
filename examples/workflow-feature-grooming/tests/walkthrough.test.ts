@@ -46,23 +46,23 @@ async function look({ workflow, runtime }: Awaited<ReturnType<typeof mounted>>, 
   return { record: runtime.apply(applyPlan(record, plan, now, {}), plan, {}, observation, now, movedBy(record, plan)) as GroomingRecord, plan };
 }
 
-const brief = (sections: { name: string; body: string }[]): BriefRecord => ({ id: "TBO-1", sections, questions: [], explains: [], createdAt: "", updatedAt: "", revision: 1 });
+const brief = (sections: { name: string; body: string }[]): BriefRecord => ({ id: "PROJ-1", sections, questions: [], explains: [], createdAt: "", updatedAt: "", revision: 1 });
 
 describe("a feature is groomed into a brief", () => {
   it("waits as a look while the brief is missing or refused, then returns the criteria it settled", async () => {
     const briefs = new Map<string, BriefRecord>();
     const machine = await mounted(briefs);
-    let record = machine.runtime.newRecord("TBO-1/BRIEF#1", new Date()) as GroomingRecord;
+    let record = machine.runtime.newRecord("PROJ-1/BRIEF#1", new Date()) as GroomingRecord;
 
     const missing = await look(machine, record);
-    expect(missing.plan).toMatchObject({ kind: "wait", why: "the brief of TBO-1 is still being groomed: there is no brief yet" });
+    expect(missing.plan).toMatchObject({ kind: "wait", why: "the brief of PROJ-1 is still being groomed: there is no brief yet" });
 
-    briefs.set("TBO-1", brief([...GROOMED.slice(0, 2), { name: "Criteria", body: "- C1: one currency" }, GROOMED[3]!]));
+    briefs.set("PROJ-1", brief([...GROOMED.slice(0, 2), { name: "Criteria", body: "- C1: one currency" }, GROOMED[3]!]));
     const refused = await look(machine, missing.record);
     expect(refused.plan).toMatchObject({ kind: "wait", why: expect.stringContaining("`C1: one currency` is not `C<n>: what holds (source: S<n>)`") });
     expect(refused.record.attempts.GROOMING ?? 0).toBe(0);
 
-    briefs.set("TBO-1", brief(GROOMED));
+    briefs.set("PROJ-1", brief(GROOMED));
     record = (await look(machine, refused.record)).record;
     expect(record.state).toBe("BRIEFED");
     expect(record.criteria).toEqual(["C1", "C2"]);

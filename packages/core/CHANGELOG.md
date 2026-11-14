@@ -14,7 +14,7 @@
   - **A unit has one conversation, and reading it opens none.** `Conversation` gains a required `known(workId)`, which answers the thread a work already has and creates nothing. Slack, Telegram and the terminal implement it, and a conversation adapter of your own must too. ticket-to-qa reads replies through it, so a look that only reads leaves no thread behind. A called phase's threads are the unit's, titled by the ticket, setup's included. The notifier posts into the unit's thread too, instead of opening one under the call's id.
 - 9a9ac0a: **A skill is asked for in the chat.** Grooming needed a terminal: amy's skills
   lived only in a harness's own directory, and the chat knew three commands. Now
-  `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.
+  `/amy-groom PROJ-1` works from Slack or Telegram, and the thread goes on.
   
   - **amy owns a copy of the skills it ships.** `amy skills` and every `amy
     update` write every shipped skill into `~/.amy/skills`, whether or not a
@@ -244,7 +244,7 @@
   marks a state `class X call`, and `calls` binds it to the workflow it calls:
   `call(review, { input, config, ports, output, effects })`, every member
   optional. The callee runs as a child record kept inside its caller's
-  (`TBO-1/REVIEW#1`), with its own history and attempts, and only the deepest
+  (`PROJ-1/REVIEW#1`), with its own history and attempts, and only the deepest
   record in a call is observed. When the child ends, the caller takes the edge
   named for that end, folding what it returned. Before this, composing
   workflows meant importing another's states and record fields in TypeScript,

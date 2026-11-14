@@ -73,7 +73,7 @@ export function proofsAt(paths: { readonly state: string; readonly profile?: str
 /**
  * Who holds a seat: the run, named by the profile it runs in. A work id is
  * unique only inside its profile, and two projects can both be proving
- * `TBO-1/PROVE#1` against one account.
+ * `PROJ-1/PROVE#1` against one account.
  */
 export function holderOf(paths: { readonly state: string; readonly profile?: string }, record: { readonly id: string }): string {
   return `${paths.profile ?? paths.state}#${record.id}`;

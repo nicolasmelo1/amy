@@ -210,12 +210,12 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   const { agent } = await hostWith(LADDER);
   await triage(agent, {
     ...TICKET,
-    body: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+    body: "Consume the DB-layer aggregate from PROJ-1236 — do not rebuild the SUM here.",
   });
 
   record(
     "prompt.carries_the_ticket_body",
-    lastPrompt().includes("Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here."),
+    lastPrompt().includes("Consume the DB-layer aggregate from PROJ-1236 — do not rebuild the SUM here."),
   );
 
   // The label only the tracker could have supplied, beside the body it is

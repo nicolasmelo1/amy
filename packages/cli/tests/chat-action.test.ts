@@ -94,12 +94,12 @@ describe("an action runs only amy's own commands (A4)", () => {
   });
 
   it("runs a listed command as amy with arguments, never a shell", async () => {
-    const world = setup("```amy\namy brief write TBO-1 scope \"the api; and the ui\"\n```", "/action write the scope");
+    const world = setup("```amy\namy brief write PROJ-1 scope \"the api; and the ui\"\n```", "/action write the scope");
 
     await answerTheChat(world.desk);
 
-    expect(world.ran).toEqual([{ command: "node", args: ["/amy.js", "--workflow", "billing", "brief", "write", "TBO-1", "scope", "the api; and the ui"] }]);
-    expect(world.said.at(-1)).toMatch(/amy brief write TBO-1 scope the api; and the ui: done/);
+    expect(world.ran).toEqual([{ command: "node", args: ["/amy.js", "--workflow", "billing", "brief", "write", "PROJ-1", "scope", "the api; and the ui"] }]);
+    expect(world.said.at(-1)).toMatch(/amy brief write PROJ-1 scope the api; and the ui: done/);
   });
 
   it("ends the batch at a stop, naming what was not run", async () => {
@@ -313,8 +313,8 @@ describe("a block an answer carries reaches the command as a file (A8, A9)", () 
     fs.mkdirSync(path.join(home, "skills", "amy-groom"), { recursive: true });
     fs.writeFileSync(path.join(home, "skills", "amy-groom", "SKILL.md"), "# amy-groom\n");
     const body = "the scope:\n- the api\n- the ui\n";
-    const answer = `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``;
-    const { conversation, said } = chatWith("/amy-groom TBO-1");
+    const answer = `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write PROJ-1 scope --from answer.md\n\`\`\``;
+    const { conversation, said } = chatWith("/amy-groom PROJ-1");
     const desk = {
       conversation,
       harnesses: new Map([["claude", answering(answer)]]),
@@ -329,11 +329,11 @@ describe("a block an answer carries reaches the command as a file (A8, A9)", () 
 
     expect(seen).toHaveLength(1);
     expect(seen[0]!.body).toBe(body);
-    expect(seen[0]!.argv.slice(3, 8)).toEqual(["brief", "write", "TBO-1", "scope", "--from"]);
+    expect(seen[0]!.argv.slice(3, 8)).toEqual(["brief", "write", "PROJ-1", "scope", "--from"]);
     expect(seen[0]!.argv[8]).toMatch(/answer\.md$/);
     const file = seen[0]!.argv[seen[0]!.argv.indexOf("--from") + 1]!;
     expect(fs.existsSync(file)).toBe(false);
-    expect(said.at(-1)).toMatch(/amy brief write TBO-1 scope --from answer.md: done/);
+    expect(said.at(-1)).toMatch(/amy brief write PROJ-1 scope --from answer.md: done/);
   });
 
   it("is not marked running when its block cannot be written, so the turn is asked again", async () => {
@@ -358,7 +358,7 @@ describe("a block an answer carries reaches the command as a file (A8, A9)", () 
     let running = 0;
 
     await expect(act({
-      asked: commandsIn("```markdown answer.md\nthe api\n```\n```amy\nbrief write TBO-1 scope --from answer.md\n```"),
+      asked: commandsIn("```markdown answer.md\nthe api\n```\n```amy\nbrief write PROJ-1 scope --from answer.md\n```"),
       place: "chat",
       progress: { line: async () => undefined } as never,
       running: () => {

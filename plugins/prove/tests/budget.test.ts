@@ -43,9 +43,9 @@ describe("a proof's agent step and the budget", () => {
       ],
     };
     const policy = { leaseTtlMs: 1, seatRetryMs: 1, askEveryMs: 1, fixtureDeadlineMs: 1, resources: {}, fixtures: {} };
-    const observation = { unit: "TBO-1", problems: [], briefRevision: 1, lost: [], now: "2026-09-03T12:00:00.000Z" };
+    const observation = { unit: "PROJ-1", problems: [], briefRevision: 1, lost: [], now: "2026-09-03T12:00:00.000Z" };
     const running = (results: Record<string, unknown>) =>
-      ({ id: "TBO-1", state: "RUNNING", updatedAt: "", attempts: {}, history: [], scenario, prepared: true, held: [], results }) as never;
+      ({ id: "PROJ-1", state: "RUNNING", updatedAt: "", attempts: {}, history: [], scenario, prepared: true, held: [], results }) as never;
 
     expect(actionsOf(decide.RUNNING!(running({}), observation as never, policy as never)).map((one) => one.type)).toEqual(["run-step"]);
     expect(actionsOf(decide.RUNNING!(running({ open: { status: "done", output: {} } }), observation as never, policy as never)).map((one) => one.type)).toEqual(["run-agent-step"]);

@@ -44,15 +44,15 @@ describe("a fixture ensures a state", () => {
     const proving = new ProveWorld({
       fixtures: { "an-open-account": { ensure: [{ check: { operation: "account.get", input: {}, expect: { path: "open", equals: true } } }] } },
     });
-    proving.brief("TBO-10", "name: n\nfixtures: [an-open-account]\nsteps:\n  - { id: open, operation: account.get, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    proving.brief("PROJ-10", "name: n\nfixtures: [an-open-account]\nsteps:\n  - { id: open, operation: account.get, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
     let open = false;
     const mounted = await proving.mounted([operationsPlugin("bank", { "account.get": () => ({ open }) })]);
 
-    const asked = await walk(proving, mounted, newRun(mounted, "TBO-10/PROVE#1"), { until: (record) => record.state === "ASKING" && record.asking !== undefined });
-    expect(proving.posted).toEqual([{ thread: "thread-TBO-10", text: expect.stringContaining("the fixture `an-open-account` needs `account.get` to hold") }]);
+    const asked = await walk(proving, mounted, newRun(mounted, "PROJ-10/PROVE#1"), { until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    expect(proving.posted).toEqual([{ thread: "thread-PROJ-10", text: expect.stringContaining("the fixture `an-open-account` needs `account.get` to hold") }]);
 
     open = true;
-    proving.answer("thread-TBO-10", "opened it");
+    proving.answer("thread-PROJ-10", "opened it");
     const { record } = await walk(proving, mounted, asked.record, { throughWaits: true });
     expect(record.state).toBe("PROVEN");
   });
@@ -78,20 +78,20 @@ describe("a person's answer about a fixture", () => {
     const proving = new ProveWorld({
       fixtures: { "an-open-account": { ensure: [{ check: { operation: "account.get", input: {}, expect: { path: "open", equals: true } } }] } },
     });
-    proving.brief("TBO-40", "name: n\nfixtures: [an-open-account]\nsteps:\n  - { id: open, operation: account.get, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    proving.brief("PROJ-40", "name: n\nfixtures: [an-open-account]\nsteps:\n  - { id: open, operation: account.get, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
     let open = false;
     const mounted = await proving.mounted([operationsPlugin("bank", { "account.get": () => ({ open }) })]);
-    const asked = await walk(proving, mounted, newRun(mounted, "TBO-40/PROVE#1"), { until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    const asked = await walk(proving, mounted, newRun(mounted, "PROJ-40/PROVE#1"), { until: (record) => record.state === "ASKING" && record.asking !== undefined });
     const firstDeadline = asked.record.asking!.deadlineAt;
 
-    proving.answer("thread-TBO-40", "I couldn't open it");
+    proving.answer("thread-PROJ-40", "I couldn't open it");
     const again = await walk(proving, mounted, asked.record, { until: (record) => record.state === "ASKING" && record.asking !== undefined && proving.posted.length === 2 });
     expect(again.record.state).toBe("ASKING");
     expect(again.record.asking!.deadlineAt).toBe(firstDeadline);
 
     open = true;
     proving.clock += 1000;
-    proving.answer("thread-TBO-40", "now it is open");
+    proving.answer("thread-PROJ-40", "now it is open");
     expect((await walk(proving, mounted, again.record, { throughWaits: true })).record.state).toBe("PROVEN");
   });
 });

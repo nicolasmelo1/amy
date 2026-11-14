@@ -5,7 +5,8 @@ import yaml from "yaml";
  * A plan is held to what it said.
  *
  * Grooming and execution are told apart by the paths a commit touches: a
- * grooming commit touches only plans/ and the mechanism catalog, and the
+ * grooming commit touches only plans/, delivered notes in docs/design/ and
+ * the mechanism catalog, and the
  * first commit touching anything else starts execution. From then on a
  * plan's declaration moves only mechanically — to docs/design, a criterion
  * marked done, `deferred:` dropped from a proof, a source pointed at the
@@ -36,8 +37,10 @@ export interface HeldReading {
 }
 
 /** Whether a path is what grooming may touch. */
+// A delivered note is a plan that finished: rewording its declaration is
+// grooming it again, held to the same rules, never something done beside code.
 function isGrooming(file: string): boolean {
-  return file.startsWith("plans/") || file === "docs/mechanisms.yaml";
+  return file.startsWith("plans/") || /^docs\/design\/[^/]+\.md$/.test(file) || file === "docs/mechanisms.yaml";
 }
 
 /** Whether a path holds a plan or its delivered note. */
@@ -69,7 +72,7 @@ export function heldProblems(input: HeldInput): HeldReading {
       const file = step.plans.has(`plans/${name}`) ? `plans/${name}` : `docs/design/${name}`;
       if (!grooming) {
         const code = step.files.filter((one) => !isGrooming(one)).slice(0, 3).join(", ");
-        problems.push(`${step.id} changes the declaration of ${file} together with ${code}: groom a plan in a commit that touches only plans/ and docs/mechanisms.yaml`);
+        problems.push(`${step.id} changes the declaration of ${file} together with ${code}: groom a plan in a commit that touches only plans/, docs/design/ and docs/mechanisms.yaml`);
       } else if (executing) {
         problems.push(`${step.id} changes the declaration of ${file} after ${executing} started executing it: a plan in flight moves only mechanically, so groom it again from main`);
       } else {

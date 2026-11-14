@@ -1,0 +1,30 @@
+id: L6.A_PRIVATE_NAME_STAYS_PRIVATE
+layer: L6
+title: A private name stays out of this public repository
+severity: critical
+statement: >-
+  No file in the tree, tracked or new, carries a term denied by
+  scripts/private-terms.json — inside a longer word for a windowed term, as a
+  whole word for a term marked `word`.
+why: >-
+  This repository is public and some of the work that drove it is not. A
+  company's name, a colleague's handle, a team's ticket key: each one arrived
+  as an ordinary example, written by somebody who knew exactly what it was,
+  and none looked wrong in review because a realistic example is what a
+  fixture is supposed to look like. Once pushed, a name is in the history,
+  the forks and the pull request refs, where no later commit reaches it. So
+  the only cheap place to stop it is before the commit. The terms are digests,
+  never words, because a published list of what a company is hiding is the
+  leak itself.
+fix: >-
+  Run `npm run check:private` and replace each word it names with the
+  placeholders the suite already uses (`PROJ-` for a ticket, `northwind` for a
+  workspace, "a private workflow" in prose). If the match is a coincidence,
+  the term is too broad: deny it as a whole word with
+  `tsx scripts/check-private-refs.ts --add <term> --word` rather than
+  excepting the file.
+ratchet: none
+check:
+  kind: command
+defaults:
+  run: '"$(git rev-parse --show-toplevel)/node_modules/.bin/tsx" "$(git rev-parse --show-toplevel)/scripts/check-private-refs.ts"'

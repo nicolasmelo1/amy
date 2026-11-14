@@ -127,11 +127,11 @@ describe("a caller that enters the same call state twice", () => {
   it("gets two callee records, each with its own history and output", async () => {
     const { workflow, runtime } = await mounted([pull()]);
 
-    const record = await walk(workflow, runtime, runtime.newRecord("TBO-1", HOST.now())) as PullRecord;
+    const record = await walk(workflow, runtime, runtime.newRecord("PROJ-1", HOST.now())) as PullRecord;
 
     expect(record.state).toBe("DONE");
-    expect(Object.keys(record.calls ?? {})).toEqual(["TBO-1/REVIEW#1", "TBO-1/REVIEW#2"]);
-    const [first, second] = [record.calls!["TBO-1/REVIEW#1"]!, record.calls!["TBO-1/REVIEW#2"]!];
+    expect(Object.keys(record.calls ?? {})).toEqual(["PROJ-1/REVIEW#1", "PROJ-1/REVIEW#2"]);
+    const [first, second] = [record.calls!["PROJ-1/REVIEW#1"]!, record.calls!["PROJ-1/REVIEW#2"]!];
     expect(first.history.map((step) => step.to)).toEqual(["CHANGES"]);
     expect(second.history.map((step) => step.to)).toEqual(["APPROVED"]);
     expect(first.input).toEqual({ round: 1 });
@@ -142,8 +142,8 @@ describe("a caller that enters the same call state twice", () => {
 
   it("resumes #2 after a restart during it, rather than starting #3", async () => {
     const before = await mounted([pull()]);
-    const midway = await walk(before.workflow, before.runtime, before.runtime.newRecord("TBO-1", HOST.now()), (record) =>
-      record.calling === "TBO-1/REVIEW#2" && (record.calls!["TBO-1/REVIEW#2"] as ReviewRecord).read === 1);
+    const midway = await walk(before.workflow, before.runtime, before.runtime.newRecord("PROJ-1", HOST.now()), (record) =>
+      record.calling === "PROJ-1/REVIEW#2" && (record.calls!["PROJ-1/REVIEW#2"] as ReviewRecord).read === 1);
 
     // What a store hands back after the process that held the record is gone.
     const saved = JSON.parse(JSON.stringify(midway)) as WorkRecord;
@@ -151,8 +151,8 @@ describe("a caller that enters the same call state twice", () => {
     const record = await walk(after.workflow, after.runtime, saved);
 
     expect(record.state).toBe("DONE");
-    expect(Object.keys(record.calls ?? {})).toEqual(["TBO-1/REVIEW#1", "TBO-1/REVIEW#2"]);
-    expect((record.calls!["TBO-1/REVIEW#2"] as ReviewRecord).read).toBe(2);
+    expect(Object.keys(record.calls ?? {})).toEqual(["PROJ-1/REVIEW#1", "PROJ-1/REVIEW#2"]);
+    expect((record.calls!["PROJ-1/REVIEW#2"] as ReviewRecord).read).toBe(2);
   });
 });
 

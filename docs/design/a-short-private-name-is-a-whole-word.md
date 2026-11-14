@@ -65,9 +65,9 @@ touches:
   - plugins/claude/CHANGELOG.md
   - plugins/codex/CHANGELOG.md
 criteria:
-  - { id: A1, statement: "a term marked word is found where a separator stands it alone and never inside a longer word", proof: "deferred:test:packages/cli/tests/private-refs.test.ts", sources: [S1, S2, S4] }
-  - { id: A2, statement: "a whole-word term judged beside windowed terms hides neither", proof: "deferred:test:packages/cli/tests/private-refs.test.ts", sources: [S2] }
-  - { id: A3, statement: "a commit touching only delivered notes grooms them, and one that also touches code is still refused", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S5] }
+  - { id: A1, statement: "a term marked word is found where a separator stands it alone and never inside a longer word", proof: "test:packages/cli/tests/private-refs.test.ts", sources: [S1, S2, S4], done: true }
+  - { id: A2, statement: "a whole-word term judged beside windowed terms hides neither", proof: "test:packages/cli/tests/private-refs.test.ts", sources: [S2], done: true }
+  - { id: A3, statement: "a commit touching only delivered notes grooms them, and one that also touches code is still refused", proof: "test:scripts/plans/tests/held.test.ts", sources: [S5], done: true }
 crosses:
   - { mechanism: record-migration, answer: n/a, why: "work.ts changes one comment's example id; no record shape moves" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "work.ts changes one comment's example id; no attempt or wait moves" }

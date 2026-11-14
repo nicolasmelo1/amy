@@ -15,9 +15,9 @@ describe("a lease whose holder stops renewing", () => {
   it("expires, and the run it belonged to goes back to waiting for a seat", async () => {
     const config = { resources: { account: { capacity: 1, check: "account-check" } }, "policy.leaseTtlMs": 5000 };
     const world = new ProveWorld({ resources: config.resources, policy: { leaseTtlMs: 5000 } }, { "account-check": ok });
-    world.brief("TBO-11", "name: n\nresources: [account]\nsteps:\n  - { id: look, kind: human, ask: is it there?, deadlineMs: 600000 }\n  - { id: open, operation: bank.open, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    world.brief("PROJ-11", "name: n\nresources: [account]\nsteps:\n  - { id: look, kind: human, ask: is it there?, deadlineMs: 600000 }\n  - { id: open, operation: bank.open, input: {} }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
     const mounted = await world.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
-    const asking = await walk(world, mounted, newRun(mounted, "TBO-11/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    const asking = await walk(world, mounted, newRun(mounted, "PROJ-11/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
     expect(asking.record.held).toEqual(["account"]);
 
     // The daemon stops: nobody renews, and the seat goes to somebody else.
@@ -100,12 +100,12 @@ describe("a run needing several resources", () => {
     const shop = new ProveWorld({ resources: { account: { capacity: 1, check: "ok" } } }, { ok }, home);
     const blog = new ProveWorld({ resources: { account: { capacity: 1, check: "ok" } } }, { ok }, home);
     Object.assign(blog, { host: () => ({ ...shop.host(), paths: { ...shop.host().paths, profile: path.join(home, "projects", "q", "prove"), artifacts: path.join(home, "projects", "q", "artifacts") } }) });
-    for (const world of [shop, blog]) world.brief("TBO-1", SCENARIO);
+    for (const world of [shop, blog]) world.brief("PROJ-1", SCENARIO);
     const first = await shop.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
     const second = await blog.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
 
-    const holding = await walk(shop, first, newRun(first, "TBO-1/PROVE#1"), { until: (record) => record.state === "RUNNING" });
-    const waiting = await walk(blog, second, newRun(second, "TBO-1/PROVE#1"));
+    const holding = await walk(shop, first, newRun(first, "PROJ-1/PROVE#1"), { until: (record) => record.state === "RUNNING" });
+    const waiting = await walk(blog, second, newRun(second, "PROJ-1/PROVE#1"));
 
     expect(holding.record.held).toEqual(["account"]);
     expect(waiting.record.state).toBe("LEASING");
@@ -183,9 +183,9 @@ describe("a lease lock left by a daemon that died holding it", () => {
 describe("a run that lost its seat mid-scenario", () => {
   it("starts the scenario over once it has a seat again, keeping nothing the old resource answered", async () => {
     const world = new ProveWorld({ resources: { account: { capacity: 1, check: "ok" } }, policy: { leaseTtlMs: 5000 } }, { ok });
-    world.brief("TBO-41", "name: n\nresources: [account]\nsteps:\n  - { id: open, operation: bank.open, input: {} }\n  - { id: look, kind: human, ask: is it there?, deadlineMs: 600000 }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
+    world.brief("PROJ-41", "name: n\nresources: [account]\nsteps:\n  - { id: open, operation: bank.open, input: {} }\n  - { id: look, kind: human, ask: is it there?, deadlineMs: 600000 }\nassertions:\n  - { id: opened, step: open, path: open, equals: true }\n");
     const mounted = await world.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
-    const asking = await walk(world, mounted, newRun(mounted, "TBO-41/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    const asking = await walk(world, mounted, newRun(mounted, "PROJ-41/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
     expect(asking.record.results?.open).toBeDefined();
 
     world.clock += 6000;

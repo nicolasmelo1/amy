@@ -67,9 +67,9 @@ const recordProof = defineOperation({
   cli: { words: ["prove", "record"], positional: ["unit"] },
   examples: [{
     summary: "a person proved the badge by hand",
-    input: { unit: "TBO-12", scenario: "paid-invoice-badge", by: "ada", assertion: ["badge@C1=passed"], revision: 3 },
+    input: { unit: "PROJ-12", scenario: "paid-invoice-badge", by: "ada", assertion: ["badge@C1=passed"], revision: 3 },
     output: {
-      unit: "TBO-12", scenario: "paid-invoice-badge", outcome: "proven", ranBy: "ada", manual: true, against: [], codeDigest: null, briefRevision: 3,
+      unit: "PROJ-12", scenario: "paid-invoice-badge", outcome: "proven", ranBy: "ada", manual: true, against: [], codeDigest: null, briefRevision: 3,
       at: "2026-11-08T12:00:00.000Z", assertions: [{ id: "badge", criterion: "C1", status: "passed" }],
     },
   }],
@@ -123,7 +123,7 @@ const showStanding = defineOperation({
   cli: { words: ["prove", "show"], positional: ["unit"] },
   examples: [{
     summary: "a unit whose code moved since its proof",
-    input: { unit: "TBO-12", digest: "b2", revision: 3 },
+    input: { unit: "PROJ-12", digest: "b2", revision: 3 },
     output: { proven: false, why: "the proof certified code a1, and the code is b2 now" },
   }],
   async handler(input, context) {

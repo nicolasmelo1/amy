@@ -92,7 +92,7 @@ describe("the commands a groomed plan names on the operations", () => {
   const operations = operationsOf(sources(), read);
 
   it("pass the operation's words, its positionals and its flags", () => {
-    expect(judge(operations, "Run `amy prove show TBO-12 --revision 3`, `amy worktrees remove TBO-12 --force` and `amy note hi --repo acme/api`.")).toEqual([]);
+    expect(judge(operations, "Run `amy prove show PROJ-12 --revision 3`, `amy worktrees remove PROJ-12 --force` and `amy note hi --repo acme/api`.")).toEqual([]);
   });
 
   it("pass a group named alone when one of its operations is its default, and refuse an unknown word under it", () => {
@@ -102,7 +102,7 @@ describe("the commands a groomed plan names on the operations", () => {
   });
 
   it("refuse an option the operation does not declare, even when the plan spells it on another command it did not read", () => {
-    expect(judge(operations, "`amy prove show TBO-12 --revison 3` names one it does not.")).toEqual([expect.stringMatching(/amy prove show declares no --revison/)]);
+    expect(judge(operations, "`amy prove show PROJ-12 --revison 3` names one it does not.")).toEqual([expect.stringMatching(/amy prove show declares no --revison/)]);
   });
 });
 

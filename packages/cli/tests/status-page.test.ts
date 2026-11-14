@@ -105,21 +105,21 @@ const BASE: StatusSnapshot = {
 };
 
 const MIXED = [
-  record("TBO-1", "DONE", { repo: "acme/api", pullRequest: 12 }),
-  record("TBO-2", "IMPLEMENTING", { repo: "acme/api" }),
-  record("TBO-3", "ESCALATED", { pullRequest: 7 }),
-  record("TBO-4", "DISCOVERED"),
+  record("PROJ-1", "DONE", { repo: "acme/api", pullRequest: 12 }),
+  record("PROJ-2", "IMPLEMENTING", { repo: "acme/api" }),
+  record("PROJ-3", "ESCALATED", { pullRequest: 7 }),
+  record("PROJ-4", "DISCOVERED"),
   record("A-RATHER-LONG-IDENTIFIER-THAT-OVERFLOWS", "A_STATE_NAME_PAST_EIGHTEEN", {
     repo: "an-organisation/a-repository-name-past-thirty",
     pullRequest: 0,
   }),
-  record("TBO-6", "DISCOVERED", { repo: "" }),
+  record("PROJ-6", "DISCOVERED", { repo: "" }),
 ];
 
 /** Every branch the old printer had, each on its own and in combination. */
 const CORPUS: readonly [string, StatusSnapshot][] = [
   ["nothing tracked", BASE],
-  ["only finished work", { ...BASE, records: [record("TBO-1", "DONE")] }],
+  ["only finished work", { ...BASE, records: [record("PROJ-1", "DONE")] }],
   ["a mix of rows", { ...BASE, records: MIXED }],
   ["a workflow that would not mount", { ...BASE, mounted: false, problems: ["boom"], waitingStates: [], terminalStates: [], records: MIXED }],
   ["a running loop", { ...BASE, records: MIXED, loop: { pid: 4242, startedAt: "2026-10-27T09:00:00.000Z", workflow: "default" } }],
@@ -153,9 +153,9 @@ describe("amy status, as a view", () => {
   });
 
   it("keeps the trailing space a row with no repository and no pull request always had", () => {
-    const line = printedNow({ ...BASE, records: [record("TBO-4", "DISCOVERED")] }, false).split("\n")[0];
+    const line = printedNow({ ...BASE, records: [record("PROJ-4", "DISCOVERED")] }, false).split("\n")[0];
 
-    expect(line).toBe(`${"TBO-4".padEnd(28)} ${"DISCOVERED".padEnd(18)} ${"active".padEnd(8)} `);
+    expect(line).toBe(`${"PROJ-4".padEnd(28)} ${"DISCOVERED".padEnd(18)} ${"active".padEnd(8)} `);
   });
 
   it("is a function of its snapshot alone: the same snapshot is the same page", () => {

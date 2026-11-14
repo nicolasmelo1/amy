@@ -19,9 +19,9 @@ const SCENARIO = [
 
 async function asking() {
   const world = new ProveWorld({ resources: { account: { capacity: 1, check: "account-check", down: "account-down" } } }, { "account-check": ok, "account-down": ok });
-  world.brief("TBO-14", SCENARIO);
+  world.brief("PROJ-14", SCENARIO);
   const mounted = await world.mounted([operationsPlugin("bank", { "bank.open": () => ({ open: true }) })]);
-  const { record } = await walk(world, mounted, newRun(mounted, "TBO-14/PROVE#1"), { throughWaits: true, until: (one) => one.state === "ASKING" && one.asking !== undefined });
+  const { record } = await walk(world, mounted, newRun(mounted, "PROJ-14/PROVE#1"), { throughWaits: true, until: (one) => one.state === "ASKING" && one.asking !== undefined });
   return { world, mounted, record };
 }
 
@@ -29,11 +29,11 @@ describe("a human step", () => {
   it("asks in the work's thread, and the notifier names the step and the resources it holds", async () => {
     const { world, record } = await asking();
 
-    expect(world.posted).toEqual([{ thread: "thread-TBO-14", text: expect.stringContaining("Does the statement show the refund?") }]);
+    expect(world.posted).toEqual([{ thread: "thread-PROJ-14", text: expect.stringContaining("Does the statement show the refund?") }]);
     expect(world.said).toHaveLength(1);
     expect(world.said[0]!.text).toContain("stopped at the step `look`");
     expect(world.said[0]!.text).toContain("It holds `account`");
-    expect(record.asking).toMatchObject({ step: "look", thread: "thread-TBO-14" });
+    expect(record.asking).toMatchObject({ step: "look", thread: "thread-PROJ-14" });
   });
 
   it("keeps the run's leases while it waits", async () => {
@@ -45,12 +45,12 @@ describe("a human step", () => {
     }
 
     expect(waited.state).toBe("ASKING");
-    expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual([holderOf(world.host().paths, { id: "TBO-14/PROVE#1" })]);
+    expect(new Leases(leasesAt(world.home), world.now).holders("account")).toEqual([holderOf(world.host().paths, { id: "PROJ-14/PROVE#1" })]);
   });
 
   it("resumes on an answer", async () => {
     const { world, mounted, record } = await asking();
-    world.answer("thread-TBO-14", "yes, the refund is there");
+    world.answer("thread-PROJ-14", "yes, the refund is there");
 
     const done = await walk(world, mounted, record);
 
@@ -86,7 +86,7 @@ describe("an answer after the deadline", () => {
   it("is not one in time: the run is refused and its leases released", async () => {
     const { world, mounted, record } = await asking();
     world.clock += 3600000 + 1;
-    world.answer("thread-TBO-14", "sorry, late — yes");
+    world.answer("thread-PROJ-14", "sorry, late — yes");
 
     const done = await walk(world, mounted, record);
 

@@ -826,7 +826,7 @@ describe("GitHubCodeHost.createIssue", () => {
 
     const number = await host.createIssue("Northwind/northwind-backend", {
       title: "the aggregate is duplicated",
-      body: "Consume the DB-layer aggregate from TBO-1236.",
+      body: "Consume the DB-layer aggregate from PROJ-1236.",
     });
 
     expect(number).toBe(1204);

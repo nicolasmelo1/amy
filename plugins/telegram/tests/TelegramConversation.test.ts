@@ -371,8 +371,8 @@ describe("what is kept on disk", () => {
     const shared = path.join(root, "bot");
     const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared });
     const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared });
-    const briefThread = await brief.open("TBO-1", "Brief TBO-1");
-    const buildThread = await build.open("TBO-1", "Build TBO-1");
+    const briefThread = await brief.open("PROJ-1", "Brief PROJ-1");
+    const buildThread = await build.open("PROJ-1", "Build PROJ-1");
     const since = askedAt(telegram);
     telegram.say("for the brief", { topic: Number(briefThread.id) });
     telegram.say("for the build", { topic: Number(buildThread.id) });
@@ -525,8 +525,8 @@ describe("the second review", () => {
     const shared = path.join(root, "bot");
     const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared });
     const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared });
-    const briefThread = await brief.open("TBO-1", "Brief TBO-1");
-    const buildThread = await build.open("TBO-1", "Build TBO-1");
+    const briefThread = await brief.open("PROJ-1", "Brief PROJ-1");
+    const buildThread = await build.open("PROJ-1", "Build PROJ-1");
     const since = askedAt(telegram);
     telegram.say("for the brief", { topic: Number(briefThread.id), file: { name: "notes.txt", bytes: new Uint8Array([1]) } });
     expect(await brief.replies(briefThread, since)).toHaveLength(1);
@@ -574,7 +574,7 @@ describe("the third review", () => {
     const before = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-moved-"));
     const api = new BotApi(TOKEN, { transport: telegram.transport });
     const at = (root: string) => new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot") });
-    const thread = await at(before).open("TBO-1", "Build TBO-1");
+    const thread = await at(before).open("PROJ-1", "Build PROJ-1");
     const since = askedAt(telegram);
     const after = `${before}-moved`;
     fs.renameSync(before, after);
@@ -588,10 +588,10 @@ describe("the third review", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-again-"));
     const api = new BotApi(TOKEN, { transport: telegram.transport });
     const build = () => new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot") });
-    const old = await build().open("TBO-1", "Build TBO-1");
+    const old = await build().open("PROJ-1", "Build PROJ-1");
     fs.rmSync(path.join(root, "build"), { recursive: true, force: true });
     const again = build();
-    const fresh = await again.open("TBO-2", "Build TBO-2");
+    const fresh = await again.open("PROJ-2", "Build PROJ-2");
     const since = askedAt(telegram);
     telegram.say("for the old phase", { topic: Number(old.id) });
 
@@ -760,7 +760,7 @@ describe("the sixth review", () => {
     const opener = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared, leaseMs: 20 });
     late.reader = new TelegramConversation(new BotApi(TOKEN, { transport: telegram.transport }), { operator: String(OPERATOR), directory: path.join(root, "other"), shared, lockWaitMs: 5_000, leaseMs: 20 });
 
-    const thread = await opener.open("TBO-1", "Build TBO-1");
+    const thread = await opener.open("PROJ-1", "Build PROJ-1");
 
     expect(telegram.pending()).toBe(0);
     expect((await opener.replies(thread, new Date(0).toISOString())).map((reply) => reply.text)).toEqual(["BRL, said at once"]);
@@ -803,7 +803,7 @@ describe("the sixth review", () => {
     });
     const amy = new TelegramConversation(api, { operator: String(OPERATOR), directory, shared: path.join(root, "bot") });
 
-    await expect(amy.open("TBO-1", "Build TBO-1")).rejects.toThrow(/was removed while its topic was being opened/);
+    await expect(amy.open("PROJ-1", "Build PROJ-1")).rejects.toThrow(/was removed while its topic was being opened/);
     expect(fs.existsSync(directory)).toBe(false);
   });
 

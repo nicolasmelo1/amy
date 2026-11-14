@@ -66,18 +66,18 @@ describe("a scenario is a section of the brief", () => {
   it("keeps a brief with no scenario from leaving grooming, naming the unit's missing section and the proving phase", async () => {
     const briefs = project();
     const sections = withSection(briefs, null, "Goal", "One currency on every invoice.");
-    const brief = { id: "TBO-12", sections, questions: [], explains: [], createdAt: "", updatedAt: "", revision: 1 };
+    const brief = { id: "PROJ-12", sections, questions: [], explains: [], createdAt: "", updatedAt: "", revision: 1 };
 
-    const checked = await checkBrief(briefs, "TBO-12", brief, OPERATIONS);
+    const checked = await checkBrief(briefs, "PROJ-12", brief, OPERATIONS);
 
-    expect(checked.id).toBe("TBO-12");
+    expect(checked.id).toBe("PROJ-12");
     expect(checked.refusals).toEqual([
       { phase: "prove", workflow: "@amykit/plugin-prove", section: "Scenario", rule: "`prove/` (@amykit/plugin-prove) asks for it, and the brief does not answer it" },
     ]);
     expect(checked.next).toEqual({ phase: "prove", section: "Scenario" });
 
     const groomed = { ...brief, sections: withSection(briefs, brief, "Scenario", ONE_REQUEST), revision: 2 };
-    expect((await checkBrief(briefs, "TBO-12", groomed, OPERATIONS)).refusals).toEqual([]);
+    expect((await checkBrief(briefs, "PROJ-12", groomed, OPERATIONS)).refusals).toEqual([]);
   });
 
   it("refuses a step naming an operation no mounted plugin offers, naming the step and the operation", () => {
@@ -118,16 +118,16 @@ describe("a scenario is a section of the brief", () => {
 
   it("runs the scenario against the system the mounted operations reach, and the proof names what it ran against", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-12", ONE_REQUEST);
+    world.brief("PROJ-12", ONE_REQUEST);
     const calls: unknown[] = [];
     const mounted = await world.mounted([operationsPlugin("acme-api", { "http.get": (input) => { calls.push(input); return { status: "paid" }; } })]);
 
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-12/PROVE#1"));
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-12/PROVE#1"));
 
     expect(record.state).toBe("PROVEN");
     expect(calls).toEqual([{ url: "https://api.localhost/invoices/1" }]);
-    const proof = (await import("../src/proof.js")).ProofStore.prototype.get.call(new (await import("../src/proof.js")).ProofStore(`${world.artifacts}/proofs`), "TBO-12");
-    expect(proof).toMatchObject({ unit: "TBO-12", against: ["acme-api"], assertions: [{ id: "paid", criterion: "C1", status: "passed" }] });
+    const proof = (await import("../src/proof.js")).ProofStore.prototype.get.call(new (await import("../src/proof.js")).ProofStore(`${world.artifacts}/proofs`), "PROJ-12");
+    expect(proof).toMatchObject({ unit: "PROJ-12", against: ["acme-api"], assertions: [{ id: "paid", criterion: "C1", status: "passed" }] });
   });
 });
 
@@ -153,8 +153,8 @@ assertions:
     };
     const ok = () => ({ ok: true, output: "" });
     const world = new ProveWorld(config, { "api-up": ok, "api-check": ok, "api-down": ok, "web-check": ok });
-    world.brief("TBO-1", ONE_REQUEST);
-    world.brief("TBO-2", TWO_APPS);
+    world.brief("PROJ-1", ONE_REQUEST);
+    world.brief("PROJ-2", TWO_APPS);
     let paid = false;
     let reads = 0;
     const mounted = await world.mounted([operationsPlugin("acme", {
@@ -165,9 +165,9 @@ assertions:
       "invoices.pay": () => { paid = true; return {}; },
     })]);
 
-    const one = await walk(world, mounted, newRun(mounted, "TBO-1/PROVE#1"), { throughWaits: true });
-    const two = await walk(world, mounted, newRun(mounted, "TBO-2/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
-    world.answer("thread-TBO-2", "yes, it reads Paid");
+    const one = await walk(world, mounted, newRun(mounted, "PROJ-1/PROVE#1"), { throughWaits: true });
+    const two = await walk(world, mounted, newRun(mounted, "PROJ-2/PROVE#1"), { throughWaits: true, until: (record) => record.state === "ASKING" && record.asking !== undefined });
+    world.answer("thread-PROJ-2", "yes, it reads Paid");
     const done = await walk(world, mounted, two.record, { throughWaits: true });
 
     expect(one.record.state).toBe("PROVEN");

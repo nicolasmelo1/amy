@@ -12,7 +12,7 @@ const issue = {
   id: "uuid-1239",
   identifier: "PROJ-1239",
   title: "The total is wrong on the invoice",
-  description: "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+  description: "Consume the DB-layer aggregate from PROJ-1236 — do not rebuild the SUM here.",
   url: "https://linear.app/northwind/issue/PROJ-1239/total-is-wrong",
   branchName: "ada/proj-1239-total-is-wrong",
   priority: 0,
@@ -69,7 +69,7 @@ describe("LinearTracker.inProgress", () => {
     const [ticket] = await new LinearTracker(client, config).inProgress();
 
     expect(ticket?.body).toBe(
-      "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+      "Consume the DB-layer aggregate from PROJ-1236 — do not rebuild the SUM here.",
     );
   });
 
@@ -220,7 +220,7 @@ describe("LinearTracker.get", () => {
     const ticket = await new LinearTracker(client, config).get("PROJ-1239");
 
     expect(ticket?.body).toBe(
-      "Consume the DB-layer aggregate from TBO-1236 — do not rebuild the SUM here.",
+      "Consume the DB-layer aggregate from PROJ-1236 — do not rebuild the SUM here.",
     );
   });
 

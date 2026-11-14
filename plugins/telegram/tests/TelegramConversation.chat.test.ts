@@ -61,7 +61,7 @@ describe("the private chat outside every topic is a chat (A1)", () => {
   it("keeps a work's topic replies the work's, and the chat's messages the chat's", async () => {
     const telegram = botApiStandIn();
     const amy = amyWith(telegram);
-    const thread = await amy.open("TBO-1", "Totals");
+    const thread = await amy.open("PROJ-1", "Totals");
     const since = askedAt(telegram);
 
     telegram.say("/decide BRL", { topic: Number(thread.id) });
@@ -74,10 +74,10 @@ describe("the private chat outside every topic is a chat (A1)", () => {
   it("reaches a work from the chat by its id, even with topics", async () => {
     const telegram = botApiStandIn();
     const amy = amyWith(telegram);
-    const thread = await amy.open("TBO-1", "Totals");
+    const thread = await amy.open("PROJ-1", "Totals");
     const since = askedAt(telegram);
 
-    telegram.say("TBO-1: /decide ship it");
+    telegram.say("PROJ-1: /decide ship it");
 
     expect(await amy.chat()).toEqual([]);
     expect(await amy.replies(thread, since)).toMatchObject([{ text: "ship it", kind: "decision" }]);
@@ -126,27 +126,27 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
     const amy = amyWith(telegram, false);
 
     expect(amy.threads).toBeUndefined();
-    const thread = await amy.open("TBO-1", "Totals");
+    const thread = await amy.open("PROJ-1", "Totals");
 
     expect(thread.id).toMatch(/^w[0-9a-f]{16}$/);
     expect(telegram.calls.filter((call) => call.method === "createForumTopic")).toEqual([]);
-    expect(await amy.open("TBO-1", "Totals")).toEqual(thread);
+    expect(await amy.open("PROJ-1", "Totals")).toEqual(thread);
   });
 
-  it("routes a quote of amy's message for TBO-1 to TBO-1, TBO-2: to TBO-2, and anything else to the chat", async () => {
+  it("routes a quote of amy's message for PROJ-1 to PROJ-1, PROJ-2: to PROJ-2, and anything else to the chat", async () => {
     const telegram = botApiStandIn({ topicsEnabled: false });
     const amy = amyWith(telegram, false);
-    const one = await amy.open("TBO-1", "Totals");
-    const two = await amy.open("TBO-2", "Taxes");
+    const one = await amy.open("PROJ-1", "Totals");
+    const two = await amy.open("PROJ-2", "Taxes");
     const since = askedAt(telegram);
     const asked = Number(await amy.post(one, { text: "Which currency?" }));
     await amy.post(two, { text: "Which tax?" });
 
     telegram.say("BRL", { quotes: asked });
-    telegram.say("TBO-2: the federal one");
+    telegram.say("PROJ-2: the federal one");
     telegram.say("what else is open?");
 
-    expect(telegram.inTheChat.map((said) => said.text)).toEqual(["TBO-1: Which currency?", "TBO-2: Which tax?"]);
+    expect(telegram.inTheChat.map((said) => said.text)).toEqual(["PROJ-1: Which currency?", "PROJ-2: Which tax?"]);
     expect((await amy.replies(one, since)).map((reply) => reply.text)).toEqual(["BRL"]);
     expect((await amy.replies(two, since)).map((reply) => reply.text)).toEqual(["the federal one"]);
     expect((await amy.chat()).map((message) => message.text)).toEqual(["what else is open?"]);
@@ -179,7 +179,7 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
   it("takes a press on a work's question in the chat, through what amy filed", async () => {
     const telegram = botApiStandIn({ topicsEnabled: false });
     const amy = amyWith(telegram, false);
-    const thread = await amy.open("TBO-1", "Totals");
+    const thread = await amy.open("PROJ-1", "Totals");
     const since = askedAt(telegram);
     const posted = Number(await amy.post(thread, { text: "Ship?", ask: { id: "ship", prompt: "Ship?", form: "approval", answers: ["approve", "reject"] } }));
 
@@ -195,8 +195,8 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
     const api = new BotApi(TOKEN, { transport: telegram.transport, sleep: async () => {} });
     const brief = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "brief"), shared: path.join(root, "bot"), topics: false });
     const build = new TelegramConversation(api, { operator: String(OPERATOR), directory: path.join(root, "build"), shared: path.join(root, "bot"), topics: false });
-    const briefThread = await brief.open("TBO-1", "Brief");
-    const buildThread = await build.open("TBO-1", "Build");
+    const briefThread = await brief.open("PROJ-1", "Brief");
+    const buildThread = await build.open("PROJ-1", "Build");
     const since = new Date(telegram.now() * 1000).toISOString();
     const asked = Number(await build.post(buildThread, { text: "Which branch?" }));
 
@@ -210,15 +210,15 @@ describe("a chat without topics is addressed, not guessed (A6)", () => {
   it("opens each work afresh when topics are turned off, and again when they are turned back on", async () => {
     const telegram = botApiStandIn();
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-telegram-switch-"));
-    const withTopics = await amyWith(telegram, true, directory).open("TBO-1", "Totals");
+    const withTopics = await amyWith(telegram, true, directory).open("PROJ-1", "Totals");
     const without = amyWith(telegram, false, directory);
 
-    const addressed = await without.open("TBO-1", "Totals");
+    const addressed = await without.open("PROJ-1", "Totals");
     await without.post(addressed, { text: "Which currency?" });
 
     expect(withTopics.id).toMatch(/^\d+$/);
     expect(addressed.id).toMatch(/^w[0-9a-f]{16}$/);
-    expect(await amyWith(telegram, true, directory).open("TBO-1", "Totals")).toEqual(withTopics);
+    expect(await amyWith(telegram, true, directory).open("PROJ-1", "Totals")).toEqual(withTopics);
   });
 
   it("is ready in the doctor with topic mode off", async () => {

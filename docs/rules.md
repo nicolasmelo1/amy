@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**70 rules shipped**, 59 enabled here, 11 switched off, 59 carrying a mutation fixture, 1 violations frozen.
+**71 rules shipped**, 60 enabled here, 11 switched off, 60 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
 | **L4** | Cadence | docs, plans and rules stay attached | 11 | 10 |
 | **L5** | Meta | the guardrail is proven to fire | 4 | 4 |
-| **L6** | Hazard | the defect classes this repository hunts | 14 | 9 |
+| **L6** | Hazard | the defect classes this repository hunts | 15 | 10 |
 
 <!-- sf:end layer-index -->
 
@@ -542,6 +542,16 @@ A rule that is switched on must be configured to look at something: a lock rule 
 **Fix.** Give the rule something to look at, or switch it off in policy and say why in the rules document. Disabled and documented is honest; enabled and inert is a rule that lies about its own coverage. A rule whose `when` went false is the one case with nothing to configure: repoint it at the version this repository installs, or remove it along with the version it described.
 
 ## L6 — Hazard: the defect classes this repository hunts
+
+### L6.A_PRIVATE_NAME_STAYS_PRIVATE
+
+**A private name stays out of this public repository**
+
+No file in the tree, tracked or new, carries a term denied by scripts/private-terms.json — inside a longer word for a windowed term, as a whole word for a term marked `word`.
+
+**Why.** This repository is public and some of the work that drove it is not. A company's name, a colleague's handle, a team's ticket key: each one arrived as an ordinary example, written by somebody who knew exactly what it was, and none looked wrong in review because a realistic example is what a fixture is supposed to look like. Once pushed, a name is in the history, the forks and the pull request refs, where no later commit reaches it. So the only cheap place to stop it is before the commit. The terms are digests, never words, because a published list of what a company is hiding is the leak itself.
+
+**Fix.** Run `npm run check:private` and replace each word it names with the placeholders the suite already uses (`PROJ-` for a ticket, `northwind` for a workspace, "a private workflow" in prose). If the match is a coincidence, the term is too broad: deny it as a whole word with `tsx scripts/check-private-refs.ts --add <term> --word` rather than excepting the file.
 
 ### L6.A_PUSH_NEVER_FORCES
 
