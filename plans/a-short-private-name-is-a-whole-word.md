@@ -4,6 +4,7 @@ sources:
   - { id: S1, kind: friction, said: "2026-11-14: an audit of this public repository found a company's ticket key in its docs, tests and evidence, one real ticket's description quoted, and the private-name check blind to it" }
   - { id: S2, kind: code, ref: "packages/cli/src/private-refs.ts", symbol: "findPrivateReferences", said: "every denied term is matched as a window inside a word, so a three-letter key would fire on outbox, requestBody and whatBoots" }
   - { id: S4, kind: decision, said: "the key is denied as a whole word, by digest, and every example names tickets PROJ-, the placeholder the suite already used. Decided 2026-11-14" }
+  - { id: S5, kind: decision, said: "a delivered note whose declaration carries a private name is groomed again in a commit of its own: a commit touching only plans/, docs/design/ and docs/mechanisms.yaml is grooming. Decided 2026-11-14" }
 touches:
   - docs/build/prove-a-phase.md
   - docs/concepts/ports.md
@@ -57,9 +58,16 @@ touches:
   - scripts/plans/tests/contributed.test.ts
   - scripts/private-terms.json
   - .software-factory/rules/a-private-name-stays-private.yaml
+  - scripts/plans/held.ts
+  - scripts/plans/tests/held.test.ts
+  - CONTRIBUTING.md
+  - plugins/agent-relay/CHANGELOG.md
+  - plugins/claude/CHANGELOG.md
+  - plugins/codex/CHANGELOG.md
 criteria:
   - { id: A1, statement: "a term marked word is found where a separator stands it alone and never inside a longer word", proof: "deferred:test:packages/cli/tests/private-refs.test.ts", sources: [S1, S2, S4] }
   - { id: A2, statement: "a whole-word term judged beside windowed terms hides neither", proof: "deferred:test:packages/cli/tests/private-refs.test.ts", sources: [S2] }
+  - { id: A3, statement: "a commit touching only delivered notes grooms them, and one that also touches code is still refused", proof: "deferred:test:scripts/plans/tests/held.test.ts", sources: [S5] }
 crosses:
   - { mechanism: record-migration, answer: n/a, why: "work.ts changes one comment's example id; no record shape moves" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "work.ts changes one comment's example id; no attempt or wait moves" }

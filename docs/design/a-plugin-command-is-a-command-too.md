@@ -18,8 +18,8 @@ touches:
   - scripts/check-plan-board.ts
   - CONTRIBUTING.md
 criteria:
-  - { id: A1, statement: "a groomed plan naming `amy prove show TBO-12 --revision 3` passes check:plans: the command, its positional and its flag are what the prove operation declares at the base", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S1, S2, S6], done: true }
-  - { id: A2, statement: "a groomed plan naming `amy prove show TBO-12 --revison 3` is refused, naming the command and the option it does not declare", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S2, S5], done: true }
+  - { id: A1, statement: "a groomed plan naming `amy prove show PROJ-12 --revision 3` passes check:plans: the command, its positional and its flag are what the prove operation declares at the base", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S1, S2, S6], done: true }
+  - { id: A2, statement: "a groomed plan naming `amy prove show PROJ-12 --revison 3` is refused, naming the command and the option it does not declare", proof: "test:scripts/plans/tests/authored.test.ts", sources: [S2, S5], done: true }
   - { id: A3, statement: "a field is the flag the CLI spells: camelCase kebab, a boolean with its --no- form, and every plugin command takes --json", proof: "test:scripts/plans/tests/contributed.test.ts", sources: [S3, S4], done: true }
   - { id: A4, statement: "a group of an operation's words runs its default operation, `amy models` passing; an unknown word is refused under a group with no default, `amy prove nonexistent`, or one whose default takes no argument, `amy worktrees nonexistent`", proof: "test:scripts/plans/tests/contributed.test.ts", sources: [S2, S3], done: true }
   - { id: A5, statement: "operations are read from source at the base, found by one git grep: one the change adds is not counted, and one in a plugin no machine mounts is", proof: "test:scripts/plans/tests/history.test.ts", sources: [S7, S8], done: true }
@@ -34,7 +34,7 @@ failures:
 cut:
   - "reading built modules or a mounted machine's contributions: a plan is judged at its base (S7)"
   - "listing plugin commands in the generated CLI reference: the docs read built modules, and that is another plan"
-exit: "a groomed plan naming `amy prove show TBO-12 --revision 3` passes check:plans, and one naming `amy prove show TBO-12 --revison 3` is refused"
+exit: "a groomed plan naming `amy prove show PROJ-12 --revision 3` passes check:plans, and one naming `amy prove show PROJ-12 --revison 3` is refused"
 ---
 # A plugin's command is a command too
 

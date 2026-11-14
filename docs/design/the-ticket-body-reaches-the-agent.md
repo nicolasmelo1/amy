@@ -43,7 +43,7 @@ and somebody is told.
 
 A ticket whose title *sounds* sufficient produces work instead. On the install
 where this was found, a 2-point ticket became 8 files and +615 lines. Its
-description said, in bold, *"Consume the DB-layer aggregate from TBO-1236 — do
+description said, in bold, *"Consume the DB-layer aggregate from PROJ-1236 — do
 not rebuild the SUM here"*, and named the file that other ticket owns. The
 agent added 75 lines to exactly that file, including the aggregate, duplicating
 an open pull request. It also had four acceptance criteria and a warning about

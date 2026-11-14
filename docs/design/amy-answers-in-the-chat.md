@@ -46,16 +46,16 @@ sources:
   - { id: S22, kind: reference, ref: "docs/design/telegram-is-a-conversation.md", said: "only the configured operator is answered; anyone else is ignored, as Slack's isOperatorAnswer does" }
 touches:
   - packages/core/src/ports/Conversation.ts
-  - packages/core/src/chat/**
-  - packages/core/tests/chat/**
-  - plugins/slack/src/**
-  - plugins/slack/tests/**
-  - plugins/telegram/src/**
-  - plugins/telegram/tests/**
+  - packages/core/src/chat/*.ts
+  - packages/core/tests/chat/*.ts
+  - plugins/slack/src/*.ts
+  - plugins/slack/tests/*.ts
+  - plugins/telegram/src/*.ts
+  - plugins/telegram/tests/*.ts
   - packages/cli/src/daemon.ts
   - packages/cli/src/index.ts
   - packages/cli/src/config.ts
-  - packages/cli/src/supervisor/**
+  - packages/cli/src/supervisor/*.ts
   - packages/cli/tests/supervisor.test.ts
   - packages/cli/src/doctor.ts
   - packages/cli/tests/doctor-conversation.test.ts
@@ -69,10 +69,8 @@ touches:
   - packages/cli/tests/chat-recovery.test.ts
   - packages/cli/package.json
   - package-lock.json
-  - packages/cli/tests/supervisor.test.ts
   - packages/cli/tests/config.test.ts
-  - plugins/telegram/src/**
-  - .software-factory/evidence/amy-answers-in-the-chat/**
+  - .software-factory/evidence/amy-answers-in-the-chat/*.ts
   - .software-factory/evidence/amy-answers-in-the-chat-scenario.sh
   - .software-factory/evidence/plugin-telegram/bot-api.ts
   - .software-factory/evidence/ticket-to-qa/bin/claude.ts
@@ -98,7 +96,7 @@ criteria:
   - { id: A3, statement: "a turn starting with /action runs the amy commands its answer names; the same answer without /action runs none", proof: "assertion:chat.only_an_action_acts", sources: [S11, S12, S13], done: true }
   - { id: A4, statement: "under /action, an answer naming a command off the list, or a shell line, is refused by name and nothing runs", proof: "test:packages/cli/tests/chat-action.test.ts", sources: [S12, S13], done: true }
   - { id: A5, statement: "the third turn of a conversation carries the first two, and after /harness the new harness is given them", proof: "assertion:chat.a_conversation_carries_its_turns", sources: [S14, S21], done: true }
-  - { id: A6, statement: "in Telegram without topics, a reply quoting amy's message for TBO-1 reaches TBO-1, TBO-2: reaches TBO-2, anything else is an ask, and only /new starts another", proof: "assertion:chat.a_chat_without_threads_is_addressed_not_guessed", sources: [S5, S7, S14, S15, S16], done: true }
+  - { id: A6, statement: "in Telegram without topics, a reply quoting amy's message for PROJ-1 reaches PROJ-1, PROJ-2: reaches PROJ-2, anything else is an ask, and only /new starts another", proof: "assertion:chat.a_chat_without_threads_is_addressed_not_guessed", sources: [S5, S7, S14, S15, S16], done: true }
   - { id: A7, statement: "a long turn's progress is one message edited in place where the adapter declares edit, one line per message where it does not", proof: "test:packages/core/tests/chat/progress.test.ts", sources: [S6, S16], done: true }
   - { id: A8, statement: "grooming started from the chat runs the mounted workflow's grooming, and its call log holds only the writes that workflow claims", proof: "assertion:chat.grooming_writes_what_its_workflow_claims", sources: [S17, S18], done: true }
   - { id: A9, statement: "a message from anyone but the operator answers nothing, in either adapter", proof: "test:plugins/slack/tests/SlackConversation.test.ts, test:plugins/telegram/tests/TelegramConversation.chat.test.ts", sources: [S22], done: true }
