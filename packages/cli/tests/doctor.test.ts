@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { plugin as notifyHermes } from "@amykit/plugin-notify-hermes";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import { Check, DoctorDeps, diagnose } from "../src/doctor.js";
@@ -408,4 +410,147 @@ describe("diagnose", () => {
       detail: "nothing mounted declares these settings",
     });
   });
+
+  it("passes a general slice another declared profile mounts, and names that profile (A7)", async () => {
+    const config = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-slack": { token: "x" } } };
+
+    const checks = await diagnose(deps({
+      config,
+      profile: "work",
+      ownSettings: [],
+      mounts: { work: ["@amykit/plugin-notify-hermes"], home: ["@amykit/plugin-slack"] },
+    }));
+
+    expect(labelled(checks, "settings for @amykit/plugin-slack")).toMatchObject({
+      ok: true,
+      detail: "mounted by home",
+    });
+  });
+
+  it("fails a slice the profile's own file carries for a plugin the profile does not mount (A7)", async () => {
+    const config = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-slack": { token: "x" } } };
+
+    const checks = await diagnose(deps({
+      config,
+      profile: "work",
+      ownSettings: ["@amykit/plugin-slack"],
+      // A sibling mounts it, which excuses the machine's block but never the
+      // profile's own claim about itself.
+      mounts: { home: ["@amykit/plugin-slack"] },
+    }));
+
+    expect(labelled(checks, "settings for @amykit/plugin-slack")).toMatchObject({
+      ok: false,
+      detail: "the profile's own file carries this slice, and the profile does not mount it",
+    });
+  });
+
+  it("names every config and .env file it read for the profile, and no value from them (A8)", async () => {
+    const own = path.join(paths(home).base, "profiles", "work", "config.yaml");
+    const keys = path.join(paths(home).base, "profiles", "work", ".env");
+    fs.mkdirSync(path.dirname(own), { recursive: true });
+    fs.writeFileSync(own, "notify:\n  inbox: true\n");
+    fs.writeFileSync(keys, "SLACK_TOKEN=secret-value-nobody-should-print\n");
+
+    const checks = await diagnose(deps({
+      profile: "work",
+      envFiles: [path.join(paths(home).base, ".env"), keys],
+    }));
+
+    const details = checks.map((check) => check.detail ?? "").join("\n");
+    expect(details).toContain(paths(home).config);
+    expect(details).toContain(own);
+    expect(details).toContain(keys);
+    expect(details).not.toContain("secret-value-nobody-should-print");
+  });
+
+  it("fails a profile file the machine never declared, naming the file (A9)", async () => {
+    const ghost = path.join(paths(home).base, "profiles", "ghost", "config.yaml");
+    fs.mkdirSync(path.dirname(ghost), { recursive: true });
+    fs.writeFileSync(ghost, "notify:\n  inbox: true\n");
+    const config = {
+      ...DEFAULT_CONFIG,
+      workflows: { work: { workflow: "@amykit/workflow-ticket-to-qa" } },
+    };
+
+    const checks = await diagnose(deps({ config, profile: "work" }));
+
+    expect(labelled(checks, "profile config for ghost")).toMatchObject({ ok: false });
+    expect(labelled(checks, "profile config for ghost")?.detail).toContain(ghost);
+  });
+});
+
+/** Runs this CLI from source against one state directory, stdout and stderr together. */
+function runCli(home: string, args: readonly string[]): string {
+  const result = spawnSync(process.execPath, ["--import", "tsx", fileURLToPath(new URL("../src/index.ts", import.meta.url)), ...args], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    env: { ...process.env, AMY_HOME: home, AMY_SUPERVISOR: "none", AMY_PROJECT_ENV: "" },
+    encoding: "utf-8",
+    input: "",
+    timeout: 60_000,
+  });
+  return `${result.stdout}${result.stderr}`;
+}
+
+describe("doctor across profiles", () => {
+  let home: string;
+
+  beforeEach(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-doctor-review-"));
+    fs.mkdirSync(paths(home).base, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  // A9. "A profile file" is either of the two the plan gives a
+  // profile; an orphan .env is as silently unread as an orphan config.yaml.
+  it("fails a profile .env whose profile the machine never declared, naming the file (A9)", async () => {
+    const ghost = path.join(paths(home).base, "profiles", "ghost", ".env");
+    fs.mkdirSync(path.dirname(ghost), { recursive: true });
+    fs.writeFileSync(ghost, "SLACK_TOKEN=x\n");
+    const config = { ...DEFAULT_CONFIG, workflows: { work: { workflow: "@amykit/workflow-ticket-to-qa" } } };
+
+    const checks = await diagnose({
+      home,
+      cwd: path.dirname(home),
+      config,
+      profile: "work",
+      runner: new ScriptedRunner([]),
+      env: {},
+      now: new Date("2026-11-13T10:00:00Z"),
+      schemas: {},
+    } as unknown as DoctorDeps);
+
+    const failed = checks.filter((check) => !check.ok && (check.detail ?? "").includes(ghost));
+    expect(failed).toHaveLength(1);
+  });
+
+  // A7. The sibling still mounts the plugin (its list lives in the
+  // machine's file); mountsOf swallows the sibling's refused own file into
+  // "mounts nothing", so this profile is blamed for the sibling's slice.
+  it("does not fail a general slice a sibling mounts when the sibling's own file is refused (A7)", () => {
+    fs.writeFileSync(paths(home).config, [
+      "workflows:",
+      "  home:",
+      "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+      "    plugins: [\"@amykit/workflow-ticket-to-qa\", \"@amykit/plugin-slack\"]",
+      "  work:",
+      "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+      "plugins:",
+      "  \"@amykit/plugin-slack\":",
+      "    channel: x",
+      "",
+    ].join("\n"));
+    const sibling = path.join(paths(home).base, "profiles", "home", "config.yaml");
+    fs.mkdirSync(path.dirname(sibling), { recursive: true });
+    fs.writeFileSync(sibling, "defaultWorkflow: home\n");
+
+    const line = runCli(home, ["--workflow", "work", "doctor"])
+      .split("\n").find((row) => row.includes("settings for @amykit/plugin-slack"));
+
+    expect(line).toMatch(/^ok\s/);
+    expect(line).toContain("mounted by home");
+  }, 60_000);
 });

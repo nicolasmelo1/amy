@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { profileEnv } from "./paths.js";
 
 /**
  * Parses a .env file.
@@ -36,27 +37,138 @@ function unquote(value: string): string {
   return quoted && value.length >= 2 ? value.slice(1, -1) : value;
 }
 
+/** What one file says, or nothing when there is no such file. */
+function readEnvFile(file: string): Record<string, string> {
+  try {
+    return parseEnv(fs.readFileSync(file, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
 /**
- * Loads a .env from the working directory into the environment.
+ * Where a process reads its keys, in the order that wins: the project it was
+ * started from first, then the profile it drives, then the machine.
  *
- * An entry already present in the environment wins, so exporting a key for
- * one command stays a reliable way to override the file.
+ * The order is the one the docs promise. Exported keys beat all of these
+ * because `loadEnvFiles` leaves a key the shell already set alone, so a key
+ * exported for one command stays the reliable override.
+ */
+export function envFiles(
+  home: string,
+  options: { profile?: string; cwd?: string; project?: string } = {},
+): string[] {
+  const projectDirectory = options.project?.trim() ? options.project : (options.cwd ?? process.cwd());
+  const files = [
+    path.join(projectDirectory, ".env"),
+    ...(options.profile ? [profileEnv(home, options.profile)] : []),
+    path.join(home, ".env"),
+  ];
+
+  // The project is often the state directory itself; one file, read once.
+  return [...new Set(files.map((file) => path.resolve(file)))];
+}
+
+/**
+ * Loads the files a process reads, first one wins.
  *
  * Returns the names it set, never the values, so a caller can report what
- * happened without printing a secret.
+ * happened without printing a secret — and so a child started for another
+ * profile can be told which of its keys came from a file rather than from
+ * the shell.
  */
-export function loadEnv(root: string): string[] {
-  const file = path.join(root, ".env");
-  if (!fs.existsSync(file)) return [];
-
+export function loadEnvFiles(files: readonly string[]): string[] {
   const applied: string[] = [];
 
-  for (const [key, value] of Object.entries(parseEnv(fs.readFileSync(file, "utf-8")))) {
-    if (process.env[key] === undefined) {
+  for (const file of files) {
+    for (const [key, value] of Object.entries(readEnvFile(file))) {
+      if (process.env[key] !== undefined) continue;
       process.env[key] = value;
       applied.push(key);
     }
   }
 
   return applied;
+}
+
+/**
+ * Loads one .env from a directory into the environment.
+ *
+ * Kept as the one-file form the docs and the tests name; a machine with
+ * profiles reads `envFiles` instead.
+ */
+export function loadEnv(root: string): string[] {
+  return loadEnvFiles([path.join(root, ".env")]);
+}
+
+/** The names a profile's own file carries, which are the ones it must not leak. */
+function namesOf(file: string): Set<string> {
+  return new Set(Object.keys(readEnvFile(file)));
+}
+
+/** Every profile's own .env except the one asked for. */
+function namesOfOtherProfiles(home: string, profile: string): Set<string> {
+  const names = new Set<string>();
+
+  for (const entry of profileDirectories(path.join(home, "profiles"))) {
+    if (!entry.isDirectory() || entry.name === profile) continue;
+    for (const name of namesOf(profileEnv(home, entry.name))) names.add(name);
+  }
+
+  return names;
+}
+
+/** A directory's entries, or nothing when it is not there. */
+function profileDirectories(directory: string): fs.Dirent[] {
+  try {
+    return fs.readdirSync(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The project's own `.env`: the directory `AMY_PROJECT_ENV` names, or the
+ * directory the command was typed in.
+ *
+ * The project is read first in both forms, exactly as `envFiles` reads it. A
+ * detached daemon is spawned with neither, and inherits the directory the
+ * command was typed in, so `process.cwd()` here is that same project.
+ */
+function projectEnv(base: NodeJS.ProcessEnv, cwd: string | undefined): string {
+  const named = base.AMY_PROJECT_ENV?.trim();
+  return path.resolve(named ? named : (cwd ?? process.cwd()), ".env");
+}
+
+/**
+ * The environment one profile's process should be given.
+ *
+ * A child spawned for a profile does not inherit another profile's keys: a
+ * name the parent picked up from a file, and another profile's own file also
+ * carries, is dropped and re-read from the child's layers. A key the operator
+ * exported is not in `fromFiles`, so it survives, which keeps the shell the
+ * first word in every process — and a key the project's `.env` set is kept
+ * too, because the project's file is read before the profile's.
+ */
+export function environmentFor(
+  home: string,
+  profile: string,
+  options: { base?: NodeJS.ProcessEnv; fromFiles?: readonly string[]; cwd?: string } = {},
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...(options.base ?? process.env) };
+  const otherProfiles = namesOfOtherProfiles(home, profile);
+  const project = projectEnv(env, options.cwd);
+  const fromProject = namesOf(project);
+
+  for (const name of options.fromFiles ?? []) {
+    if (otherProfiles.has(name) && !fromProject.has(name)) delete env[name];
+  }
+
+  for (const file of [project, profileEnv(home, profile), path.join(home, ".env")]) {
+    for (const [key, value] of Object.entries(readEnvFile(file))) {
+      if (env[key] === undefined) env[key] = value;
+    }
+  }
+
+  return env;
 }

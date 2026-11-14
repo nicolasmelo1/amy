@@ -33,18 +33,18 @@ touches:
 untouched:
   - packages/cli/src/slices.ts
 criteria:
-  - { id: A1, statement: "a profile's config is the general file with <home>/profiles/<name>/config.yaml over it; with no profile file it reads exactly as today", proof: "deferred:test:packages/cli/tests/config.test.ts", sources: [S4, S6, S7] }
-  - { id: A2, statement: "for any general and profile mapping, every path the profile file sets reads the profile's value, every other path reads the general one, and a list or scalar the profile sets replaces the general one whole", proof: "deferred:property:packages/cli/tests/config-layers.property.test.ts#a_nested_key_is_dropped", sources: [S7, S9] }
-  - { id: A3, statement: "a profile file that names workflows or defaultWorkflow is refused at boot naming the file and the key", proof: "deferred:test:packages/cli/tests/config.test.ts", sources: [S10] }
-  - { id: A4, statement: "one profile's file never changes what another profile reads: a slice written in one profile's file is absent from the other's config", proof: "deferred:test:packages/cli/tests/config.test.ts", sources: [S7] }
-  - { id: A5, statement: "for any key set in any of the four places, the value a process sees is the first of exported, project .env, profile .env, general .env that has it", proof: "deferred:property:packages/cli/tests/env.property.test.ts#the_general_env_wins", sources: [S5, S8, S12] }
-  - { id: A6, statement: "a key only in one profile's .env is unset in a process started for another profile, supervised or typed", proof: "deferred:test:packages/cli/tests/env.test.ts", sources: [S6, S8] }
-  - { id: A7, statement: "doctor does not fail a general slice whose plugin another declared profile mounts, and says which profile mounts it; it fails one no profile mounts, and one in the profile's own file the profile does not mount", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S1, S2, S3, S11] }
-  - { id: A8, statement: "doctor names every config file and .env file it read for the profile, never a value from them", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S7, S8] }
-  - { id: A9, statement: "doctor fails a profile file whose profile the general file does not declare, naming the file", proof: "deferred:test:packages/cli/tests/doctor.test.ts", sources: [S6, S10] }
+  - { id: A1, statement: "a profile's config is the general file with <home>/profiles/<name>/config.yaml over it; with no profile file it reads exactly as today", proof: "test:packages/cli/tests/config.test.ts", sources: [S4, S6, S7], done: true }
+  - { id: A2, statement: "for any general and profile mapping, every path the profile file sets reads the profile's value, every other path reads the general one, and a list or scalar the profile sets replaces the general one whole", proof: "property:packages/cli/tests/config-layers.property.test.ts#a_nested_key_is_dropped", sources: [S7, S9], done: true }
+  - { id: A3, statement: "a profile file that names workflows or defaultWorkflow is refused at boot naming the file and the key", proof: "test:packages/cli/tests/config.test.ts", sources: [S10], done: true }
+  - { id: A4, statement: "one profile's file never changes what another profile reads: a slice written in one profile's file is absent from the other's config", proof: "test:packages/cli/tests/config.test.ts", sources: [S7], done: true }
+  - { id: A5, statement: "for any key set in any of the four places, the value a process sees is the first of exported, project .env, profile .env, general .env that has it", proof: "property:packages/cli/tests/env.property.test.ts#the_general_env_wins", sources: [S5, S8, S12], done: true }
+  - { id: A6, statement: "a key only in one profile's .env is unset in a process started for another profile, supervised or typed", proof: "test:packages/cli/tests/env.test.ts", sources: [S6, S8], done: true }
+  - { id: A7, statement: "doctor does not fail a general slice whose plugin another declared profile mounts, and says which profile mounts it; it fails one no profile mounts, and one in the profile's own file the profile does not mount", proof: "test:packages/cli/tests/doctor.test.ts", sources: [S1, S2, S3, S11], done: true }
+  - { id: A8, statement: "doctor names every config file and .env file it read for the profile, never a value from them", proof: "test:packages/cli/tests/doctor.test.ts", sources: [S7, S8], done: true }
+  - { id: A9, statement: "doctor fails a profile file whose profile the general file does not declare, naming the file", proof: "test:packages/cli/tests/doctor.test.ts", sources: [S6, S10], done: true }
 crosses:
-  - { mechanism: config, answer: works, proof: "deferred:A1, A2, A3" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A4, A6" }
+  - { mechanism: config, answer: works, proof: "A1, A2, A3" }
+  - { mechanism: profiles-and-state, answer: works, proof: "A4, A6" }
   - { mechanism: record-migration, answer: n/a, why: "no record changes shape; only where settings and keys are read from" }
 guarantee:
   - { holds: "a setting or key one profile's own files hold never reaches another profile", not_against: "a key exported in the shell that starts both, or a setting left in the general file" }
@@ -63,8 +63,9 @@ exit: "with each of two profiles' slices in its own profiles/<name>/config.yaml 
 ---
 # A profile keeps its own config
 
-Every profile on a machine reads one `config.yaml` and one `.env`. Two
-profiles with different plugins make each other's doctor red, and every key
-in the `.env` reaches every profile's process. This plan gives each profile
-its own `config.yaml` and `.env` under `profiles/<name>/`, laid over the
-general ones, so the profiles stay out of each other's way.
+Every profile used to read one `config.yaml` and one `.env`: profiles with
+different plugins made each other's doctor red, and every key reached every
+profile's process. Now `profiles/<name>/config.yaml` and `.env` lie over the
+machine's file: mappings merge, lists and scalars replace, `workflows:` stays
+the machine's, and doctor names the files it read and refuses a profile file
+nobody declares.

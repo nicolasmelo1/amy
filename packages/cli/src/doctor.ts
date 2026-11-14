@@ -5,7 +5,7 @@ import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConf
 import { AmyConfig, configuredAutoUpdateProblems, configuredChatProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
-import { paths } from "./paths.js";
+import { paths, profileConfig, profileEnv } from "./paths.js";
 import { type PhaseBrief, uncheckedBrief } from "./project.js";
 import type { Found } from "./supervisor/index.js";
 
@@ -70,6 +70,20 @@ export interface DoctorDeps {
    * order; absent or empty when no phase grooms one.
    */
   briefs?: readonly PhaseBrief[];
+  /** The profile being diagnosed, when one was chosen. */
+  profile?: string;
+  /**
+   * The plugin names the profile's own config file carries a slice for.
+   *
+   * A slice written in the profile's own file is the profile's claim about
+   * itself, so it is checked against the profile, never excused because a
+   * sibling mounts the plugin.
+   */
+  ownSettings?: readonly string[];
+  /** What every declared profile mounts, by profile name. */
+  mounts?: Readonly<Record<string, readonly string[]>>;
+  /** The `.env` files this process read, by path, so doctor can name them. */
+  envFiles?: readonly string[];
 }
 
 /**
@@ -82,11 +96,12 @@ export interface DoctorDeps {
  */
 export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
   return [
-    configFile(deps),
+    ...configLayers(deps),
     ...configContents(deps),
     autoUpdateSettings(deps.config),
     chatSettings(deps.config),
     ...pluginSettings(deps),
+    ...undeclaredProfileFiles(deps),
     workflowWrites(deps.workflow),
     ...briefCheck(deps.briefs ?? []),
     ...leftBehind(deps),
@@ -99,9 +114,69 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
   ];
 }
 
-function configFile({ home }: DoctorDeps): Check {
-  const file = paths(home).config;
-  return { label: "config file", ok: fs.existsSync(file), detail: file };
+/**
+ * Every file this diagnosis read for the profile, by name and never by value.
+ *
+ * A profile reads up to four: the machine's config, its own, and the two
+ * `.env` files, plus the project's. Which of them exist is what an operator
+ * needs to know when a setting seems not to apply, and a value has no place
+ * in a report that gets pasted into an issue.
+ */
+function configLayers({ home, profile, envFiles }: DoctorDeps): Check[] {
+  const machine = paths(home).config;
+  const checks: Check[] = [{ label: "config file", ok: fs.existsSync(machine), detail: machine }];
+
+  if (profile) {
+    const own = profileConfig(home, profile);
+    // A profile without its own file reads exactly the machine's, so its
+    // absence is an answer rather than a failure.
+    checks.push({ label: "profile config", ok: true, detail: `${own}${fs.existsSync(own) ? "" : " (none)"}` });
+  }
+
+  for (const file of envFiles ?? []) {
+    checks.push({ label: "env file", ok: true, detail: `${file}${fs.existsSync(file) ? "" : " (none)"}` });
+  }
+
+  return checks;
+}
+
+/**
+ * A directory's entries, or nothing when it is not there.
+ *
+ * A machine with no profiles has no directory to read, which is an answer
+ * rather than a failure.
+ */
+function profileDirectories(directory: string): fs.Dirent[] {
+  try {
+    return fs.readdirSync(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A profile file the machine never declared.
+ *
+ * Nothing reads it: the profile it is named for is not in the machine's
+ * list, so the file is a settings edit or a key that silently applies to
+ * nothing. A profile keeps two files of its own — its config and its `.env`
+ * — and an orphan of either is as unread as the other.
+ */
+function undeclaredProfileFiles({ home, config }: DoctorDeps): Check[] {
+  const declared = new Set(Object.keys(config.workflows));
+
+  return profileDirectories(path.join(paths(home).base, "profiles"))
+    .filter((entry) => entry.isDirectory() && !declared.has(entry.name))
+    .flatMap((entry) => [
+      { label: `profile config for ${entry.name}`, file: profileConfig(home, entry.name) },
+      { label: `profile env for ${entry.name}`, file: profileEnv(home, entry.name) },
+    ])
+    .filter(({ file }) => fs.existsSync(file))
+    .map(({ label, file }) => ({
+      label,
+      ok: false,
+      detail: `${file} belongs to no profile the config declares`,
+    }));
 }
 
 function configContents({ config, gatePort, workspacePort }: DoctorDeps): Check[] {
@@ -202,25 +277,53 @@ function chatSettings(config: AmyConfig): Check {
   };
 }
 
-function pluginSettings({ config, schemas }: DoctorDeps): Check[] {
+/**
+ * Every slice in the profile's config, against what the profile mounted.
+ *
+ * A slice this profile mounts is checked against the schema the plugin
+ * itself declares. One it does not mount is not the profile's to answer for
+ * when the machine's own file carries it and another declared profile mounts
+ * that plugin: two profiles with different plugins share one `plugins:`
+ * block, and the sibling's slice is not this profile's failure. It is this
+ * profile's failure when nothing declared mounts the plugin, and it is this
+ * profile's failure when the slice is in the profile's own file — a profile
+ * cannot claim settings for something it does not mount.
+ */
+function pluginSettings({ config, schemas, ownSettings, mounts }: DoctorDeps): Check[] {
   const checks: Check[] = [];
+  const own = new Set(ownSettings ?? []);
 
   for (const [plugin, given] of Object.entries(config.plugins)) {
     const schema = schemas[plugin];
-    if (!schema) {
+    if (schema) {
+      const result = validateConfig(plugin, schema, given);
       checks.push({
         label: `settings for ${plugin}`,
-        ok: false,
-        detail: "nothing mounted declares these settings",
+        ok: result.ok,
+        detail: result.ok ? "" : result.problems.join("; "),
       });
       continue;
     }
 
-    const result = validateConfig(plugin, schema, given);
+    if (own.has(plugin)) {
+      checks.push({
+        label: `settings for ${plugin}`,
+        ok: false,
+        detail: "the profile's own file carries this slice, and the profile does not mount it",
+      });
+      continue;
+    }
+
+    const mounting = Object.entries(mounts ?? {})
+      .filter(([, plugins]) => plugins.includes(plugin))
+      .map(([name]) => name);
+
     checks.push({
       label: `settings for ${plugin}`,
-      ok: result.ok,
-      detail: result.ok ? "" : result.problems.join("; "),
+      ok: mounting.length > 0,
+      detail: mounting.length > 0
+        ? `mounted by ${mounting.join(", ")}`
+        : "nothing mounted declares these settings",
     });
   }
 

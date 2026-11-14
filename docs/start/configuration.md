@@ -25,6 +25,31 @@ amy setup         # asks, then writes the config
 amy doctor        # checks it, and exits non-zero when something is wrong
 ```
 
+## One file per profile
+
+Profiles on one machine rarely want the same settings. A profile may keep
+its own `config.yaml` at `~/.amy/profiles/<name>/config.yaml`, and the profile
+reads the machine's file with that one laid over it:
+
+```yaml
+# ~/.amy/profiles/oncall/config.yaml — only this profile
+plugins:
+  "@amykit/plugin-linear":
+    workingStatusName: On Call
+```
+
+The merge is deep: a mapping is merged key by key, so the profile's
+`workingStatusName` sits beside whatever the machine's slice already says, and
+a list or a scalar the profile writes replaces the machine's value whole. A
+profile with no file reads exactly the machine's, and a setting one profile
+writes is invisible to every other: `amy --workflow other doctor` reads the
+machine's file plus `oncall`'s, never the other way round. Why: [a profile
+keeps its own config](../design/a-profile-keeps-its-own-config.md).
+
+`workflows:` and `defaultWorkflow` stay in the machine's file: they are the
+list of profiles, so a profile's file that names either is refused at boot,
+naming the file and the key.
+
 ## The host's own keys
 
 <!-- amy:generated config-fields -->
@@ -323,8 +348,20 @@ qa:
 
 ## Credentials
 
-Never in `config.yaml`. They go in `~/.amy/.env`, and the environment wins over
-the file. See [Installation → Credentials](installation.md#credentials).
+Never in `config.yaml`. A credential goes in `~/.amy/.env`, or in
+`~/.amy/profiles/<name>/.env` when only one profile should see it:
+
+```text
+exported in the shell          wins over every file
+<the directory you are in>/.env
+~/.amy/profiles/<name>/.env
+~/.amy/.env
+```
+
+The first place that has a key is the one the process keeps, so a key exported
+for one command stays the reliable override, a project's `.env` beats the
+machine's, and a profile's key never reaches a process driving another profile.
+See [Installation → Credentials](installation.md#credentials).
 
 ## Ceilings
 

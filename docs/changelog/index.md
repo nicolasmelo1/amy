@@ -22,6 +22,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
+### **A profile keeps its own config.** Each profile may keep a `config.yaml` and a `.env` of its own under `profiles/<name>/`, and reads the machine's files with its own over them: mappings merge key by key, a list or a scalar replaces the machine's value whole, and a profile with no file reads exactly as before. `workflows:` and `defaultWorkflow` stay in the machine's file, and a profile file naming either is refused at boot by name. Keys are read in one order — exported in the shell, the project's `.env`, the profile's, the machine's — and a loop started for one profile no longer inherits another profile's keys. `amy doctor` names every config and `.env` file it read, no longer fails a machine-wide slice another declared profile mounts (it names that profile), and fails a profile file no declared profile names.
+
+`minor` · `@amykit/cli`
+
+
+
 ### **A shipped workflow runs as a phase.** A project walking BRIEF → WORK → PROVE on amy's own pieces stopped three times in 0.7.1, and the whole-project example hid all three. It never ran ticket-to-qa (it set the WORK child to `DONE` by hand), and it ran actions without the boot check the daemon makes.
 
 `minor` · `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-claude`, `@amykit/plugin-file-worktree`, `@amykit/plugin-notify-fanout`, `@amykit/plugin-prove`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/plugin-terminal-conversation`, `@amykit/workflow-errand`, `@amykit/workflow-feature-grooming`, `@amykit/workflow-note-to-plan`, `@amykit/workflow-testkit`, `@amykit/workflow-ticket-to-qa`
