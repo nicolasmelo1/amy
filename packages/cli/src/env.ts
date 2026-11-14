@@ -128,13 +128,26 @@ function profileDirectories(directory: string): fs.Dirent[] {
 }
 
 /**
+ * The project's own `.env`, as the process it was started from named it.
+ *
+ * `AMY_PROJECT_ENV` is inherited by the child, so this is the same file the
+ * parent read first; a key it carries is the project's answer and no
+ * sibling's file may take it away.
+ */
+function projectEnv(base: NodeJS.ProcessEnv): string | undefined {
+  const project = base.AMY_PROJECT_ENV?.trim();
+  return project ? path.resolve(project, ".env") : undefined;
+}
+
+/**
  * The environment one profile's process should be given.
  *
  * A child spawned for a profile does not inherit another profile's keys: a
  * name the parent picked up from a file, and another profile's own file also
  * carries, is dropped and re-read from the child's layers. A key the operator
  * exported is not in `fromFiles`, so it survives, which keeps the shell the
- * first word in every process.
+ * first word in every process — and a key the project's `.env` set is kept
+ * too, because the project's file is read before the profile's.
  */
 export function environmentFor(
   home: string,
@@ -143,12 +156,15 @@ export function environmentFor(
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...(options.base ?? process.env) };
   const otherProfiles = namesOfOtherProfiles(home, profile);
+  const project = projectEnv(env);
+  const fromProject = project ? namesOf(project) : new Set<string>();
 
   for (const name of options.fromFiles ?? []) {
-    if (otherProfiles.has(name)) delete env[name];
+    if (otherProfiles.has(name) && !fromProject.has(name)) delete env[name];
   }
 
-  for (const file of [profileEnv(home, profile), path.join(home, ".env")]) {
+  for (const file of [project, profileEnv(home, profile), path.join(home, ".env")]) {
+    if (!file) continue;
     for (const [key, value] of Object.entries(readEnvFile(file))) {
       if (env[key] === undefined) env[key] = value;
     }

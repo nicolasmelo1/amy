@@ -402,6 +402,12 @@ export function addModeFor(config: Pick<AmyConfig, "add">, flags: { fork?: boole
   return configured;
 }
 
+/** The bytes one config document holds, as a mapping; anything else is nothing to layer. */
+function documentFrom(text: string): Record<string, unknown> {
+  const parsed: unknown = yaml.parse(text) ?? {};
+  return isMapping(parsed) ? parsed : {};
+}
+
 /**
  * Parses one config document through the loader's own merge.
  *
@@ -410,11 +416,17 @@ export function addModeFor(config: Pick<AmyConfig, "add">, flags: { fork?: boole
  * template through this rather than through any second parser, because a
  * template check that parsed the file differently from the machine would
  * prove the wrong file.
+ *
+ * When a profile is named, its own file is laid over the bytes exactly as
+ * `loadConfig` lays it over `config.yaml`: a candidate config is checked, and
+ * a loop is started from it, as the profile that will read it — not as the
+ * machine alone, which would drop every slice the profile keeps to itself.
  */
-export function loadConfigFrom(root: string, text: string): AmyConfig {
-  const parsed = (yaml.parse(text) ?? {}) as Partial<AmyConfig>;
+export function loadConfigFrom(root: string, text: string, profile?: string): AmyConfig {
+  const parsed = documentFrom(text);
+  const own = profile === undefined ? undefined : profileSettings(root, profile);
 
-  return fromParsed(root, parsed);
+  return fromParsed(root, own ? layered(parsed, own) : parsed);
 }
 
 /** A YAML mapping as an operator writes one; an array or a scalar is not one. */

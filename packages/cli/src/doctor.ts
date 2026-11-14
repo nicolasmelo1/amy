@@ -5,7 +5,7 @@ import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConf
 import { AmyConfig, configuredAutoUpdateProblems, configuredChatProblems } from "./config.js";
 import { strayState } from "./home.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
-import { paths, profileConfig } from "./paths.js";
+import { paths, profileConfig, profileEnv } from "./paths.js";
 import { type PhaseBrief, uncheckedBrief } from "./project.js";
 import type { Found } from "./supervisor/index.js";
 
@@ -158,17 +158,22 @@ function profileDirectories(directory: string): fs.Dirent[] {
  * A profile file the machine never declared.
  *
  * Nothing reads it: the profile it is named for is not in the machine's
- * list, so the file is a settings edit that silently applies to nothing.
+ * list, so the file is a settings edit or a key that silently applies to
+ * nothing. A profile keeps two files of its own — its config and its `.env`
+ * — and an orphan of either is as unread as the other.
  */
 function undeclaredProfileFiles({ home, config }: DoctorDeps): Check[] {
   const declared = new Set(Object.keys(config.workflows));
 
   return profileDirectories(path.join(paths(home).base, "profiles"))
     .filter((entry) => entry.isDirectory() && !declared.has(entry.name))
-    .map((entry) => ({ name: entry.name, file: profileConfig(home, entry.name) }))
+    .flatMap((entry) => [
+      { label: `profile config for ${entry.name}`, file: profileConfig(home, entry.name) },
+      { label: `profile env for ${entry.name}`, file: profileEnv(home, entry.name) },
+    ])
     .filter(({ file }) => fs.existsSync(file))
-    .map(({ name, file }) => ({
-      label: `profile config for ${name}`,
+    .map(({ label, file }) => ({
+      label,
       ok: false,
       detail: `${file} belongs to no profile the config declares`,
     }));

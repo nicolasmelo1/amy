@@ -28,7 +28,7 @@ profile, a cron wrapper or CI. What it checks:
 | A notification channel is on | A machine that cannot reach you is one you have to poll |
 | A gate is configured when one is mounted, and repositories when a workspace is | A workflow with no gate opens pull requests nobody checked |
 | **Each plugin's settings, against the schema that plugin declared** | See below |
-| A profile file the config never declared | A settings edit in a profile nobody declared applies to nothing |
+| A profile `config.yaml` or `.env` the config never declared | A settings edit or a key in a profile nobody declared applies to nothing |
 | What the workflow may write, and its brief sections | A workflow claiming no writes cannot reach one |
 | State left behind by an older layout, or in the working directory | Reported, never adopted |
 | The environment variables the mounted plugins read | A credential missing at 3am is a tick that failed for no visible reason |

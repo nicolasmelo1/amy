@@ -204,16 +204,20 @@ function ownSliceKeys(profile: string): string[] {
  * What each declared profile mounts, for the doctor's one cross-profile
  * question: a slice in the machine's block may belong to a sibling.
  *
- * A profile whose own file does not read answers with nothing rather than
- * ending the diagnosis: the file is reported on its own check.
+ * A sibling whose own file does not read is reported on that file's own
+ * check, and here answers with what the machine's file gives it: its plugin
+ * list lives in the machine's `workflows:` table, so the plugin is still
+ * mounted by that profile rather than by nothing. Answering "nothing" would
+ * blame this profile for a file it does not own.
  */
 function mountsOf(config: AmyConfig): Record<string, readonly string[]> {
   const mounts: Record<string, readonly string[]> = {};
+  const machine = loadConfig(home);
   for (const profile of Object.values(profiles(config, home))) {
     try {
       mounts[profile.name] = pluginList(configFor(profile.name), profile);
     } catch {
-      mounts[profile.name] = [];
+      mounts[profile.name] = pluginList(machine, profile);
     }
   }
   return mounts;
@@ -1058,7 +1062,9 @@ function restartMarkerOf(profile: Profile): string {
 function restartingConfig(profile: Profile): AmyConfig | undefined {
   try {
     const marker = JSON.parse(fs.readFileSync(restartMarkerOf(profile), "utf-8")) as { config?: unknown };
-    return typeof marker.config === "string" ? loadConfigFrom(home, marker.config) : undefined;
+    // The bytes were proved for this profile and this loop boots from them,
+    // so the profile's own file is laid over them as `loadConfig` does.
+    return typeof marker.config === "string" ? loadConfigFrom(home, marker.config, profile.name) : undefined;
   } catch {
     return undefined;
   }
@@ -1248,22 +1254,31 @@ program
   .option("--all", "assemble every profile in the config, before replacing the shared config.yaml")
   .action(async (options: { config?: string; all?: boolean }) => {
     // A config asked for in the chat is mounted from its own file first, and
-    // only one that mounts replaces config.yaml (S30).
-    const config = options.config ? loadConfigFrom(home, fs.readFileSync(options.config, "utf-8")) : undefined;
-    // What the loop refuses before it mounts anything, refused here too: a
-    // config that passed this and then stopped the loop at boot would not boot.
-    const schedule = [...configuredAutoUpdateProblems(config ?? loadConfig(home)), ...configuredChatProblems(config ?? loadConfig(home))];
-    if (schedule.length > 0) {
-      for (const problem of schedule) console.log(problem);
-      process.exitCode = 1;
-      return;
-    }
+    // only one that mounts replaces config.yaml (S30). The bytes are the
+    // machine's file, so every profile read below lays that profile's own
+    // file over them, exactly as `loadConfig` lays it over config.yaml: a
+    // profile that keeps a slice of its own mounts with it here too.
+    const text = options.config ? fs.readFileSync(options.config, "utf-8") : undefined;
+    // The declared profiles are the machine's list, and a profile's own file
+    // cannot name them (A3), so any profile's read of the bytes carries the
+    // same table; this one names the profile the loop is running for.
+    const declared = text === undefined ? loadConfig(home) : loadConfigFrom(home, text, selected().name);
+    const configForCheck = (profile: Profile) => (text === undefined ? loadConfig(home, profile.name) : loadConfigFrom(home, text, profile.name));
     // This must take the same path as daemon startup. In particular, an
     // edited fork is rebuilt before assembly; assembling its installed copy
     // would approve a candidate that the replacement daemon cannot boot.
-    const selectedProfiles = options.all ? Object.values(profiles(config ?? loadConfig(home), home)) : [selected(config)];
+    const selectedProfiles = options.all ? Object.values(profiles(declared, home)) : [selected(declared)];
     for (const profile of selectedProfiles) {
-      const assembled = config ? await assemble(profile, config) : await assemble(profile);
+      const config = configForCheck(profile);
+      // What the loop refuses before it mounts anything, refused here too: a
+      // config that passed this and then stopped the loop at boot would not boot.
+      const schedule = [...configuredAutoUpdateProblems(config), ...configuredChatProblems(config)];
+      if (schedule.length > 0) {
+        for (const problem of schedule) console.log(`${profile.name}: ${problem}`);
+        process.exitCode = 1;
+        continue;
+      }
+      const assembled = await assemble(profile, config);
       if (assembled.ok) continue;
       for (const problem of assembled.problems) console.log(`${profile.name}: ${problem}`);
       process.exitCode = 1;
@@ -3314,10 +3329,12 @@ queueCommand
   .description("Delete finished queue items past their retention")
   .option("--days <n>", "override the configured retention")
   .action(async (options: { days?: string }) => {
-    const config = loadConfig(home);
+    const profile = selected();
+    // The retention is the selected profile's setting: its own file may set a
+    // shorter one than the machine, and prune must keep what that loop keeps.
+    const config = configFor(profile);
     const days = options.days ? Number(options.days) : config.retentionDays;
     const now = new Date();
-    const profile = selected();
     const removed = new FileQueue(profilePaths(home, profile).queue).prune(days, now);
     const assembled = await assemble(profile);
     const briefStore = assembled.ok ? (assembled.mounted.ports.get("brief") as BriefStore | undefined) : undefined;
