@@ -225,8 +225,8 @@ describe("the stream the CLI prints", () => {
     const parsed = parseRun(stream("rate-limited"), true, "sonnet", now);
 
     expect(parsed.outcome).toBe("rate-limited");
-    // The result line in the recording is a success; the event settles it.
-    expect(parsed.text).toBe("done");
+    // 2.1.325 answers a refused turn with the limit text, not a success.
+    expect(parsed.text).toBe("You've hit your session limit · resets 3pm");
     expect(parsed.retryAfterMs).toBe(RESET * 1000 - now);
   });
 

@@ -56,16 +56,8 @@ exit: "a Claude run its plan refuses reads as rate-limited, charges no attempt, 
 ---
 # Claude says its limit while it runs
 
-The Claude harness reads Claude Code's `stream-json` after the run exits: a
-`rate_limit_event` with `status: rejected` makes the run `rate-limited` with
-the reset it reported, whatever its result line says, so the workflow waits for
-that reset instead of charging an attempt. A rejected window with
-`overageStatus: "allowed"` is not a refusal: 2.1.325 runs that turn on usage
-credits and finishes it, so the run is `completed` with no wait.
-
-The fixtures are a 2.1.325 stand-in, not a recording (S8 stays pending: no
-credential reaches the implementer). The completed one is the envelope the
-harness tests already carried; the refused one is the refusal the CLI prints —
-the rejected event, a synthetic reply with `error: "rate_limit"` and the limit
-text, and a result with `is_error: true` and `api_error_status: 429`. Recording
-a real stream is listed on `next-steps.md`.
+The harness reads Claude Code's `stream-json` after exit: a rejected
+`rate_limit_event` makes the run `rate-limited` with the reset it reported, and
+a rejected window with `overageStatus: "allowed"` is no refusal — the turn runs
+on credits and completes. The fixtures are a 2.1.325 stand-in, not a recording:
+S8 stays pending until an authenticated CLI records one.
