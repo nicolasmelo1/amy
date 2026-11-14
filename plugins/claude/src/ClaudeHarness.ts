@@ -74,9 +74,11 @@ export function lend(tmpDir: string, skill: { name: string; path: string }): str
 /**
  * The `claude` CLI, and everything knowable about what a call to it took.
  *
- * `--output-format json` is what makes the run measurable rather than
- * guessed: it returns the answer, the token counts, the cost the harness
- * itself worked out, and an error status to classify on.
+ * `--output-format stream-json` is what makes the run measurable rather than
+ * guessed: the result line returns the answer, the token counts, the cost the
+ * harness itself worked out and an error status to classify on, and the
+ * `rate_limit_event` before it says when the plan refused the turn and when
+ * the quota resets.
  */
 export class ClaudeHarness implements Harness {
   readonly name = "claude";
@@ -104,7 +106,7 @@ export class ClaudeHarness implements Harness {
 
     const lent = context.skill ? lend(this.tmpDir, context.skill) : undefined;
     if (lent) args.push("--add-dir", lent);
-    args.push("--output-format", "json", "-p");
+    args.push("--output-format", "stream-json", "--verbose", "-p");
 
     const started = Date.now();
     let result: Awaited<ReturnType<CommandRunner["run"]>>;
@@ -151,6 +153,7 @@ export class ClaudeHarness implements Harness {
       costUsd,
       costSource,
       durationMs: parsed.durationMs ?? elapsedMs,
+      ...(parsed.retryAfterMs === undefined ? {} : { retryAfterMs: parsed.retryAfterMs }),
       output: [parsed.text, stderr].filter(Boolean).join("\n").trim(),
     };
   }

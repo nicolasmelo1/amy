@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import { CommandResult, HostServices, mount } from "@amykit/core";
-import { Granted, harnessConformance } from "@amykit/agent-kit";
+import { Granted, harnessConformance, nextRung } from "@amykit/agent-kit";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import { ClaudeHarness, ISOLATED, WRITING_MODES, lend } from "../src/ClaudeHarness.js";
+import { parseRun } from "../src/envelope.js";
 import { plugin } from "../src/plugin.js";
 
 const HOST: HostServices = {
@@ -40,6 +42,20 @@ function envelope(overrides: Record<string, unknown> = {}): string {
   });
 }
 
+/**
+ * The recorded stream of a run, one JSON event a line, as the CLI printed it.
+ *
+ * The completed one is the shape 2.1.322 emits for a turn that finished; the
+ * refused one is the same stream with its rate_limit_event edited to the
+ * refusal the CLI reports, until a real refusal is captured.
+ */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const stream = (name: "completed" | "rate-limited") =>
+  fs.readFileSync(path.join(HERE, "fixtures", `stream-${name}.jsonl`), "utf8");
+
+/** The reset the refused recording reports, in epoch seconds. */
+const RESET = 1_893_456_000;
+
 function claudeReturns(stdout: string, ok = true) {
   return {
     match: (command: string) => command === "claude",
@@ -66,12 +82,12 @@ function harnessFor(
 }
 
 describe("how it calls the CLI", () => {
-  it("asks for JSON, which is what makes the run measurable", async () => {
+  it("asks for the stream, which is where a limit and its reset are said", async () => {
     const { runner, ask } = harnessFor([claudeReturns(envelope())]);
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual(["--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual(["--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "stream-json", "--verbose", "-p"]);
   });
 
   it("selects the model with the long flag the CLI actually accepts", async () => {
@@ -79,7 +95,7 @@ describe("how it calls the CLI", () => {
 
     await ask();
 
-    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", "--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "json", "-p"]);
+    expect(runner.argvFor("claude")).toEqual(["--model", "sonnet", "--permission-mode", "acceptEdits", ...ISOLATED, "--output-format", "stream-json", "--verbose", "-p"]);
   });
 
   it("streams the prompt over stdin, in the directory it was handed", async () => {
@@ -194,6 +210,69 @@ describe("how it classifies a run", () => {
     await ask();
 
     expect(runner.calls.every((call) => call.command === "claude")).toBe(true);
+  });
+});
+
+describe("the stream the CLI prints", () => {
+  it("gives a completed run the same account the json envelope gave", () => {
+    // The result line is the envelope: same answer, tokens, cost, model and
+    // duration, read from the stream the run actually printed.
+    expect(parseRun(stream("completed"), true, "sonnet")).toEqual(parseRun(envelope(), true, "sonnet"));
+  });
+
+  it("calls a run its plan refused rate-limited, whatever its result line says, and waits until the reset", () => {
+    const now = Date.parse("2026-11-14T12:00:00.000Z");
+    const parsed = parseRun(stream("rate-limited"), true, "sonnet", now);
+
+    expect(parsed.outcome).toBe("rate-limited");
+    // The result line in the recording is a success; the event settles it.
+    expect(parsed.text).toBe("done");
+    expect(parsed.retryAfterMs).toBe(RESET * 1000 - now);
+  });
+
+  it("hands the reset it was told to the relay", async () => {
+    const { ask } = harnessFor([claudeReturns(stream("rate-limited"))]);
+
+    const { run } = await ask();
+
+    expect(run.outcome).toBe("rate-limited");
+    expect(Math.abs((run.retryAfterMs ?? 0) - (RESET * 1000 - Date.now()))).toBeLessThan(60_000);
+  });
+
+  it("calls a rejected event with no reset rate-limited, with the policy backoff to wait", () => {
+    const rejected = JSON.stringify({ type: "rate_limit_event", rate_limit_info: { status: "rejected" } });
+
+    const parsed = parseRun(`${rejected}\n${envelope()}`, true, "sonnet");
+
+    expect(parsed.outcome).toBe("rate-limited");
+    expect(parsed.retryAfterMs).toBeUndefined();
+  });
+
+  it("reads a stream with no result line and no rejected event as a missing envelope did", () => {
+    const init = JSON.stringify({ type: "system", subtype: "init" });
+
+    expect(parseRun(init, true, "sonnet").outcome).toBe("completed");
+    expect(parseRun(init, false, "sonnet").outcome).toBe("abandoned");
+  });
+
+  it("keeps a run amy stop killed abandoned, and starts no next rung", () => {
+    // Every line before the result: the child was killed mid-run.
+    const killed = stream("completed").split("\n").slice(0, 3).join("\n");
+    const ladder = [
+      { name: "sonnet", harness: "claude", model: "sonnet" },
+      { name: "opus", harness: "claude", model: "opus" },
+      { name: "gpt-5", harness: "codex", model: "gpt-5" },
+    ];
+    const parsed = parseRun(killed, false, "sonnet");
+
+    expect(parsed.outcome).toBe("abandoned");
+    expect(nextRung(ladder, 0, parsed.outcome)).toBeNull();
+  });
+
+  it("keeps a run that was refused before the kill rate-limited", () => {
+    const killed = stream("rate-limited").split("\n").slice(0, 3).join("\n");
+
+    expect(parseRun(killed, false, "sonnet").outcome).toBe("rate-limited");
   });
 });
 
