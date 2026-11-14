@@ -1,5 +1,5 @@
 ---
-base: 3345debfb3bf3edc1c26b99bdc6459d7f2a53455
+base: 11bef4d29aa1f0e8107ee50aa678732b19ad8169
 sources:
   - { id: S1, kind: friction, said: "2026-11-13: two profiles on one machine; doctor for the first fails five slices only the second mounts (http, slack, linear, command-gate, agent-browser), doctor for the second fails the two only the first mounts, and both loops run" }
   - { id: S2, kind: code, ref: "packages/cli/src/doctor.ts", symbol: "pluginSettings", said: "every entry of the one plugins: block is checked against the schemas this profile mounted; a slice nothing in this profile declares is FAIL, nothing mounted declares these settings" }
