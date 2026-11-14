@@ -1,5 +1,5 @@
 ---
-base: d3f76a652761f40d24ec1f8e67f83993d47aae83
+base: a6674f574fe4275e3dc111c8ba8e2df913276f49
 sources:
   - { id: S1, kind: friction, said: "2026-11-12: ticket-to-qa hands the agent text other people wrote, verbatim beside its instructions, and the run that reads it may write: nothing tells the two apart" }
   - { id: S2, kind: code, ref: "examples/workflow-ticket-to-qa/src/agent-steps.ts", symbol: "bodyLines", said: "the ticket body joins every prompt as written, between the ticket line and the instructions" }
@@ -27,6 +27,7 @@ touches:
   - docs/development/the-gate.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/outside-text-scenario.sh
+  - scripts/tests/gate-activation.test.ts
   - registry/core.json
   - registry/workflow-ticket-to-qa.json
 untouched:
