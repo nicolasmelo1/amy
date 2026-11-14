@@ -24,9 +24,11 @@ profile, a cron wrapper or CI. What it checks:
 | Check | Why it is asked |
 | :-- | :-- |
 | The config file exists | The most common cause of "it does nothing" |
+| Every config and `.env` file it read, by name | A setting that seems not to apply is answered by which files exist |
 | A notification channel is on | A machine that cannot reach you is one you have to poll |
 | A gate is configured when one is mounted, and repositories when a workspace is | A workflow with no gate opens pull requests nobody checked |
 | **Each plugin's settings, against the schema that plugin declared** | See below |
+| A profile file the config never declared | A settings edit in a profile nobody declared applies to nothing |
 | What the workflow may write, and its brief sections | A workflow claiming no writes cannot reach one |
 | State left behind by an older layout, or in the working directory | Reported, never adopted |
 | The environment variables the mounted plugins read | A credential missing at 3am is a tick that failed for no visible reason |
@@ -38,10 +40,17 @@ profile, a cron wrapper or CI. What it checks:
 
 The settings check asks **the plugins this install loaded** for their schemas
 rather than carrying a table of its own, so it describes the machine being
-diagnosed. Why settings are checked against a schema:
+diagnosed. A slice in the machine's `plugins:` block that this profile does not
+mount is not a failure when another declared profile mounts that plugin: doctor
+says which one, because profiles with different plugins share the one block.
+A slice in the profile's own file that the profile does not mount is a failure,
+and so is one no declared profile mounts at all. Why settings are checked
+against a schema:
 [a config is typed by its schema](../design/a-config-is-typed-by-its-schema.md).
 Why a workflow's write surface is checked:
 [a workflow that claims no writes cannot reach one](../design/a-workflow-that-claims-no-writes-cannot-reach-one.md).
+Why each profile reads its own files:
+[a profile keeps its own config](../design/a-profile-keeps-its-own-config.md).
 
 If `doctor` is red and it is not obvious why, the `/amy-init` skill walks the
 same ground and explains what it found.

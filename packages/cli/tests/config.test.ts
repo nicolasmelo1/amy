@@ -305,3 +305,112 @@ describe("the chat's skills are the effective ladder", () => {
     ].join("\n")))).toBe(true);
   });
 });
+
+describe("a profile's own config file", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-config-profile-"));
+    fs.mkdirSync(paths(root).base, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+
+  /** Writes one profile's own file, creating its directory. */
+  function profileFile(name: string, text: string): string {
+    const file = path.join(paths(root).base, "profiles", name, "config.yaml");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+    return file;
+  }
+
+  it("reads the machine's config with the profile's own over it (A1)", () => {
+    fs.writeFileSync(paths(root).config, [
+      "notify:",
+      "  inbox: true",
+      "plugins:",
+      "  \"@amykit/plugin-file-worktree\":",
+      "    repos: [acme/widgets]",
+    ].join("\n"));
+    profileFile("work", [
+      "notify:",
+      "  hermes: \"slack:ops\"",
+      "plugins:",
+      "  \"@amykit/plugin-file-worktree\":",
+      "    workspaceRoot: /work",
+    ].join("\n"));
+
+    const config = loadConfig(root, "work");
+
+    // One key from each side of the same mapping, which is the point: the
+    // profile's file is laid over the machine's, not swapped for it.
+    expect(config.notify).toMatchObject({ inbox: true, hermes: "slack:ops" });
+    expect(config.plugins["@amykit/plugin-file-worktree"]).toEqual({
+      repos: ["acme/widgets"],
+      workspaceRoot: "/work",
+    });
+  });
+
+  it("reads exactly as today when the profile has no file of its own (A1)", () => {
+    fs.writeFileSync(paths(root).config, "retentionDays: 7\n");
+
+    expect(loadConfig(root, "work")).toEqual(loadConfig(root));
+  });
+
+  it("replaces a list or a scalar whole rather than merging it (A2)", () => {
+    fs.writeFileSync(paths(root).config, [
+      "retentionDays: 7",
+      "plugins:",
+      "  \"@amykit/plugin-linear\":",
+      "    teams: [one, two]",
+    ].join("\n"));
+    profileFile("work", [
+      "retentionDays: 9",
+      "plugins:",
+      "  \"@amykit/plugin-linear\":",
+      "    teams: [three]",
+    ].join("\n"));
+
+    const config = loadConfig(root, "work");
+
+    expect(config.retentionDays).toBe(9);
+    expect(config.plugins["@amykit/plugin-linear"]).toEqual({ teams: ["three"] });
+  });
+
+  it.each(["workflows", "defaultWorkflow"])(
+    "refuses a profile file naming the machine's `%s`, naming the file and the key (A3)",
+    (key) => {
+      const file = profileFile("work", `${key}: {}\n`);
+
+      expect(() => loadConfig(root, "work")).toThrow(`\`${key}\` belongs to the machine's config`);
+      expect(() => loadConfig(root, "work")).toThrow(file);
+    },
+  );
+
+  it("never lets one profile's file change what another profile reads (A4)", () => {
+    fs.writeFileSync(paths(root).config, [
+      "workflows:",
+      "  work: { workflow: \"@amykit/workflow-ticket-to-qa\" }",
+      "  home: { workflow: \"@amykit/workflow-ticket-to-qa\" }",
+    ].join("\n"));
+    profileFile("work", [
+      "plugins:",
+      "  \"@amykit/plugin-linear\":",
+      "    workingStatusName: In Progress",
+    ].join("\n"));
+
+    expect(loadConfig(root, "home").plugins).toEqual({});
+    expect(loadConfig(root, "work").plugins).toEqual({
+      "@amykit/plugin-linear": { workingStatusName: "In Progress" },
+    });
+  });
+
+  it("names a profile file and the line when it does not parse", () => {
+    const file = profileFile("work", "notify:\n\tinbox: true\n");
+
+    expect(() => loadConfig(root, "work")).toThrow(`${file}:2`);
+  });
+});

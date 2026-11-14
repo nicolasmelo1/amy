@@ -93,6 +93,38 @@ never costs the other one's state.
 the same subscription cannot each believe they have the whole ceiling. One
 handbrake means `amy stop --all` stops the machine.
 
+## A profile's own config
+
+The machine's `~/.amy/config.yaml` may cover both profiles, but a setting only
+one of them wants belongs in that profile's own file:
+
+```text
+~/.amy/
+├── config.yaml                  workflows, defaultWorkflow, and what both share
+└── profiles/
+    ├── ticket-to-qa/
+    │   ├── config.yaml          this profile's settings, laid over the machine's
+    │   └── .env                 this profile's keys
+    └── oncall/
+        ├── config.yaml
+        └── .env
+```
+
+```yaml
+# ~/.amy/profiles/oncall/config.yaml
+plugins:
+  "@amykit/plugin-linear":
+    workingStatusName: On Call
+```
+
+The profile reads the machine's file with its own over it: mappings merge key by
+key, and a list or a scalar replaces the machine's value whole. A profile with
+no file reads exactly the machine's, and `amy --workflow other` never sees what
+`oncall` wrote. `workflows:` and `defaultWorkflow` stay in the machine's file, because they
+are the list of profiles, so a profile file naming either is refused at boot,
+naming the file and the key. Why: [a profile keeps its own
+config](../design/a-profile-keeps-its-own-config.md).
+
 ## One workflow per process
 
 A process drives one profile, so `--workflow` chooses which. The loop for a

@@ -50,9 +50,12 @@ import {
   configuredAutoUpdateProblems,
   configuredChatProblems,
   configuredSkillRoots,
+  configsOfProfiles,
+  defaultProfileOf,
   loadConfig,
   loadConfigFrom,
   addModeFor,
+  profileSettings,
   profileSettingsFrom,
   removeExtraPlugin,
   removeProfile,
@@ -61,7 +64,7 @@ import {
   writeWorkflowProfile,
 } from "./config.js";
 import { budgetReport } from "./budget.js";
-import { loadEnv } from "./env.js";
+import { environmentFor, envFiles, loadEnvFiles } from "./env.js";
 import { diagnose, supervisorCheck } from "./doctor.js";
 import { CHAT_COMMANDS, chatAct } from "./chat-action.js";
 import { LoopSpec, MachineFacts, RESTART_EXIT, findSupervisor, labelFor } from "./supervisor/index.js";
@@ -131,13 +134,28 @@ const build = stampId(stamp);
 const stopSwitch = new FileStopSwitch(paths(home).stop);
 
 // Before anything reads process.env, so a key kept in .env is picked up. The
-// state directory first, then the directory the command was typed in — a
-// project's own key beats the machine's, which is what a `.env` is for.
-loadEnv(home);
-loadEnv(process.cwd());
-// A supervised loop runs in the state directory: the project it was started
-// from is named, never its secrets, and its .env is read from there.
-if (process.env.AMY_PROJECT_ENV) loadEnv(process.env.AMY_PROJECT_ENV);
+// project first, then the profile, then the machine: the first file that has
+// a key is the one the process keeps, and a key exported here beats all three.
+const activeProfile = requestedProfile(process.argv) || defaultProfileOf(home);
+const envFromFiles = loadEnvFiles(envFiles(home, {
+  ...(activeProfile ? { profile: activeProfile } : {}),
+  cwd: process.cwd(),
+  ...(process.env.AMY_PROJECT_ENV ? { project: process.env.AMY_PROJECT_ENV } : {}),
+}));
+
+/**
+ * The profile this invocation was asked for, from the one word that chooses
+ * it before the config has been read: a global `--workflow`, wherever it was
+ * typed, in either spelling commander accepts.
+ */
+function requestedProfile(argv: readonly string[]): string | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    const word = argv[index]!;
+    if (word === "--workflow") return argv[index + 1]?.trim();
+    if (word.startsWith("--workflow=")) return word.slice("--workflow=".length).trim();
+  }
+  return undefined;
+}
 
 /**
  * Every load resolves the same way, or a workflow of your own exists only for
@@ -160,15 +178,66 @@ function loadMountable(specs: readonly string[], profile?: string): Promise<Load
  * root refreshed, so what mounts is what the fork says now; a fork that does
  * not build refuses the boot by name.
  */
-async function assemble(profile: Profile, config: AmyConfig = loadConfig(home)): Promise<Assembled> {
+async function assemble(profile: Profile, config: AmyConfig = configFor(profile)): Promise<Assembled> {
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) return prepared;
   return assembleLoaded(profile, config);
 }
 
+/**
+ * What one profile reads: the machine's config with the profile's own over
+ * it. Every profile-scoped command goes through this one function, so no
+ * reader has to remember that a profile has a file.
+ */
+function configFor(profile: Profile | string): AmyConfig {
+  return loadConfig(home, typeof profile === "string" ? profile : profile.name);
+}
+
+/** The plugin names one profile's own file carries a slice for. */
+function ownSliceKeys(profile: string): string[] {
+  if (!profile) return [];
+  const plugins = profileSettings(home, profile)?.plugins;
+  return typeof plugins === "object" && plugins !== null && !Array.isArray(plugins) ? Object.keys(plugins) : [];
+}
+
+/**
+ * What each declared profile mounts, for the doctor's one cross-profile
+ * question: a slice in the machine's block may belong to a sibling.
+ *
+ * A profile whose own file does not read answers with nothing rather than
+ * ending the diagnosis: the file is reported on its own check.
+ */
+function mountsOf(config: AmyConfig): Record<string, readonly string[]> {
+  const mounts: Record<string, readonly string[]> = {};
+  for (const profile of Object.values(profiles(config, home))) {
+    try {
+      mounts[profile.name] = pluginList(configFor(profile.name), profile);
+    } catch {
+      mounts[profile.name] = [];
+    }
+  }
+  return mounts;
+}
+
+/**
+ * Whether any profile still mounts this package: the machine's list, or a
+ * profile's own file that names it.
+ *
+ * A profile whose file does not read answers "still mounted": a package is
+ * cheaper to leave installed than to remove while something might need it.
+ */
+function mountedAnywhere(spec: string): boolean {
+  if (stillMounted(loadConfig(home), spec)) return true;
+  try {
+    return Object.values(configsOfProfiles(home)).some((config) => stillMounted(config, spec));
+  } catch {
+    return true;
+  }
+}
+
 /** Mounts a profile for a read-only inspection without preparing edited forks. */
 async function assembleForInspection(profile: Profile): Promise<Assembled> {
-  return assembleLoaded(profile, loadConfig(home), true);
+  return assembleLoaded(profile, configFor(profile), true);
 }
 
 function assembleLoaded(profile: Profile, config: AmyConfig, readOnly = false): Promise<Assembled> {
@@ -215,7 +284,7 @@ function anotherProfileDaemonIsRunning(profile: Profile, config: AmyConfig): boo
 
 /** Applies the persisted schedule around one foreground workflow invocation. */
 async function aroundWorkflow(profile: Profile, work: () => Promise<void>): Promise<void> {
-  const config = loadConfig(home);
+  const config = configFor(profile);
   const problems = configuredAutoUpdateProblems(config);
   if (problems.length > 0) throw new Error(problems.join("; "));
   await runWithAutoUpdate({ home, profile: profile.name, config, update: scheduledUpdate, work });
@@ -269,7 +338,11 @@ function linkForTheRun(config: AmyConfig, linkable: ReturnType<typeof linkableHa
 }
 
 async function engineOrExit(run = false): Promise<Engine> {
-  const config = loadConfig(home);
+  const machine = loadConfig(home);
+  const profile = selected(machine);
+  // The schedule and the chat ceiling are the profile's to set as much as any
+  // other setting, so the config that is checked and mounted is the layered one.
+  const config = configFor(profile);
   const scheduleProblems = configuredAutoUpdateProblems(config);
   if (scheduleProblems.length > 0) {
     console.error("amy could not start:");
@@ -278,7 +351,7 @@ async function engineOrExit(run = false): Promise<Engine> {
     process.exit(1);
   }
 
-  const outcome = await assemble(selected(config));
+  const outcome = await assemble(profile, config);
   if (outcome.ok) {
     if (run) linkForTheRun(config, linkableHarnesses(chatPartsOf(outcome.mounted)));
     return outcome.engine;
@@ -359,16 +432,16 @@ program
   .command("doctor")
   .description("Check everything the machine depends on before it touches a ticket")
   .action(async () => {
-    const config = loadConfig(home);
+    const machine = loadConfig(home);
 
     // A machine that has not named a workflow yet is the machine doctor is
     // for: it reports everything else it can see, then names the one thing
     // that is missing in the words the operator can act on — rather than
     // exiting at the selection step with nothing reported.
-    const resolution = resolveProfile(config, program.opts<{ workflow?: string }>().workflow, home);
+    const resolution = resolveProfile(machine, program.opts<{ workflow?: string }>().workflow, home);
     if (!resolution.ok) {
       await doctorReport(
-        config,
+        machine,
         { name: "", workflow: "", plugins: [], takesNotes: false, takesTasks: false, settings: {} },
         resolution.problem,
       );
@@ -376,8 +449,37 @@ program
       return;
     }
 
-    await doctorReport(config, resolution.profile);
+    // The profile reads the machine's config with its own over it, and doctor
+    // reports on the files and slices that made the profile it is asked about.
+    await doctorReport(configFor(resolution.profile), resolution.profile);
   });
+
+/** The `.env` files this diagnosis read, by path: what the doctor names back. */
+function envFileList(profile: string): string[] {
+  return [...envFiles(home, {
+    ...(profile ? { profile } : {}),
+    cwd: process.cwd(),
+    ...(process.env.AMY_PROJECT_ENV ? { project: process.env.AMY_PROJECT_ENV } : {}),
+  })];
+}
+
+/**
+ * The brief sections the selected workflow's phases declared, in walk order.
+ *
+ * The mounted workflow's own plugin is the one that knows them; a profile that
+ * did not mount (a bare install) is asked nothing, and a mount that failed is
+ * its own answer.
+ */
+function briefsFor(
+  profile: Profile,
+  problem: string | undefined,
+  assembled: Awaited<ReturnType<typeof assemble>>,
+  loaded: Awaited<ReturnType<typeof loadMountable>>,
+): readonly PhaseBrief[] {
+  if (problem) return [];
+  const mounted = assembled.ok ? assembled.workflowPlugin : undefined;
+  return briefsOf(mounted ?? ("bySpec" in loaded ? loaded.bySpec.get(profile.workflow) : undefined));
+}
 
 /**
  * Runs the checks for one profile, then the mount itself, and says what to
@@ -396,12 +498,20 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
     : await assemble(profile);
   const mounted = assembled.ok ? assembled.mounted : undefined;
   const loaded = problem
-    ? { plugins: [], problems: [] }
+    ? { plugins: [], problems: [], bySpec: new Map() }
     : await loadMountable(pluginList(config, profile), profile.name);
 
   const checks = await diagnose({
     home,
     config,
+    profile: profile.name,
+    // The profile's own file is the one place a slice is this profile's
+    // claim: the machine's block may serve a sibling, the profile's may not.
+    ownSettings: ownSliceKeys(profile.name),
+    // What a sibling mounts, so a slice the machine's file carries for it is
+    // named as a sibling's rather than counted against this profile.
+    mounts: mountsOf(config),
+    envFiles: envFileList(profile.name),
     runner,
     env: process.env,
     now: new Date(),
@@ -429,7 +539,7 @@ async function doctorReport(config: AmyConfig, profile: Profile, problem?: strin
       loaded.plugins.flatMap((plugin) => (plugin.environment ? [[plugin.name, plugin.environment]] : [])),
     ),
     conversationPort: mounted?.ports.get("conversation"),
-    briefs: problem ? [] : briefsOf(assembled.ok && assembled.workflowPlugin ? assembled.workflowPlugin : "bySpec" in loaded ? loaded.bySpec.get(profile.workflow) : undefined),
+    briefs: briefsFor(profile, problem, assembled, loaded),
   });
   // After the host's own, and only for what this profile mounted: a check a
   // workflow brought is the workflow's knowledge, and a red one fails the
@@ -527,7 +637,7 @@ program
   .option("--every <seconds>", "how long to wait after finding nothing to do", "60")
   .option("--detached", "start it detached instead: nothing brings it back if it stops")
   .action(async (options: { every: string; detached?: boolean }) => {
-    const config = loadConfig(home);
+    const config = configFor(selected());
     const profile = selected(config);
     const place = profilePaths(home, profile);
     // The handbrake is one switch for the machine, and starting is how it is
@@ -595,7 +705,7 @@ program
       const child = spawn(
         process.execPath,
         [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
-        { detached: true, stdio: ["ignore", out, out], env: process.env },
+        { detached: true, stdio: ["ignore", out, out], env: environmentFor(home, profile.name, { base: process.env, fromFiles: envFromFiles }) },
       );
       child.unref();
       writeDaemon(place.pid, {
@@ -609,7 +719,7 @@ program
         const reaper = spawn(
           process.execPath,
           [process.argv[1]!, "after-daemon", String(child.pid), profile.name],
-          { detached: true, stdio: ["ignore", out, out], env: process.env },
+          { detached: true, stdio: ["ignore", out, out], env: environmentFor(home, profile.name, { base: process.env, fromFiles: envFromFiles }) },
         );
         reaper.unref();
       }
@@ -688,7 +798,7 @@ program
     if (options.log) appendOutputTo(options.log);
     const current = loadConfig(home);
     let profile = selected(current);
-    const config = restartingConfig(profile) ?? current;
+    const config = restartingConfig(profile) ?? configFor(profile);
     profile = selected(config);
     let exit: "restart" | "stop" | undefined;
     const drive = async () => {
@@ -1095,7 +1205,7 @@ function sourceDigest(profile: Profile): string {
  * failing build or mount leaves this one on the mount it had.
  */
 async function remountedElsewhere(profile: Profile, options: { every: string; scheduled?: boolean; supervised?: boolean }): Promise<boolean> {
-  const config = loadConfig(home);
+  const config = configFor(profile);
   const prepared = await prepareForks(runner, home, paths(home).plugins, profile.name, pluginList(config, profile));
   if (!prepared.ok) {
     console.error(`${new Date().toISOString()} the source changed and does not build; the loop keeps the mount it had:`);
@@ -1123,7 +1233,7 @@ async function remountedElsewhere(profile: Profile, options: { every: string; sc
   const child = spawn(
     process.execPath,
     [process.argv[1]!, "--workflow", profile.name, "daemon", "--scheduled", "--every", options.every],
-    { detached: true, stdio: ["ignore", out, out], env: process.env },
+    { detached: true, stdio: ["ignore", out, out], env: environmentFor(home, profile.name, { base: process.env, fromFiles: envFromFiles }) },
   );
   child.unref();
   writeDaemon(place.pid, { pid: child.pid ?? 0, workflow: profile.name, startedAt: new Date().toISOString() });
@@ -1162,7 +1272,7 @@ program
 
 /** Makes a directly invoked foreground daemon visible to concurrent update. */
 async function visibleForegroundDaemon(profile: Profile, drive: () => Promise<void>): Promise<void> {
-  const config = loadConfig(home);
+  const config = configFor(profile);
   const problems = configuredAutoUpdateProblems(config);
   if (problems.length > 0) throw new Error(problems.join("; "));
   await settlePendingDaemonUpdate(profile, "daemon", config);
@@ -2206,7 +2316,7 @@ async function removeCommand(home: string, spec: string, options: { keepState?: 
   }
 
   removeFromConfig(home, config, profile, spec, carrier);
-  if (!stillMounted(loadConfig(home), spec)) await uninstallRemoved(runner, paths(home).plugins, spec);
+  if (!mountedAnywhere(spec)) await uninstallRemoved(runner, paths(home).plugins, spec);
   else console.log(`${spec} remains mounted by another profile`);
 
   console.log("records, queue and log are kept: nothing here touches them.");
@@ -2243,7 +2353,7 @@ function pickedIsInstalled(root: string, name: string): boolean {
 type AnyRecord = WorkRecord & { pullRequestNumber?: number; repo?: string };
 
 /** The `budget` setting, from the plugin slice the relay is given. */
-function configuredBudget(config: AmyConfig = loadConfig(home), profile: Profile = selected(config)): unknown {
+function configuredBudget(config: AmyConfig = configFor(selected()), profile: Profile = selected(config)): unknown {
   const slice = pluginSlices(config, profile)["@amykit/plugin-agent-relay"];
   return slice && typeof slice === "object" ? (slice as Record<string, unknown>).budget : undefined;
 }
@@ -2903,7 +3013,7 @@ pluginCommand
   .command("list")
   .description("The plugins this install mounts, and what they assembled into")
   .action(async () => {
-    const config = loadConfig(home);
+    const config = configFor(selected());
     const profile = selected(config);
     const specs = pluginList(config, profile);
     const source = profile.plugins.length > 0 ? ".amy/config.yaml" : "what this workflow needs";
@@ -2954,7 +3064,7 @@ configCommand
     // The report is data in its own module, so the tests and the gate can
     // read what this prints without a subprocess. What the command adds is
     // only where the answer lands — stdout, or nothing worth an exit of 0.
-    const config = loadConfig(home);
+    const config = configFor(selected());
     // Where the installed packages are: the report reads the plugins this
     // machine mounted, not whichever copy a repo checkout sees first.
     const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
@@ -3228,7 +3338,7 @@ queueCommand
   .command("recover")
   .description("Return items abandoned by a dead worker")
   .action(() => {
-    const config = loadConfig(home);
+    const config = configFor(selected());
     const recovered = new FileQueue(profilePaths(home, selected()).queue).recover(
       config.staleClaimMs,
       new Date(),
@@ -3345,9 +3455,10 @@ function commandEnvironment(): CommandEnvironment {
     // Read when a command asks for it, not before the command runs: `amy
     // update` is the command that moves a config whose shape was retired, and
     // a config read at register time would refuse, before the migration, the
-    // one command built to fix it.
+    // one command built to fix it. The profile is read the same way, so a
+    // command runs under the settings of the profile it was told to drive.
     get config() {
-      return loadConfig(home);
+      return loadConfig(home, program.opts<{ workflow?: string }>().workflow || defaultProfileOf(home));
     },
     profileFor: profileForContribution,
     mount: async (profile) => {

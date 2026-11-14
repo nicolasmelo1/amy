@@ -39,8 +39,9 @@ package, writes its profile into the config, writes the files the workflow
 brings (the ticket workflow's roster, for one), and checks the machine still
 boots. See [Install a plugin](../guides/install-a-plugin.md).
 
-Credentials go in `~/.amy/.env`; anything exported in the shell wins over the
-file. `amy doctor` exits non-zero when anything is wrong, so it is safe to gate
+Credentials go in `~/.amy/.env`; a key only one profile should see goes in
+`~/.amy/profiles/<name>/.env`, and anything exported in the shell wins over
+both. `amy doctor` exits non-zero when anything is wrong, so it is safe to gate
 on. See [Status and doctor](status-and-doctor.md).
 
 If you would rather be walked through it, the `/amy-init` skill does the same

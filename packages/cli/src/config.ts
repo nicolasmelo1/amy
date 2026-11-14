@@ -2,7 +2,7 @@ import fs from "node:fs";
 import yaml from "yaml";
 import path from "node:path";
 import { ConfigSchema } from "@amykit/core";
-import { paths } from "./paths.js";
+import { paths, profileConfig } from "./paths.js";
 
 /**
  * The workflow's own settings, checked against its configSchema at mount.
@@ -417,15 +417,129 @@ export function loadConfigFrom(root: string, text: string): AmyConfig {
   return fromParsed(root, parsed);
 }
 
-export function loadConfig(root: string): AmyConfig {
-  const file = paths(root).config;
-  if (!fs.existsSync(file)) {
-    return DEFAULT_CONFIG;
+/** A YAML mapping as an operator writes one; an array or a scalar is not one. */
+function isMapping(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Reads one config document, naming the file and the line when it does not
+ * parse: a YAML error alone says `3:5` and not which of the machine's files
+ * that line is in.
+ */
+function readConfigFile(file: string): Record<string, unknown> | undefined {
+  if (!fs.existsSync(file)) return undefined;
+  try {
+    const parsed: unknown = yaml.parse(fs.readFileSync(file, "utf-8"));
+    return isMapping(parsed) ? parsed : {};
+  } catch (error) {
+    const located = error as { linePos?: [{ line?: number }]; mark?: { line?: number } };
+    // `yaml` reports a 1-based `linePos`; a bare `mark` is 0-based.
+    const line = located.linePos?.[0]?.line
+      ?? (typeof located.mark?.line === "number" ? located.mark.line + 1 : undefined);
+    const at = line === undefined ? "" : `:${line}`;
+    throw new Error(`${file}${at}: ${(error as Error).message}`, { cause: error });
+  }
+}
+
+/**
+ * The two keys the machine owns, so a profile's file cannot name them:
+ * `workflows` is the list of profiles and `defaultWorkflow` the one a bare
+ * `amy` drives, and either in a profile's file would be read as if it
+ * changed the machine from inside one of them.
+ */
+const MACHINE_KEYS = ["workflows", "defaultWorkflow"] as const;
+
+/**
+ * What one profile's own file says, or nothing when it has none.
+ *
+ * Refused here rather than later because every reader goes through this:
+ * a profile file naming the machine's two keys is the mistake, whichever
+ * command would have read it first.
+ */
+export function profileSettings(root: string, profile: string): Record<string, unknown> | undefined {
+  const file = profileConfig(root, profile);
+  const parsed = readConfigFile(file);
+  if (!parsed) return undefined;
+
+  for (const key of MACHINE_KEYS) {
+    if (!Object.hasOwn(parsed, key)) continue;
+    throw new Error(
+      `\`${key}\` belongs to the machine's config, so ${file} cannot name it — the list of profiles and the default stay in ${paths(root).config}`,
+    );
   }
 
-  const parsed = (yaml.parse(fs.readFileSync(file, "utf-8")) ?? {}) as Partial<AmyConfig>;
+  return parsed;
+}
 
-  return fromParsed(root, parsed);
+/**
+ * The profile's mapping laid over the machine's: key by key where both are
+ * mappings, and the profile's value whole for anything else, so a list in a
+ * profile's file replaces the machine's list rather than appending to it.
+ */
+function layered(general: Record<string, unknown>, own: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...general };
+  for (const [key, value] of Object.entries(own)) {
+    const carried = merged[key];
+    merged[key] = isMapping(carried) && isMapping(value) ? layered(carried, value) : value;
+  }
+  return merged;
+}
+
+/**
+ * What one profile reads: the machine's `config.yaml`, with
+ * `profiles/<name>/config.yaml` over it when the profile has one.
+ *
+ * With no profile named this is the machine's file alone, which is what
+ * every machine-wide command reads; with no profile file it is exactly what
+ * it was before profiles had files, so an install that writes none reads as
+ * it always did.
+ */
+export function loadConfig(root: string, profile?: string): AmyConfig {
+  const general = readConfigFile(paths(root).config);
+  const own = profile === undefined ? undefined : profileSettings(root, profile);
+  if (!general && !own) return DEFAULT_CONFIG;
+
+  return fromParsed(root, layered(general ?? {}, own ?? {}));
+}
+
+/**
+ * The profile a process that named none drives: the machine's default, or
+ * the first profile it declares, resolved the way `resolveProfile` does.
+ *
+ * Read tolerantly, and without the layering: this is what chooses which
+ * profile's `.env` a process reads before any config is mounted, and `setup`
+ * has to keep working on a machine whose config does not parse yet.
+ */
+export function defaultProfileOf(root: string): string | undefined {
+  try {
+    const parsed = readConfigFile(paths(root).config);
+    const named = parsed?.defaultWorkflow;
+    if (typeof named === "string" && named.trim() !== "") return named.trim();
+    const declared = parsed?.workflows;
+    return isMapping(declared) ? Object.keys(declared)[0] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The profiles the machine's own file declares, in the order it declares them. */
+function declaredProfiles(root: string): string[] {
+  try {
+    const declared = readConfigFile(paths(root).config)?.workflows;
+    return isMapping(declared) ? Object.keys(declared) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Every declared profile's own config, for the commands that have to ask all
+ * of them one question: whether a plugin is still mounted anywhere, and which
+ * profile mounts the settings a slice carries.
+ */
+export function configsOfProfiles(root: string): Record<string, AmyConfig> {
+  return Object.fromEntries(declaredProfiles(root).map((name) => [name, loadConfig(root, name)]));
 }
 
 /**

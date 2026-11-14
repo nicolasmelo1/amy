@@ -39,9 +39,24 @@ export function profileRoot(home: string, profile: string): string {
   return path.join(paths(home).plugins, "profiles", profile);
 }
 
+/** The directory one profile keeps its own files in, machine-wide state beside it. */
+function profileState(home: string, profile: string): string {
+  return path.join(home, "profiles", profile);
+}
+
+/** The config one profile lays over the machine's, when it has one. */
+export function profileConfig(home: string, profile: string): string {
+  return path.join(profileState(home, profile), "config.yaml");
+}
+
+/** The keys one profile keeps to itself, laid over the machine's .env. */
+export function profileEnv(home: string, profile: string): string {
+  return path.join(profileState(home, profile), ".env");
+}
+
 /** Where the forks of a profile whose workflow is installed rather than yours live. */
 export function profileForks(home: string, profile: string): string {
-  return path.join(home, "profiles", profile, "forks");
+  return path.join(profileState(home, profile), "forks");
 }
 
 /** The directories that belong to one profile and to nothing else. */

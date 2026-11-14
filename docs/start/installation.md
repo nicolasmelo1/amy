@@ -119,6 +119,11 @@ Everything amy knows lives in one directory:
 ├── PAUSED                 the handbrake, while it is pulled
 ├── plugins/               the npm root every plugin resolves from
 ├── workflows/             workflows of your own, one directory each
+├── profiles/              what belongs to one profile and nothing else
+│   └── <name>/
+│       ├── config.yaml    this profile's settings, laid over the machine's
+│       ├── .env           this profile's keys, on top of the machine's
+│       └── forks/         the plugins this profile owns the source of
 └── <profile>/             one directory per workflow profile
     ├── records/           one file per piece of work
     └── queue/             one file per queued item
@@ -171,10 +176,20 @@ Secrets go in `~/.amy/.env`, one per line:
 LINEAR_API_KEY=lin_api_…
 ```
 
-Anything already exported in the shell wins over the file, so exporting a key
-for one command overrides it. A `.env` in the directory you ran the command from
-is read too, and beats the machine-wide one: that is what a project-local key is
-for.
+A profile that should hold its own key, rather than share the machine's, keeps
+it in `~/.amy/profiles/<name>/.env`. The order is the one a key is looked up
+in, and the first place that has it wins:
+
+```text
+exported in the shell
+<the directory you ran the command from>/.env   (or AMY_PROJECT_ENV)
+~/.amy/profiles/<name>/.env
+~/.amy/.env
+```
+
+So exporting a key for one command overrides every file, a project-local key
+beats the machine's, and a profile's key is not seen by a loop driving another
+profile.
 
 Which variables matter depends on which plugins you mount:
 

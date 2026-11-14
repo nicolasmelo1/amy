@@ -408,4 +408,72 @@ describe("diagnose", () => {
       detail: "nothing mounted declares these settings",
     });
   });
+
+  it("passes a general slice another declared profile mounts, and names that profile (A7)", async () => {
+    const config = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-slack": { token: "x" } } };
+
+    const checks = await diagnose(deps({
+      config,
+      profile: "work",
+      ownSettings: [],
+      mounts: { work: ["@amykit/plugin-notify-hermes"], home: ["@amykit/plugin-slack"] },
+    }));
+
+    expect(labelled(checks, "settings for @amykit/plugin-slack")).toMatchObject({
+      ok: true,
+      detail: "mounted by home",
+    });
+  });
+
+  it("fails a slice the profile's own file carries for a plugin the profile does not mount (A7)", async () => {
+    const config = { ...DEFAULT_CONFIG, plugins: { "@amykit/plugin-slack": { token: "x" } } };
+
+    const checks = await diagnose(deps({
+      config,
+      profile: "work",
+      ownSettings: ["@amykit/plugin-slack"],
+      // A sibling mounts it, which excuses the machine's block but never the
+      // profile's own claim about itself.
+      mounts: { home: ["@amykit/plugin-slack"] },
+    }));
+
+    expect(labelled(checks, "settings for @amykit/plugin-slack")).toMatchObject({
+      ok: false,
+      detail: "the profile's own file carries this slice, and the profile does not mount it",
+    });
+  });
+
+  it("names every config and .env file it read for the profile, and no value from them (A8)", async () => {
+    const own = path.join(paths(home).base, "profiles", "work", "config.yaml");
+    const keys = path.join(paths(home).base, "profiles", "work", ".env");
+    fs.mkdirSync(path.dirname(own), { recursive: true });
+    fs.writeFileSync(own, "notify:\n  inbox: true\n");
+    fs.writeFileSync(keys, "SLACK_TOKEN=secret-value-nobody-should-print\n");
+
+    const checks = await diagnose(deps({
+      profile: "work",
+      envFiles: [path.join(paths(home).base, ".env"), keys],
+    }));
+
+    const details = checks.map((check) => check.detail ?? "").join("\n");
+    expect(details).toContain(paths(home).config);
+    expect(details).toContain(own);
+    expect(details).toContain(keys);
+    expect(details).not.toContain("secret-value-nobody-should-print");
+  });
+
+  it("fails a profile file the machine never declared, naming the file (A9)", async () => {
+    const ghost = path.join(paths(home).base, "profiles", "ghost", "config.yaml");
+    fs.mkdirSync(path.dirname(ghost), { recursive: true });
+    fs.writeFileSync(ghost, "notify:\n  inbox: true\n");
+    const config = {
+      ...DEFAULT_CONFIG,
+      workflows: { work: { workflow: "@amykit/workflow-ticket-to-qa" } },
+    };
+
+    const checks = await diagnose(deps({ config, profile: "work" }));
+
+    expect(labelled(checks, "profile config for ghost")).toMatchObject({ ok: false });
+    expect(labelled(checks, "profile config for ghost")?.detail).toContain(ghost);
+  });
 });
