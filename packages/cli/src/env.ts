@@ -128,15 +128,16 @@ function profileDirectories(directory: string): fs.Dirent[] {
 }
 
 /**
- * The project's own `.env`, as the process it was started from named it.
+ * The project's own `.env`: the directory `AMY_PROJECT_ENV` names, or the
+ * directory the command was typed in.
  *
- * `AMY_PROJECT_ENV` is inherited by the child, so this is the same file the
- * parent read first; a key it carries is the project's answer and no
- * sibling's file may take it away.
+ * The project is read first in both forms, exactly as `envFiles` reads it. A
+ * detached daemon is spawned with neither, and inherits the directory the
+ * command was typed in, so `process.cwd()` here is that same project.
  */
-function projectEnv(base: NodeJS.ProcessEnv): string | undefined {
-  const project = base.AMY_PROJECT_ENV?.trim();
-  return project ? path.resolve(project, ".env") : undefined;
+function projectEnv(base: NodeJS.ProcessEnv, cwd: string | undefined): string {
+  const named = base.AMY_PROJECT_ENV?.trim();
+  return path.resolve(named ? named : (cwd ?? process.cwd()), ".env");
 }
 
 /**
@@ -152,19 +153,18 @@ function projectEnv(base: NodeJS.ProcessEnv): string | undefined {
 export function environmentFor(
   home: string,
   profile: string,
-  options: { base?: NodeJS.ProcessEnv; fromFiles?: readonly string[] } = {},
+  options: { base?: NodeJS.ProcessEnv; fromFiles?: readonly string[]; cwd?: string } = {},
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...(options.base ?? process.env) };
   const otherProfiles = namesOfOtherProfiles(home, profile);
-  const project = projectEnv(env);
-  const fromProject = project ? namesOf(project) : new Set<string>();
+  const project = projectEnv(env, options.cwd);
+  const fromProject = namesOf(project);
 
   for (const name of options.fromFiles ?? []) {
     if (otherProfiles.has(name) && !fromProject.has(name)) delete env[name];
   }
 
   for (const file of [project, profileEnv(home, profile), path.join(home, ".env")]) {
-    if (!file) continue;
     for (const [key, value] of Object.entries(readEnvFile(file))) {
       if (env[key] === undefined) env[key] = value;
     }

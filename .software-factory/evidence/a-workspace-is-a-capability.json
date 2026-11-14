@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), installing amy on a scratch machine with no workspace and answering a support request through it, then driving the three code workflows, with .software-factory/evidence/a-workspace-is-a-capability-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/a-workspace-is-a-capability-run.json",
-      "report_sha256": "9ca93d2411cffc40b85a24646f04441c5f88a505784ff9832c191e565c99b769",
+      "report_sha256": "da43221059a7d9745d692cb1576c4b66608e7ecc5deb6462208f9dfdb50b9e08",
       "required_assertions": [
         "workspace.the_config_names_no_workspace",
         "workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready",

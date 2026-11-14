@@ -1269,7 +1269,17 @@ program
     // would approve a candidate that the replacement daemon cannot boot.
     const selectedProfiles = options.all ? Object.values(profiles(declared, home)) : [selected(declared)];
     for (const profile of selectedProfiles) {
-      const config = configForCheck(profile);
+      let config: AmyConfig;
+      try {
+        config = configForCheck(profile);
+      } catch (error) {
+        // A sibling's own file is that sibling's finding, named as any other
+        // profile problem is: the check goes on to the next profile rather
+        // than dying on a file this loop does not drive.
+        console.log(`${profile.name}: ${(error as Error).message}`);
+        process.exitCode = 1;
+        continue;
+      }
       // What the loop refuses before it mounts anything, refused here too: a
       // config that passed this and then stopped the loop at boot would not boot.
       const schedule = [...configuredAutoUpdateProblems(config), ...configuredChatProblems(config)];
