@@ -1,5 +1,5 @@
 ---
-base: 65b3ca26c437c06ccd608a2aa82c299e8a0c3927
+base: bfd0826b9f23fb25ef6d1c7288a182f997b45e15
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/envelope.ts", symbol: "classify", said: "a Claude run is rate-limited only when api_error_status reads 429; its own comment says a limit with no envelope classifies as failed" }
   - { id: S2, kind: code, ref: "plugins/claude/src/ClaudeHarness.ts", symbol: "ask", said: "the harness runs claude -p --output-format json and reads one envelope after exit; it never reports a reset, so retryAfterMs stays empty" }
@@ -18,7 +18,10 @@ touches:
   - plugins/claude/tests/fixtures/stream-completed.jsonl
   - plugins/claude/tests/fixtures/stream-rate-limited.jsonl
   - examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts
+  - packages/cli/tests/two-workflows.test.ts
+  - registry/plugin-claude.json
   - docs/concepts/harnesses.md
+  - docs/development/the-gate.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/claude-limits-scenario.sh
 criteria:
