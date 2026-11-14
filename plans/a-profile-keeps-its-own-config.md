@@ -19,6 +19,7 @@ touches:
   - packages/cli/src/paths.ts
   - packages/cli/src/index.ts
   - packages/cli/src/doctor.ts
+  - registry/cli.json
   - packages/cli/tests/config.test.ts
   - packages/cli/tests/config-layers.property.test.ts
   - packages/cli/tests/env.test.ts
