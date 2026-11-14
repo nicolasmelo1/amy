@@ -141,6 +141,22 @@ gates:
       - "usage.status_keeps_other_readers_after_one_fails"
       - "usage.budget_keeps_provider_windows_separate"
 
+  # A Claude run its plan refused is a quota answer, not a failed one: the
+  # harness reads Claude Code's stream after it exits, so a rejected event
+  # makes the run rate-limited whatever its result says, carrying the reset
+  # it reported. The scenario drives the built plugin from another process
+  # over the recorded streams, so a barrel that forgot the reader or a dist
+  # nobody rebuilt fails here though the unit tests import src.
+  claude-limits:
+    activation:
+      - "plugins/claude/src/**"
+      # The recorded streams are the claim: a changed fixture is a changed proof.
+      - "plugins/claude/tests/fixtures/**"
+    evidence: ".software-factory/evidence/claude-limits.json"
+    plan: "docs/design/claude-says-its-limit-while-it-runs.md"
+    required_assertions:
+      - "claude.a_rejected_limit_waits_for_its_reset"
+
   # The GitHub adapter owns the forge facts a stacked workflow reads. Its
   # scenario imports built dist and drives a server-shaped command runner.
   plugin-github:

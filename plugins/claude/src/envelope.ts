@@ -29,6 +29,23 @@ export interface ClaudeEnvelope {
   modelUsage?: Record<string, unknown>;
 }
 
+/**
+ * What a `--output-format stream-json` run said, read after it exits.
+ *
+ * The stream prints one JSON event a line. The last `result` event is the
+ * envelope `--output-format json` would have printed, and a `rate_limit_event`
+ * whose `rate_limit_info.status` is `rejected` is the plan refusing the turn,
+ * whatever the result line says.
+ */
+export interface ClaudeStream {
+  /** The envelope the stream carried, when it carried one. */
+  result: ClaudeEnvelope | null;
+  /** A rate_limit_event said the plan refused this turn. */
+  rejected: boolean;
+  /** The epoch-second reset that event reported, when it reported one. */
+  resetsAt?: number;
+}
+
 export interface ParsedRun {
   outcome: AgentOutcome;
   text: string;
@@ -37,6 +54,8 @@ export interface ParsedRun {
   costUsd?: number;
   costSource: CostSource;
   durationMs?: number;
+  /** How long the plan said the wait lasts, when a rejected event said. */
+  retryAfterMs?: number;
 }
 
 /**
@@ -57,15 +76,47 @@ export function parseEnvelope(stdout: string): ClaudeEnvelope | null {
 }
 
 /**
+ * Reads a `stream-json` run, one JSON event a line.
+ *
+ * A line that is not JSON is skipped: the run is read from the lines that are,
+ * which is what the json format did with anything that was not an envelope.
+ * The last `result` event wins, because that is the envelope the run ended
+ * with, and the last rejected event wins for the same reason.
+ */
+export function parseStream(stdout: string): ClaudeStream {
+  let result: ClaudeEnvelope | null = null;
+  let rejected = false;
+  let resetsAt: number | undefined;
+
+  for (const line of stdout.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{")) continue;
+
+    let event: Record<string, unknown>;
+    try {
+      event = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    if (event.type === "result") result = event as ClaudeEnvelope;
+    if (event.type !== "rate_limit_event") continue;
+
+    const info = event.rate_limit_info as { status?: unknown; resetsAt?: unknown } | undefined;
+    if (info?.status !== "rejected") continue;
+    rejected = true;
+    resetsAt = typeof info.resetsAt === "number" && Number.isFinite(info.resetsAt) ? info.resetsAt : undefined;
+  }
+
+  return { result, rejected, ...(resetsAt === undefined ? {} : { resetsAt }) };
+}
+
+/**
  * Which of the four outcomes this run was.
  *
  * Read off the envelope, not off stderr. A rate limit and a failure want
  * opposite responses, and guessing between them from log text is how a relay
  * ends up escalating to an expensive model over a quota problem.
- *
- * Known limit: a rate limit severe enough that no envelope is printed
- * classifies as `failed`. That is honest rather than clever — when a real
- * throttled envelope is in hand, its shape goes here.
  */
 export function classify(envelope: ClaudeEnvelope | null, exitOk: boolean): AgentOutcome {
   if (!envelope) return exitOk ? "completed" : "abandoned";
@@ -74,6 +125,33 @@ export function classify(envelope: ClaudeEnvelope | null, exitOk: boolean): Agen
   if (envelope.is_error === true || !exitOk) return "failed";
 
   return "completed";
+}
+
+/**
+ * The outcome of a whole stream.
+ *
+ * A rejected `rate_limit_event` settles it before anything else is read: the
+ * plan refusing a turn is a quota answer whatever the result line says, and a
+ * run killed right after the refusal is still a limit rather than an
+ * abandoned run that would start another child over the same quota.
+ */
+export function classifyStream(stream: ClaudeStream, exitOk: boolean): AgentOutcome {
+  if (stream.rejected) return "rate-limited";
+  return classify(stream.result, exitOk);
+}
+
+/**
+ * How long the stream said to wait, in milliseconds.
+ *
+ * Absent rather than zero when the reset is missing, unreadable or already in
+ * the past: the policy's own backoff is the honest answer then, and a zero
+ * wait would rerun into the same refusal.
+ */
+export function retryAfterOf(stream: ClaudeStream, now = Date.now()): number | undefined {
+  if (!stream.rejected || stream.resetsAt === undefined) return undefined;
+
+  const wait = stream.resetsAt * 1000 - now;
+  return wait > 0 ? wait : undefined;
 }
 
 function isRateLimit(status: number | string | null | undefined): boolean {
@@ -109,13 +187,15 @@ export function modelOf(envelope: ClaudeEnvelope | null, asked: string): string 
   return keys[0] ?? asked;
 }
 
-export function parseRun(stdout: string, exitOk: boolean, asked: string): ParsedRun {
-  const envelope = parseEnvelope(stdout);
+export function parseRun(stdout: string, exitOk: boolean, asked: string, now = Date.now()): ParsedRun {
+  const stream = parseStream(stdout);
+  const envelope = stream.result;
   const tokens = tokensOf(envelope);
   const reported = envelope?.total_cost_usd;
+  const retryAfterMs = retryAfterOf(stream, now);
 
   return {
-    outcome: classify(envelope, exitOk),
+    outcome: classifyStream(stream, exitOk),
     // The envelope puts the answer in `result`; without one, the raw output
     // is all there is.
     text: envelope?.result ?? stdout,
@@ -129,5 +209,6 @@ export function parseRun(stdout: string, exitOk: boolean, asked: string): Parsed
     // computing would be the exact confusion `costSource` exists to prevent.
     costSource: typeof reported === "number" ? "reported" : "unknown",
     durationMs: envelope?.duration_ms,
+    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
   };
 }
