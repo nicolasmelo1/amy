@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "gate": "claude-limits",
+  "implementation_sha256": "e169b39cdd021113a306ec092feb9821f9e304c6a8e769d37ab6e4b8cc4209ef",
+  "runs": [
+    {
+      "scenario": "claude-limits",
+      "status": "passed",
+      "actor": "Amy's claude-limits scenario against the built plugin's stream reader",
+      "report": ".software-factory/evidence/claude-limits-run.json",
+      "report_sha256": "7cb212308d1feb20185678270a708237111916fbe2d88ecdd542473b3d19d8d7",
+      "required_assertions": [
+        "claude.a_rejected_limit_waits_for_its_reset"
+      ]
+    }
+  ]
+}

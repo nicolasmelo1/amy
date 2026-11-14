@@ -93,8 +93,10 @@ const ERRAND_PROFILE: Profile = {
 
 const OK: CommandResult = { ok: true, exitCode: 0, stdout: "", stderr: "" };
 
-/** What `claude -p --output-format json` prints when it has done the work. */
+/** What `claude -p --output-format stream-json` prints as its result event. */
 const CLAUDE_ENVELOPE = JSON.stringify({
+  type: "result",
+  subtype: "success",
   result: "I wrote plans/the-slug.md and its line in next-steps.md",
   is_error: false,
   total_cost_usd: 0.42,

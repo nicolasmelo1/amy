@@ -1,0 +1,18 @@
+{
+  "scenario": "claude-limits",
+  "status": "passed",
+  "goal": "A Claude run its plan refused reads as rate-limited, carrying the reset the stream reported, through the built plugin.",
+  "artifact": {
+    "entry": "the built @amykit/plugin-claude from its dist/index.js, over the recorded streams"
+  },
+  "observed": {
+    "assertions_run": 1,
+    "assertions_failed": 0
+  },
+  "assertions": [
+    {
+      "type": "claude.a_rejected_limit_waits_for_its_reset",
+      "status": "passed"
+    }
+  ]
+}

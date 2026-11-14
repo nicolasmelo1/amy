@@ -7,15 +7,20 @@ import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
 import { InMemoryStore, fakeAgent, fakeGit, policy, record, ticketWorkerDeps } from "@amykit/test-fixtures";
 
-/** A real Worker/testkit walk: limits wait on one branch, then failures exhaust it. */
+/**
+ * A real Worker/testkit walk: limits wait on one branch, then failures exhaust it.
+ *
+ * The replies are shaped as the Claude harness reports them: the first carries
+ * the reset its stream reported, the second is a refusal that reported none.
+ */
 describe("usage limits through the ticket worker", () => {
   it("keeps one tree, refunds two limits, then escalates after two failures", async () => {
     let clock = new Date("2026-09-03T10:00:00.000Z");
     const replies: HarnessReply[] = [
-      { text: "half a change", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "half a change", retryAfterMs: 60_000 } },
-      { text: "", run: { outcome: "rate-limited", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "limited" } },
-      { text: "broken", run: { outcome: "failed", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "broken" } },
-      { text: "still broken", run: { outcome: "failed", harness: "codex", model: "gpt-5", durationMs: 1, costSource: "unknown", output: "still broken" } },
+      { text: "half a change", run: { outcome: "rate-limited", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "half a change", retryAfterMs: 60_000 } },
+      { text: "", run: { outcome: "rate-limited", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "limited" } },
+      { text: "broken", run: { outcome: "failed", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "broken" } },
+      { text: "still broken", run: { outcome: "failed", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "still broken" } },
     ];
     const agent = fakeAgent({ ask: vi.fn().mockImplementation(async () => replies.shift()!) });
     const git = { ...fakeGit(), headSha: vi.fn().mockResolvedValue("0".repeat(40)) };
