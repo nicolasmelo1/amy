@@ -8,7 +8,7 @@
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/project-phases-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/project-phases-run.json",
-      "report_sha256": "e413eb060d396302fd5e56072f93491863b152ea816e2962240ee4467cae0c74",
+      "report_sha256": "b12ec39bb31d0438b812e50a95ad85f5cfbb1ab5be7e11ebd8e00ed18fdfc517",
       "required_assertions": [
         "project.the_three_phases_walk_as_one",
         "project.what_was_briefed_is_what_is_proven",

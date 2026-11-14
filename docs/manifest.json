@@ -10274,7 +10274,9 @@
           "packages/cli/src/chat-action.ts",
           "packages/cli/src/supervisor/**",
           ".software-factory/evidence/amy-answers-in-the-chat/**",
-          ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+          ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/amy-answers-in-the-chat.json",
         "plan": "docs/design/amy-answers-in-the-chat.md",
@@ -10592,7 +10594,9 @@
         "name": "plugin-agent-relay",
         "activation": [
           "plugins/agent-relay/src/**",
-          "packages/agent-kit/src/**"
+          "packages/agent-kit/src/**",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-agent-relay.json",
         "plan": "docs/design/the-relay-is-proven-end-to-end.md",
@@ -10687,7 +10691,9 @@
         "name": "plugin-serial-engine",
         "activation": [
           "plugins/serial-engine/src/**",
-          "plugins/notify-fanout/src/**"
+          "plugins/notify-fanout/src/**",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-serial-engine.json",
         "plan": "docs/design/the-engine-fails-out-loud.md",

@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "plugin-serial-engine",
-  "implementation_sha256": "0ea3f45ababb7c7630383dc0b7ec370028a2c75e0bde62a43e7ae7f6e024461b",
+  "implementation_sha256": "72a8d20799c08505d0638272a1e35962f3e1b4893f53e394daec653e4ecf1c7a",
   "runs": [
     {
       "scenario": "plugin-serial-engine",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/plugin-serial-engine-scenario.sh against the built dist on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/plugin-serial-engine-run.json",
-      "report_sha256": "1b45dad9987f080852ce074de0aba774a81d2ce3054a9e82404f5f97d2da0ed8",
+      "report_sha256": "0b3aa4b6eea064f41447e5f8a9efc0755287e25942c8ded31976296dc1248aa6",
       "required_assertions": []
     }
   ]
