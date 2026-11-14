@@ -1,5 +1,5 @@
 ---
-base: af5864fcf44077836a3c81ce473f86318dd4cc88
+base: 65b3ca26c437c06ccd608a2aa82c299e8a0c3927
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/envelope.ts", symbol: "classify", said: "a Claude run is rate-limited only when api_error_status reads 429; its own comment says a limit with no envelope classifies as failed" }
   - { id: S2, kind: code, ref: "plugins/claude/src/ClaudeHarness.ts", symbol: "ask", said: "the harness runs claude -p --output-format json and reads one envelope after exit; it never reports a reset, so retryAfterMs stays empty" }
