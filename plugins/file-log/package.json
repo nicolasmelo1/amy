@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-log",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "The event log kept as one JSON Lines file per day.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "You do not add this one to a config. It is the event log the amy CLI writes, one JSON Lines file per day, and the CLI hands it to every plugin as its log; it registers no port. Depend on it only when you build your own host and want the same log on disk."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1"
+    "@amykit/core": "^0.8.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

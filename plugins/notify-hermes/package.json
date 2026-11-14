@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-notify-hermes",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Announcements over Hermes, which already owns the messaging credentials.",
   "type": "module",
   "license": "MIT",
@@ -31,8 +31,8 @@
     "about": "Use it when you already message through Hermes and want amy's announcements to arrive the same way, without handing amy the messaging credentials. It adds a channel to notify-fanout that sends to the Hermes delivery target you configure, and it can answer whether that target is reachable."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1",
-    "@amykit/plugin-notify-fanout": "^0.7.1"
+    "@amykit/core": "^0.8.0",
+    "@amykit/plugin-notify-fanout": "^0.8.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

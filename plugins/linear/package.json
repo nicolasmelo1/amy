@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-linear",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Linear as the tracker, over its GraphQL API.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when your tickets live in Linear. Over Linear's GraphQL API it mounts the tracker port ticket-to-qa reads its work from, and the read-only feature port feature-grooming uses. It needs a personal API key in LINEAR_API_KEY, and maps each team or label to the repository its tickets change."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1"
+    "@amykit/core": "^0.8.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

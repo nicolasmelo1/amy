@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-telegram",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it when you want to follow and answer amy from Telegram. It mounts the conversation port: each piece of work gets a topic in your private chat with a bot, and it can also hold amy's chat. It needs the bot token in TELEGRAM_BOT_TOKEN and your numeric Telegram user id."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1"
+    "@amykit/core": "^0.8.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"
