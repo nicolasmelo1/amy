@@ -9,7 +9,7 @@ sources:
   - { id: S6, kind: reference, ref: "https://github.com/agentes-chat/agentes-chat/blob/34e66b6a5ca57548c590bbe85a13c30560e199e4/apps/server/runner/plan-usage.ts", symbol: "withRateLimit", said: "only rejected is a limit; allowed and allowed_warning carry utilization and are not" }
   - { id: S7, kind: decision, said: "the harness reads stream-json after exit, as it reads json today: the result line is the envelope, and a rejected rate_limit_event before it makes the run rate-limited. Proposed 2026-11-12" }
   - { id: S9, kind: code, ref: "packages/agent-kit/src/ladder.ts", symbol: "nextRung", said: "abandoned stops the ladder and failed tries the next rung, so a run amy stop killed must stay abandoned or a cancel starts another model" }
-  - { id: S8, kind: decision, said: "the fixtures are a real 2.1.322 stream recorded at execution; the rejected one is that recording with its status and resetsAt edited, until a real one is captured. Proposed 2026-11-12" }
+  - { id: S8, kind: decision, said: "pending: no credential reaches the implementer, so the fixtures are a 2.1.325 stand-in checked against the agent SDK types and the CLI binary, not a recording. Recording a real stream is on next-steps.md. Decided 2026-11-14" }
 touches:
   - plugins/claude/src/envelope.ts
   - plugins/claude/src/ClaudeHarness.ts
@@ -18,8 +18,12 @@ touches:
   - plugins/claude/tests/fixtures/stream-completed.jsonl
   - plugins/claude/tests/fixtures/stream-rate-limited.jsonl
   - examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts
+  - examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts
+  - examples/workflow-ticket-to-qa/package.json
+  - plugins/claude/tests/stream.review.test.ts
   - packages/cli/tests/two-workflows.test.ts
-  - registry/plugin-claude.json
+  - registry/*.json
+  - package-lock.json
   - docs/concepts/harnesses.md
   - docs/development/the-gate.md
   - .software-factory/policy.yaml
@@ -33,11 +37,11 @@ criteria:
   - { id: A6, statement: "a rejected event with no resetsAt is rate-limited with no retryAfterMs, so the policy backoff applies", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S3] }
   - { id: A7, statement: "a stream with no result line and no rejected event reads as a missing envelope does today: completed on a clean exit, abandoned otherwise", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S1, S7] }
   - { id: A10, statement: "a run killed by amy stop before its result is abandoned and starts no next rung; a rejected event before the kill still makes it rate-limited", proof: "deferred:test:plugins/claude/tests/ClaudeHarness.test.ts", sources: [S5, S9] }
-  - { id: A8, statement: "a single Claude rung limited twice then failed twice escalates after the second failure, not the second limit, and waits until the reset", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts", sources: [S3] }
+  - { id: A8, statement: "a single Claude rung limited twice then failed twice escalates after the second failure, not the second limit, and waits until the reset", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts", sources: [S3] }
   - { id: A9, statement: "the built plugin, imported from dist in another process, classifies both recorded streams as A2 and A3 say", proof: "assertion:claude.a_rejected_limit_waits_for_its_reset", sources: [S3, S8] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A2, A3, A7, A10" }
-  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts" }
+  - { mechanism: attempts-and-waits, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts" }
 guarantee:
   - { holds: "a Claude run the plan refused, as its stream says, charges no attempt and waits for the reset it reported", not_against: "a Claude Code release that renames rate_limit_event or its fields: the run reads as failed, as today" }
   - { holds: "a run that completed reads exactly as it did under json", not_against: "a field present only in the json envelope and not on the result line" }
@@ -52,7 +56,8 @@ exit: "a Claude run its plan refuses reads as rate-limited, charges no attempt, 
 ---
 # Claude says its limit while it runs
 
-The Claude harness only spots a limit from a 429 in the final envelope, and
-never learns when the limit resets. Claude Code reports both in each turn's
-`rate_limit_event` under stream-json. Reading that stream after the run
-exits gives Claude the same typed limit Codex and Hermes already have.
+The harness reads Claude Code's `stream-json` after exit: a rejected
+`rate_limit_event` makes the run `rate-limited` with the reset it reported, and
+a rejected window with `overageStatus: "allowed"` is no refusal — the turn runs
+on credits and completes. The fixtures are a 2.1.325 stand-in, not a recording:
+S8 stays pending until an authenticated CLI records one.
