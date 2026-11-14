@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-command-gate",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "A gate that runs the target repository's own commands.",
   "type": "module",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "about": "Use it with ticket-to-qa, which needs a gate port to decide whether a change is ready for review. It runs the target repository's own commands, listed per repository with a default fallback, and refuses a repository that has neither. With file-worktree mounted, the commands run in the work item's own checkout."
   },
   "dependencies": {
-    "@amykit/core": "^0.8.0"
+    "@amykit/core": "^0.8.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

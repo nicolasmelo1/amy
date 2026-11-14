@@ -1,5 +1,16 @@
 # @amykit/plugin-prove
 
+## 0.8.1
+
+### Patch Changes
+
+- e7a5a2e: The examples in the docs, the tests and the prove plugin's help name tickets
+  `PROJ-`, the placeholder the rest of the suite already used. A private term
+  can now be denied as a whole word, so a three-letter key is caught in
+  `XYZ-12` without also firing on every identifier that contains those letters.
+- Updated dependencies [e7a5a2e]
+  - @amykit/core@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes

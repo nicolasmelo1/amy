@@ -1,6 +1,6 @@
 {
   "name": "@amykit/workflow-setup",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
   "type": "module",
   "license": "MIT",
@@ -31,10 +31,10 @@
     "workflow.mmd"
   ],
   "dependencies": {
-    "@amykit/core": "^0.8.0"
+    "@amykit/core": "^0.8.1"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0",
-    "@amykit/workflow-testkit": "^0.8.0"
+    "@amykit/workflow-testkit": "^0.8.1"
   }
 }
