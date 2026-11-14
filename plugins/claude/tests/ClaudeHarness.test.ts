@@ -7,7 +7,7 @@ import { CommandResult, HostServices, mount } from "@amykit/core";
 import { Granted, harnessConformance, nextRung } from "@amykit/agent-kit";
 import { ScriptedRunner } from "@amykit/test-fixtures";
 import { ClaudeHarness, ISOLATED, WRITING_MODES, lend } from "../src/ClaudeHarness.js";
-import { parseRun } from "../src/envelope.js";
+import { parseRun, parseStream, retryAfterOf } from "../src/envelope.js";
 import { plugin } from "../src/plugin.js";
 
 const HOST: HostServices = {
@@ -246,6 +246,13 @@ describe("the stream the CLI prints", () => {
 
     expect(parsed.outcome).toBe("rate-limited");
     expect(parsed.retryAfterMs).toBeUndefined();
+  });
+
+  it("calls a rejected event whose reset already passed rate-limited, with the policy backoff to wait", () => {
+    // One millisecond after the reset the fixture reports.
+    const now = RESET * 1000 + 1;
+
+    expect(retryAfterOf(parseStream(stream("rate-limited")), now)).toBeUndefined();
   });
 
   it("reads a stream with no result line and no rejected event as a missing envelope did", () => {
