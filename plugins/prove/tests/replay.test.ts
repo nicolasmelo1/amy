@@ -17,7 +17,7 @@ const AGENT = ['{"call":{"operation":"page.click","input":{"ref":"e3"}}}', '{"ca
 describe("a passed agent step is replayed", () => {
   it("by the next run with no harness started", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-19", SCENARIO);
+    world.brief("PROJ-19", SCENARIO);
     world.harnessReplies = [...AGENT];
     const clicked: unknown[] = [];
     const mounted = await world.mounted([operationsPlugin("site", {
@@ -26,10 +26,10 @@ describe("a passed agent step is replayed", () => {
       "page.read": () => ({ badge: "Paid" }),
     })]);
 
-    expect((await walk(world, mounted, newRun(mounted, "TBO-19/PROVE#1"))).record.state).toBe("PROVEN");
+    expect((await walk(world, mounted, newRun(mounted, "PROJ-19/PROVE#1"))).record.state).toBe("PROVEN");
     expect(world.asked).toHaveLength(3);
 
-    const again = await walk(world, mounted, newRun(mounted, "TBO-19/PROVE#2"));
+    const again = await walk(world, mounted, newRun(mounted, "PROJ-19/PROVE#2"));
     expect(again.record.state).toBe("PROVEN");
     expect(world.asked).toHaveLength(3);
     expect(clicked).toEqual([{ ref: "e3" }, { ref: "e3" }]);
@@ -37,7 +37,7 @@ describe("a passed agent step is replayed", () => {
 
   it("and a replay that breaks runs the agent from the call that broke", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-20", SCENARIO);
+    world.brief("PROJ-20", SCENARIO);
     world.harnessReplies = [...AGENT, '{"call":{"operation":"page.read","input":{"ref":"e9"}}}', '{"done":true}'];
     let layout = "old";
     const mounted = await world.mounted([operationsPlugin("site", {
@@ -45,10 +45,10 @@ describe("a passed agent step is replayed", () => {
       "page.click": () => ({}),
       "page.read": (input) => (layout === "old" || input.ref === "e9" ? { badge: "Paid" } : new Error(`no element ${String(input.ref)}`)),
     })]);
-    await walk(world, mounted, newRun(mounted, "TBO-20/PROVE#1"));
+    await walk(world, mounted, newRun(mounted, "PROJ-20/PROVE#1"));
 
     layout = "new";
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-20/PROVE#2"));
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-20/PROVE#2"));
 
     expect(record.state).toBe("PROVEN");
     expect(world.asked).toHaveLength(5);
@@ -56,7 +56,7 @@ describe("a passed agent step is replayed", () => {
     expect(world.asked[3]).toContain('- {"operation":"page.read","input":{"ref":"e7"}} → failed:');
 
     // What the agent found is the replay now: the third run needs no model.
-    await walk(world, mounted, newRun(mounted, "TBO-20/PROVE#3"));
+    await walk(world, mounted, newRun(mounted, "PROJ-20/PROVE#3"));
     expect(world.asked).toHaveLength(5);
   });
 });
@@ -64,7 +64,7 @@ describe("a passed agent step is replayed", () => {
 describe("a replay is kept only when the step's assertions passed", () => {
   it("does not keep the calls of an agent step whose assertion failed, and asks the agent again next time", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-21", SCENARIO);
+    world.brief("PROJ-21", SCENARIO);
     world.harnessReplies = ['{"call":{"operation":"page.read","input":{"ref":"e2"}}}', '{"done":true}', ...AGENT];
     const mounted = await world.mounted([operationsPlugin("site", {
       "page.open": () => ({}),
@@ -72,8 +72,8 @@ describe("a replay is kept only when the step's assertions passed", () => {
       "page.read": (input) => ({ badge: input.ref === "e2" ? "Unpaid" : "Paid" }),
     })]);
 
-    expect((await walk(world, mounted, newRun(mounted, "TBO-21/PROVE#1"))).record.state).toBe("refused");
-    const again = await walk(world, mounted, newRun(mounted, "TBO-21/PROVE#2"));
+    expect((await walk(world, mounted, newRun(mounted, "PROJ-21/PROVE#1"))).record.state).toBe("refused");
+    const again = await walk(world, mounted, newRun(mounted, "PROJ-21/PROVE#2"));
 
     expect(world.asked).toHaveLength(5);
     expect(again.record.state).toBe("PROVEN");
@@ -103,7 +103,7 @@ describe("a name in a file's path", () => {
 describe("an agent step is a loop", () => {
   it("shows each turn the input schemas and what every call answered, so a ref one call returns is used by the next", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-22", "name: pay-in-the-app\nsteps:\n  - { id: open, operation: app.launch, input: {} }\n  - { id: pay, kind: agent, prompt: press Pay }\nassertions:\n  - { id: paid, step: pay, path: paid, equals: true }\n");
+    world.brief("PROJ-22", "name: pay-in-the-app\nsteps:\n  - { id: open, operation: app.launch, input: {} }\n  - { id: pay, kind: agent, prompt: press Pay }\nassertions:\n  - { id: paid, step: pay, path: paid, equals: true }\n");
     world.harnessReplies = ['{"call":{"operation":"desktop.snapshot","input":{}}}', '{"call":{"operation":"desktop.click","input":{"ref":"@s1:e7"}}}', '{"done":true}'];
     const mounted = await world.mounted([operationsPlugin("desktop", {
       "app.launch": () => ({}),
@@ -111,7 +111,7 @@ describe("an agent step is a loop", () => {
       "desktop.click": (input) => (input.ref === "@s1:e7" ? { paid: true } : new Error(`no ${String(input.ref)}`)),
     })]);
 
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-22/PROVE#1"));
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-22/PROVE#1"));
 
     expect(record.state).toBe("PROVEN");
     expect(world.asked[0]).toContain("- `desktop.click`: {");
@@ -120,11 +120,11 @@ describe("an agent step is a loop", () => {
 
   it("is unsupported once it has taken every turn it may without saying done", async () => {
     const world = new ProveWorld();
-    world.brief("TBO-23", SCENARIO);
+    world.brief("PROJ-23", SCENARIO);
     world.harnessReplies = Array.from({ length: 20 }, () => '{"call":{"operation":"page.click","input":{"ref":"e1"}}}');
     const mounted = await world.mounted([operationsPlugin("site", { "page.open": () => ({}), "page.click": () => ({}) })]);
 
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-23/PROVE#1"));
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-23/PROVE#1"));
 
     expect(record.results?.read).toEqual({ status: "unsupported", why: "the agent did not settle `read` in 12 turns" });
   });

@@ -120,9 +120,9 @@ only thing refused.
   callee record is created, and kept inside the caller's record under
   `calls`, so a store, a queue and an engine that never heard of calls carry
   it unchanged. Its id is the call site plus an invocation number:
-  `TBO-1/REVIEW#1`, and below it `TBO-1/REVIEW#1/FIX#1`. A caller may go
+  `PROJ-1/REVIEW#1`, and below it `PROJ-1/REVIEW#1/FIX#1`. A caller may go
   through the same call state again (`REVIEW → FIX → REVIEW`), and that is not
-  a cycle in the call graph. That second entry is `TBO-1/REVIEW#2`, a new
+  a cycle in the call graph. That second entry is `PROJ-1/REVIEW#2`, a new
   record, and `#1` keeps its history and output as they were. The caller's
   record holds the id of the call it is waiting on. A restart therefore resumes
   that same record. Only a new transition into the call state starts a new

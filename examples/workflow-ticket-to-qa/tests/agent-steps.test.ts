@@ -25,9 +25,9 @@ import {
  */
 describe("ticket-to-qa's prompts", () => {
   it("carries the ticket's body into triage, where 'clear' is judged", () => {
-    const prompt = triagePrompt(ticket({ body: "Consume the aggregate from TBO-1236 — do not rebuild the SUM." }));
+    const prompt = triagePrompt(ticket({ body: "Consume the aggregate from PROJ-1236 — do not rebuild the SUM." }));
 
-    expect(prompt).toContain("Consume the aggregate from TBO-1236 — do not rebuild the SUM.");
+    expect(prompt).toContain("Consume the aggregate from PROJ-1236 — do not rebuild the SUM.");
     expect(prompt).toContain("Read enough of this repository to judge it");
   });
 
@@ -46,8 +46,8 @@ describe("ticket-to-qa's prompts", () => {
   });
 
   it("carries the body into addressing review comments, so a boundary survives review", () => {
-    expect(threadPrompt(ticket({ body: "The rename is owned by TBO-1236." }), [], "human")).toContain(
-      "The rename is owned by TBO-1236.",
+    expect(threadPrompt(ticket({ body: "The rename is owned by PROJ-1236." }), [], "human")).toContain(
+      "The rename is owned by PROJ-1236.",
     );
   });
 
@@ -81,10 +81,10 @@ describe("ticket-to-qa's prompts", () => {
   });
 
   it("leaves a ticket with no brief with the prompt it has always had", () => {
-    const prompt = triagePrompt(ticket({ body: "Consume the aggregate from TBO-1236." }));
+    const prompt = triagePrompt(ticket({ body: "Consume the aggregate from PROJ-1236." }));
 
     expect(prompt).not.toContain("current brief");
-    expect(prompt).toContain("Consume the aggregate from TBO-1236.");
+    expect(prompt).toContain("Consume the aggregate from PROJ-1236.");
   });
 
   it("tells a retry what went wrong, verbatim", () => {

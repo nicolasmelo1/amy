@@ -21,10 +21,10 @@ describe("the commands an answer names", () => {
   });
 
   it("keeps a block fenced longer than the code example inside it, whole", () => {
-    const body = "Run it like this:\n```sh\namy brief check TBO-1\n```\nthen answer.\n";
-    const asked = commandsIn(`\`\`\`\`markdown answer.md\n${body}\`\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``);
+    const body = "Run it like this:\n```sh\namy brief check PROJ-1\n```\nthen answer.\n";
+    const asked = commandsIn(`\`\`\`\`markdown answer.md\n${body}\`\`\`\`\n\`\`\`amy\nbrief write PROJ-1 scope --from answer.md\n\`\`\``);
     expect(asked.blocks.get("answer.md")).toBe(body);
-    expect(asked.commands.map((one) => one.argv)).toEqual([["brief", "write", "TBO-1", "scope", "--from", "answer.md"]]);
+    expect(asked.commands.map((one) => one.argv)).toEqual([["brief", "write", "PROJ-1", "scope", "--from", "answer.md"]]);
   });
 
   it("names nothing in an answer with no block", () => {
@@ -34,7 +34,7 @@ describe("the commands an answer names", () => {
 
 describe("a line is split as a person reads it, and a shell line is refused", () => {
   it("splits on spaces and keeps quoted text whole", () => {
-    expect(tokenize(`brief write TBO-1 scope "it's the \\"api\\" one"`)).toEqual({ argv: ["brief", "write", "TBO-1", "scope", `it's the "api" one`] });
+    expect(tokenize(`brief write PROJ-1 scope "it's the \\"api\\" one"`)).toEqual({ argv: ["brief", "write", "PROJ-1", "scope", `it's the "api" one`] });
     expect(tokenize("a '' b")).toEqual({ argv: ["a", "", "b"] });
     expect(tokenize(String.raw`add "C:\Users\Ada Smith\workflow"`)).toEqual({ argv: ["add", String.raw`C:\Users\Ada Smith\workflow`] });
   });
@@ -75,7 +75,7 @@ describe("a flag reaches the chat only when the command declares it (A8)", () =>
   ];
 
   it("takes --json where the command declares it", () => {
-    expect(refusedCommands(commandsIn("```amy\nbrief sections --json\nbrief check TBO-1 --json\n```"), briefing)).toEqual([]);
+    expect(refusedCommands(commandsIn("```amy\nbrief sections --json\nbrief check PROJ-1 --json\n```"), briefing)).toEqual([]);
   });
 
   it("refuses a flag the command does not declare, by name", () => {
@@ -85,21 +85,21 @@ describe("a flag reaches the chat only when the command declares it (A8)", () =>
   });
 
   it("takes a flag's value from a block the same answer carries", () => {
-    const asked = commandsIn("```markdown answer.md\nthe scope:\n- the api\n- the ui\n```\n```amy\nbrief write TBO-1 scope --from answer.md\n```");
+    const asked = commandsIn("```markdown answer.md\nthe scope:\n- the api\n- the ui\n```\n```amy\nbrief write PROJ-1 scope --from answer.md\n```");
 
     expect(refusedCommands(asked, briefing)).toEqual([]);
     expect(asked.blocks.get("answer.md")).toBe("the scope:\n- the api\n- the ui\n");
   });
 
   it("refuses a block the answer does not carry, before anything runs", () => {
-    expect(refusedCommands(commandsIn("```amy\nbrief write TBO-1 scope --from answer.md\n```"), briefing)).toEqual([
-      { line: "brief write TBO-1 scope --from answer.md", why: "`--from answer.md` names a block this answer does not carry" },
+    expect(refusedCommands(commandsIn("```amy\nbrief write PROJ-1 scope --from answer.md\n```"), briefing)).toEqual([
+      { line: "brief write PROJ-1 scope --from answer.md", why: "`--from answer.md` names a block this answer does not carry" },
     ]);
   });
 
   it("refuses a flag that needs a value and was given none", () => {
-    expect(refusedCommands(commandsIn("```amy\nbrief write TBO-1 scope --from\n```"), briefing)).toEqual([
-      { line: "brief write TBO-1 scope --from", why: "`--from` needs a value the chat can read" },
+    expect(refusedCommands(commandsIn("```amy\nbrief write PROJ-1 scope --from\n```"), briefing)).toEqual([
+      { line: "brief write PROJ-1 scope --from", why: "`--from` needs a value the chat can read" },
     ]);
   });
 });

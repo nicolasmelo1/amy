@@ -14,6 +14,11 @@
  * way a term standing on its own is. That is what makes the length a part of
  * the policy: without it there is no window to hash.
  *
+ * A short term is the exception. Three letters hide inside ordinary words —
+ * a window over `xyz` would also fire on `fooxyzbar` — so a term may be
+ * marked `word`, and then only a whole word equal to it matches: `XYZ-12`
+ * splits into `xyz` and `12` and is found, `fooxyzbar` is not.
+ *
  * The examples above are fictional on purpose: this file is read by the check
  * it implements, and a real term in a comment here is the leak.
  */
@@ -23,6 +28,8 @@ export interface DeniedTerm {
   readonly length: number;
   /** Lowercase hex sha256 of the lowercased term. */
   readonly sha256: string;
+  /** Match only a whole word equal to the term, never a window inside one. */
+  readonly word?: boolean;
 }
 
 export interface PrivateRefsInput {
@@ -37,7 +44,10 @@ export interface PrivateRef {
   readonly file: string;
   /** 1-indexed, so the report is something an editor can be pointed at. */
   readonly line: number;
-  /** The word the term was found inside, so a person knows what to remove. */
+  /**
+   * The word the term was found inside. For the caller to weigh, not to print:
+   * a report that spells it out publishes the term wherever its log goes.
+   */
   readonly word: string;
 }
 
@@ -49,10 +59,11 @@ export interface PrivateRef {
  */
 export function findPrivateReferences(input: PrivateRefsInput): PrivateRef[] {
   const found: PrivateRef[] = [];
-  const widths = [...new Set(input.denied.map((term) => term.length))].sort((a, b) => a - b);
-  const digests = new Set(input.denied.map((term) => term.sha256.toLowerCase()));
-  const narrowest = widths[0];
-  if (narrowest === undefined) return found;
+  const windowed = input.denied.filter((term) => !term.word);
+  const widths = [...new Set(windowed.map((term) => term.length))].sort((a, b) => a - b);
+  const digests = new Set(windowed.map((term) => term.sha256.toLowerCase()));
+  const words = new Set(input.denied.filter((term) => term.word).map((term) => term.sha256.toLowerCase()));
+  if (input.denied.length === 0) return found;
 
   // A repository repeats its vocabulary constantly, and hashing is the only
   // expensive thing here. One answer per distinct word is the difference
@@ -62,8 +73,8 @@ export function findPrivateReferences(input: PrivateRefsInput): PrivateRef[] {
     const remembered = judged.get(word);
     if (remembered !== undefined) return remembered;
 
-    let hit = false;
-    for (const width of widths) {
+    let hit = words.size > 0 && words.has(input.digest(word));
+    for (const width of hit ? [] : widths) {
       for (let at = 0; at + width <= word.length; at += 1) {
         if (digests.has(input.digest(word.slice(at, at + width)))) {
           hit = true;
@@ -81,7 +92,7 @@ export function findPrivateReferences(input: PrivateRefsInput): PrivateRef[] {
     const lines = text.split("\n");
     for (let index = 0; index < lines.length; index += 1) {
       for (const word of lines[index]!.toLowerCase().match(/[a-z0-9]+/g) ?? []) {
-        if (word.length >= narrowest && carriesATerm(word)) {
+        if (carriesATerm(word)) {
           found.push({ file, line: index + 1, word });
         }
       }

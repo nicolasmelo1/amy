@@ -68,7 +68,7 @@ failures:
 cut:
   - "the agent's own run in a microVM: the harness and its login stay on the host"
   - "a microVM per state other than proving: once proofs show it holds"
-  - "TBO-1391's two refused proofs, no reload operation and a recorder falling behind, were tool gaps isolation would not fix: the proof plans' business"
+  - "PROJ-1391's two refused proofs, no reload operation and a recorder falling behind, were tool gaps isolation would not fix: the proof plans' business"
 exit: "with port 3000 taken by a dev server, two tickets' proofs on a resource of capacity two run at once on their own ports and run ids and both end PROVEN; with microsandbox mounted, each runs in its own microVM"
 ---
 # A proof runs in a place of its own

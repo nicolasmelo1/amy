@@ -6,9 +6,9 @@ sources:
   - { id: S4, kind: decision, ref: "packages/core/src/diagram.ts", said: "each such event starts one record; a [*] edge naming no event is discovered as today; a workflow may be event-started and discovered as well" }
   - { id: S5, kind: decision, ref: "packages/core/src/define-workflow.ts", said: "defineWorkflow gains key, a function from the event to what the work is about, usually the ticket, which a code-host event finds through the pull request it names" }
   - { id: S6, kind: reference, ref: "plans/the-review-is-remembered-across-rounds.md", said: "runs of one key are one lineage sharing ticket and brief, what earlier review rounds settled, and attempts spent" }
-  - { id: S7, kind: decision, said: "a run's id is its key and workflow, e.g. TBO-1/review#3; observe reads earlier runs' records in its lineage read-only through the store" }
+  - { id: S7, kind: decision, said: "a run's id is its key and workflow, e.g. PROJ-1/review#3; observe reads earlier runs' records in its lineage read-only through the store" }
   - { id: S8, kind: decision, said: "one run per key at a time: an event for a key whose run is still going wakes it rather than starting another; two reviews in a minute are one round" }
-  - { id: S9, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "amy show TBO-1 lists every run of every workflow with that key, in order, with history and evidence; the window draws the same" }
+  - { id: S9, kind: reference, ref: "plans/an-escalation-brings-its-evidence.md", said: "amy show PROJ-1 lists every run of every workflow with that key, in order, with history and evidence; the window draws the same" }
   - { id: S10, kind: decision, said: "ticket-to-qa's review loop, PR_OPEN through HUMAN_FIX and RE_REVIEW, becomes @amykit/workflow-review-round: starts on code-host.review.submitted, keyed by ticket, ends when the round is settled and pushed" }
   - { id: S11, kind: decision, said: "ticket-to-qa ends when the PR is open; merge and QA handoff are a third short workflow started by code-host.pull-request.merged" }
   - { id: S12, kind: decision, said: "the ticket-to-qa scenario drives all three through the installed executable with signed webhooks posted to amy serve on loopback, asserting two reviews a minute apart make one round and amy show tells the whole story; its gate requires both" }
@@ -28,8 +28,14 @@ touches:
   - examples/workflow-ticket-to-qa/src/machine.ts
   - examples/workflow-ticket-to-qa/src/record.ts
   - examples/workflow-ticket-to-qa/tests/record.test.ts
-  - packages/workflow-review-round/**
-  - packages/workflow-testkit/src/**
+  - packages/workflow-review-round/package.json
+  - packages/workflow-review-round/tsconfig.json
+  - packages/workflow-review-round/README.md
+  - packages/workflow-review-round/workflow.mmd
+  - packages/workflow-review-round/src/index.ts
+  - packages/workflow-review-round/src/machine.ts
+  - packages/workflow-review-round/tests/walkthrough.test.ts
+  - packages/workflow-testkit/src/*.ts
   - packages/workflow-testkit/tests/triggers.test.ts
   - packages/cli/src/index.ts
   - packages/cli/tests/show.test.ts

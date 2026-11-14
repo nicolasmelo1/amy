@@ -14,10 +14,10 @@ describe("a resource is the commands its config names", () => {
   it("is brought up, checked and taken down only through the commands port", async () => {
     const ok = () => ({ ok: true, output: "" });
     const world = new ProveWorld({ resources: { app: { capacity: 1, up: "app-up", check: "app-check", down: "app-down" } } }, { "app-up": ok, "app-check": ok, "app-down": ok });
-    world.brief("TBO-15", SCENARIO);
+    world.brief("PROJ-15", SCENARIO);
     const mounted = await world.mounted([operationsPlugin("app", { "app.open": () => ({ open: true }) })]);
 
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-15/PROVE#1"), { throughWaits: true });
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-15/PROVE#1"), { throughWaits: true });
 
     expect(record.state).toBe("PROVEN");
     expect(world.ran).toEqual(["app-up", "app-check", "app-down"]);
@@ -29,10 +29,10 @@ describe("a resource is the commands its config names", () => {
       "app-check": () => ({ ok: false, output: "connection refused on :4000" }),
       "app-down": () => ({ ok: true, output: "" }),
     });
-    world.brief("TBO-16", SCENARIO);
+    world.brief("PROJ-16", SCENARIO);
     const mounted = await world.mounted([operationsPlugin("app", { "app.open": () => ({ open: true }) })]);
 
-    const { record } = await walk(world, mounted, newRun(mounted, "TBO-16/PROVE#1"), { throughWaits: true });
+    const { record } = await walk(world, mounted, newRun(mounted, "PROJ-16/PROVE#1"), { throughWaits: true });
 
     expect(record.state).toBe("refused");
     expect(record.verdict?.refused).toBe("the resource `app` failed its check `app-check` (exit 1):\nconnection refused on :4000");

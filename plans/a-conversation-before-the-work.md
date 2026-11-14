@@ -36,11 +36,22 @@ touches:
   - packages/core/src/ports/Conversation.ts
   - plugins/slack/src/SlackConversation.ts
   - plugins/slack/tests/SlackConversation.test.ts
-  - plugins/file-conversation/**
+  - plugins/file-conversation/package.json
+  - plugins/file-conversation/tsconfig.json
+  - plugins/file-conversation/README.md
+  - plugins/file-conversation/src/index.ts
+  - plugins/file-conversation/src/plugin.ts
+  - plugins/file-conversation/src/config.ts
+  - plugins/file-conversation/src/FileConversation.ts
+  - plugins/file-conversation/tests/FileConversation.test.ts
   - packages/server/surface.yaml
-  - packages/server/src/**
-  - packages/ui/**
-  - packages/ui-conformance/**
+  - packages/server/src/conversation.ts
+  - packages/server/src/ask.ts
+  - packages/server/tests/surface.test.ts
+  - packages/ui/src/*.ts
+  - packages/ui/tests/*.ts
+  - packages/ui-conformance/src/*.ts
+  - packages/ui-conformance/tests/*.ts
   - .software-factory/policy.yaml
 criteria:
   - { id: A1, statement: "what this row delivers is delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/server/tests/surface.test.ts", sources: [S24, S25] }
@@ -52,7 +63,7 @@ criteria:
   - { id: A7, statement: "an ask runs with no mutating port reachable, and a harness that tries to commit is refused", proof: "deferred:assertion:window.an_ask_writes_nothing", sources: [S1, S3, S7, S9, S23] }
   - { id: A8, statement: "the third turn of an ask carries the first two, and after switching harness at the third the new harness is given them", proof: "deferred:assertion:window.an_ask_carries_its_turns_across_harnesses", sources: [S8, S23] }
   - { id: A9, statement: "an ask about a record of this server runs in that record's worktree", proof: "deferred:assertion:window.an_ask_runs_where_its_record_is", sources: [S4, S5, S6, S26] }
-  - { id: A14, statement: "an ask about another server's TBO-1 runs on this machine's harness, in its checkout at the branch that server pushed, while this server also has a TBO-1, and that server records no agent run", proof: "deferred:assertion:window.an_ask_about_another_server_runs_here", sources: [S6, S26, S28] }
+  - { id: A14, statement: "an ask about another server's PROJ-1 runs on this machine's harness, in its checkout at the branch that server pushed, while this server also has a PROJ-1, and that server records no agent run", proof: "deferred:assertion:window.an_ask_about_another_server_runs_here", sources: [S6, S26, S28] }
   - { id: A15, statement: "with no checkout of the record's repository here, the ask is given that record's history, evidence and diff from its server's API, and says it has no code", proof: "deferred:assertion:window.an_ask_without_the_code_reads_the_record", sources: [S27] }
   - { id: A16, statement: "a discussion turn from a paired device is refused and no agent runs on the host, while its decision moves the waiting record", proof: "deferred:assertion:window.a_remote_discussion_runs_no_agent", sources: [S28, S29] }
   - { id: A17, statement: "an ask about another server's record before its first push runs here at the base branch, is given the record's diff from its server, and says so", proof: "deferred:assertion:window.an_ask_before_the_push_reads_the_base", sources: [S26, S27, S30] }

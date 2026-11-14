@@ -639,11 +639,11 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const chat = chatOf();
     const claude = harness("claude", ["Ask away.\n```amy\nstatus\n```"]);
     const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
-    chat.write("  /amy-groom@amy_work_bot TBO-1");
+    chat.write("  /amy-groom@amy_work_bot PROJ-1");
 
     expect(await answerTheChat(desk)).toMatchObject({ answered: 1 });
     expect(claude.asked[0]!.prompt.startsWith("/amy-groom\n\n")).toBe(true);
-    expect(claude.asked[0]!.prompt).toMatch(/Person: TBO-1$/);
+    expect(claude.asked[0]!.prompt).toMatch(/Person: PROJ-1$/);
     expect(claude.asked[0]!.context).toMatchObject({
       readOnly: true,
       step: "chat",
@@ -657,7 +657,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const claude = harness("claude", ["first", "second", "third"]);
     const { desk } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
 
-    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom PROJ-1");
     await answerTheChat(desk);
     chat.write("the scope is the api");
     await answerTheChat(desk);
@@ -678,7 +678,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const chat = chatOf();
     const claude = harness("claude");
     const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
-    chat.write("/northwind-code-review TBO-1");
+    chat.write("/northwind-code-review PROJ-1");
 
     await answerTheChat(desk);
 
@@ -691,7 +691,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const chat = chatOf();
     const claude = harness("claude");
     const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: new Map([["amy-groom", undefined]]) });
-    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom PROJ-1");
 
     await answerTheChat(desk);
 
@@ -704,7 +704,7 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const chat = chatOf();
     const claude = harness("claude", ["```amy\nstatus\nrm -rf /\n```"]);
     const { desk, acted } = deskOf(chat.conversation, { claude: claude.cli }, { skills: groom });
-    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom PROJ-1");
 
     await answerTheChat(desk);
 
@@ -718,8 +718,8 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
     const body = "the scope:\n- the api\n- the ui\n";
     const written = new Map<string, string>();
     const claude = harness("claude", [
-      `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write TBO-1 scope --from answer.md\n\`\`\``,
-      "```amy\nbrief check TBO-1 --json\n```",
+      `Here it is.\n\`\`\`markdown answer.md\n${body}\`\`\`\n\`\`\`amy\nbrief write PROJ-1 scope --from answer.md\n\`\`\``,
+      "```amy\nbrief check PROJ-1 --json\n```",
     ]);
     const ran: string[] = [];
     const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
@@ -742,12 +742,12 @@ describe("a skill is asked for in the chat (A4, A5, A6, A7, A9)", () => {
       },
     });
 
-    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom PROJ-1");
     await answerTheChat(desk);
     chat.write("and the check?");
     await answerTheChat(desk);
 
-    expect(written.get("TBO-1/scope")).toBe(body);
+    expect(written.get("PROJ-1/scope")).toBe(body);
     expect(last(chat.said)).toContain(body);
   });
 });
@@ -762,7 +762,7 @@ describe("a harness that cannot be handed a skill (A4, A7)", () => {
     const { desk, acted } = deskOf(chat.conversation, { codex, claude: harness("claude").cli }, {
       skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
     });
-    chat.write("/amy-groom TBO-1");
+    chat.write("/amy-groom PROJ-1");
 
     await answerTheChat(desk);
 
@@ -794,7 +794,7 @@ describe("/new in a thread ends the skill it was started with (A5)", () => {
     const { desk } = deskOf(chat.conversation, { claude: claude.cli }, {
       skills: new Map<string, string | undefined>([["amy-groom", GROOM]]),
     });
-    chat.write("/amy-groom TBO-1", { threaded: true });
+    chat.write("/amy-groom PROJ-1", { threaded: true });
     await answerTheChat(desk);
     chat.write("/new", { threaded: true });
     await answerTheChat(desk);
@@ -823,8 +823,8 @@ describe("a skill deleted while its pass is still answering (failures: chat)", (
         return { text: "done" };
       },
     });
-    chat.write("/amy-groom TBO-1");
-    chat.write("/amy-groom TBO-2");
+    chat.write("/amy-groom PROJ-1");
+    chat.write("/amy-groom PROJ-2");
 
     await answerTheChat(desk);
 

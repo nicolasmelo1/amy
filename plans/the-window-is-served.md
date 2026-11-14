@@ -38,7 +38,7 @@ sources:
   - { id: S40, kind: decision, said: "the window's speed is measured, not hoped: event-log line to every client's frame, p50, p95 and p99 over alternating trials, held to thresholds in the policy beside the other ceilings. Decided 2026-11-03" }
   - { id: S41, kind: reference, ref: "plans/the-performance-guard-can-fail.md", said: "a benchmark that cannot fail protects nothing: a baseline names its environment, a comparison across environments gives no verdict, and the guard proves every run that it goes red" }
   - { id: S42, kind: reference, ref: "plans/every-endpoint-is-named-before-it-is-built.md", said: "this row delivers the devices domain and remote access, all local-only: listDevices, listPairingRequests, approvePairing, setDeviceActing, unpairDevice, setRemoteAccess; every renderer here offers them, and amy ui unpair calls unpairDevice" }
-  - { id: S31, kind: decision, said: "one window shows every connected server: each record, view and intent carries its server's name, so two servers' TBO-1 stay two, and an intent goes only to the server owning its record" }
+  - { id: S31, kind: decision, said: "one window shows every connected server: each record, view and intent carries its server's name, so two servers' PROJ-1 stay two, and an intent goes only to the server owning its record" }
   - { id: S32, kind: decision, said: "a server that stops answering is shown away, by name, while the others stay live; it is reconnected on its own, and nothing waits on it" }
   - { id: S33, kind: decision, said: "local-only operations reach only the local server's socket; every server ui.servers names is remote, however it is reached" }
   - { id: S29, kind: reference, ref: "plans/the-workplace-opens-where-you-work.md", said: "the shell that plan opens is a local-only operation, absent on TCP" }
@@ -53,29 +53,48 @@ sources:
   - { id: S49, kind: decision, said: "with no name configured an instance is <host>:<amy home path>, so two homes on one host differ; a client gathering two instances of one name refuses the second, naming both. Decided 2026-11-05" }
   - { id: S46, kind: decision, said: "the-doors-are-generated (layer 0, command) refuses, under packages/server and packages/sdk, a route registered or a method written outside the generator, and a literal equal to an operation id" }
 touches:
-  - packages/server/**
+  - packages/server/package.json
+  - packages/server/tsconfig.json
+  - packages/server/README.md
+  - packages/server/src/index.ts
+  - packages/server/src/server.ts
+  - packages/server/src/routes.generated.ts
+  - packages/server/src/token.ts
+  - packages/server/tests/server.test.ts
   - packages/services/openapi.json
   - packages/services/surface.yaml
-  - packages/services/src/**
-  - packages/services/tests/**
-  - packages/ui/src/**
+  - packages/services/src/*.ts
+  - packages/services/src/domains/*.ts
+  - packages/services/tests/*.ts
+  - packages/ui/src/*.ts
+  - packages/ui/src/frame/*.ts
   - packages/ui/tests/handshake.test.ts
   - packages/ui/tests/handshake.property.test.ts
   - packages/ui/tests/contract.test.ts
-  - packages/sdk/**
-  - packages/ui-conformance/**
-  - plugins/ui-stub/**
+  - packages/sdk/package.json
+  - packages/sdk/tsconfig.json
+  - packages/sdk/README.md
+  - packages/sdk/src/index.ts
+  - packages/sdk/src/client.generated.ts
+  - packages/sdk/tests/generate.test.ts
+  - packages/sdk/tests/a-dropped-field.test.ts
+  - packages/ui-conformance/src/*.ts
+  - packages/ui-conformance/tests/*.ts
+  - plugins/ui-stub/package.json
+  - plugins/ui-stub/README.md
+  - plugins/ui-stub/src/*.ts
   - packages/cli/src/index.ts
   - packages/cli/src/home.ts
   - packages/cli/src/config.ts
-  - packages/cli/src/ui/**
+  - packages/cli/src/ui/index.ts
+  - packages/cli/src/ui/serve.ts
   - package.json
   - .software-factory/policy.yaml
   - .software-factory/rules/a-client-reads-only-the-server.yaml
   - .software-factory/rules/the-doors-are-generated.yaml
   - .software-factory/rules/a-client-speaks-only-through-the-sdk.yaml
-  - .software-factory/mutations/**
-  - .software-factory/evidence/**
+  - .software-factory/mutations/L2.GENERATED_FILES_ARE_LOCKED/packages/services/openapi.json
+  - .software-factory/evidence/window-scenario.sh
 criteria:
   - { id: A1, statement: "the operations this row delivers are delivered in surface.yaml, and the surface gate is green", proof: "deferred:test:packages/services/tests/surface.test.ts", sources: [S24] }
   - { id: A2, statement: "a client in a home with no amy state draws the conformance world, and moves when the daemon advances a record", proof: "deferred:assertion:server.a_client_needs_nothing_but_the_server", sources: [S1, S2, S3, S5, S21, S26, S27] }
@@ -86,14 +105,14 @@ criteria:
   - { id: A7, statement: "a client on the socket gets the local-only operations", proof: "deferred:assertion:server.the_socket_is_the_local_door", sources: [S18, S19] }
   - { id: A8, statement: "a client missing a primitive a mounted view uses is refused at the handshake, naming the primitive", proof: "deferred:property:packages/ui/tests/handshake.property.test.ts#only_root_primitive_checked", sources: [S13] }
   - { id: A9, statement: "npm run build writes openapi.json and the SDK from the contract, and nothing else has to be run", proof: "deferred:test:packages/ui/tests/contract.test.ts", sources: [S6, S7, S8, S9, S28] }
-  - { id: A10, statement: "removing a field from a server response turns a renderer that reads it red in the type check, in the same build", proof: "deferred:test:a mutation fixture that drops a response field", sources: [S10] }
+  - { id: A10, statement: "removing a field from a server response turns a renderer that reads it red in the type check, in the same build", proof: "deferred:test:packages/sdk/tests/a-dropped-field.test.ts", sources: [S10] }
   - { id: A11, statement: "a committed openapi.json or SDK that differs from what the build generates fails the gate", proof: "deferred:assertion:server.the_contract_is_what_the_code_says", sources: [S11] }
   - { id: A12, statement: "every response and stream event in the scenario validates against openapi.json, and a server sending a body missing a required field fails it", proof: "deferred:assertion:server.every_body_honours_the_contract", sources: [S12, S21, S23] }
   - { id: A13, statement: "every route's example validates against its own schema", proof: "deferred:test:packages/ui/tests/contract.test.ts", sources: [S12] }
   - { id: A14, statement: "a client whose SDK was generated from another services contract is refused at the handshake, naming both hashes", proof: "deferred:test:packages/ui/tests/handshake.test.ts", sources: [S9, S13] }
-  - { id: A15, statement: "editing openapi.json without sf lock fails the build", proof: "deferred:test:a mutation fixture for L2.GENERATED_FILES_ARE_LOCKED", sources: [S11] }
-  - { id: A16, statement: "a renderer calling fetch or opening an EventSource itself fails the build, and the rule trips on its fixture", proof: "deferred:test:mutation fixture for a-client-speaks-only-through-the-sdk", sources: [S10, S22] }
-  - { id: A17, statement: "a renderer importing a store or node:fs fails the build, and the rule trips on its fixture", proof: "deferred:test:mutation fixture for a-client-reads-only-the-server", sources: [S14, S22] }
+  - { id: A15, statement: "editing openapi.json without sf lock fails the build", proof: "deferred:test:.software-factory/mutations/L2.GENERATED_FILES_ARE_LOCKED/packages/services/openapi.json", sources: [S11] }
+  - { id: A16, statement: "a renderer calling fetch or opening an EventSource itself fails the build, and the rule trips on its fixture", proof: "deferred:test:.software-factory/rules/a-client-speaks-only-through-the-sdk.yaml", sources: [S10, S22] }
+  - { id: A17, statement: "a renderer importing a store or node:fs fails the build, and the rule trips on its fixture", proof: "deferred:test:.software-factory/rules/a-client-reads-only-the-server.yaml", sources: [S14, S22] }
   - { id: A19, statement: "a window connected to two servers lists both servers' records under their names, and a work id the two share stays two records", proof: "deferred:assertion:server.one_window_holds_many_servers", sources: [S20, S30, S31] }
   - { id: A20, statement: "a poke on one server's record moves that record and leaves the other server's untouched", proof: "deferred:assertion:server.an_intent_reaches_only_its_server", sources: [S31] }
   - { id: A21, statement: "a server stopped shows away by name while the other's view keeps moving, and its return reconnects without restarting the window", proof: "deferred:assertion:server.a_server_away_leaves_the_others", sources: [S32] }
@@ -109,9 +128,9 @@ criteria:
   - { id: A30, statement: "a fixture plugin installed with amy add answers on its generated route, is listed by GET /v1/contract and is called through the SDK; removed, all three are gone, and no file under packages/server or packages/sdk changed", proof: "deferred:assertion:server.a_plugin_changes_the_contract", sources: [S44] }
   - { id: A31, statement: "amy sdk generate on an install mounting the fixture plugin writes an SDK whose fixture method typechecks, and one without it does not offer the method", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S45] }
   - { id: A33, statement: "a renderer built before a plugin was installed opens a session after it is installed and after it is removed, without being rebuilt, and calls its operation untyped while it is mounted", proof: "deferred:assertion:server.a_plugin_never_breaks_a_session", sources: [S13, S44, S47] }
-  - { id: A34, statement: "every work response and event names its instance, and two servers' TBO-1 are told apart by it in every renderer", proof: "deferred:assertion:server.every_record_names_its_instance", sources: [S48] }
+  - { id: A34, statement: "every work response and event names its instance, and two servers' PROJ-1 are told apart by it in every renderer", proof: "deferred:assertion:server.every_record_names_its_instance", sources: [S48] }
   - { id: A35, statement: "two homes on one host with no name configured get different instance names, and two servers configured with the same name are refused by the client naming both", proof: "deferred:assertion:server.two_instances_are_never_one_name", sources: [S49] }
-  - { id: A32, statement: "a route registered by hand in packages/server, or an SDK method written by hand, fails the build naming the file", proof: "deferred:test:mutation fixture for the-doors-are-generated", sources: [S6, S9, S46] }
+  - { id: A32, statement: "a route registered by hand in packages/server, or an SDK method written by hand, fails the build naming the file", proof: "deferred:test:.software-factory/rules/the-doors-are-generated.yaml", sources: [S6, S9, S46] }
   - { id: A36, statement: "a plugin with one operation whose input lies outside the shared accepted set is refused at mount, and the server, GET /v1/contract and the generated SDK carry none of that plugin's operations", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S44, S50, S51] }
   - { id: A37, statement: "a plugin operation whose id or path collides with a services operation, another plugin's, or an SDK member such as invoke is refused at mount, naming both", proof: "deferred:test:packages/sdk/tests/generate.test.ts", sources: [S47, S52] }
 crosses:

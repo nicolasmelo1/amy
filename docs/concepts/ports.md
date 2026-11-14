@@ -392,7 +392,7 @@ import { baseBranchFor, type PluginContext } from "@amykit/core";
 declare const ctx: PluginContext;
 
 const { git, layout } = ctx.checkouts();
-const tree = await git.acquire("acme/app", "TBO-1");
+const tree = await git.acquire("acme/app", "PROJ-1");
 const base = baseBranchFor(layout, "acme/app");
 ```
 

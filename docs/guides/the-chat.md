@@ -51,7 +51,7 @@ In Telegram it is a topic in your private chat with the bot
 ([Telegram is a conversation](../design/telegram-is-a-conversation.md)). With
 `topics: false`, every work shares the private chat, and a message reaches one
 by quoting amy's message for it or by starting with its id, as in
-`TBO-1: ship it`.
+`PROJ-1: ship it`.
 
 ## amy asks, with the options
 

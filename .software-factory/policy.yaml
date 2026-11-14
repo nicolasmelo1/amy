@@ -1313,6 +1313,9 @@ rules:
         - "plugins/claude/tests/git.test.ts"
   L6.FIXTURES_NAME_NOBODY_REAL:
     enabled: true
+  # L6 — A private name stays out of this public repository (docs/design/a-short-private-name-is-a-whole-word.md)
+  L6.A_PRIVATE_NAME_STAYS_PRIVATE:
+    enabled: true
   # L6 — Nothing blocks while a lock is held
   L6.NO_BLOCKING_CALL_WHILE_HOLDING_A_LOCK:
     # Disabled: the rule has no query for TypeScript, so enabling it here

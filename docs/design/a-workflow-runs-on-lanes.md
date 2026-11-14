@@ -204,7 +204,7 @@ lanes'. Pele, the Mermaid oracle, reads the plan's own diagram the same way.
 
 **The record.** The caller waits in the fork. `record.lanes` holds each lane's
 call id while it runs, and its end and output, keyed by lane, once the lanes
-meet; the lanes' own records are calls, `TBO-1/GATE#1`, numbered per round like
+meet; the lanes' own records are calls, `PROJ-1/GATE#1`, numbered per round like
 any call. A binding's `output` folds still run, in the order the lanes are
 drawn, on the move to the join, and its `effects` ride on that move. The join
 is an ordinary state with a `decide` of its own; a decision written for the

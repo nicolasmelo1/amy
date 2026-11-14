@@ -558,7 +558,7 @@ describe("a root message in the channel is a conversation in its thread (A1)", (
       WHO_AM_I,
       history([
         { type: "message", ts: ROOT, user: OPERATOR, text: "how is the api project going?" },
-        { type: "message", ts: "1790000201.000100", user: BOT, text: "a work's root", metadata: { event_type: "amy_work_thread", event_payload: { work_id: "TBO-1" } } },
+        { type: "message", ts: "1790000201.000100", user: BOT, text: "a work's root", metadata: { event_type: "amy_work_thread", event_payload: { work_id: "PROJ-1" } } },
         { type: "message", ts: "1790000202.000100", thread_ts: THREAD, user: OPERATOR, text: "a reply in a work's thread, broadcast", subtype: "thread_broadcast" },
       ]),
       thread([]),

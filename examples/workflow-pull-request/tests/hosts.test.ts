@@ -162,7 +162,7 @@ function shipping(options: { draft?: boolean; mentions?: string } = {}): Plugin 
         input: () => ({
           repo: "acme/widgets",
           branch: "amy/fix-the-gate",
-          title: "Fix the gate (TBO-7)",
+          title: "Fix the gate (PROJ-7)",
           body: "the gate output was truncated",
           base: "trunk",
           ...(options.mentions ? { mentions: options.mentions } : {}),
@@ -206,7 +206,7 @@ async function mounted(plugins: readonly Plugin[]): Promise<{ workflow: Workflow
 
 async function shipped(plugins: readonly Plugin[]): Promise<Shipping> {
   const { workflow, runtime } = await mounted(plugins);
-  let record = runtime.newRecord("TBO-7", HOST.now());
+  let record = runtime.newRecord("PROJ-7", HOST.now());
   for (let look = 0; look < 30; look += 1) {
     const observation = await runtime.observe(record);
     const plan = workflow.plan(record, observation, runtime.policy);
@@ -232,11 +232,11 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
       iid: 1,
       sourceBranch: "amy/fix-the-gate",
       targetBranch: "trunk",
-      title: "Fix the gate (TBO-7)",
+      title: "Fix the gate (PROJ-7)",
       description: "the gate output was truncated",
       draft: false,
     }]);
-    expect(record.calls!["TBO-7/OPEN#1"]!.state).toBe("OPENED");
+    expect(record.calls!["PROJ-7/OPEN#1"]!.state).toBe("OPENED");
   });
 
   it("opens it as a draft when the call site says so", async () => {
@@ -248,10 +248,10 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
   });
 
   it("finds the one somebody opened from a renamed branch by the id its title names, rather than opening a second", async () => {
-    const existing = { iid: 4, sourceBranch: "renamed", targetBranch: "trunk", title: "Fix the gate (TBO-7)", description: "", draft: false };
+    const existing = { iid: 4, sourceBranch: "renamed", targetBranch: "trunk", title: "Fix the gate (PROJ-7)", description: "", draft: false };
     const host = new MergeRequestHost({ existing: [existing] });
 
-    const record = await shipped([shipping({ mentions: "TBO-7" }), forge(host)]);
+    const record = await shipped([shipping({ mentions: "PROJ-7" }), forge(host)]);
 
     expect(record.number).toBe(4);
     expect(host.opened).toHaveLength(1);
@@ -264,7 +264,7 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
 
     expect(record.state).toBe("STOPPED");
     expect(record.reason).toBe("Another open merge request already exists for this source branch");
-    expect(record.calls!["TBO-7/OPEN#1"]!.attempts).toEqual({ OPENING: 1 });
+    expect(record.calls!["PROJ-7/OPEN#1"]!.attempts).toEqual({ OPENING: 1 });
   });
 
   it("hands back a refusal it already has without asking the host again, even when the host is gone", async () => {
@@ -319,12 +319,12 @@ describe("the pull-request workflow on a code host that is not GitHub", () => {
       runtime: (world: World & { workId: string; runtime: WorkflowRuntime }) => world.runtime,
       worlds: [
         {
-          name: "a host that opens it", workId: "TBO-7", runtime: opens.runtime,
-          again: async () => ({ name: "a host that opens it", workId: "TBO-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost())])).runtime }),
+          name: "a host that opens it", workId: "PROJ-7", runtime: opens.runtime,
+          again: async () => ({ name: "a host that opens it", workId: "PROJ-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost())])).runtime }),
         },
         {
-          name: "a host that refuses it", workId: "TBO-7", runtime: refuses.runtime,
-          again: async () => ({ name: "a host that refuses it", workId: "TBO-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost({ refuse: "no" }))])).runtime }),
+          name: "a host that refuses it", workId: "PROJ-7", runtime: refuses.runtime,
+          again: async () => ({ name: "a host that refuses it", workId: "PROJ-7", runtime: (await mounted([shipping(), forge(new MergeRequestHost({ refuse: "no" }))])).runtime }),
         },
       ],
       everyEdge: true,

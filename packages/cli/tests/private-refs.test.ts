@@ -8,6 +8,7 @@ import { DeniedTerm, findPrivateReferences, PrivateRefsInput } from "../src/priv
 // is general, so a term nobody is hiding proves it just as well.
 const digest = (value: string): string => createHash("sha256").update(value).digest("hex");
 const deny = (term: string): DeniedTerm => ({ length: term.length, sha256: digest(term) });
+const denyWord = (term: string): DeniedTerm => ({ ...deny(term), word: true });
 
 function input(overrides: Partial<PrivateRefsInput> = {}): PrivateRefsInput {
   return { files: {}, denied: [deny("acme")], digest, ...overrides };
@@ -107,5 +108,37 @@ describe("findPrivateReferences", () => {
     );
 
     expect(new Set(asked).size).toBe(asked.length);
+  });
+
+  describe("a term denied as a whole word", () => {
+    it("finds it where a separator stands it on its own", () => {
+      const found = findPrivateReferences(
+        input({ denied: [denyWord("xyz")], files: { "a.md": "first\nsee `XYZ-12`, then xyz alone" } }),
+      );
+
+      expect(found).toEqual([
+        { file: "a.md", line: 2, word: "xyz" },
+        { file: "a.md", line: 2, word: "xyz" },
+      ]);
+    });
+
+    it("does not find it inside a longer word, which is the reason to mark it", () => {
+      const found = findPrivateReferences(
+        input({ denied: [denyWord("xyz")], files: { "a.md": "fooxyzbar and xyzzy" } }),
+      );
+
+      expect(found).toEqual([]);
+    });
+
+    it("is judged beside windowed terms without hiding either", () => {
+      const found = findPrivateReferences(
+        input({ denied: [deny("acme"), denyWord("xyz")], files: { "a.md": "AcmeDeps\nfooxyz\nXYZ-1" } }),
+      );
+
+      expect(found).toEqual([
+        { file: "a.md", line: 1, word: "acmedeps" },
+        { file: "a.md", line: 3, word: "xyz" },
+      ]);
+    });
   });
 });

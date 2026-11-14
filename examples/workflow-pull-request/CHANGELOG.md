@@ -24,7 +24,7 @@
   marks a state `class X call`, and `calls` binds it to the workflow it calls:
   `call(review, { input, config, ports, output, effects })`, every member
   optional. The callee runs as a child record kept inside its caller's
-  (`TBO-1/REVIEW#1`), with its own history and attempts, and only the deepest
+  (`PROJ-1/REVIEW#1`), with its own history and attempts, and only the deepest
   record in a call is observed. When the child ends, the caller takes the edge
   named for that end, folding what it returned. Before this, composing
   workflows meant importing another's states and record fields in TypeScript,

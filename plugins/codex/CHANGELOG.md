@@ -6,7 +6,7 @@
 
 - 9a9ac0a: **A skill is asked for in the chat.** Grooming needed a terminal: amy's skills
   lived only in a harness's own directory, and the chat knew three commands. Now
-  `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.
+  `/amy-groom PROJ-1` works from Slack or Telegram, and the thread goes on.
   
   - **amy owns a copy of the skills it ships.** `amy skills` and every `amy
     update` write every shipped skill into `~/.amy/skills`, whether or not a

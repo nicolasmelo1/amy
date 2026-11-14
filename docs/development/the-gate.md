@@ -84,6 +84,7 @@ held to a gate that is proven to work.
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
+| `L6.A_PRIVATE_NAME_STAYS_PRIVATE` | A private name stays out of this public repository (docs/design/a-short-private-name-is-a-whole-word.md) |
 | `L6.A_PUSH_NEVER_FORCES` | A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md) |
 | `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |
 | `L6.DEAD_CODE_IS_DETECTED` | Something detects code nothing reaches |
@@ -151,7 +152,7 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **59 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **60 rules**, and `sf verify` proves every one fires against a broken fixture.
 
 **29 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 

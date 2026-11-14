@@ -125,7 +125,7 @@ revision. When either moves, the proof stops counting and the unit is unproven
 again. A person who ran the scenario by hand records it the same way:
 
 ```sh
-amy prove record TBO-12 --scenario paid-invoice-shows-paid --by ada \
+amy prove record PROJ-12 --scenario paid-invoice-shows-paid --by ada \
   --assertion settled@C1=passed --assertion shown@C2=passed --assertion seen@C3=passed --revision 3
-amy prove show TBO-12 --revision 3
+amy prove show PROJ-12 --revision 3
 ```

@@ -49,6 +49,12 @@ property rather than an oversight, and the reason this needs saying at all.
 | `pre-commit` | build, typecheck, the toolchain, docs, plans, private-reference, config and release checks, the tests, lint, `sf verify`, `sf check` | the fast half of the gate |
 | `pre-push` | `npm run gate`, which is what CI runs | the whole gate |
 
+This repository is public and some of the work behind it is not. The
+private-reference check refuses a denied name in any file, tracked or new,
+and reports where without spelling the word; the names are digests, and a
+short one is denied as a whole word. Why: [a short private name is a whole
+word](docs/design/a-short-private-name-is-a-whole-word.md).
+
 Both take `--no-verify` when you know why. Neither is a substitute for
 reading the finding: catching it here means your own machine tells you
 before a pull request does.
@@ -241,7 +247,8 @@ files every change carries (the changeset, the changelog, `docs/manifest.json`).
 reads it against the pull request's base.
 
 A plan is held to what it said. Grooming is a commit that touches only
-`plans/` and `docs/mechanisms.yaml`; the first commit touching anything else
+`plans/`, delivered notes in `docs/design/` and `docs/mechanisms.yaml`; a
+delivered note reworded is groomed again, in a commit of its own. The first commit touching anything else
 starts execution, and from then on a plan's declaration moves only
 mechanically: to `docs/design/`, a criterion marked `done`, `deferred:`
 dropped from a proof, a source pointed at a delivered note. Anything more (a

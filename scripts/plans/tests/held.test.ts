@@ -34,6 +34,25 @@ describe("a plan is held to what it said", () => {
     expect(reading.groomed).toEqual(["x.md"]);
   });
 
+  it("lets a commit that touches only delivered notes groom one again, held to the plan rules", () => {
+    const reworded = delivered.replace("it works", "it still works");
+    const reading = judge(
+      [step("c1", ["docs/design/x.md"], { "docs/design/x.md": reworded })],
+      { "docs/design/x.md": delivered },
+    );
+    expect(reading.problems).toEqual([]);
+    expect(reading.groomed).toEqual(["x.md"]);
+  });
+
+  it("still refuses a delivered note's declaration changed together with code", () => {
+    const reworded = delivered.replace("it works", "it still works");
+    const { problems } = judge(
+      [step("c1", ["docs/design/x.md", "src/a.ts"], { "docs/design/x.md": reworded })],
+      { "docs/design/x.md": delivered },
+    );
+    expect(problems).toEqual([expect.stringMatching(/^c1 changes the declaration of docs\/design\/x\.md together with src\/a\.ts/)]);
+  });
+
   it("refuses a commit that changes a plan's declaration together with code, naming the commit and the plan", () => {
     const { problems } = judge([step("c1", ["plans/x.md", "src/a.ts"], { "plans/x.md": groomed })]);
     expect(problems).toEqual([expect.stringMatching(/^c1 changes the declaration of plans\/x\.md together with src\/a\.ts/)]);

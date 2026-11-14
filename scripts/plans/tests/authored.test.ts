@@ -172,9 +172,9 @@ describe("the commands a groomed plan names", () => {
       );
     const withContributed = (body: string) =>
       authoredProblems({ file: "plans/x.md", text: plan({ body }), baseFiles, cli: { ...cli, commands: [...cli.commands, ...contributed(body)] } });
-    expect(withContributed("`amy prove show TBO-12 --revision 3` names what the prove operation declares.")).toEqual([]);
-    expect(withContributed("`amy prove show TBO-12 --revison 3` names what it does not.")).toEqual([
-      expect.stringMatching(/names `amy prove show TBO-12 --revison 3`, and amy prove show declares no --revison/),
+    expect(withContributed("`amy prove show PROJ-12 --revision 3` names what the prove operation declares.")).toEqual([]);
+    expect(withContributed("`amy prove show PROJ-12 --revison 3` names what it does not.")).toEqual([
+      expect.stringMatching(/names `amy prove show PROJ-12 --revison 3`, and amy prove show declares no --revison/),
     ]);
   });
 });

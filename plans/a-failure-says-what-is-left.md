@@ -1,7 +1,7 @@
 ---
 base: 330ec3de00869241d24025edbd3b6a6eb5184f53
 sources:
-  - { id: S1, kind: friction, said: "2026-11-05: 'TBO-1396 is failing in HUMAN_REVIEW and I am retrying: gh api … unexpected end of JSON input' read as broken for good, needing an agent to fix it; it moved again on the next look" }
+  - { id: S1, kind: friction, said: "2026-11-05: 'PROJ-1396 is failing in HUMAN_REVIEW and I am retrying: gh api … unexpected end of JSON input' read as broken for good, needing an agent to fix it; it moved again on the next look" }
   - { id: S2, kind: code, ref: "plugins/serial-engine/src/Worker.ts", symbol: "failureNotice", said: "one warning on the first failure, silence in the middle, one at the ceiling; neither says how many tries are left" }
   - { id: S3, kind: code, ref: "plugins/serial-engine/src/config.ts", said: "maxItemAttempts defaults to 5 and retryDelayMs to five minutes, fixed" }
   - { id: S4, kind: decision, said: "the fixed delay stays: it is how amy works. Decided 2026-11-05" }
