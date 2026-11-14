@@ -164,7 +164,7 @@ describe("loadEnv", () => {
   });
 });
 
-describe("review of #222: a spawned child keeps the precedence its parent read", () => {
+describe("a spawned child keeps the precedence its parent read", () => {
   let home: string;
   let project: string;
 
@@ -184,12 +184,12 @@ describe("review of #222: a spawned child keeps the precedence its parent read",
     fs.writeFileSync(file, contents);
   }
 
-  // HIGH — A5 in every process: the detached daemon and the reaper are
+  // A5 in every process: the detached daemon and the reaper are
   // spawned through environmentFor, which drops any file-read key a sibling
   // profile also names and re-reads only the profile's and the machine's
   // files — never the project's. The child then sees the profile's value
   // where the project's should win, or nothing at all.
-  it("[high] keeps the project's value over the profile's in the child it spawns for that profile (A5)", () => {
+  it("keeps the project's value over the profile's in the child it spawns for that profile (A5)", () => {
     fs.writeFileSync(path.join(project, ".env"), "SHARED_KEY=from-project\n");
     profileFile("work", "SHARED_KEY=from-work\n");
     profileFile("home", "SHARED_KEY=from-home\n");
@@ -202,7 +202,7 @@ describe("review of #222: a spawned child keeps the precedence its parent read",
     expect(env.SHARED_KEY).toBe("from-project");
   });
 
-  it("[high] keeps a project-only key a sibling profile also names in the child it spawns (A5)", () => {
+  it("keeps a project-only key a sibling profile also names in the child it spawns (A5)", () => {
     fs.writeFileSync(path.join(project, ".env"), "PROJECT_KEY=from-project\n");
     profileFile("home", "PROJECT_KEY=from-home\n");
 

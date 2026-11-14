@@ -492,7 +492,7 @@ function runCli(home: string, args: readonly string[]): string {
   return `${result.stdout}${result.stderr}`;
 }
 
-describe("review of #222: doctor across profiles", () => {
+describe("doctor across profiles", () => {
   let home: string;
 
   beforeEach(() => {
@@ -504,9 +504,9 @@ describe("review of #222: doctor across profiles", () => {
     fs.rmSync(home, { recursive: true, force: true });
   });
 
-  // MEDIUM — A9. "A profile file" is either of the two the plan gives a
+  // A9. "A profile file" is either of the two the plan gives a
   // profile; an orphan .env is as silently unread as an orphan config.yaml.
-  it("[medium] fails a profile .env whose profile the machine never declared, naming the file (A9)", async () => {
+  it("fails a profile .env whose profile the machine never declared, naming the file (A9)", async () => {
     const ghost = path.join(paths(home).base, "profiles", "ghost", ".env");
     fs.mkdirSync(path.dirname(ghost), { recursive: true });
     fs.writeFileSync(ghost, "SLACK_TOKEN=x\n");
@@ -527,10 +527,10 @@ describe("review of #222: doctor across profiles", () => {
     expect(failed).toHaveLength(1);
   });
 
-  // MEDIUM — A7. The sibling still mounts the plugin (its list lives in the
+  // A7. The sibling still mounts the plugin (its list lives in the
   // machine's file); mountsOf swallows the sibling's refused own file into
   // "mounts nothing", so this profile is blamed for the sibling's slice.
-  it("[medium] does not fail a general slice a sibling mounts when the sibling's own file is refused (A7)", () => {
+  it("does not fail a general slice a sibling mounts when the sibling's own file is refused (A7)", () => {
     fs.writeFileSync(paths(home).config, [
       "workflows:",
       "  home:",

@@ -429,7 +429,7 @@ function runCli(home: string, args: readonly string[]): string {
   return `${result.stdout}${result.stderr}`;
 }
 
-describe("review of #222: a profile's own file survives every path that reads config", () => {
+describe("a profile's own file survives every path that reads config", () => {
   let root: string;
 
   beforeEach(() => {
@@ -448,12 +448,12 @@ describe("review of #222: a profile's own file survives every path that reads co
     return file;
   }
 
-  // CRITICAL — A1 and the plan's exit. A chat change is mount-checked from the
+  // A1 and the plan's exit. A chat change is mount-checked from the
   // candidate machine bytes and the restarted loop boots from them
   // (`restartingConfig`, `mount-check --config`): both go through
   // loadConfigFrom, which never lays the profile's file over the bytes, so the
   // first chat restart drops every slice the profile keeps for itself.
-  it("[critical] lays the profile's own file over config bytes, as loadConfig lays it over config.yaml (A1)", async () => {
+  it("lays the profile's own file over config bytes, as loadConfig lays it over config.yaml (A1)", async () => {
     const { loadConfigFrom } = await import("../src/config.js");
     profileFile("work", "plugins:\n  \"@amykit/plugin-slack\":\n    channel: from-profile\n");
     const machine = "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\nplugins:\n  \"@amykit/plugin-linear\":\n    team: from-machine\n";
@@ -466,7 +466,7 @@ describe("review of #222: a profile's own file survives every path that reads co
     });
   });
 
-  it("[critical] refuses config bytes for a profile whose own file names a machine key (A3)", async () => {
+  it("refuses config bytes for a profile whose own file names a machine key (A3)", async () => {
     const { loadConfigFrom } = await import("../src/config.js");
     const file = profileFile("work", "defaultWorkflow: work\n");
     const machine = "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\n";
@@ -475,7 +475,7 @@ describe("review of #222: a profile's own file survives every path that reads co
       .toThrow(file);
   });
 
-  it("[critical] the chat restart and mount-check read config bytes for a named profile, never the machine's alone (A1)", () => {
+  it("the chat restart and mount-check read config bytes for a named profile, never the machine's alone (A1)", () => {
     const source = fs.readFileSync(new URL("../src/index.ts", import.meta.url), "utf-8");
     const calls: string[] = [];
     for (let at = source.indexOf("loadConfigFrom(home,"); at !== -1; at = source.indexOf("loadConfigFrom(home,", at + 1)) {
@@ -502,8 +502,8 @@ describe("review of #222: a profile's own file survives every path that reads co
     expect(calls.filter((call) => topLevelArgs(call) < 3)).toEqual([]);
   });
 
-  // LOW — A1. `queue prune` reads retentionDays from the machine's file alone.
-  it("[low] `queue prune` keeps the retention the profile's own file sets (A1)", () => {
+  // A1. `queue prune` reads retentionDays from the machine's file alone.
+  it("`queue prune` keeps the retention the profile's own file sets (A1)", () => {
     fs.writeFileSync(paths(root).config, "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\n");
     profileFile("work", "retentionDays: 3\n");
 
