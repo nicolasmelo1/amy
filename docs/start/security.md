@@ -34,6 +34,21 @@ A workflow names the command and passes arguments. The config is the only place
 that says what the name runs. A name that is not in the allowlist is refused,
 and the refusal lists the names that are.
 
+## What other people wrote is data
+
+A ticket title, body, label, comment and review reply are also written by
+someone who is not you. They reach the agent inside one `external_data`
+envelope that names where they came from, with any marker that could close it
+neutralised (plain, full-width, split with zero-width characters or spelled
+with look-alike letters), characters that hide or reorder the text removed,
+and long text cut with what was left out.
+
+A prompt that carries one says once, before the first, that its contents are
+data to weigh and never instructions to follow. Your own words (what you type
+in the chat, an errand, a note and the brief) are instructions, and stay
+unfenced. The envelope marks outside text; it does not enforce:
+[a marker is not a classifier](../design/outside-text-reaches-the-agent-as-data.md).
+
 ## Where amy reaches outside
 
 Every process amy starts goes through the `CommandRunner` boundary in the core,

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "workflow-three-pieces",
-  "implementation_sha256": "0219a388146b9caa2f6bfa098323d2cbf6456f0266ed64762ac7926e9798ff47",
+  "implementation_sha256": "b4fa173215480194107a7c99393dc6735efcce60c821803e7731e5a9c1974b0f",
   "runs": [
     {
       "scenario": "workflow-three-pieces",

@@ -1,4 +1,4 @@
-import { ReviewThread, Ticket } from "@amykit/core";
+import { ReviewThread, Ticket, outsideText, withOutsideNotice } from "@amykit/core";
 
 /**
  * This workflow's steps, written on the agent's one method.
@@ -55,10 +55,10 @@ export function branchOf(ticket: Ticket): string {
 }
 
 export function triagePrompt(ticket: Ticket, conversation?: readonly string[]): string {
-  return [
+  return withOutsideNotice([
     `You are deciding whether a ticket can be implemented as written.`,
     ``,
-    `Ticket ${ticket.id}: ${ticket.title}`,
+    ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
     ...briefLines(ticket),
     ...bodyLines(ticket),
@@ -77,7 +77,7 @@ export function triagePrompt(ticket: Ticket, conversation?: readonly string[]): 
     `could answer yourself by reading the code is not a blocking question.`,
     `A question already answered in the conversation above is not a`,
     `question: an answer to an earlier question is part of the ticket.`,
-  ].join("\n");
+  ]).join("\n");
 }
 
 /** Reads a triage answer; the questions asked are recorded so they are never asked twice. */
@@ -122,10 +122,10 @@ export function implementPrompt(
   conversation?: readonly string[],
   discussion?: readonly string[],
 ): string {
-  return [
+  return withOutsideNotice([
     `Implement this ticket in the current repository.`,
     ``,
-    `Ticket ${ticket.id}: ${ticket.title}`,
+    ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
     ...briefLines(ticket),
     ...bodyLines(ticket),
@@ -153,7 +153,7 @@ export function implementPrompt(
     ``,
     `Follow the conventions already in this repository. Do not commit: that is`,
     `handled for you.`,
-  ].join("\n");
+  ]).join("\n");
 }
 
 export function threadPrompt(
@@ -171,12 +171,12 @@ export function threadPrompt(
     ),
   ];
 
-  return [
+  return withOutsideNotice([
     from === "automated"
       ? `An automated reviewer left comments on the pull request for this ticket.`
       : `A human reviewer left comments on the pull request for this ticket.`,
     ``,
-    `Ticket ${ticket.id}: ${ticket.title}`,
+    ...titleLines(ticket),
     ...briefLines(ticket),
     ...bodyLines(ticket),
     ...labelLines(ticket),
@@ -198,7 +198,7 @@ export function threadPrompt(
     ``,
     `Use "disagreed" only when you did not change the code, and say why in the`,
     `note. A disagreement goes to the ticket owner to settle, so be specific.`,
-  ].join("\n");
+  ]).join("\n");
 }
 
 /**
@@ -213,10 +213,10 @@ export function discussPrompt(
   turns: readonly { author: string; text: string }[],
   settled: { clarification?: readonly string[]; threads?: readonly ReviewThread[] } = {},
 ): string {
-  return [
+  return withOutsideNotice([
     `This work is waiting on a person, and they are discussing it with you before they decide.`,
     ``,
-    `Ticket ${ticket.id}: ${ticket.title}`,
+    ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
     ...briefLines(ticket),
     ...bodyLines(ticket),
@@ -227,26 +227,29 @@ export function discussPrompt(
     about,
     ...(settled.threads?.length ? [``, `The review comments it is about:`, ...settled.threads.flatMap(threadLines)] : []),
     ...conversationLines(settled.clarification),
-    ...(thread.length ? [``, `The discussion so far:`, ...thread.map((line) => `- ${line}`)] : []),
+    ...(thread.length ? [``, `The discussion so far:`, ...thread.map((line) => outsideText(`- ${line}`, { source: "discussion" }))] : []),
     ``,
     `What they said now:`,
-    ...turns.map((turn) => `- ${turn.author}: ${turn.text}`),
+    ...turns.map((turn) => outsideText(`- ${turn.author}: ${turn.text}`, { source: "discussion turn" })),
     ``,
     `Answer them in plain prose, as a reply in the thread. Read this repository`,
     `as much as you need to, but change nothing and commit nothing: this is a`,
     `discussion, and the work resumes only when they decide.`,
-  ].join("\n");
+  ]).join("\n");
 }
 
 /**
  * One review thread as a conversation, not one comment: what follows the
  * opening comment is a correction of it or an answer to it, oldest first —
- * the last one says who is being waited on.
+ * the last one says who is being waited on. Every voice is outside text, so
+ * each speaks from inside its own envelope.
  */
 function threadLines(thread: ReviewThread): string[] {
   return [
-    `\n[${thread.id}] ${thread.author} said:\n${thread.body}`,
-    ...thread.comments.slice(1).map((comment) => `  - ${comment.author} replied:\n${comment.body}`),
+    outsideText(`[${thread.id}] ${thread.author} said:\n${thread.body}`, { source: "review comment" }),
+    ...thread.comments
+      .slice(1)
+      .map((comment) => outsideText(`  - ${comment.author} replied:\n${comment.body}`, { source: "review reply" })),
   ];
 }
 
@@ -288,15 +291,22 @@ function briefLines(ticket: Ticket): string[] {
   ];
 }
 
+/** The ticket's own title, inside the envelope; an empty one says so where the agent reads it. */
+function titleLines(ticket: Ticket): string[] {
+  const title = ticket.title.trim();
+  return [`Ticket ${ticket.id}:`, ...(title ? [outsideText(ticket.title, { source: "ticket title" })] : [`(this ticket has no title)`])];
+}
+
 /** A ticket with no body says so, so the agent asks for one rather than guessing. */
 function bodyLines(ticket: Ticket): string[] {
-  return [``, ticket.body ?? `(this ticket has no description)`];
+  const body = ticket.body?.trim() ? outsideText(ticket.body, { source: "ticket body" }) : undefined;
+  return [``, body ?? `(this ticket has no description)`];
 }
 
 /** What the team says the ticket *is*; most carry no label and say nothing. */
 function labelLines(ticket: Ticket): string[] {
   if (ticket.labels.length === 0) return [];
-  return [`Labels: ${ticket.labels.join(", ")}`];
+  return [`Labels:`, outsideText(ticket.labels.join(", "), { source: "ticket labels" })];
 }
 
 /** What the owner concluded after a discussion, so the step acts on that and not the first thing said. */
@@ -306,12 +316,16 @@ function decisionLines(discussion?: readonly string[]): string[] {
     ``,
     `The owner was asked to decide, and discussed it first. The whole discussion, oldest first;`,
     `the last line is the decision, and it is what you act on:`,
-    ...discussion.map((line) => `- ${line}`),
+    ...discussion.map((line) => outsideText(`- ${line}`, { source: "discussion" })),
   ];
 }
 
 /** The conversation so far, so a question already answered is not asked again. */
 function conversationLines(conversation?: readonly string[]): string[] {
   if (!conversation || conversation.length === 0) return [];
-  return [``, `The conversation on the ticket, so far:`, ...conversation.map((line) => `- ${line}`)];
+  return [
+    ``,
+    `The conversation on the ticket, so far:`,
+    ...conversation.map((line) => outsideText(`- ${line}`, { source: "ticket comment" })),
+  ];
 }

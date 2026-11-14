@@ -550,6 +550,11 @@
           "description": ""
         },
         {
+          "title": "Outside text reaches the agent as data",
+          "path": "/design/outside-text-reaches-the-agent-as-data",
+          "description": ""
+        },
+        {
           "title": "Plugins are installed, not compiled in",
           "path": "/design/plugins-are-installed-not-compiled-in",
           "description": ""
@@ -991,6 +996,11 @@
           "depth": 3,
           "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now /amy-groom TBO-1 works from Slack or Telegram, and the thread goes on.",
           "slug": "a-skill-is-asked-for-in-the-chat-grooming-needed-a-terminal-amys-skills-lived-only-in-a-harnesss-own-directory-and-the-chat-knew-three-commands-now-amy-groom-tbo-1-works-from-slack-or-telegram-and-the-thread-goes-on"
+        },
+        {
+          "depth": 3,
+          "title": "**Outside text reaches the agent as data.** A ticket title, body, label, comment, review thread and reply are written by somebody who is not the operator, and they used to reach a writing agent verbatim beside its instructions. Now every one of them travels in one closed envelope.",
+          "slug": "outside-text-reaches-the-agent-as-data-a-ticket-title-body-label-comment-review-thread-and-reply-are-written-by-somebody-who-is-not-the-operator-and-they-used-to-reach-a-writing-agent-verbatim-beside-its-instructions-now-every-one-of-them-travels-in-one-closed-envelope"
         },
         {
           "depth": 2,
@@ -3142,6 +3152,17 @@
           "slug": "the-proof"
         }
       ]
+    },
+    {
+      "path": "/design/outside-text-reaches-the-agent-as-data",
+      "file": "docs/design/outside-text-reaches-the-agent-as-data.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/outside-text-reaches-the-agent-as-data.md",
+      "title": "Outside text reaches the agent as data",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/plugins-are-installed-not-compiled-in",
@@ -5768,6 +5789,11 @@
           "depth": 2,
           "title": "The threat that matters most",
           "slug": "the-threat-that-matters-most"
+        },
+        {
+          "depth": 2,
+          "title": "What other people wrote is data",
+          "slug": "what-other-people-wrote-is-data"
         },
         {
           "depth": 2,
@@ -10248,7 +10274,9 @@
           "packages/cli/src/chat-action.ts",
           "packages/cli/src/supervisor/**",
           ".software-factory/evidence/amy-answers-in-the-chat/**",
-          ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+          ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/amy-answers-in-the-chat.json",
         "plan": "docs/design/amy-answers-in-the-chat.md",
@@ -10548,10 +10576,27 @@
         "scenario": ".software-factory/evidence/note-to-plan-scenario.sh"
       },
       {
+        "name": "outside-text-reaches-the-agent-as-data",
+        "activation": [
+          "packages/core/src/outside-text.ts",
+          "packages/core/src/index.ts",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
+        ],
+        "evidence": ".software-factory/evidence/outside-text.json",
+        "plan": "docs/design/outside-text-reaches-the-agent-as-data.md",
+        "assertions": [
+          "prompt.fences_outside_text_in_every_step"
+        ],
+        "scenario": ".software-factory/evidence/outside-text-scenario.sh"
+      },
+      {
         "name": "plugin-agent-relay",
         "activation": [
           "plugins/agent-relay/src/**",
-          "packages/agent-kit/src/**"
+          "packages/agent-kit/src/**",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-agent-relay.json",
         "plan": "docs/design/the-relay-is-proven-end-to-end.md",
@@ -10646,7 +10691,9 @@
         "name": "plugin-serial-engine",
         "activation": [
           "plugins/serial-engine/src/**",
-          "plugins/notify-fanout/src/**"
+          "plugins/notify-fanout/src/**",
+          "examples/workflow-ticket-to-qa/src/**",
+          "examples/workflow-ticket-to-qa/workflow.mmd"
         ],
         "evidence": ".software-factory/evidence/plugin-serial-engine.json",
         "plan": "docs/design/the-engine-fails-out-loud.md",
@@ -11465,6 +11512,22 @@
           },
           {
             "package": "@amykit/plugin-codex",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "outside-text-reaches-the-agent-as-data",
+        "title": "**Outside text reaches the agent as data.** A ticket title, body, label, comment, review thread and reply are written by somebody who is not the operator, and they used to reach a writing agent verbatim beside its instructions. Now every one of them travels in one closed envelope.",
+        "body": "- **`outsideText` names its source and cannot be closed from within.** The\n  source is plain text in an attribute that strips anything able to end it;\n  every envelope marker in the body — plain, full-width, split with zero-width\n  characters, or spelled with look-alike letters — is replaced with a note, so\n  exactly one envelope opens and one closes.\n- **Characters that hide or reorder text are removed, and the envelope says so\n  once.** Bidi overrides, isolates and tag characters are stripped; text that\n  carried none comes back byte for byte.\n- **Long text is cut with a count**, so a body past the limit says how many\n  characters were left out instead of ending mid-sentence with no sign.\n- **A prompt says once, before the first envelope, that what is inside is\n  data.** `withOutsideNotice` writes that line when, and only when, the prompt\n  carries outside text. The operator's own words — the chat, an errand, a note\n  and the brief — stay unfenced: they are instructions.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "minor"
           }
         ],

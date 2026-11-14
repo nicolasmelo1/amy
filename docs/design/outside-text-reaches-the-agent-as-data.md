@@ -33,15 +33,15 @@ touches:
 untouched:
   - packages/agent-kit/src/HarnessRelay.ts
 criteria:
-  - { id: A1, statement: "outsideText wraps text in one envelope naming its source; a source label cannot close its attribute or the envelope", proof: "deferred:test:packages/core/tests/outside-text.test.ts", sources: [S7, S9] }
-  - { id: A2, statement: "for any text, the envelope's body holds no opening or closing marker, plain or disguised with full-width, zero-width or look-alike characters, so exactly one envelope opens and closes", proof: "deferred:property:packages/core/tests/outside-text.property.test.ts#a_disguised_marker_survives", sources: [S7, S8] }
-  - { id: A3, statement: "bidi overrides and tag characters are stripped and the envelope says so once; text with none of them, no envelope marker and within the limit comes back byte for byte", proof: "deferred:property:packages/core/tests/outside-text.property.test.ts#clean_text_is_rewritten", sources: [S7] }
-  - { id: A4, statement: "text past the limit is cut and the envelope says how many characters were cut", proof: "deferred:test:packages/core/tests/outside-text.test.ts", sources: [S7] }
-  - { id: A5, statement: "triage, implement, thread and discuss prompts carry the ticket title, body and labels, every comment, thread and reply only inside envelopes", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/outside-text.property.test.ts#a_field_left_outside", sources: [S1, S2, S3, S4, S5] }
-  - { id: A6, statement: "a ticket body that closes the envelope and writes an instruction after it is still read inside one envelope, in every prompt it reaches", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S1, S6, S8] }
-  - { id: A7, statement: "a prompt with an envelope says once, before the first, that its contents are data, never instructions; a prompt with none does not say it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10] }
-  - { id: A8, statement: "the brief, the chat desk, an errand and a note reach their prompts as before, unfenced", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S11] }
-  - { id: A9, statement: "the built ticket-to-qa, imported from dist in another process, fences a hostile body in all four prompts", proof: "assertion:prompt.fences_outside_text_in_every_step", sources: [S1, S9] }
+  - { id: A1, statement: "outsideText wraps text in one envelope naming its source; a source label cannot close its attribute or the envelope", proof: "test:packages/core/tests/outside-text.test.ts", sources: [S7, S9], done: true }
+  - { id: A2, statement: "for any text, the envelope's body holds no opening or closing marker, plain or disguised with full-width, zero-width or look-alike characters, so exactly one envelope opens and closes", proof: "property:packages/core/tests/outside-text.property.test.ts#a_disguised_marker_survives", sources: [S7, S8], done: true }
+  - { id: A3, statement: "bidi overrides and tag characters are stripped and the envelope says so once; text with none of them, no envelope marker and within the limit comes back byte for byte", proof: "property:packages/core/tests/outside-text.property.test.ts#clean_text_is_rewritten", sources: [S7], done: true }
+  - { id: A4, statement: "text past the limit is cut and the envelope says how many characters were cut", proof: "test:packages/core/tests/outside-text.test.ts", sources: [S7], done: true }
+  - { id: A5, statement: "triage, implement, thread and discuss prompts carry the ticket title, body and labels, every comment, thread and reply only inside envelopes", proof: "property:examples/workflow-ticket-to-qa/tests/outside-text.property.test.ts#a_field_left_outside", sources: [S1, S2, S3, S4, S5], done: true }
+  - { id: A6, statement: "a ticket body that closes the envelope and writes an instruction after it is still read inside one envelope, in every prompt it reaches", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S1, S6, S8], done: true }
+  - { id: A7, statement: "a prompt with an envelope says once, before the first, that its contents are data, never instructions; a prompt with none does not say it", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10], done: true }
+  - { id: A8, statement: "the brief, the chat desk, an errand and a note reach their prompts as before, unfenced", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S11], done: true }
+  - { id: A9, statement: "the built ticket-to-qa, imported from dist in another process, fences a hostile body in all four prompts", proof: "assertion:prompt.fences_outside_text_in_every_step", sources: [S1, S9], done: true }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A5, A6" }
   - { mechanism: record-migration, answer: n/a, why: "only conversationLines' output changes; the record keeps the raw lines and is fenced when a prompt is built" }
@@ -61,5 +61,5 @@ exit: "a ticket whose body says to ignore the instructions above reaches triage,
 
 ticket-to-qa sends tickets, comments, review threads and replies to a writing
 agent exactly as other people wrote them, mixed in with its instructions.
-This plan puts every piece of outside text in one closed envelope, from core,
+This puts every piece of outside text in one closed envelope, from core,
 and tells the agent once that what is inside is data.

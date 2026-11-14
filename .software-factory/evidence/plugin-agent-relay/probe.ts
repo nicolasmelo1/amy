@@ -220,10 +220,14 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
 
   // The label only the tracker could have supplied, beside the body it is
   // already carried with: what the team says the ticket *is*, surviving the
-  // relay that hands the step its prompt.
+  // relay that hands the step its prompt. It arrives as data in its own
+  // envelope, right after "Labels:", never as a line the agent reads as
+  // instruction.
+  const labelled = lastPrompt();
   record(
     "prompt.carries_the_label_the_tracker_supplied",
-    lastPrompt().includes("Labels: Bug"),
+    labelled.includes('Labels:\n<external_data source="ticket labels">\nBug\n</external_data>') &&
+      !labelled.includes("Labels: Bug"),
   );
 
   reset("fine");

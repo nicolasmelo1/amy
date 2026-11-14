@@ -84,6 +84,9 @@ gates:
     activation:
       - "plugins/agent-relay/src/**"
       - "packages/agent-kit/src/**"
+      # the scenario imports examples/workflow-ticket-to-qa/dist
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/plugin-agent-relay.json"
     plan: "docs/design/the-relay-is-proven-end-to-end.md"
     required_assertions:
@@ -236,6 +239,9 @@ gates:
     activation:
       - "plugins/serial-engine/src/**"
       - "plugins/notify-fanout/src/**"
+      # the scenario imports examples/workflow-ticket-to-qa/dist
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/plugin-serial-engine.json"
     plan: "docs/design/the-engine-fails-out-loud.md"
     required_assertions:
@@ -357,6 +363,24 @@ gates:
       # The engine's retry is the engine's setting: a poll one profile tuned
       # does not reach it, and the machine boots tuned with proof.
       - "lifecycle.the_engine_retries_on_its_own_delay"
+
+  # Outside text reaches the agent as data. What a person other than the
+  # operator wrote — a ticket's title, body, labels, comments, threads and
+  # replies — travels in one closed envelope from core, and a prompt that
+  # carries one says once that it is data to weigh. The activation is the
+  # envelope, its export and the prompts that write it: a change to any of
+  # them means the last run proved a boundary that no longer exists.
+  outside-text-reaches-the-agent-as-data:
+    activation:
+      - "packages/core/src/outside-text.ts"
+      - "packages/core/src/index.ts"
+      - "examples/workflow-ticket-to-qa/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
+    evidence: ".software-factory/evidence/outside-text.json"
+    plan: "docs/design/outside-text-reaches-the-agent-as-data.md"
+    required_assertions:
+      - "prompt.fences_outside_text_in_every_step"
 
   # The second workflow, and the claim the whole plugin model rests on: an
   # engine that learnt nothing drives it. What no unit test can say is that
@@ -1024,6 +1048,9 @@ gates:
       - "packages/cli/src/supervisor/**"
       - ".software-factory/evidence/amy-answers-in-the-chat/**"
       - ".software-factory/evidence/amy-answers-in-the-chat-scenario.sh"
+      # the scenario imports examples/workflow-ticket-to-qa/dist
+      - "examples/workflow-ticket-to-qa/src/**"
+      - "examples/workflow-ticket-to-qa/workflow.mmd"
     evidence: ".software-factory/evidence/amy-answers-in-the-chat.json"
     plan: "docs/design/amy-answers-in-the-chat.md"
     required_assertions:

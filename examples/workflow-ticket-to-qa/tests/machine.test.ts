@@ -1404,7 +1404,13 @@ describe("a discussion, driven through the engine", () => {
       "You answered: answer 3",
       "ada decided, and this settles it: change the test and keep the code",
     ];
-    expect(implement).toContain(lines.map((line) => `- ${line}`).join("\n"));
+    // Every line reaches the prompt, oldest first, inside its own envelope.
+    let seen = -1;
+    for (const line of lines) {
+      const at = implement.indexOf(`- ${line}`);
+      expect(at).toBeGreaterThan(seen);
+      seen = at;
+    }
     expect(implement.trimEnd().indexOf("ada decided")).toBeGreaterThan(implement.indexOf("You answered: answer 3"));
     expect(w.state().history.map((move) => `${move.from}>${move.to}`)).toContain("ESCALATED>IMPLEMENTING");
   });

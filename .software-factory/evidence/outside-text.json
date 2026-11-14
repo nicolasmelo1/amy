@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "gate": "outside-text-reaches-the-agent-as-data",
+  "implementation_sha256": "030ce9913524b735a694c6230dd097b60157ac76b1b34452180dd8b9fbb1cae7",
+  "runs": [
+    {
+      "scenario": "outside-text",
+      "status": "passed",
+      "actor": "Claude (agent), driving the built core and ticket-to-qa prompt builders from dist in another process, on macOS, for Nicolas Melo",
+      "report": ".software-factory/evidence/outside-text-run.json",
+      "report_sha256": "f96a6b0613dd436c32e1e32bab8f7e96bc89178e7ae5d46fb71f077a495d5a8c",
+      "required_assertions": []
+    }
+  ]
+}
