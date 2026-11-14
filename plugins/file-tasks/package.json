@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-file-tasks",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
   "type": "module",
   "license": "MIT",
@@ -31,8 +31,8 @@
     "about": "Use it with the errand workflow, which reads its work from the tasks port this plugin mounts. A task is a file in a directory, written by amy btw, by an editor or by a hook, and a task that names no repository is about the configured default."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1",
-    "@amykit/workflow-errand": "^0.7.1"
+    "@amykit/core": "^0.8.0",
+    "@amykit/workflow-errand": "^0.8.0"
   },
   "devDependencies": {
     "@amykit/test-fixtures": "^0.1.0"

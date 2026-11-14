@@ -5,9 +5,9 @@
   "title": "@amykit/plugin-agent-relay",
   "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
   "dependencies": [
-    "@amykit/agent-kit@^0.7.1",
-    "@amykit/core@^0.7.1",
-    "@amykit/model-specs@^0.7.1",
+    "@amykit/agent-kit@^0.8.0",
+    "@amykit/core@^0.8.0",
+    "@amykit/model-specs@^0.8.0",
     "zod@^4.6.7"
   ],
   "devDependencies": [],
@@ -22,7 +22,7 @@
       "path": "plugins/agent-relay/package.json",
       "type": "registry:file",
       "target": "forks/plugin-agent-relay/package.json",
-      "content": "{\n  \"name\": \"@amykit/plugin-agent-relay\",\n  \"version\": \"0.7.1\",\n  \"description\": \"One agent made of several: swaps harness on a quota, escalates model on a failure.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/agent-relay\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Every install that runs an agent needs it, because it is the only plugin that mounts the agent port. It puts the harnesses that claude, codex and hermes-agent contribute on a ladder, moving to another harness when one runs out of quota and to a stronger model when a step fails, so mount at least one of those beside it. When you set a spending ceiling it also mounts the budget port, and it owns amy models, the price table that ceiling is measured with.\"\n  },\n  \"dependencies\": {\n    \"@amykit/agent-kit\": \"^0.7.1\",\n    \"@amykit/core\": \"^0.7.1\",\n    \"@amykit/model-specs\": \"^0.7.1\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/plugin-agent-relay\",\n  \"version\": \"0.8.0\",\n  \"description\": \"One agent made of several: swaps harness on a quota, escalates model on a failure.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"plugins/agent-relay\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"amy\": {\n    \"about\": \"Every install that runs an agent needs it, because it is the only plugin that mounts the agent port. It puts the harnesses that claude, codex and hermes-agent contribute on a ladder, moving to another harness when one runs out of quota and to a stronger model when a step fails, so mount at least one of those beside it. When you set a spending ceiling it also mounts the budget port, and it owns amy models, the price table that ceiling is measured with.\"\n  },\n  \"dependencies\": {\n    \"@amykit/agent-kit\": \"^0.8.0\",\n    \"@amykit/core\": \"^0.8.0\",\n    \"@amykit/model-specs\": \"^0.8.0\",\n    \"zod\": \"^4.6.7\"\n  },\n  \"devDependencies\": {\n    \"@amykit/test-fixtures\": \"^0.1.0\"\n  }\n}\n"
     },
     {
       "path": "plugins/agent-relay/src/config.ts",
@@ -63,9 +63,9 @@
   ],
   "meta": {
     "package": "@amykit/plugin-agent-relay",
-    "version": "0.7.1",
+    "version": "0.8.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "plugins/agent-relay",
-    "tag": "@amykit/plugin-agent-relay@0.7.1"
+    "tag": "@amykit/plugin-agent-relay@0.8.0"
   }
 }

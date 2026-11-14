@@ -5,11 +5,11 @@
   "title": "@amykit/ui-conformance",
   "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
   "dependencies": [
-    "@amykit/ui@^0.7.1",
+    "@amykit/ui@^0.8.0",
     "yaml@^2.9.0"
   ],
   "devDependencies": [
-    "@amykit/core@^0.7.1"
+    "@amykit/core@^0.8.0"
   ],
   "files": [
     {
@@ -22,7 +22,7 @@
       "path": "packages/ui-conformance/package.json",
       "type": "registry:file",
       "target": "forks/ui-conformance/package.json",
-      "content": "{\n  \"name\": \"@amykit/ui-conformance\",\n  \"version\": \"0.7.1\",\n  \"description\": \"The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/ui-conformance\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"bin\": {\n    \"amy-ui-conformance\": \"./dist/cli.js\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"dependencies\": {\n    \"@amykit/ui\": \"^0.7.1\",\n    \"yaml\": \"^2.9.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/core\": \"^0.7.1\",\n    \"@amykit/plugin-ui-stub\": \"^0.6.0\"\n  }\n}\n"
+      "content": "{\n  \"name\": \"@amykit/ui-conformance\",\n  \"version\": \"0.8.0\",\n  \"description\": \"The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.\",\n  \"type\": \"module\",\n  \"license\": \"MIT\",\n  \"author\": \"Nicolas Melo\",\n  \"homepage\": \"https://github.com/nicolasmelo1/amy#readme\",\n  \"bugs\": \"https://github.com/nicolasmelo1/amy/issues\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/nicolasmelo1/amy.git\",\n    \"directory\": \"packages/ui-conformance\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\",\n    \"registry\": \"https://registry.npmjs.org\"\n  },\n  \"bin\": {\n    \"amy-ui-conformance\": \"./dist/cli.js\"\n  },\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\",\n  \"exports\": {\n    \".\": {\n      \"types\": \"./dist/index.d.ts\",\n      \"import\": \"./dist/index.js\"\n    }\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"dependencies\": {\n    \"@amykit/ui\": \"^0.8.0\",\n    \"yaml\": \"^2.9.0\"\n  },\n  \"devDependencies\": {\n    \"@amykit/core\": \"^0.8.0\",\n    \"@amykit/plugin-ui-stub\": \"^0.6.0\"\n  }\n}\n"
     },
     {
       "path": "packages/ui-conformance/src/audit.ts",
@@ -87,9 +87,9 @@
   ],
   "meta": {
     "package": "@amykit/ui-conformance",
-    "version": "0.7.1",
+    "version": "0.8.0",
     "repository": "git+https://github.com/nicolasmelo1/amy.git",
     "directory": "packages/ui-conformance",
-    "tag": "@amykit/ui-conformance@0.7.1"
+    "tag": "@amykit/ui-conformance@0.8.0"
   }
 }

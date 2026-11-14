@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-concurrent-engine",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Advances one work item per tick, moving every lane of a fork at once.",
   "type": "module",
   "license": "MIT",
@@ -31,11 +31,11 @@
     "about": "Use it in place of serial-engine when a workflow forks into lanes that should move together, such as ticket-to-qa running its gate and its self-review side by side. Everything else is the serial engine's, settings included: the same claim on a queue item and the same budget check before each lane's call. An install mounts one engine, so pick this one or serial-engine, with file-queue and file-store beside it."
   },
   "dependencies": {
-    "@amykit/core": "^0.7.1",
-    "@amykit/plugin-serial-engine": "^0.7.1"
+    "@amykit/core": "^0.8.0",
+    "@amykit/plugin-serial-engine": "^0.8.0"
   },
   "devDependencies": {
-    "@amykit/plugin-file-queue": "^0.7.1",
+    "@amykit/plugin-file-queue": "^0.8.0",
     "@amykit/test-fixtures": "^0.1.0"
   }
 }

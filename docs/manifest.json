@@ -993,26 +993,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "**A profile keeps its own config.** Each profile may keep a config.yaml and a .env of its own under profiles/<name>/, and reads the machine's files with its own over them: mappings merge key by key, a list or a scalar replaces the machine's value whole, and a profile with no file reads exactly as before. workflows: and defaultWorkflow stay in the machine's file, and a profile file naming either is refused at boot by name. Keys are read in one order — exported in the shell, the project's .env, the profile's, the machine's — and a loop started for one profile no longer inherits another profile's keys. amy doctor names every config and .env file it read, no longer fails a machine-wide slice another declared profile mounts (it names that profile), and fails a profile file no declared profile names.",
-          "slug": "a-profile-keeps-its-own-config-each-profile-may-keep-a-configyaml-and-a-env-of-its-own-under-profilesname-and-reads-the-machines-files-with-its-own-over-them-mappings-merge-key-by-key-a-list-or-a-scalar-replaces-the-machines-value-whole-and-a-profile-with-no-file-reads-exactly-as-before-workflows-and-defaultworkflow-stay-in-the-machines-file-and-a-profile-file-naming-either-is-refused-at-boot-by-name-keys-are-read-in-one-order-exported-in-the-shell-the-projects-env-the-profiles-the-machines-and-a-loop-started-for-one-profile-no-longer-inherits-another-profiles-keys-amy-doctor-names-every-config-and-env-file-it-read-no-longer-fails-a-machine-wide-slice-another-declared-profile-mounts-it-names-that-profile-and-fails-a-profile-file-no-declared-profile-names"
-        },
-        {
-          "depth": 3,
-          "title": "**A shipped workflow runs as a phase.** A project walking BRIEF → WORK → PROVE on amy's own pieces stopped three times in 0.7.1, and the whole-project example hid all three. It never ran ticket-to-qa (it set the WORK child to DONE by hand), and it ran actions without the boot check the daemon makes.",
-          "slug": "a-shipped-workflow-runs-as-a-phase-a-project-walking-brief-work-prove-on-amys-own-pieces-stopped-three-times-in-071-and-the-whole-project-example-hid-all-three-it-never-ran-ticket-to-qa-it-set-the-work-child-to-done-by-hand-and-it-ran-actions-without-the-boot-check-the-daemon-makes"
-        },
-        {
-          "depth": 3,
-          "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now /amy-groom TBO-1 works from Slack or Telegram, and the thread goes on.",
-          "slug": "a-skill-is-asked-for-in-the-chat-grooming-needed-a-terminal-amys-skills-lived-only-in-a-harnesss-own-directory-and-the-chat-knew-three-commands-now-amy-groom-tbo-1-works-from-slack-or-telegram-and-the-thread-goes-on"
-        },
-        {
-          "depth": 3,
-          "title": "**Outside text reaches the agent as data.** A ticket title, body, label, comment, review thread and reply are written by somebody who is not the operator, and they used to reach a writing agent verbatim beside its instructions. Now every one of them travels in one closed envelope.",
-          "slug": "outside-text-reaches-the-agent-as-data-a-ticket-title-body-label-comment-review-thread-and-reply-are-written-by-somebody-who-is-not-the-operator-and-they-used-to-reach-a-writing-agent-verbatim-beside-its-instructions-now-every-one-of-them-travels-in-one-closed-envelope"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -8092,7 +8072,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -8106,7 +8086,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -8127,7 +8107,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -8141,7 +8121,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -8155,7 +8135,7 @@
       },
       {
         "name": "@amykit/plugin-agent-browser",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.",
         "directory": "plugins/agent-browser",
@@ -8191,7 +8171,7 @@
       },
       {
         "name": "@amykit/plugin-agent-desktop",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.",
         "directory": "plugins/agent-desktop",
@@ -8220,7 +8200,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -8279,7 +8259,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -8333,7 +8313,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -8380,7 +8360,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -8417,7 +8397,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -8462,7 +8442,7 @@
       },
       {
         "name": "@amykit/plugin-concurrent-engine",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Advances one work item per tick, moving every lane of a fork at once.",
         "directory": "plugins/concurrent-engine",
@@ -8505,7 +8485,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -8529,7 +8509,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -8543,7 +8523,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -8581,7 +8561,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -8626,7 +8606,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -8656,7 +8636,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -8687,7 +8667,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -8768,7 +8748,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -8792,7 +8772,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -8853,7 +8833,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -8908,7 +8888,7 @@
       },
       {
         "name": "@amykit/plugin-next-steps",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
         "directory": "plugins/next-steps",
@@ -8966,7 +8946,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -8982,7 +8962,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -9010,7 +8990,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -9037,7 +9017,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -9086,7 +9066,7 @@
       },
       {
         "name": "@amykit/plugin-prove",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
         "directory": "plugins/prove",
@@ -9155,7 +9135,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -9198,7 +9178,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -9275,7 +9255,7 @@
       },
       {
         "name": "@amykit/plugin-telegram",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
         "directory": "plugins/telegram",
@@ -9321,7 +9301,7 @@
       },
       {
         "name": "@amykit/plugin-terminal",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.",
         "directory": "plugins/terminal",
@@ -9357,7 +9337,7 @@
       },
       {
         "name": "@amykit/plugin-terminal-conversation",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "plugin",
         "description": "The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.",
         "directory": "plugins/terminal-conversation",
@@ -9373,7 +9353,7 @@
       },
       {
         "name": "@amykit/services",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
         "directory": "packages/services",
@@ -9387,7 +9367,7 @@
       },
       {
         "name": "@amykit/ui",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
         "directory": "packages/ui",
@@ -9401,7 +9381,7 @@
       },
       {
         "name": "@amykit/ui-conformance",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
         "directory": "packages/ui-conformance",
@@ -9415,7 +9395,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "examples/workflow-errand",
@@ -9491,7 +9471,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "examples/workflow-feature-grooming",
@@ -9538,7 +9518,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "examples/workflow-note-to-plan",
@@ -9624,7 +9604,7 @@
       },
       {
         "name": "@amykit/workflow-pull-request",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
         "directory": "examples/workflow-pull-request",
@@ -9658,7 +9638,7 @@
       },
       {
         "name": "@amykit/workflow-setup",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
         "directory": "packages/workflow-setup",
@@ -9685,7 +9665,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -9699,7 +9679,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.7.1",
+        "version": "0.8.0",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "examples/workflow-ticket-to-qa",
@@ -11455,128 +11435,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-profile-keeps-its-own-config",
-        "title": "**A profile keeps its own config.** Each profile may keep a `config.yaml` and a `.env` of its own under `profiles/<name>/`, and reads the machine's files with its own over them: mappings merge key by key, a list or a scalar replaces the machine's value whole, and a profile with no file reads exactly as before. `workflows:` and `defaultWorkflow` stay in the machine's file, and a profile file naming either is refused at boot by name. Keys are read in one order — exported in the shell, the project's `.env`, the profile's, the machine's — and a loop started for one profile no longer inherits another profile's keys. `amy doctor` names every config and `.env` file it read, no longer fails a machine-wide slice another declared profile mounts (it names that profile), and fails a profile file no declared profile names.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-shipped-workflow-runs-as-a-phase",
-        "title": "**A shipped workflow runs as a phase.** A project walking BRIEF → WORK → PROVE on amy's own pieces stopped three times in 0.7.1, and the whole-project example hid all three. It never ran ticket-to-qa (it set the WORK child to `DONE` by hand), and it ran actions without the boot check the daemon makes.",
-        "body": "- **The unit a called record is for is the core's.** A called record's id is `SHOP-1/WORK#1`. ticket-to-qa asked the tracker for that id as a ticket, and its review lane did the same. errand and note-to-plan looked for a task and a note under it. prove, feature-grooming and the worktree plugin each kept a private split on `/`. `unitOf(record)` from `@amykit/core` now says what the unit is at any depth, keeping a root's `@repository`, and every one of them uses it. `L0.A_CALLED_RECORD_NAMES_ITS_UNIT` refuses a split of an id on `/` or `#` outside the core.\n- **The testkit walks every world called as a phase too.** `conformance` and `conforms` now walk each world a second time as `UNIT/PHASE#1`, under a new property, \"called as a phase, it does what it does standing alone\". The two walks must make the same tracker, code-host and conversation calls, plan the same actions and come to rest in the same state. A world that keeps state gives `again()` to be rebuilt, and `said()` with `watched()` to say what its ports were asked. A checkout or an agent's context may still key on the record's own id.\n- **A claude run that may write can write.** A print-mode run with no `--permission-mode` and the user's settings dropped is refused every edit, so a writing step answered and changed nothing. The new `permissionMode` setting (default `acceptEdits`; `auto` or `bypassPermissions` also allowed) is now always passed, and a read-only run is still `plan`. An empty, unknown or non-writing mode is refused at mount, naming the setting. `harnessConformance` in agent-kit holds claude and codex to it.\n- **A core action's name means the core's action.** prove's gave-up notice was a handler named `escalate`, the core's tracker write, so the mount counted a write prove never makes, for a tracker it does not need. It is now `give-up`. prove's own actions also reached no catalogue, so called as a phase it was refused (\"action `lease`: nothing defines it\"). A workflow's `catalogue` now declares its own actions on ports it needs, and the composed workflow carries every callee's to the mount. A handler under a core action's name, in a workflow that does not need that action's port, is refused at boot.\n- **A called phase is counted as it is standing alone.** A workflow's catalogue entry is now the port its handler reaches, so prove's agent step, now its own `run-agent-step` catalogued on `agent`, is counted by the budget through every call (it ran while the budget refused agent work), while a deterministic or `wait-until` step stays a `run-step` the budget does not hold; prove still boots with no agent mounted. A called workflow's `store` (by the name it asks for, whatever its call binds it to) lists its own records under every root rather than its caller's roots, so errand's `maxInFlight` and note-to-plan's `maxOpenPlansPerRepo` count errands and plans called as phases.\n- **A unit has one conversation, and reading it opens none.** `Conversation` gains a required `known(workId)`, which answers the thread a work already has and creates nothing. Slack, Telegram and the terminal implement it, and a conversation adapter of your own must too. ticket-to-qa reads replies through it, so a look that only reads leaves no thread behind. A called phase's threads are the unit's, titled by the ticket, setup's included. The notifier posts into the unit's thread too, instead of opening one under the call's id.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-file-worktree",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-notify-fanout",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-prove",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-slack",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-telegram",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-terminal-conversation",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-errand",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-feature-grooming",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-note-to-plan",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-testkit",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "a-skill-is-asked-for-in-the-chat",
-        "title": "**A skill is asked for in the chat.** Grooming needed a terminal: amy's skills lived only in a harness's own directory, and the chat knew three commands. Now `/amy-groom TBO-1` works from Slack or Telegram, and the thread goes on.",
-        "body": "- **amy owns a copy of the skills it ships.** `amy skills` and every `amy\n  update` write every shipped skill into `~/.amy/skills`, whether or not a\n  harness directory was chosen; a harness's own directory stays an extra the\n  person asks for. A root amy cannot write is a failed install naming it.\n- **A step looks a skill up in a fixed order.** `~/.amy/skills` first, then the\n  roots the config names. `~/.claude/skills` is no longer looked in on its own:\n  a harness's skills reach amy only through `harnessSkills`. The relay and the\n  chat read the same order, so a skill the mount accepted is the one handed to\n  the harness.\n- **A harness's own skills are linked, never copied.** `harnessSkills: {\n  claude: true }`, top-level in `.amy/config.yaml` or under the relay's own\n  settings (which win), links each skill of that harness into `~/.amy/skills`,\n  one symlink per skill, at every `amy run`, `amy tick` and loop pass. `false`,\n  or leaving the harness out, removes the links; amy's own copy of a skill wins\n  over a link. The names are the harness plugins that mounted: the `Harness`\n  port gains `skillsDirectory`, which claude (`~/.claude/skills`) and codex\n  (under `CODEX_HOME` or `~/.codex`) report, and a name no harness plugin\n  mounted is refused at boot.\n- **The conversation is a step in the skills ladder.** `skills: { chat:\n  [/amy-groom] }` mounts, a chat skill that is not installed is refused at boot\n  naming it and what is installed, and no other vocabulary names what the chat\n  may run.\n- **A message that starts with a skill is an `/action` turn.** After a leading\n  space or a bot's name, `/amy-groom <ticket>` is answered with the skill lent\n  to the harness and its commands run; the thread keeps the skill until `/new`.\n  A `/skill` the ladder does not name is answered with the ones it does, and\n  nothing runs. The harness stays read-only in a skill turn: what acts is the\n  `/action` list.\n- **A section with newlines arrives as a block, never a shell.** `brief\n  sections --json` and `brief check --json` are read from the chat, and `brief\n  write` takes `--explains` and `--from answer.md`, the fenced block in the\n  same answer. The chat checks the block is there before anything runs, writes\n  it to a file for the length of the command, and removes it after. `amy brief\n  write` takes `--from <file>` too, so the same spelling works in a terminal.\n- **A skill turn needs a harness that can be handed one.** The `Harness` port\n  gains `lendsSkill`, which claude sets: a chat addressed to a skill on a\n  harness that cannot load it is refused, naming one that can, rather than\n  acting without the method.\n- **The chat reads its ladder and its skills as the mount does.** A ladder\n  written under the relay's own settings wins, as the operator's slice does at\n  mount; the skill table is resolved every pass, so installing or deleting a\n  skill needs no restart. `/new` in a thread ends the skill it was started\n  with. `amy update` writes the skills on every successful run, moved or not,\n  and `amy skills --recorded` leaves the own-root write inside `writeSkills`'\n  rollback so a failed move restores the previous bodies. The skills are\n  written before the boot check, so a deleted `~/.amy/skills` a chat skill\n  needs is repaired by the update, and a moved CLI that does not boot has the\n  rolled-back one write its own skills back.\n- **A skill turn checks its skill is still there.** A turn queued behind one\n  whose commands removed the skill is refused, naming `amy skills`, rather than\n  lent a directory that is gone. A block fenced with more backticks holds a\n  three-backtick example whole, and a block that cannot be written leaves the\n  turn to be asked again rather than settled.",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-agent-relay",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      },
-      {
-        "id": "outside-text-reaches-the-agent-as-data",
-        "title": "**Outside text reaches the agent as data.** A ticket title, body, label, comment, review thread and reply are written by somebody who is not the operator, and they used to reach a writing agent verbatim beside its instructions. Now every one of them travels in one closed envelope.",
-        "body": "- **`outsideText` names its source and cannot be closed from within.** The\n  source is plain text in an attribute that strips anything able to end it;\n  every envelope marker in the body — plain, full-width, split with zero-width\n  characters, or spelled with look-alike letters — is replaced with a note, so\n  exactly one envelope opens and one closes.\n- **Characters that hide or reorder text are removed, and the envelope says so\n  once.** Bidi overrides, isolates and tag characters are stripped; text that\n  carried none comes back byte for byte.\n- **Long text is cut with a count**, so a body past the limit says how many\n  characters were left out instead of ending mid-sentence with no sign.\n- **A prompt says once, before the first envelope, that what is inside is\n  data.** `withOutsideNotice` writes that line when, and only when, the prompt\n  carries outside text. The operator's own words — the chat, an errand, a note\n  and the brief — stay unfenced: they are instructions.",
-        "bumps": [
-          {
-            "package": "@amykit/core",
-            "level": "minor"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "minor"
-          }
-        ],
-        "level": "minor"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

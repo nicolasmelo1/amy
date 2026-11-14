@@ -37,7 +37,7 @@ and one dependency, on the core this release of amy ships:
 <!-- amy:generated core-dependency -->
 
 ```json
-"dependencies": { "@amykit/core": "^0.7.1" }
+"dependencies": { "@amykit/core": "^0.8.0" }
 ```
 
 <!-- amy:end core-dependency -->

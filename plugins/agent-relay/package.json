@@ -1,6 +1,6 @@
 {
   "name": "@amykit/plugin-agent-relay",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
   "type": "module",
   "license": "MIT",
@@ -31,9 +31,9 @@
     "about": "Every install that runs an agent needs it, because it is the only plugin that mounts the agent port. It puts the harnesses that claude, codex and hermes-agent contribute on a ladder, moving to another harness when one runs out of quota and to a stronger model when a step fails, so mount at least one of those beside it. When you set a spending ceiling it also mounts the budget port, and it owns amy models, the price table that ceiling is measured with."
   },
   "dependencies": {
-    "@amykit/agent-kit": "^0.7.1",
-    "@amykit/core": "^0.7.1",
-    "@amykit/model-specs": "^0.7.1",
+    "@amykit/agent-kit": "^0.8.0",
+    "@amykit/core": "^0.8.0",
+    "@amykit/model-specs": "^0.8.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

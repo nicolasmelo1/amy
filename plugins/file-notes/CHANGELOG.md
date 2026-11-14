@@ -1,5 +1,16 @@
 # @amykit/plugin-file-notes
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [a41a17f]
+- Updated dependencies [9a9ac0a]
+- Updated dependencies [3a8cc7a]
+  - @amykit/core@0.8.0
+  - @amykit/plugin-notify-fanout@0.8.0
+  - @amykit/workflow-note-to-plan@0.8.0
+
 ## 0.7.1
 
 ### Patch Changes
