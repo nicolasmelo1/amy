@@ -202,6 +202,28 @@ describe("a spawned child keeps the precedence its parent read", () => {
     expect(env.SHARED_KEY).toBe("from-project");
   });
 
+  // The detached daemon is spawned with no cwd and, typed from a project,
+  // with no AMY_PROJECT_ENV: the child inherits the directory, and the
+  // project's .env read from it is the one that must still win.
+  it("keeps the project's value when the project is the directory typed in, not AMY_PROJECT_ENV (A5)", () => {
+    fs.writeFileSync(path.join(project, ".env"), "SHARED_KEY=from-project\n");
+    profileFile("work", "SHARED_KEY=from-work\n");
+    profileFile("home", "SHARED_KEY=from-home\n");
+
+    const forProfile = environmentFor as (
+      home: string,
+      profile: string,
+      options: { base?: NodeJS.ProcessEnv; fromFiles?: readonly string[]; cwd?: string },
+    ) => NodeJS.ProcessEnv;
+    const env = forProfile(home, "work", {
+      base: { SHARED_KEY: "from-project" },
+      fromFiles: ["SHARED_KEY"],
+      cwd: project,
+    });
+
+    expect(env.SHARED_KEY).toBe("from-project");
+  });
+
   it("keeps a project-only key a sibling profile also names in the child it spawns (A5)", () => {
     fs.writeFileSync(path.join(project, ".env"), "PROJECT_KEY=from-project\n");
     profileFile("home", "PROJECT_KEY=from-home\n");

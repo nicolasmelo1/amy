@@ -502,6 +502,30 @@ describe("a profile's own file survives every path that reads config", () => {
     expect(calls.filter((call) => topLevelArgs(call) < 3)).toEqual([]);
   });
 
+  // A chat change to the machine's file is checked against every profile
+  // with --all; a sibling whose own file is refused is that sibling's
+  // problem, reported under its name like any other, not a crash of the
+  // whole check.
+  it("reports a sibling's refused own file under the sibling's name in `mount-check --all` (A3)", () => {
+    const machine = [
+      "workflows:",
+      "  work:",
+      "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+      "  home:",
+      "    workflow: \"@amykit/workflow-ticket-to-qa\"",
+      "",
+    ].join("\n");
+    fs.writeFileSync(paths(root).config, machine);
+    const candidate = path.join(root, "candidate.yaml");
+    fs.writeFileSync(candidate, machine);
+    profileFile("home", "defaultWorkflow: home\n");
+
+    const output = runCli(root, ["--workflow", "work", "mount-check", "--all", "--config", candidate]);
+
+    expect(output).toMatch(/^home: .*`defaultWorkflow`/m);
+    expect(output).toMatch(/^work: /m);
+  }, 60_000);
+
   // A1. `queue prune` reads retentionDays from the machine's file alone.
   it("`queue prune` keeps the retention the profile's own file sets (A1)", () => {
     fs.writeFileSync(paths(root).config, "workflows:\n  work:\n    workflow: \"@amykit/workflow-ticket-to-qa\"\n");
