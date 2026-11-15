@@ -8,73 +8,77 @@ the rest.
 | # | Plan |
 | --- | --- |
 | 1 | [Claude's usage is read without its token](claudes-usage-is-read-without-its-token.md) |
-| 2 | [A run that goes in circles stops](a-run-that-goes-in-circles-stops.md) |
-| 3 | [An action acts](an-action-acts.md) |
-| 4 | [Every setup step says what it is for](every-setup-step-says-what-it-is-for.md) |
-| 5 | [Setup builds a project with an agent](setup-builds-a-project-with-an-agent.md) |
-| 6 | [The examples are not the machine](the-examples-are-not-the-machine.md) |
-| 7 | [A proof runs against its own branch](a-proof-runs-against-its-own-branch.md) |
-| 8 | [A proof runs before the pull request](a-proof-runs-before-the-pull-request.md) |
-| 9 | [A proof runs in a place of its own](a-proof-runs-in-a-place-of-its-own.md) |
-| 10 | [An API proof keeps its calls and its contract](an-api-proof-keeps-its-calls-and-its-contract.md) |
-| 11 | [amy runs on the current Node](amy-runs-on-the-current-node.md) |
-| 12 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) |
-| 13 | [A harness answers before the work](a-harness-answers-before-the-work.md) |
-| 14 | [A red check says why](a-red-check-says-why.md) |
-| 15 | [A failure says what is left](a-failure-says-what-is-left.md) |
-| 16 | [A record whose state is gone asks where it goes](a-record-whose-state-is-gone-asks-where-it-goes.md) |
-| 17 | [A release has a nightly](a-release-has-a-nightly.md) |
-| 18 | [The docs describe the contract that exists](the-docs-describe-the-contract-that-exists.md) |
-| 19 | [A tool is there before the proof](a-tool-is-there-before-the-proof.md) |
-| 20 | [A conversation carries pictures both ways](a-conversation-carries-pictures-both-ways.md) |
-| 21 | [A voice note is read as text](a-voice-note-is-read-as-text.md) |
-| 22 | [A person unblocks a proof from anywhere](a-person-unblocks-a-proof-from-anywhere.md) |
-| 23 | [An escalation brings its evidence](an-escalation-brings-its-evidence.md) |
-| 24 | [A run plays back without a model](a-run-plays-back-without-a-model.md) |
-| 25 | [A workflow learns from its mistakes](a-workflow-learns-from-its-mistakes.md) |
-| 26 | [A state has a ceiling of its own](a-state-has-a-ceiling-of-its-own.md) |
-| 27 | [Every endpoint is named before it is built](every-endpoint-is-named-before-it-is-built.md) |
-| 28 | [A plugin says what it is](a-plugin-says-what-it-is.md) |
-| 29 | [The command line holds no rule](the-command-line-holds-no-rule.md) |
-| 30 | [The window is served](the-window-is-served.md) |
-| 31 | [An event is a reason to look](an-event-is-a-reason-to-look.md) |
-| 32 | [A workflow starts on an event](a-workflow-starts-on-an-event.md) |
-| 33 | [A schedule puts work on the queue](a-schedule-puts-work-on-the-queue.md) |
-| 34 | [Another amy puts work on this one's queue](another-amy-puts-work-on-this-ones-queue.md) |
-| 35 | [The building blocks are drawn once](the-building-blocks-are-drawn-once.md) |
-| 36 | [The window is designed once](the-window-is-designed-once.md) |
-| 37 | [A renderer is chosen by name](a-renderer-is-chosen-by-name.md) |
-| 38 | [A diagram is written as it is read](a-diagram-is-written-as-it-is-read.md) |
-| 39 | [The work is listed everywhere](the-work-is-listed-everywhere.md) |
-| 40 | [What needs you is counted everywhere](what-needs-you-is-counted-everywhere.md) |
-| 41 | [A record is seen everywhere](a-record-is-seen-everywhere.md) |
-| 42 | [The workflows are seen everywhere](the-workflows-are-seen-everywhere.md) |
-| 43 | [The window takes plugins](the-window-takes-plugins.md) |
-| 44 | [A page is drawn only where it can be](a-page-is-drawn-only-where-it-can-be.md) |
-| 45 | [A conversation before the work](a-conversation-before-the-work.md) |
-| 46 | [The chat is one button away](the-chat-is-one-button-away.md) |
-| 47 | [Grooming happens in the window](grooming-happens-in-the-window.md) |
-| 48 | [The workplace opens where you work](the-workplace-opens-where-you-work.md) |
-| 49 | [A line opens in your editor](a-line-opens-in-your-editor.md) |
-| 50 | [Looks are configuration](looks-are-configuration.md) |
-| 51 | [The canvas can be seen another way](the-canvas-can-be-seen-another-way.md) |
-| 52 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) |
-| 53 | [Compatibility is a capability, not a version](compatibility-is-a-capability-not-a-version.md) |
-| 54 | [Work that is over goes away](work-that-is-over-goes-away.md) |
-| 55 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) |
-| 56 | [A skill for the half-step](a-skill-for-the-half-step.md) |
-| 57 | [A review thread can be replied to](a-review-thread-can-be-replied-to.md) |
-| 58 | [A child carries its roots](a-child-carries-its-roots.md) |
-| 59 | [An answered thread closes by policy](an-answered-thread-closes-by-policy.md) |
-| 60 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) |
-| 61 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) |
-| 62 | [A picture is a comment too](a-picture-is-a-comment-too.md) |
-| 63 | [A review finding outlives the review](a-review-finding-outlives-the-review.md) |
-| 64 | [The performance guard can fail](the-performance-guard-can-fail.md) |
-| 65 | [One real ticket walks the lifecycle](one-real-ticket-walks-the-lifecycle.md) |
-| 66 | [A decision is asked of a port](a-decision-is-asked-of-a-port.md) |
-| 67 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) |
-| 68 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) |
-| 69 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) |
-| 70 | [An edge is named for an outcome](an-edge-is-named-for-an-outcome.md) |
+| 2 | [A skill reaches every harness](a-skill-reaches-every-harness.md) |
+| 3 | [Code is written once and reached](code-is-written-once-and-reached.md) |
+| 4 | [Nothing is lost and nothing waits forever](nothing-is-lost-and-nothing-waits-forever.md) |
+| 5 | [Every claim and every path agrees](every-claim-and-path-agrees.md) |
+| 6 | [A run that goes in circles stops](a-run-that-goes-in-circles-stops.md) |
+| 7 | [An action acts](an-action-acts.md) |
+| 8 | [Every setup step says what it is for](every-setup-step-says-what-it-is-for.md) |
+| 9 | [Setup builds a project with an agent](setup-builds-a-project-with-an-agent.md) |
+| 10 | [The examples are not the machine](the-examples-are-not-the-machine.md) |
+| 11 | [A proof runs against its own branch](a-proof-runs-against-its-own-branch.md) |
+| 12 | [A proof runs before the pull request](a-proof-runs-before-the-pull-request.md) |
+| 13 | [A proof runs in a place of its own](a-proof-runs-in-a-place-of-its-own.md) |
+| 14 | [An API proof keeps its calls and its contract](an-api-proof-keeps-its-calls-and-its-contract.md) |
+| 15 | [amy runs on the current Node](amy-runs-on-the-current-node.md) |
+| 16 | [Decisions are asked in a batch](decisions-are-asked-in-a-batch.md) |
+| 17 | [A harness answers before the work](a-harness-answers-before-the-work.md) |
+| 18 | [A red check says why](a-red-check-says-why.md) |
+| 19 | [A failure says what is left](a-failure-says-what-is-left.md) |
+| 20 | [A record whose state is gone asks where it goes](a-record-whose-state-is-gone-asks-where-it-goes.md) |
+| 21 | [A release has a nightly](a-release-has-a-nightly.md) |
+| 22 | [The docs describe the contract that exists](the-docs-describe-the-contract-that-exists.md) |
+| 23 | [A tool is there before the proof](a-tool-is-there-before-the-proof.md) |
+| 24 | [A conversation carries pictures both ways](a-conversation-carries-pictures-both-ways.md) |
+| 25 | [A voice note is read as text](a-voice-note-is-read-as-text.md) |
+| 26 | [A person unblocks a proof from anywhere](a-person-unblocks-a-proof-from-anywhere.md) |
+| 27 | [An escalation brings its evidence](an-escalation-brings-its-evidence.md) |
+| 28 | [A run plays back without a model](a-run-plays-back-without-a-model.md) |
+| 29 | [A workflow learns from its mistakes](a-workflow-learns-from-its-mistakes.md) |
+| 30 | [A state has a ceiling of its own](a-state-has-a-ceiling-of-its-own.md) |
+| 31 | [Every endpoint is named before it is built](every-endpoint-is-named-before-it-is-built.md) |
+| 32 | [A plugin says what it is](a-plugin-says-what-it-is.md) |
+| 33 | [The command line holds no rule](the-command-line-holds-no-rule.md) |
+| 34 | [The window is served](the-window-is-served.md) |
+| 35 | [An event is a reason to look](an-event-is-a-reason-to-look.md) |
+| 36 | [A workflow starts on an event](a-workflow-starts-on-an-event.md) |
+| 37 | [A schedule puts work on the queue](a-schedule-puts-work-on-the-queue.md) |
+| 38 | [Another amy puts work on this one's queue](another-amy-puts-work-on-this-ones-queue.md) |
+| 39 | [The building blocks are drawn once](the-building-blocks-are-drawn-once.md) |
+| 40 | [The window is designed once](the-window-is-designed-once.md) |
+| 41 | [A renderer is chosen by name](a-renderer-is-chosen-by-name.md) |
+| 42 | [A diagram is written as it is read](a-diagram-is-written-as-it-is-read.md) |
+| 43 | [The work is listed everywhere](the-work-is-listed-everywhere.md) |
+| 44 | [What needs you is counted everywhere](what-needs-you-is-counted-everywhere.md) |
+| 45 | [A record is seen everywhere](a-record-is-seen-everywhere.md) |
+| 46 | [The workflows are seen everywhere](the-workflows-are-seen-everywhere.md) |
+| 47 | [The window takes plugins](the-window-takes-plugins.md) |
+| 48 | [A page is drawn only where it can be](a-page-is-drawn-only-where-it-can-be.md) |
+| 49 | [A conversation before the work](a-conversation-before-the-work.md) |
+| 50 | [The chat is one button away](the-chat-is-one-button-away.md) |
+| 51 | [Grooming happens in the window](grooming-happens-in-the-window.md) |
+| 52 | [The workplace opens where you work](the-workplace-opens-where-you-work.md) |
+| 53 | [A line opens in your editor](a-line-opens-in-your-editor.md) |
+| 54 | [Looks are configuration](looks-are-configuration.md) |
+| 55 | [The canvas can be seen another way](the-canvas-can-be-seen-another-way.md) |
+| 56 | [A skill ladder for your own steps](a-skill-ladder-for-your-own-steps.md) |
+| 57 | [Compatibility is a capability, not a version](compatibility-is-a-capability-not-a-version.md) |
+| 58 | [Work that is over goes away](work-that-is-over-goes-away.md) |
+| 59 | [An escalation can be withdrawn](an-escalation-can-be-withdrawn.md) |
+| 60 | [A skill for the half-step](a-skill-for-the-half-step.md) |
+| 61 | [A review thread can be replied to](a-review-thread-can-be-replied-to.md) |
+| 62 | [A child carries its roots](a-child-carries-its-roots.md) |
+| 63 | [An answered thread closes by policy](an-answered-thread-closes-by-policy.md) |
+| 64 | [A strong model reads the review first](a-strong-model-reads-the-review-first.md) |
+| 65 | [The review is remembered across rounds](the-review-is-remembered-across-rounds.md) |
+| 66 | [A picture is a comment too](a-picture-is-a-comment-too.md) |
+| 67 | [A review finding outlives the review](a-review-finding-outlives-the-review.md) |
+| 68 | [The performance guard can fail](the-performance-guard-can-fail.md) |
+| 69 | [One real ticket walks the lifecycle](one-real-ticket-walks-the-lifecycle.md) |
+| 70 | [A decision is asked of a port](a-decision-is-asked-of-a-port.md) |
+| 71 | [A decision model runs on this machine](a-decision-model-runs-on-this-machine.md) |
+| 72 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) |
+| 73 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) |
+| 74 | [An edge is named for an outcome](an-edge-is-named-for-an-outcome.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
