@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "a-workspace-is-a-capability",
-  "implementation_sha256": "3379aa0beeecf3b4b164f0b387781c68fdf4104ee69ea5b3abe60ca9d76a35b0",
+  "implementation_sha256": "c4b81aeed927f04c93da99dc163d626f2c347f11b0eecf7aa30b7132a17f18a4",
   "runs": [
     {
       "scenario": "a-workspace-is-a-capability",
       "status": "passed",
       "actor": "Claude (agent), installing amy on a scratch machine with no workspace and answering a support request through it, then driving the three code workflows, with .software-factory/evidence/a-workspace-is-a-capability-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/a-workspace-is-a-capability-run.json",
-      "report_sha256": "da43221059a7d9745d692cb1576c4b66608e7ecc5deb6462208f9dfdb50b9e08",
+      "report_sha256": "9cbaae311006d3202d4c50aabaaccb3500f7b79b6ad9ffe6038b7a70c733907b",
       "required_assertions": [
         "workspace.the_config_names_no_workspace",
         "workspace.the_doctor_asks_nothing_of_a_repository_and_says_ready",

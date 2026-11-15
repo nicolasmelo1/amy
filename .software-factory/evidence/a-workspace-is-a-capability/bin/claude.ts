@@ -8,6 +8,42 @@
 import fs from "node:fs";
 import path from "node:path";
 
+/**
+ * A usage probe is not a turn: Claude Code answers `get_usage` over the same
+ * print-mode stream with no model call and nothing written, and the reader
+ * ends this child once it has the answer. Synchronous on purpose: the copied
+ * stand-in runs as CJS, where a top-level await does not transform.
+ */
+if (process.argv.includes("--input-format")) answerUsageProbe();
+
+/** Answers `get_usage` itself, blocking until the reader ends the child. */
+function answerUsageProbe(): never {
+  const answer = {
+    rate_limits_available: true,
+    rate_limits: {
+      five_hour: { utilization: 42, resets_at: new Date(Date.now() + 5 * 3_600_000).toISOString() },
+      seven_day: { utilization: 18, resets_at: new Date(Date.now() + 3 * 86_400_000).toISOString() },
+    },
+  };
+  const buffer = Buffer.alloc(64 * 1024);
+  let pending = "";
+  for (;;) {
+    const read = fs.readSync(0, buffer, 0, buffer.length, null);
+    if (read === 0) process.exit(0);
+    pending += buffer.toString("utf8", 0, read);
+    const lines = pending.split("\n");
+    pending = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const request = JSON.parse(line) as { request_id?: string; request?: { subtype?: string } };
+      const response = request.request?.subtype === "get_usage" ? answer : {};
+      process.stdout.write(
+        `${JSON.stringify({ type: "control_response", response: { subtype: "success", request_id: request.request_id, response } })}\n`,
+      );
+    }
+  }
+}
+
 const world = process.env.AMY_E2E_WORLD;
 if (!world) {
   process.stderr.write("AMY_E2E_WORLD names no world for this stand-in\n");
