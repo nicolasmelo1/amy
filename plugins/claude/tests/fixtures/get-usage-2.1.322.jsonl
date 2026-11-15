@@ -1,2 +1,0 @@
-{"type":"control_response","response":{"subtype":"success","request_id":"init","response":{"commands":[]}}}
-{"type":"control_response","response":{"subtype":"success","request_id":"usage","response":{"rate_limits_available":true,"rate_limits":{"five_hour":{"utilization":42,"resets_at":"2026-11-12T17:00:00.000Z"},"seven_day":{"utilization":18,"resets_at":"2026-11-18T03:00:00.000Z"},"seven_day_opus":null,"seven_day_sonnet":null},"total_cost_usd":0}}}

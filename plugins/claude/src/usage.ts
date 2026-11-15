@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { CommandRunner } from "@amykit/core";
@@ -30,6 +31,9 @@ export const CLAUDE_PROBE_ARGS = [
 
 /** How long Claude Code has to answer `get_usage`; a probe reads, it never runs. */
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/** How much of what Claude Code wrote to stderr is kept to say why it ended. */
+const STDERR_KEPT = 400;
 
 /** The windows `get_usage` reports, and the label each is shown under. */
 const WINDOWS = [
@@ -107,6 +111,8 @@ interface Answer {
 
 class Probe {
   private answered = false;
+  private asked = false;
+  private tail = "";
   private readonly timer: ReturnType<typeof setTimeout>;
 
   constructor(
@@ -120,12 +126,24 @@ class Probe {
 
   start(): void {
     this.child.stdin.on("error", () => {});
+    // Nobody reads stderr but it is piped: a chatty CLI fills the pipe, blocks
+    // on write, and a healthy answer becomes a timeout. Keep its tail instead.
+    this.child.stderr.setEncoding("utf8");
+    this.child.stderr.on("data", (chunk: string) => {
+      this.tail = `${this.tail}${chunk}`.slice(-STDERR_KEPT);
+    });
     this.child.on("error", (error) => this.finish(unavailable(`could not start ${this.command}: ${reason(error)}`)));
-    this.child.on("close", () => this.finish(unavailable(`${this.command} ended before answering`)));
+    this.child.on("close", () => this.finish(unavailable(`${this.command} ended before answering${this.said()}`)));
     createInterface({ input: this.child.stdout, crlfDelay: Number.POSITIVE_INFINITY }).on("line", (line) =>
       this.onLine(line),
     );
     this.send({ type: "control_request", request_id: "init", request: { subtype: "initialize" } });
+  }
+
+  /** What Claude Code said on stderr, for the answer that says it ended early. */
+  private said(): string {
+    const text = this.tail.trim();
+    return text ? `: ${text}` : "";
   }
 
   private send(message: unknown): void {
@@ -140,11 +158,14 @@ class Probe {
     const answer = responseOf(line);
     if (!answer) return;
     if (answer.request_id === "init") this.afterInitialize(answer);
-    else if (answer.request_id === "usage") this.finish(usageAnswer(answer));
+    // Only the answer to what the probe asked is read: anything printed before
+    // `get_usage` was sent answers nothing.
+    else if (answer.request_id === "usage" && this.asked) this.finish(usageAnswer(answer));
   }
 
   private afterInitialize(answer: Answer): void {
     if (answer.subtype !== "success") return this.finish(unavailable(`${this.command} answered initialize with ${said(answer)}`));
+    this.asked = true;
     this.send({ type: "control_request", request_id: "usage", request: { subtype: "get_usage", skip_behaviors: true } });
   }
 
@@ -152,9 +173,63 @@ class Probe {
     if (this.answered) return;
     this.answered = true;
     clearTimeout(this.timer);
-    this.child.kill("SIGKILL");
+    endTree(this.child);
     this.settle(result);
   }
+}
+
+/** Ends the probe with everything it started: a hung CLI may hold children of its own. */
+function endTree(child: ChildProcessWithoutNullStreams): void {
+  const pid = child.pid;
+  if (pid === undefined) {
+    child.kill("SIGKILL");
+    return;
+  }
+  if (process.platform === "win32") {
+    try {
+      execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    } catch {
+      // It was already gone; end it by pid below.
+    }
+  } else {
+    // Deepest first, so a child cannot be left holding a dead parent's work.
+    for (const one of descendantsOf(pid)) {
+      try {
+        process.kill(one, "SIGKILL");
+      } catch {
+        // Already gone.
+      }
+    }
+  }
+  child.kill("SIGKILL");
+}
+
+/** Every process below `pid`, deepest last, as the system reports them. */
+function descendantsOf(pid: number): number[] {
+  let rows: string;
+  try {
+    rows = execFileSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return [];
+  }
+  const children = new Map<number, number[]>();
+  for (const row of rows.split("\n")) {
+    const [child, parent] = row.trim().split(/\s+/).map(Number);
+    if (child === undefined || Number.isNaN(child) || parent === undefined || Number.isNaN(parent)) continue;
+    children.set(parent, [...(children.get(parent) ?? []), child]);
+  }
+  const found: number[] = [];
+  const walk = (parent: number, seen: Set<number>): void => {
+    for (const child of children.get(parent) ?? []) {
+      if (seen.has(child)) continue;
+      seen.add(child);
+      walk(child, seen);
+      found.push(child);
+    }
+  };
+  walk(pid, new Set([pid]));
+  return found;
 }
 
 /** The answer inside one stream-json line, when the line is a control response. */
@@ -190,9 +265,11 @@ function windowOf(label: string, value: unknown): UsageWindow | undefined {
   };
 }
 
-/** A reset time is an ISO date; anything Claude Code sends otherwise is not one. */
+/** A reset time is an instant: Claude Code sends microseconds and an offset, windows carry ISO. */
 function resetOf(value: unknown): string | undefined {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : undefined;
+  if (typeof value !== "string") return undefined;
+  const at = new Date(value);
+  return Number.isNaN(at.getTime()) ? undefined : at.toISOString();
 }
 
 function record(value: unknown): value is Record<string, unknown> {

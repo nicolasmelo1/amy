@@ -10,12 +10,12 @@ import { ScriptedRunner } from "@amykit/test-fixtures";
 import { plugin } from "../src/plugin.js";
 import { CLAUDE_PROBE_ARGS, ClaudeUsageReader, parseClaudeUsage } from "../src/usage.js";
 
-const RECORDED = fs.readFileSync(new URL("./fixtures/get-usage-2.1.322.jsonl", import.meta.url), "utf8");
+const RECORDED = fs.readFileSync(new URL("./fixtures/get-usage-2.1.325.jsonl", import.meta.url), "utf8");
 const RECORDED_LINES = RECORDED.trim().split("\n");
 
 const WINDOWS = [
-  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-12T17:00:00.000Z" },
-  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-18T03:00:00.000Z" },
+  { label: "five-hour", usedPercent: 2, resetsAt: "2026-11-15T19:19:59.758Z" },
+  { label: "seven-day", usedPercent: 30, resetsAt: "2026-11-16T17:59:59.758Z" },
 ];
 
 /** A child whose stdin is read as control requests and whose stdout answers them. */
@@ -97,8 +97,8 @@ describe("Claude account usage", () => {
       parseClaudeUsage({
         rate_limits_available: true,
         rate_limits: {
-          five_hour: { utilization: 42, resets_at: "2026-11-12T17:00:00.000Z" },
-          seven_day: { utilization: 18, resets_at: "2026-11-18T03:00:00.000Z" },
+          five_hour: { utilization: 2, resets_at: "2026-11-15T19:19:59.758635+00:00" },
+          seven_day: { utilization: 30, resets_at: "2026-11-16T17:59:59.758654+00:00" },
           seven_day_opus: { utilization: 9, resets_at: opus },
           seven_day_sonnet: null,
         },

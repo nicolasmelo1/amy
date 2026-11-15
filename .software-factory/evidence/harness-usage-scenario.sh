@@ -30,14 +30,14 @@ const hermes = await built("hermes-agent");
 // Claude's recorded answer is the get_usage response Claude Code sends, not
 // the account endpoint's document: the reader asks the CLI, never its token.
 const recorded = readFileSync(
-  `${process.argv[2]}/plugins/claude/tests/fixtures/get-usage-2.1.322.jsonl`,
+  `${process.argv[2]}/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl`,
   "utf8",
 ).trim().split("\n");
 const usage = JSON.parse(recorded.find((line) => line.includes('"request_id":"usage"'))).response.response;
 
 deepStrictEqual(claude.parseClaudeUsage(usage), { windows: [
-  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-12T17:00:00.000Z" },
-  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-18T03:00:00.000Z" },
+  { label: "five-hour", usedPercent: 2, resetsAt: "2026-11-15T19:19:59.758Z" },
+  { label: "seven-day", usedPercent: 30, resetsAt: "2026-11-16T17:59:59.758Z" },
 ] });
 
 deepStrictEqual(await new codex.CodexUsageReader({ readRateLimits: async () => ({ rateLimits: {
@@ -120,7 +120,10 @@ stand=$(mktemp -d)
 cat > "$stand/claude" <<EOF
 #!/bin/sh
 printf '%s\n' "\$@" > "$stand/argv"
-cat "$repo/plugins/claude/tests/fixtures/get-usage-2.1.322.jsonl"
+read -r init
+sed -n 1p "$repo/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl"
+read -r asked
+sed -n 2p "$repo/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl"
 while IFS= read -r line; do :; done
 EOF
 chmod +x "$stand/claude"
@@ -133,8 +136,8 @@ const claude = await import(pathToFileURL(`${repo}/plugins/claude/dist/index.js`
 const { NodeCommandRunner } = await import(pathToFileURL(`${repo}/packages/core/dist/index.js`).href);
 
 deepStrictEqual(await new claude.ClaudeUsageReader(new NodeCommandRunner()).read(), { windows: [
-  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-12T17:00:00.000Z" },
-  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-18T03:00:00.000Z" },
+  { label: "five-hour", usedPercent: 2, resetsAt: "2026-11-15T19:19:59.758Z" },
+  { label: "seven-day", usedPercent: 30, resetsAt: "2026-11-16T17:59:59.758Z" },
 ] });
 
 const argv = readFileSync(`${stand}/argv`, "utf8").trim().split("\n");
