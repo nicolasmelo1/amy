@@ -126,14 +126,17 @@ export function parseStream(stdout: string): ClaudeStream {
 /**
  * The refusal a `rate_limit_event` reports, or nothing when it reports none.
  *
- * A rejected window with `overageStatus: "allowed"` is not a refusal: the turn
- * runs on usage credits and finishes, so there is nothing to wait for.
+ * Only `status: "rejected"` refuses, and only while the window is not carried
+ * by usage credits: an `overageStatus` of anything but absent or `"rejected"`
+ * (`"allowed"`, `"allowed_warning"`) says credits carried the turn, which then
+ * finished, so there is nothing to wait for.
  */
 function refusalOf(event: Record<string, unknown>): { resetsAt?: number } | undefined {
   const info = event.rate_limit_info as
     | { status?: unknown; resetsAt?: unknown; overageStatus?: unknown }
     | undefined;
-  if (info?.status !== "rejected" || info.overageStatus === "allowed") return undefined;
+  if (info?.status !== "rejected") return undefined;
+  if (info.overageStatus !== undefined && info.overageStatus !== "rejected") return undefined;
 
   const resetsAt = typeof info.resetsAt === "number" && Number.isFinite(info.resetsAt) ? info.resetsAt : undefined;
   return resetsAt === undefined ? {} : { resetsAt };
