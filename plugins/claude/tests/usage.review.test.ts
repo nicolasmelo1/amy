@@ -11,9 +11,26 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NodeCommandRunner } from "@amykit/core";
 import { ClaudeUsageReader, parseClaudeUsage } from "../src/usage.js";
+
+/** Every synchronous command started in this file, beside the runner's managed spawn. */
+const beside = vi.hoisted(() => [] as string[]);
+vi.mock("node:child_process", async (original) => {
+  const actual = await original<typeof import("node:child_process")>();
+  const recorded = <F extends (...args: never[]) => unknown>(name: string, run: F): F =>
+    ((...args: Parameters<F>) => {
+      beside.push(`${name} ${String(args[0])}`);
+      return run(...args);
+    }) as F;
+  return {
+    ...actual,
+    execFileSync: recorded("execFileSync", actual.execFileSync),
+    execSync: recorded("execSync", actual.execSync),
+    spawnSync: recorded("spawnSync", actual.spawnSync),
+  };
+});
 
 const FIXTURES = new URL("./fixtures/", import.meta.url);
 
@@ -149,5 +166,45 @@ describe("low: A3, the probe reads only the answer to what it asked", () => {
     const result = await new ClaudeUsageReader(new NodeCommandRunner(), { command, timeoutMs: 300 }).read();
 
     expect(result).toEqual({ unavailable: `Claude usage is unavailable: ${command} did not answer in 300ms` });
+  });
+});
+
+describe("medium (round 2): the probe's tree is ended through the runner, not beside it", () => {
+  it("runs no command of its own to end the probe: no ps, no taskkill, nothing synchronous", async () => {
+    // CommandRunner: "Every adapter that shells out goes through this". A
+    // synchronous ps per read also blocks the process that asked. A probe in
+    // its own process group ends with one signal to the group.
+    const { command } = standIn(ANSWERS_THE_RECORDING(recordingFile()));
+    beside.length = 0;
+
+    await new ClaudeUsageReader(new NodeCommandRunner(), { command, timeoutMs: 5000 }).read();
+
+    expect(beside).toEqual([]);
+  });
+});
+
+describe("low (round 2): what an early end says, and the plan that says it", () => {
+  it("says why Claude Code ended on one line, whatever it wrote to stderr", async () => {
+    const { command } = standIn(`echo 'warning: something noisy' >&2\necho 'Not logged in · Please run /login' >&2\nexit 1`);
+
+    const result = await new ClaudeUsageReader(new NodeCommandRunner(), { command, timeoutMs: 5000 }).read();
+
+    expect(result).toEqual({ unavailable: expect.stringContaining("Not logged in · Please run /login") });
+    expect((result as { unavailable: string }).unavailable).not.toMatch(/\n/);
+  });
+
+  it("the delivered plan names only files that exist and the recording that proves it", () => {
+    const repo = new URL("../../../", import.meta.url);
+    const plan = fs.readFileSync(new URL("docs/design/claudes-usage-is-read-without-its-token.md", repo), "utf8");
+    const lines = plan.split("\n");
+    const from = lines.indexOf("touches:") + 1;
+    const touches: string[] = [];
+    for (const line of lines.slice(from)) {
+      if (!line.startsWith("  - ")) break;
+      touches.push(line.slice("  - ".length));
+    }
+
+    expect(touches.filter((file) => !fs.existsSync(new URL(file, repo)))).toEqual([]);
+    expect(plan).not.toContain("2.1.322");
   });
 });
