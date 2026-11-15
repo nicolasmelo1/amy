@@ -520,6 +520,11 @@
           "description": ""
         },
         {
+          "title": "Claude says its limit while it runs",
+          "path": "/design/claude-says-its-limit-while-it-runs",
+          "description": ""
+        },
+        {
           "title": "Every plugin is proven end to end",
           "path": "/design/every-plugin-is-proven-end-to-end",
           "description": ""
@@ -996,6 +1001,11 @@
           "depth": 2,
           "title": "Coming next",
           "slug": "coming-next"
+        },
+        {
+          "depth": 3,
+          "title": "**Claude says its limit while it runs.** The harness spotted a quota only from a 429 in the final envelope, and never knew when it reset. It now reads Claude Code's stream: a rejected rate_limit_event makes the run rate-limited with the reset it reported, so the workflow waits for that reset instead of charging an attempt.",
+          "slug": "claude-says-its-limit-while-it-runs-the-harness-spotted-a-quota-only-from-a-429-in-the-final-envelope-and-never-knew-when-it-reset-it-now-reads-claude-codes-stream-a-rejected-ratelimitevent-makes-the-run-rate-limited-with-the-reset-it-reported-so-the-workflow-waits-for-that-reset-instead-of-charging-an-attempt"
         },
         {
           "depth": 3,
@@ -2944,6 +2954,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/claude-says-its-limit-while-it-runs",
+      "file": "docs/design/claude-says-its-limit-while-it-runs.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/claude-says-its-limit-while-it-runs.md",
+      "title": "Claude says its limit while it runs",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/every-plugin-is-proven-end-to-end",
@@ -10426,6 +10447,19 @@
         "scenario": ".software-factory/evidence/bare-install-scenario.sh"
       },
       {
+        "name": "claude-limits",
+        "activation": [
+          "plugins/claude/src/**",
+          "plugins/claude/tests/fixtures/**"
+        ],
+        "evidence": ".software-factory/evidence/claude-limits.json",
+        "plan": "docs/design/claude-says-its-limit-while-it-runs.md",
+        "assertions": [
+          "claude.a_rejected_limit_waits_for_its_reset"
+        ],
+        "scenario": ".software-factory/evidence/claude-limits-scenario.sh"
+      },
+      {
         "name": "errand",
         "activation": [
           "examples/workflow-errand/src/**",
@@ -11469,6 +11503,18 @@
   "changelog": {
     "releases": [],
     "unreleased": [
+      {
+        "id": "a-limit-is-read-while-it-runs",
+        "title": "**Claude says its limit while it runs.** The harness spotted a quota only from a 429 in the final envelope, and never knew when it reset. It now reads Claude Code's stream: a rejected `rate_limit_event` makes the run `rate-limited` with the reset it reported, so the workflow waits for that reset instead of charging an attempt.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
       {
         "id": "a-short-private-name-is-a-whole-word",
         "title": "The examples in the docs, the tests and the prove plugin's help name tickets `PROJ-`, the placeholder the rest of the suite already used. A private term can now be denied as a whole word, so a three-letter key is caught in `XYZ-12` without also firing on every identifier that contains those letters.",

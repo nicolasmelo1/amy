@@ -35,6 +35,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@amykit/plugin-claude": "^0.8.0",
     "@amykit/plugin-file-queue": "^0.8.0",
     "@amykit/plugin-file-store": "^0.8.0",
     "@amykit/plugin-serial-engine": "^0.8.0",
