@@ -13,6 +13,11 @@ export interface RunOptions {
   timeoutMs?: number;
   env?: Record<string, string>;
   /**
+   * Whether the child leads its own process group, so one signal to the group
+   * ends what it started. A caller that must stop a whole tree asks for one.
+   */
+  detached?: boolean;
+  /**
    * Whether stdout is trimmed, which it is unless this is `false`. A caller
    * that reads whitespace as data, such as a file's content, asks for it whole.
    */
@@ -28,5 +33,9 @@ export interface RunOptions {
 export interface CommandRunner {
   run(command: string, args: readonly string[], options?: RunOptions): Promise<CommandResult>;
   /** So protocol children stop through the same handbrake as ordinary commands. */
-  spawn?(command: string, args: readonly string[], options?: Pick<RunOptions, "cwd" | "env">): ChildProcessWithoutNullStreams;
+  spawn?(
+    command: string,
+    args: readonly string[],
+    options?: Pick<RunOptions, "cwd" | "env" | "detached">,
+  ): ChildProcessWithoutNullStreams;
 }

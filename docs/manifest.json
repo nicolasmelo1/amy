@@ -6307,7 +6307,7 @@
           },
           {
             "name": "spawn",
-            "signature": "spawn(command: string, args: readonly string[], options?: Pick<RunOptions, \"cwd\" | \"env\">): ChildProcessWithoutNullStreams",
+            "signature": "spawn(command: string, args: readonly string[], options?: Pick<RunOptions, \"cwd\" | \"env\" | \"detached\">): ChildProcessWithoutNullStreams",
             "doc": "So protocol children stop through the same handbrake as ordinary commands."
           }
         ]

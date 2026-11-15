@@ -29,12 +29,13 @@ export class NodeCommandRunner implements CommandRunner {
   spawn(
     command: string,
     args: readonly string[],
-    options: Pick<RunOptions, "cwd" | "env"> = {},
+    options: Pick<RunOptions, "cwd" | "env" | "detached"> = {},
   ): ChildProcessWithoutNullStreams {
     const child = spawn(command, [...args], {
       cwd: options.cwd,
       env: options.env ? { ...process.env, ...options.env } : process.env,
       stdio: ["pipe", "pipe", "pipe"],
+      detached: options.detached ?? false,
     });
     this.live.add(child);
     child.once("close", () => this.live.delete(child));

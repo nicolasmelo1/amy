@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { CommandRunner } from "@amykit/core";
@@ -92,7 +91,8 @@ function probe(spawn: Spawn, options: ClaudeUsageReaderOptions): Promise<UsageRe
   return new Promise((resolve) => {
     let child: ChildProcessWithoutNullStreams;
     try {
-      child = spawn(command, [...CLAUDE_PROBE_ARGS]);
+      // Its own process group, so one signal ends what the probe started.
+      child = spawn(command, [...CLAUDE_PROBE_ARGS], { detached: process.platform !== "win32" });
     } catch (error) {
       resolve(unavailable(`could not start ${command}: ${reason(error)}`));
       return;
@@ -140,10 +140,14 @@ class Probe {
     this.send({ type: "control_request", request_id: "init", request: { subtype: "initialize" } });
   }
 
-  /** What Claude Code said on stderr, for the answer that says it ended early. */
+  /** The last thing Claude Code said on stderr, on one line, for an early end. */
   private said(): string {
-    const text = this.tail.trim();
-    return text ? `: ${text}` : "";
+    const last = this.tail
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .pop();
+    return last ? `: ${last}` : "";
   }
 
   private send(message: unknown): void {
@@ -178,58 +182,18 @@ class Probe {
   }
 }
 
-/** Ends the probe with everything it started: a hung CLI may hold children of its own. */
+/** Ends the probe with everything it started: it leads its group, so one signal ends the tree. */
 function endTree(child: ChildProcessWithoutNullStreams): void {
   const pid = child.pid;
-  if (pid === undefined) {
-    child.kill("SIGKILL");
-    return;
-  }
-  if (process.platform === "win32") {
+  if (pid !== undefined && process.platform !== "win32") {
     try {
-      execFileSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+      process.kill(-pid, "SIGKILL");
       return;
     } catch {
-      // It was already gone; end it by pid below.
-    }
-  } else {
-    // Deepest first, so a child cannot be left holding a dead parent's work.
-    for (const one of descendantsOf(pid)) {
-      try {
-        process.kill(one, "SIGKILL");
-      } catch {
-        // Already gone.
-      }
+      // Not a group leader: end the child alone.
     }
   }
   child.kill("SIGKILL");
-}
-
-/** Every process below `pid`, deepest last, as the system reports them. */
-function descendantsOf(pid: number): number[] {
-  let rows: string;
-  try {
-    rows = execFileSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-  } catch {
-    return [];
-  }
-  const children = new Map<number, number[]>();
-  for (const row of rows.split("\n")) {
-    const [child, parent] = row.trim().split(/\s+/).map(Number);
-    if (child === undefined || Number.isNaN(child) || parent === undefined || Number.isNaN(parent)) continue;
-    children.set(parent, [...(children.get(parent) ?? []), child]);
-  }
-  const found: number[] = [];
-  const walk = (parent: number, seen: Set<number>): void => {
-    for (const child of children.get(parent) ?? []) {
-      if (seen.has(child)) continue;
-      seen.add(child);
-      walk(child, seen);
-      found.push(child);
-    }
-  };
-  walk(pid, new Set([pid]));
-  return found;
 }
 
 /** The answer inside one stream-json line, when the line is a control response. */
