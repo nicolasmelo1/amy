@@ -16,6 +16,7 @@ touches:
   - plugins/claude/tests/fixtures/get-usage-2.1.322.jsonl
   - plugins/claude/README.md
   - docs/concepts/harnesses.md
+  - docs/design/a-harness-shows-what-is-left.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/harness-usage-scenario.sh
   - registry/plugin-claude.json
