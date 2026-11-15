@@ -18,6 +18,9 @@ touches:
   - docs/concepts/harnesses.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/harness-usage-scenario.sh
+  - registry/plugin-claude.json
+  - docs/development/the-gate.md
+  - docs/start/installation.md
 criteria:
   - { id: A1, statement: "the recorded get_usage answer normalizes to five-hour and seven-day windows with their percentages and resets; opus and sonnet windows appear only when not null", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S3, S4] }
   - { id: A2, statement: "reading usage runs no curl and no security, opens no credentials file and reads no token variable", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S1, S2, S7] }
