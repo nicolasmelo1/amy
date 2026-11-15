@@ -35,6 +35,11 @@ contributes a usage reader, which is how `amy budget` shows what each
 subscription has left before the ledger. Why:
 [a harness shows what is left](../design/a-harness-shows-what-is-left.md).
 
+Claude Code reports its own account windows when asked for `get_usage` over a
+short-lived print-mode child, so the Claude reader asks it and never reads a
+credential of the operator's. Why:
+[Claude's usage is read without its token](../design/claudes-usage-is-read-without-its-token.md).
+
 ## Writing a harness plugin
 
 Implement `Harness`, then contribute it with `contributeTiers`, which names

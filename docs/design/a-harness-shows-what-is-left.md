@@ -77,3 +77,5 @@ exit: "status and budget show normalized provider windows beside Amy's own ledge
 # A harness shows what is left
 
 Harnesses now expose account windows only on explicit inspection; the usage gate proves normalization, unavailable readers and the separate ledger.
+
+Claude's reader asks Claude Code itself for `get_usage`; the gate's `usage.claude_is_asked_not_its_token` proves the built reader gets its windows from the CLI with no token of the operator's, from a process whose HOME is empty.

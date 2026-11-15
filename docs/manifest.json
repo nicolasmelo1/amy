@@ -525,6 +525,11 @@
           "description": ""
         },
         {
+          "title": "Claude's usage is read without its token",
+          "path": "/design/claudes-usage-is-read-without-its-token",
+          "description": ""
+        },
+        {
           "title": "Every plugin is proven end to end",
           "path": "/design/every-plugin-is-proven-end-to-end",
           "description": ""
@@ -1011,6 +1016,11 @@
           "depth": 3,
           "title": "The examples in the docs, the tests and the prove plugin's help name tickets PROJ-, the placeholder the rest of the suite already used. A private term can now be denied as a whole word, so a three-letter key is caught in XYZ-12 without also firing on every identifier that contains those letters.",
           "slug": "the-examples-in-the-docs-the-tests-and-the-prove-plugins-help-name-tickets-proj--the-placeholder-the-rest-of-the-suite-already-used-a-private-term-can-now-be-denied-as-a-whole-word-so-a-three-letter-key-is-caught-in-xyz-12-without-also-firing-on-every-identifier-that-contains-those-letters"
+        },
+        {
+          "depth": 3,
+          "title": "**Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, ~/.claude/.credentials.json or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for get_usage over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.",
+          "slug": "claudes-usage-is-read-without-its-token-the-usage-reader-took-claude-codes-oauth-token-from-the-environment-claudecredentialsjson-or-the-macos-keychain-and-called-an-undocumented-endpoint-it-now-asks-claude-code-itself-for-getusage-over-a-short-lived-print-mode-child-no-model-call-no-credential-of-the-operators-and-a-runner-without-a-managed-spawn-reads-as-unavailable"
         },
         {
           "depth": 2,
@@ -2960,6 +2970,17 @@
       "file": "docs/design/claude-says-its-limit-while-it-runs.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/claude-says-its-limit-while-it-runs.md",
       "title": "Claude says its limit while it runs",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/claudes-usage-is-read-without-its-token",
+      "file": "docs/design/claudes-usage-is-read-without-its-token.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/claudes-usage-is-read-without-its-token.md",
+      "title": "Claude's usage is read without its token",
       "description": "",
       "group": "",
       "order": 999,
@@ -8069,10 +8090,6 @@
         "package": "@amykit/cli"
       },
       {
-        "variable": "CLAUDE_CODE_OAUTH_TOKEN",
-        "package": "@amykit/plugin-claude"
-      },
-      {
         "variable": "CODEX_HOME",
         "package": "@amykit/plugin-codex"
       },
@@ -8354,9 +8371,7 @@
             "description": "how long one agent call may run before it is given up on"
           }
         ],
-        "environment": [
-          "CLAUDE_CODE_OAUTH_TOKEN"
-        ]
+        "environment": []
       },
       {
         "name": "@amykit/plugin-codex",
@@ -10532,13 +10547,15 @@
           "plugins/hermes-agent/src/**",
           "packages/cli/src/index.ts",
           "packages/cli/src/status-page.tsx",
-          "packages/cli/src/budget.ts"
+          "packages/cli/src/budget.ts",
+          "plugins/claude/tests/fixtures/get-usage-*.jsonl"
         ],
         "evidence": ".software-factory/evidence/harness-usage.json",
         "plan": "docs/design/a-harness-shows-what-is-left.md",
         "assertions": [
           "usage.readers_are_product_neutral",
           "usage.recorded_provider_windows_are_normalized",
+          "usage.claude_is_asked_not_its_token",
           "usage.ollama_is_unofficial_without_a_reset",
           "usage.status_keeps_other_readers_after_one_fails",
           "usage.budget_keeps_provider_windows_separate"
@@ -11534,6 +11551,18 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "claudes-usage-is-read-without-its-token",
+        "title": "**Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, `~/.claude/.credentials.json` or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for `get_usage` over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       }
     ],
     "changelogs": [
