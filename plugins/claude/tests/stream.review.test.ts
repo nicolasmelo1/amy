@@ -116,8 +116,8 @@ const claude = (() => {
       return [init(), limit({ status: "rejected", resetsAt, rateLimitType: "five_hour", utilization: 1, isUsingOverage: false }), said(text, "rate_limit"), result(text, true, 429)].join("\n");
     },
     /** The plan window is spent but usage credits carry the turn: it completes. */
-    onCredits(resetsAt: number) {
-      return [init(), limit({ status: "rejected", resetsAt, rateLimitType: "five_hour", overageStatus: "allowed", isUsingOverage: true }), said("done"), result("done", false)].join("\n");
+    onCredits(resetsAt: number, overageStatus: "allowed" | "allowed_warning" = "allowed") {
+      return [init(), limit({ status: "rejected", resetsAt, rateLimitType: "five_hour", overageStatus, isUsingOverage: true }), said("done"), result("done", false)].join("\n");
     },
   };
 })();
@@ -149,6 +149,18 @@ describe("HIGH: a turn carried by usage credits reads as refused", () => {
   it("is completed, with no wait, when overageStatus is allowed", () => {
     const now = Date.parse("2026-11-14T12:00:00.000Z");
     const parsed = parseRun(claude.onCredits(now / 1000 + 3_600), true, "sonnet", now);
+
+    expect(parsed.outcome).toBe("completed");
+    expect(parsed.retryAfterMs).toBeUndefined();
+  });
+
+  // Second review: 2.1.325 refuses only when overageStatus is absent or
+  // rejected (`status === "rejected" && (!overage || overage === "rejected")`
+  // in its rate-limit header handling). allowed_warning is credits running low,
+  // still carrying the turn; the fix exempts only "allowed".
+  it("is completed, with no wait, when overageStatus is allowed_warning", () => {
+    const now = Date.parse("2026-11-14T12:00:00.000Z");
+    const parsed = parseRun(claude.onCredits(now / 1000 + 3_600, "allowed_warning"), true, "sonnet", now);
 
     expect(parsed.outcome).toBe("completed");
     expect(parsed.retryAfterMs).toBeUndefined();
