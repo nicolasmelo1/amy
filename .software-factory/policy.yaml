@@ -132,11 +132,14 @@ gates:
       - "packages/cli/src/index.ts"
       - "packages/cli/src/status-page.tsx"
       - "packages/cli/src/budget.ts"
+      # The recorded get_usage answer is the claim: a changed one is a changed proof.
+      - "plugins/claude/tests/fixtures/get-usage-*.jsonl"
     evidence: ".software-factory/evidence/harness-usage.json"
     plan: "docs/design/a-harness-shows-what-is-left.md"
     required_assertions:
       - "usage.readers_are_product_neutral"
       - "usage.recorded_provider_windows_are_normalized"
+      - "usage.claude_is_asked_not_its_token"
       - "usage.ollama_is_unofficial_without_a_reset"
       - "usage.status_keeps_other_readers_after_one_fails"
       - "usage.budget_keeps_provider_windows_separate"

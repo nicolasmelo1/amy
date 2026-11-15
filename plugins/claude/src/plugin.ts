@@ -29,6 +29,8 @@ export const plugin = definePlugin<typeof configSchema>({
           timeoutMs: ctx.config.timeoutMs,
         }),
     });
-    contributeUsage(registry, new ClaudeUsageReader(ctx.runner, { timeoutMs: ctx.config.timeoutMs }));
+    // A usage read is an inspection, not a run: it gets the probe's own short
+    // deadline rather than the run timeout, so a hung CLI cannot hold status.
+    contributeUsage(registry, new ClaudeUsageReader(ctx.runner));
   },
 });

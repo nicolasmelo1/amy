@@ -65,7 +65,6 @@ against the schema it declares, and the plugin reads them back typed by it:
 | :-- | :-- |
 | `AMY_PROJECT_ENV` | `@amykit/cli` |
 | `AMY_SUPERVISOR` | `@amykit/cli` |
-| `CLAUDE_CODE_OAUTH_TOKEN` | `@amykit/plugin-claude` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
 | `LANG` | `@amykit/cli` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |

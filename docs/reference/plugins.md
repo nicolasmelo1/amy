@@ -148,7 +148,7 @@ The claude CLI as the agent, over its JSON envelope.
 | Source | `plugins/claude` |
 | Mounts | _nothing_ |
 | Contributes | `harness:claude`, `usage:Claude` |
-| Needs in the environment | `CLAUDE_CODE_OAUTH_TOKEN` |
+| Needs in the environment | _nothing_ |
 | Depends on | `@amykit/agent-kit`, `@amykit/core`, `@amykit/model-specs` |
 
 ```yaml
