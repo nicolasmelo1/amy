@@ -14,7 +14,8 @@ import {
   isLimited,
   resetAt,
   tokensOfTurn,
-} from "../src/index.js";
+} from "../src/CodexHarness.js";
+import { skillRoot } from "../src/CodexHarness.js";
 
 const completed: CodexTurn = {
   status: "completed",
@@ -56,7 +57,7 @@ const complete = (limited = false) => { send({jsonrpc:"2.0",method:"thread/token
 if (process.env.AMY_SANDBOX_FILE) process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (line && JSON.parse(line).method === "thread/start") fs.writeFileSync(process.env.AMY_SANDBOX_FILE, JSON.parse(line).params.sandbox); } });
 if (${JSON.stringify(mode)} === "ignore-term") process.on("SIGTERM", () => {});
 if (${JSON.stringify(mode)} === "split-stderr") { const bytes=Buffer.from("café"); process.stderr.write(bytes.subarray(0,4)); setTimeout(() => process.stderr.write(bytes.subarray(4)), 2); }
-process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { const f=r.params.config?.features; const valid = r.params.approvalPolicy === "never" && r.params.sandbox === "read-only" && r.params.ephemeral === true && hasOnly(r.params, ["cwd","model","sandbox","ephemeral","config","approvalPolicy"]) && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false && hasOnly(f, ["hooks","plugins","apps","memories"]); if (${JSON.stringify(mode)} === "protocol-config" && !valid) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { if (${JSON.stringify(mode)} === "protocol-config" && (!hasOnly(r.params, ["threadId","input"]) || !Array.isArray(r.params.input) || r.params.input.length !== 1 || r.params.input[0]?.type !== "text" || r.params.input[0]?.text !== "read it" || requests.map(request => request.method).join(",") !== "initialize,thread/start,turn/start")) process.exit(9); reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit" || ${JSON.stringify(mode)} === "rate-cancellable"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else if (${JSON.stringify(mode)} !== "rate-cancellable") reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
+process.stdin.on("data", chunk => { for (const line of String(chunk).trim().split("\\n")) { if (!line) continue; const r=JSON.parse(line); requests.push(r); if (["initialize-timeout","ignore-term","cancellable","split-stderr"].includes(${JSON.stringify(mode)})) continue; if (${JSON.stringify(mode)} === "premature-exit") process.exit(9); if (r.method === "initialize") reply(r.id, {}); else if (r.method === "thread/start") { if (process.env.AMY_SKILL_FILE) fs.writeFileSync(process.env.AMY_SKILL_FILE, fs.existsSync(process.env.CODEX_HOME + "/skills/amy-groom/SKILL.md") ? "lent" : "bare"); if (process.env.AMY_HOME_FILE) fs.writeFileSync(process.env.AMY_HOME_FILE, process.env.CODEX_HOME); const f=r.params.config?.features; const valid = r.params.approvalPolicy === "never" && r.params.sandbox === "read-only" && r.params.ephemeral === true && hasOnly(r.params, ["cwd","model","sandbox","ephemeral","config","approvalPolicy"]) && f?.hooks === false && f?.plugins === false && f?.apps === false && f?.memories === false && hasOnly(f, ["hooks","plugins","apps","memories"]); if (${JSON.stringify(mode)} === "protocol-config" && !valid) reply(r.id, {thread:{}}); else reply(r.id, {thread:{id:"thread-1"}}); } else if (r.method === "turn/start") { if (${JSON.stringify(mode)} === "protocol-config" && (!hasOnly(r.params, ["threadId","input"]) || !Array.isArray(r.params.input) || r.params.input.length !== 1 || r.params.input[0]?.type !== "text" || r.params.input[0]?.text !== "read it" || requests.map(request => request.method).join(",") !== "initialize,thread/start,turn/start")) process.exit(9); reply(r.id, {}); complete(${JSON.stringify(mode)} === "rate-exit" || ${JSON.stringify(mode)} === "streamed-limit" || ${JSON.stringify(mode)} === "rate-cancellable"); } else if (r.method === "account/rateLimits/read") { if (${JSON.stringify(mode)} === "rate-exit") process.exit(8); else if (${JSON.stringify(mode)} !== "rate-cancellable") reply(r.id, {rateLimits:{primary:{resetsAt:1800000000}}}); } } });
 `,
   );
   return new StdioCodexAppServer({
@@ -312,17 +313,69 @@ describe("usage mapping", () => {
   });
 });
 
-describe("where the harness's own skills are (A10)", () => {
-  it("says CODEX_HOME's skills, ~/.codex/skills when it is unset", () => {
-    const before = process.env.CODEX_HOME;
+describe("where the harness's own skills are (A6)", () => {
+  it("follows the roots codex 0.166 reads, preferring ~/.agents/skills when it exists", () => {
+    // Measured on the installed codex-cli 0.166.0: its skill loader scans the
+    // deprecated $CODEX_HOME/skills and the documented $HOME/.agents/skills as
+    // user roots, so the newer one is where a moved install keeps them.
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-skills-root-"));
     try {
-      delete process.env.CODEX_HOME;
-      expect(new CodexHarness(new ScriptedRunner()).skillsDirectory).toBe(path.join(os.homedir(), ".codex", "skills"));
-      process.env.CODEX_HOME = "/elsewhere/codex";
-      expect(new CodexHarness(new ScriptedRunner()).skillsDirectory).toBe(path.join("/elsewhere/codex", "skills"));
+      expect(skillRoot(home, "/elsewhere/codex")).toBe(path.join("/elsewhere/codex", "skills"));
+      fs.mkdirSync(path.join(home, ".agents", "skills"), { recursive: true });
+      expect(skillRoot(home, "/elsewhere/codex")).toBe(path.join(home, ".agents", "skills"));
     } finally {
-      if (before === undefined) delete process.env.CODEX_HOME;
-      else process.env.CODEX_HOME = before;
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("lending a skill (A1, A2)", () => {
+  it("links the skill under the fresh home and the link goes with the home", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-lend-"));
+    const skill = path.join(root, "amy-groom");
+    fs.mkdirSync(skill);
+    fs.writeFileSync(path.join(skill, "SKILL.md"), "# amy-groom\n");
+    const userHome = path.join(root, "user-codex");
+    fs.mkdirSync(userHome);
+    fs.writeFileSync(path.join(userHome, "config.toml"), "[hooks]\nenabled=true\n");
+    fs.writeFileSync(path.join(userHome, "auth.json"), "credential");
+    const seen = path.join(root, "seen");
+    const homeFile = path.join(root, "home");
+    try {
+      const harness = new CodexHarness(
+        new ScriptedRunner(),
+        { model: "gpt-5" },
+        fakeServer("normal", { CODEX_HOME: userHome, AMY_SKILL_FILE: seen, AMY_HOME_FILE: homeFile }),
+      );
+      const reply = await harness.ask("go", process.cwd(), { skill: { name: "amy-groom", path: skill } });
+
+      expect(harness.lendsSkill).toBe(true);
+      expect(reply.run.outcome).toBe("completed");
+      // The app-server's own home held the skill, and only the credential of
+      // the operator's: no config.toml reached it.
+      expect(fs.readFileSync(seen, "utf8")).toBe("lent");
+      expect(reply.text).toBe("authenticated");
+      // The home, and the link in it, are gone after the turn.
+      expect(fs.existsSync(fs.readFileSync(homeFile, "utf8"))).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not lend a directory holding no SKILL.md, as on claude", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-no-skill-"));
+    const seen = path.join(root, "seen");
+    try {
+      const harness = new CodexHarness(
+        new ScriptedRunner(),
+        { model: "gpt-5" },
+        fakeServer("normal", { AMY_SKILL_FILE: seen }),
+      );
+      await harness.ask("go", process.cwd(), { skill: { name: "amy-groom", path: path.join(root, "empty") } });
+
+      expect(fs.readFileSync(seen, "utf8")).toBe("bare");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
     }
   });
 });

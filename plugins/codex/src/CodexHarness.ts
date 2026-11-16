@@ -1,5 +1,5 @@
 import { ChildProcessWithoutNullStreams } from "node:child_process";
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -54,6 +54,8 @@ export interface CodexAppServer {
     cwd: string;
     model?: string;
     readOnly: boolean;
+    /** The skill the prompt is addressed to, when the relay lent one. */
+    skill?: { readonly name: string; readonly path: string };
   }): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }>;
 }
 export interface CodexAppServerOptions {
@@ -98,11 +100,16 @@ export class StdioCodexAppServer implements CodexAppServer {
     cwd: string;
     model?: string;
     readOnly: boolean;
+    skill?: { readonly name: string; readonly path: string };
   }): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }> {
     // A fresh home is the app-server equivalent of exec's ephemeral, disabled
     // user configuration: no AGENTS.md, skills, hooks, plugins, apps, memories
     // or persisted session can enter from the operator's CODEX_HOME.
     const home = isolatedHome(this.options);
+    // The one skill the turn is addressed to, and nothing else of the
+    // operator's: codex reads `$CODEX_HOME/skills` as a user root, so a link
+    // under this home is the whole lending.
+    if (input.skill) lendSkill(home, input.skill);
     let child: ChildProcessWithoutNullStreams | undefined;
     let stderr = "";
     try {
@@ -220,6 +227,36 @@ function isolatedHome(options: CodexAppServerOptions): string {
   // copying the home would reintroduce instructions, skills and hooks.
   if (existsSync(auth)) copyFileSync(auth, path.join(home, "auth.json"));
   return home;
+}
+
+/**
+ * Where codex's own skills are, as codex 0.166 reads them.
+ *
+ * The CLI scans two user roots: `$CODEX_HOME/skills`, which its own source
+ * marks deprecated and keeps for compatibility, and `$HOME/.agents/skills`,
+ * which its documentation names. The newer root wins when it is there, so an
+ * install that has moved is followed; otherwise the old one is still where
+ * the operator's skills are.
+ */
+export function skillRoot(home: string, codexHome: string): string {
+  const agents = path.join(home, ".agents", "skills");
+  return existsSync(agents) ? agents : path.join(codexHome, "skills");
+}
+
+/**
+ * Links one skill under a fresh home's `skills`, and says whether it could.
+ *
+ * A skill whose directory holds no `SKILL.md` is not lent, as on claude. The
+ * link lives in the home, so removing the home removes it and nothing of the
+ * operator's is reachable beside it.
+ */
+function lendSkill(home: string, skill: { name: string; path: string }): boolean {
+  const source = path.resolve(skill.path);
+  if (!existsSync(path.join(source, "SKILL.md"))) return false;
+  const skills = path.join(home, "skills");
+  mkdirSync(skills, { recursive: true });
+  symlinkSync(source, path.join(skills, skill.name), "dir");
+  return true;
 }
 
 async function readLimits(
@@ -418,14 +455,17 @@ function failedTurn(error: unknown, stderr = ""): CodexTurn {
 
 export class CodexHarness implements Harness {
   readonly name = "codex";
-  /** The operator's own skills, where Codex installs them: under CODEX_HOME, or ~/.codex. */
-  readonly skillsDirectory = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "skills");
+  /** It is handed a skill by place: a link in the fresh home the run gets. */
+  readonly lendsSkill = true;
+  /** The operator's own skills, where the codex CLI reads its user roots. */
+  readonly skillsDirectory: string;
   private readonly app: CodexAppServer;
   constructor(
     _runner: CommandRunner,
     private readonly config: CodexHarnessConfig = {},
     app?: CodexAppServer,
   ) {
+    this.skillsDirectory = skillRoot(os.homedir(), process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"));
     this.app =
       app ??
       new StdioCodexAppServer({ timeoutMs: config.timeoutMs, runner: _runner });
@@ -441,6 +481,7 @@ export class CodexHarness implements Harness {
       cwd,
       model: this.config.model,
       readOnly: Boolean(context.readOnly),
+      ...(context.skill ? { skill: context.skill } : {}),
     });
     const text = messageOfTurn(result.turn);
     const outcome = classify(result.turn);

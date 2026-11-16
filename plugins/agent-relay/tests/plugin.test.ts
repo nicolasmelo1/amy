@@ -17,7 +17,7 @@ const host: HostServices = {
 const asked: { prompt: string; by: string; context?: AskContext }[] = [];
 
 /** A stand-in harness plugin, contributing tiers without running anything. */
-function harnessPlugin(harness: string, models: string[], skillsDirectory?: string): Plugin {
+function harnessPlugin(harness: string, models: string[], skillsDirectory?: string, lendsSkill = true): Plugin {
   return {
     name: `@amykit/plugin-${harness}-fake`,
     register(registry) {
@@ -29,6 +29,7 @@ function harnessPlugin(harness: string, models: string[], skillsDirectory?: stri
           model,
           cli: {
             name: harness,
+            ...(lendsSkill ? { lendsSkill: true } : {}),
             ...(skillsDirectory ? { skillsDirectory } : {}),
             ask: async (prompt: string, _cwd: string, context?: AskContext): Promise<HarnessReply> => {
               asked.push({ prompt, by: name, context });
@@ -404,5 +405,68 @@ describe("a harness's own skills, chosen by its plugin's name (A10)", () => {
     );
 
     expect(outcome.ok === false && outcome.problems.join("\n")).toMatch(/codex.*does not say where its skills are/);
+  });
+
+  it("mounts harnessSkills.hermes true over the skills the profile holds (A5)", async () => {
+    const profileSkills = path.join(machine, "hermes-home", "profiles", "amy", "skills");
+    fs.mkdirSync(path.join(profileSkills, "amy-groom"), { recursive: true });
+    fs.writeFileSync(path.join(profileSkills, "amy-groom", "SKILL.md"), "# groom\n");
+
+    const outcome = await mount(
+      [relay, harnessPlugin("hermes", ["gpt-5"], profileSkills)],
+      relayWith({ harnessSkills: { hermes: true }, skills: { chat: ["/amy-groom"] } }),
+      state(),
+    );
+
+    expect(outcome.ok === false ? outcome.problems : []).toEqual([]);
+  });
+});
+
+describe("a skill ladder over a harness ladder that cannot lend (A7)", () => {
+  let root: string;
+
+  beforeAll(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-lend-refusal-"));
+    fs.mkdirSync(path.join(root, "logion"));
+    fs.writeFileSync(path.join(root, "logion", "SKILL.md"), "# logion\n");
+  });
+
+  afterAll(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("is refused at boot, naming the step and the rung", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"]), harnessPlugin("codex", ["gpt-5"], undefined, false)],
+      {
+        "@amykit/plugin-agent-relay": {
+          ladder: ["claude:sonnet", "codex:gpt-5"],
+          skills: { triage: ["/logion"] },
+          skillRoots: [root],
+        },
+      },
+      host,
+    );
+
+    const said = outcome.ok === false ? outcome.problems.join("\n") : "";
+    expect(said).toContain("skills.triage");
+    expect(said).toContain("codex:gpt-5");
+  });
+
+  it("mounts when the skill's own step ladder reaches only harnesses that lend", async () => {
+    const outcome = await mount(
+      [relay, harnessPlugin("claude", ["sonnet"]), harnessPlugin("codex", ["gpt-5"], undefined, false)],
+      {
+        "@amykit/plugin-agent-relay": {
+          ladder: ["codex:gpt-5"],
+          ladderByStep: { triage: ["claude:sonnet"] },
+          skills: { triage: ["/logion"] },
+          skillRoots: [root],
+        },
+      },
+      host,
+    );
+
+    expect(outcome.ok === false ? outcome.problems : []).toEqual([]);
   });
 });

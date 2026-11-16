@@ -2,7 +2,7 @@ import { NodeCommandRunner, definePlugin } from "@amykit/core";
 import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
 import { HermesHarness } from "./HermesHarness.js";
 import { configSchema } from "./config.js";
-import { checkProfile, prepareProfile } from "./profile.js";
+import { amySkillRoot, checkProfile, prepareProfile } from "./profile.js";
 import { HermesUsageReader } from "./usage.js";
 
 export const plugin = definePlugin<typeof configSchema>({
@@ -11,13 +11,13 @@ export const plugin = definePlugin<typeof configSchema>({
   setup: [
     {
       name: "hermes profile",
-      run: ({ runner, settings }) => prepareProfile(runner, settings.profile),
+      run: ({ runner, settings, state }) => prepareProfile(runner, settings.profile, amySkillRoot(state)),
     },
   ],
   checks: [
     {
       name: "hermes profile",
-      run: ({ settings }) => checkProfile(new NodeCommandRunner(), settings.profile),
+      run: ({ settings, state }) => checkProfile(new NodeCommandRunner(), settings.profile, amySkillRoot(state)),
     },
   ],
   register(registry, ctx) {

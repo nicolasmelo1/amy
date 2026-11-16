@@ -17,7 +17,7 @@ import {
   ConfigOf,
 } from "@amykit/core";
 import { MODELS_DEV_URL, ModelsDevCatalog, OVERRIDE_FILE, RefreshReport, forgetSpecTable, refreshFrom, specTable } from "@amykit/model-specs";
-import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders } from "@amykit/agent-kit";
+import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders, rungsFor } from "@amykit/agent-kit";
 import { z } from "zod";
 import { configSchema } from "./config.js";
 
@@ -220,15 +220,41 @@ function build(ctx: TypedContext): HarnessRelay {
   // which models are underneath it. `register` has only the first.
   refuseAnInertCeiling(ctx, rungs);
 
+  const skills = skillLadders(ctx, contributed);
+  // A skill ladder and a harness ladder are two answers to the same step, and
+  // a rung that cannot be handed the skill is a rung at which the step would
+  // silently stop being the skill's.
+  refuseASkillOnAHarnessThatCannotLend(skills, rungs);
+
   return new HarnessRelay(rungs, {
     log: ctx.log,
     now: ctx.now,
-    skills: skillLadders(ctx, contributed),
+    skills,
     // Lent only from amy's own root and the configured ones: a harness's skill
     // is lent through the link the run made, so one it could not link is not
     // lent from the harness's directory behind the setting's back.
     locate: (skill) => locateSkill(skillRoots(ctx.config.skillRoots, ctx.paths.state), skill),
   });
+}
+
+/**
+ * Refuses a skill ladder whose step can reach a harness that cannot be handed
+ * the skill.
+ *
+ * The relay would have to send `/name` with nothing behind it, which is the
+ * one thing the skill ladder exists to prevent. Saying so at boot names the
+ * step and the rung, so the fix is a config line rather than a ticket that
+ * quietly ran without its method.
+ */
+function refuseASkillOnAHarnessThatCannotLend(skills: SkillLadders, rungs: Ladders<NamedHarness>): void {
+  for (const [step, ladder] of Object.entries(skills)) {
+    const unreachable = rungsFor(rungs, step).find((rung) => rung.cli.lendsSkill !== true);
+    if (!unreachable) continue;
+    throw new Error(
+      `\`skills.${step}\` names ${ladder.map((name) => `/${name}`).join(", ")}, and its ladder reaches \`${unreachable.name}\`, which cannot be handed a skill. ` +
+        `Name a ladder of harnesses that lend, or remove the skill from that step.`,
+    );
+  }
 }
 
 /**

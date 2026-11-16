@@ -33,6 +33,18 @@ export interface HermesUsage {
 }
 
 /**
+ * Where a Hermes profile keeps its skills.
+ *
+ * A named profile has its own `skills` directory, cloned from the active one,
+ * so that is the set the run reads. Without a profile the operator's own
+ * `~/.hermes/skills` is the one, which is exactly the setup `-p` exists to
+ * avoid.
+ */
+export function skillsRoot(profile: string | undefined, hermesHome = process.env.HERMES_HOME ?? path.join(os.homedir(), ".hermes")): string {
+  return profile ? path.join(hermesHome, "profiles", profile, "skills") : path.join(hermesHome, "skills");
+}
+
+/**
  * Hermes, over its one-shot mode.
  *
  * `-z` prints only the final response, and `--usage-file` writes the account
@@ -42,12 +54,18 @@ export interface HermesUsage {
  */
 export class HermesHarness implements Harness {
   readonly name = "hermes";
+  /** It is handed a skill by name: `-s`, resolved through the profile. */
+  readonly lendsSkill = true;
+  /** The skills the profile amy runs in reads. */
+  readonly skillsDirectory: string;
 
   constructor(
     private readonly runner: CommandRunner,
     private readonly config: HermesHarnessConfig = {},
     private readonly tmpDir: string = os.tmpdir(),
-  ) {}
+  ) {
+    this.skillsDirectory = skillsRoot(config.profile);
+  }
 
   async ask(prompt: string, cwd: string, context: AskContext = {}): Promise<HarnessReply> {
     // `-z` has no mode that keeps the agent's tools off the checkout, so a run
@@ -62,6 +80,10 @@ export class HermesHarness implements Harness {
     }
     const report = path.join(this.tmpDir, `amy-hermes-${process.pid}-${Date.now()}.json`);
     const args = this.config.profile ? ["-p", this.config.profile] : [];
+    // The skill the prompt is addressed to, by name: the profile's
+    // `external_dirs` is where Hermes finds amy's root, and `-s` is which
+    // skill in it this turn must load.
+    if (context.skill) args.push("-s", context.skill.name);
     args.push("-z", prompt, "--usage-file", report);
     if (this.config.model) {
       args.push("-m", this.config.model);
