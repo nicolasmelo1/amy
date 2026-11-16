@@ -39,29 +39,76 @@ export function externalDirsSetting(skillRoot: string): ProfileSetting {
   return { key: "skills.external_dirs", value: JSON.stringify([skillRoot]), says: "does not name amy's skills" };
 }
 
+/**
+ * The directories `hermes config get skills.external_dirs` printed.
+ *
+ * The CLI prints a YAML list (`  - /a`) and accepts one, and a JSON array is
+ * what amy writes; both read back as the same entries. Anything else is no
+ * entries rather than a guess, because a prefix that merely starts the same is
+ * a different directory.
+ */
+export function externalDirsIn(stdout: string): string[] {
+  const text = stdout.trim();
+  if (!text) return [];
+  if (text.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      return Array.isArray(parsed) ? parsed.filter((one): one is string => typeof one === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+  return text
+    .split("\n")
+    .map((line) => /^\s*-\s*(.+?)\s*$/.exec(line)?.[1])
+    .filter((one): one is string => Boolean(one))
+    .map((one) => one.replace(/^["']|["']$/g, ""));
+}
+
 const DESCRIPTION = "amy's runs: one-shot ticket work that keeps no memory and writes no skill unasked";
 
 /**
- * Makes the profile amy runs in, once.
+ * Makes the profile amy runs in, once, and keeps its skill root named.
  *
  * Cloned from the active profile, which carries the model, the provider keys
  * and the skills; Hermes reads the login through its credential pool, so the
- * clone needs no second sign-in. A profile that exists is left alone: what is
- * in it is whoever edited it, and the doctor is what says when it drifted.
+ * clone needs no second sign-in. A profile that exists keeps whoever edited it
+ * — the doctor reports drift — but `skills.external_dirs` is written either
+ * way: `config set` replaces the list, so the directories it already named are
+ * read first and kept beside amy's root.
  */
 export async function prepareProfile(runner: CommandRunner, profile: string, skillRoot: string): Promise<Check> {
   const label = `hermes profile ${profile}`;
-  if (await exists(runner, profile)) return { label, ok: true, detail: "kept: it already exists" };
+  const existed = await exists(runner, profile);
+  if (!existed) {
+    const created = await runner.run("hermes", ["profile", "create", profile, "--clone", "--no-alias", "--description", DESCRIPTION]);
+    if (!created.ok) return { label, ok: false, detail: failure("could not create it", created) };
 
-  const created = await runner.run("hermes", ["profile", "create", profile, "--clone", "--no-alias", "--description", DESCRIPTION]);
-  if (!created.ok) return { label, ok: false, detail: failure("could not create it", created) };
-
-  for (const setting of [...PROFILE_SETTINGS, externalDirsSetting(skillRoot)]) {
-    const set = await runner.run("hermes", ["-p", profile, "config", "set", setting.key, setting.value]);
-    if (!set.ok) return { label, ok: false, detail: failure(`created it, but could not set ${setting.key}`, set) };
+    for (const setting of PROFILE_SETTINGS) {
+      const set = await runner.run("hermes", ["-p", profile, "config", "set", setting.key, setting.value]);
+      if (!set.ok) return { label, ok: false, detail: failure(`created it, but could not set ${setting.key}`, set) };
+    }
   }
 
-  return { label, ok: true, detail: "created from the active profile, with memory, amy's skill root, unasked skill writes and the curator off" };
+  const current = await runner.run("hermes", ["-p", profile, "config", "get", "skills.external_dirs"]);
+  const dirs = externalDirsIn(current.stdout);
+  const named = dirs.includes(skillRoot) ? dirs : [...dirs, skillRoot];
+  const set = await runner.run("hermes", ["-p", profile, "config", "set", "skills.external_dirs", JSON.stringify(named)]);
+  if (!set.ok) {
+    return {
+      label,
+      ok: false,
+      detail: failure(`${existed ? "kept it" : "created it"}, but could not set skills.external_dirs`, set),
+    };
+  }
+
+  return {
+    label,
+    ok: true,
+    detail: existed
+      ? "kept: it already exists, and amy's skill root is named beside the directories it had"
+      : "created from the active profile, with memory, amy's skill root, unasked skill writes and the curator off",
+  };
 }
 
 /**
@@ -92,9 +139,9 @@ export async function checkProfile(runner: CommandRunner, profile: string, skill
     : { label, ok: false, detail: `the profile ${drifted.join("; ")}` };
 }
 
-/** Whether the profile still holds what amy set: a scalar verbatim, a list by its entry. */
+/** Whether the profile still holds what amy set: a scalar verbatim, a list by its exact entry. */
 function holds(setting: ProfileSetting, stdout: string, skillRoot: string): boolean {
-  if (setting.key === "skills.external_dirs") return stdout.includes(skillRoot);
+  if (setting.key === "skills.external_dirs") return externalDirsIn(stdout).includes(skillRoot);
   return stdout.trim().toLowerCase() === setting.value;
 }
 

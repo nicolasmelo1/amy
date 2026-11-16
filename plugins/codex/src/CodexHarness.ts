@@ -1,5 +1,5 @@
 import { ChildProcessWithoutNullStreams } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -102,67 +102,23 @@ export class StdioCodexAppServer implements CodexAppServer {
     readOnly: boolean;
     skill?: { readonly name: string; readonly path: string };
   }): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }> {
+    // A skill codex could not load is refused before the app-server starts:
+    // sending the turn anyway would look like work and prove nothing.
+    const refused = refusedSkill(input.skill);
+    if (refused) return refused;
     // A fresh home is the app-server equivalent of exec's ephemeral, disabled
     // user configuration: no AGENTS.md, skills, hooks, plugins, apps, memories
     // or persisted session can enter from the operator's CODEX_HOME.
     const home = isolatedHome(this.options);
     // The one skill the turn is addressed to, and nothing else of the
-    // operator's: codex reads `$CODEX_HOME/skills` as a user root, so a link
-    // under this home is the whole lending.
+    // operator's: the fresh HOME has no user root, and this link is the only
+    // skill codex can discover. The turn also names it explicitly below.
     if (input.skill) lendSkill(home, input.skill);
-    let child: ChildProcessWithoutNullStreams | undefined;
     let stderr = "";
     try {
-      if (!this.options.runner?.spawn) {
-        throw new Error(
-          "codex app-server requires a command runner with managed spawn support",
-        );
-      }
-      child = this.options.runner.spawn(
-        this.options.command,
-        [...(this.options.args ?? []), "app-server"],
-        {
-          cwd: input.cwd,
-          env: { ...process.env, ...this.options.env, CODEX_HOME: home },
-        },
-      );
-      const session = new RpcSession(
-        child,
-        this.options.timeoutMs,
-        this.options.shutdownGraceMs ?? 250,
-      );
+      const session = this.sessionFor(input, home);
       try {
-        await session.request("initialize", {
-          clientInfo: { name: "amy", version: "0" },
-          capabilities: {},
-        });
-        const started = (await session.request("thread/start", {
-          cwd: input.cwd,
-          model: input.model ?? null,
-          sandbox: input.readOnly ? "read-only" : "workspace-write",
-          ephemeral: true,
-          config: {
-            features: {
-              hooks: false,
-              plugins: false,
-              apps: false,
-              memories: false,
-            },
-          },
-          approvalPolicy: "never",
-        })) as { thread?: { id?: string } };
-        const threadId = started.thread?.id;
-        if (!threadId)
-          throw new Error("codex app-server did not return a thread id");
-        await session.request("turn/start", {
-          threadId,
-          input: [{ type: "text", text: input.prompt }],
-        });
-        const turn = await session.turn;
-        return {
-          turn: session.usage ? { ...turn, usage: session.usage } : turn,
-          limits: await readLimits(session, turn),
-        };
+        return await exchange(session, input);
       } catch (error) {
         stderr = session.stderr;
         return { turn: failedTurn(error, stderr) };
@@ -174,6 +130,34 @@ export class StdioCodexAppServer implements CodexAppServer {
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
+  }
+
+  /** The child and its session, or the error that says why there is none. */
+  private sessionFor(
+    input: { cwd: string },
+    home: string,
+  ): RpcSession {
+    if (!this.options.runner?.spawn) {
+      throw new Error(
+        "codex app-server requires a command runner with managed spawn support",
+      );
+    }
+    const child = this.options.runner.spawn(
+      this.options.command,
+      [...(this.options.args ?? []), "app-server"],
+      {
+        cwd: input.cwd,
+        // HOME is the fresh home too: codex 0.166 scans `$HOME/.agents/skills`
+        // as a user root, and leaving the operator's HOME in place would let
+        // their own skills into a run that is meant to see one.
+        env: { ...process.env, ...this.options.env, CODEX_HOME: home, HOME: home },
+      },
+    );
+    return new RpcSession(
+      child,
+      this.options.timeoutMs,
+      this.options.shutdownGraceMs ?? 250,
+    );
   }
 
   /** Reads account limits only; it never starts a thread or a turn. */
@@ -190,7 +174,7 @@ export class StdioCodexAppServer implements CodexAppServer {
         [...(this.options.args ?? []), "app-server"],
         {
           cwd: process.cwd(),
-          env: { ...process.env, ...this.options.env, CODEX_HOME: home },
+          env: { ...process.env, ...this.options.env, CODEX_HOME: home, HOME: home },
         },
       );
       const session = new RpcSession(
@@ -244,19 +228,105 @@ export function skillRoot(home: string, codexHome: string): string {
 }
 
 /**
- * Links one skill under a fresh home's `skills`, and says whether it could.
+ * Links the validated skill under the fresh home's `skills`.
  *
- * A skill whose directory holds no `SKILL.md` is not lent, as on claude. The
- * link lives in the home, so removing the home removes it and nothing of the
- * operator's is reachable beside it.
+ * Codex 0.166 reads `$CODEX_HOME/skills` and `$HOME/.agents/skills`; the run's
+ * HOME and CODEX_HOME are both this fresh home, so this link is the only skill
+ * the run can discover beside the explicit `turn/start` input.
  */
-function lendSkill(home: string, skill: { name: string; path: string }): boolean {
-  const source = path.resolve(skill.path);
-  if (!existsSync(path.join(source, "SKILL.md"))) return false;
+function lendSkill(home: string, skill: { name: string; path: string }): void {
   const skills = path.join(home, "skills");
   mkdirSync(skills, { recursive: true });
-  symlinkSync(source, path.join(skills, skill.name), "dir");
-  return true;
+  symlinkSync(path.resolve(skill.path), path.join(skills, skill.name), "dir");
+}
+
+/**
+ * Why codex would not load the lent skill, or undefined when it will.
+ *
+ * Codex 0.166 refuses a SKILL.md with no YAML frontmatter, so a directory
+ * without one is not a skill it can be asked for. The turn is refused before
+ * it starts rather than run without the skill it is addressed to.
+ */
+function skillProblem(skill: { name: string; path: string }): string | undefined {
+  const file = path.join(path.resolve(skill.path), "SKILL.md");
+  if (!existsSync(file)) {
+    return `/${skill.name} cannot be lent to codex: ${file} does not exist, so the turn would run without the skill`;
+  }
+  const body = readFileSync(file, "utf8");
+  if (!/^---\r?\n[\s\S]*?\r?\n---/.test(body)) {
+    return `/${skill.name} cannot be lent to codex: ${file} has no YAML frontmatter delimited by ---, which codex 0.166 refuses`;
+  }
+  return undefined;
+}
+
+/**
+ * What `turn/start` carries.
+ *
+ * A skill is an explicit input item with the path of its SKILL.md, which is how
+ * codex 0.166's `UserInput` names one; a leading `/name` is not a skill mention
+ * to codex, so it is removed from the text rather than sent as prose.
+ */
+function turnInput(
+  prompt: string,
+  skill?: { readonly name: string; readonly path: string },
+): readonly { type: string; text?: string; name?: string; path?: string }[] {
+  if (!skill) return [{ type: "text", text: prompt }];
+  const addressed = `/${skill.name}`;
+  const body = prompt.startsWith(addressed) ? prompt.slice(addressed.length).replace(/^\s+/, "") : prompt;
+  return [
+    { type: "skill", name: skill.name, path: path.join(path.resolve(skill.path), "SKILL.md") },
+    { type: "text", text: body },
+  ];
+}
+
+/** A turn addressed to a skill codex could not load, or undefined when it could. */
+function refusedSkill(skill: { readonly name: string; readonly path: string } | undefined): { turn: CodexTurn } | undefined {
+  if (!skill) return undefined;
+  const problem = skillProblem(skill);
+  return problem ? { turn: failedTurn(new Error(problem)) } : undefined;
+}
+
+/** The protocol conversation a run is: initialize, thread, turn, completion. */
+async function exchange(
+  session: RpcSession,
+  input: {
+    prompt: string;
+    cwd: string;
+    model?: string;
+    readOnly: boolean;
+    skill?: { readonly name: string; readonly path: string };
+  },
+): Promise<{ turn: CodexTurn; limits?: CodexRateLimits }> {
+  await session.request("initialize", {
+    clientInfo: { name: "amy", version: "0" },
+    capabilities: {},
+  });
+  const started = (await session.request("thread/start", {
+    cwd: input.cwd,
+    model: input.model ?? null,
+    sandbox: input.readOnly ? "read-only" : "workspace-write",
+    ephemeral: true,
+    config: {
+      features: {
+        hooks: false,
+        plugins: false,
+        apps: false,
+        memories: false,
+      },
+    },
+    approvalPolicy: "never",
+  })) as { thread?: { id?: string } };
+  const threadId = started.thread?.id;
+  if (!threadId) throw new Error("codex app-server did not return a thread id");
+  await session.request("turn/start", {
+    threadId,
+    input: turnInput(input.prompt, input.skill),
+  });
+  const turn = await session.turn;
+  return {
+    turn: session.usage ? { ...turn, usage: session.usage } : turn,
+    limits: await readLimits(session, turn),
+  };
 }
 
 async function readLimits(

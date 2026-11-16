@@ -334,7 +334,7 @@ describe("lending a skill (A1, A2)", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-lend-"));
     const skill = path.join(root, "amy-groom");
     fs.mkdirSync(skill);
-    fs.writeFileSync(path.join(skill, "SKILL.md"), "# amy-groom\n");
+    fs.writeFileSync(path.join(skill, "SKILL.md"), "---\nname: amy-groom\ndescription: groom a ticket\n---\n# amy-groom\n");
     const userHome = path.join(root, "user-codex");
     fs.mkdirSync(userHome);
     fs.writeFileSync(path.join(userHome, "config.toml"), "[hooks]\nenabled=true\n");
@@ -362,7 +362,7 @@ describe("lending a skill (A1, A2)", () => {
     }
   });
 
-  it("does not lend a directory holding no SKILL.md, as on claude", async () => {
+  it("refuses a directory holding no SKILL.md before the turn starts", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-codex-no-skill-"));
     const seen = path.join(root, "seen");
     try {
@@ -371,9 +371,13 @@ describe("lending a skill (A1, A2)", () => {
         { model: "gpt-5" },
         fakeServer("normal", { AMY_SKILL_FILE: seen }),
       );
-      await harness.ask("go", process.cwd(), { skill: { name: "amy-groom", path: path.join(root, "empty") } });
+      const reply = await harness.ask("go", process.cwd(), { skill: { name: "amy-groom", path: path.join(root, "empty") } });
 
-      expect(fs.readFileSync(seen, "utf8")).toBe("bare");
+      // No thread was started, so the app-server never ran: the turn is
+      // refused rather than sent without the skill it is addressed to.
+      expect(fs.existsSync(seen)).toBe(false);
+      expect(reply.run.outcome).toBe("failed");
+      expect(reply.run.output).toContain("amy-groom");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

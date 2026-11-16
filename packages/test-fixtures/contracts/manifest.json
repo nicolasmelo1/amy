@@ -51,5 +51,21 @@
       "version": "10.4",
       "sha256": "71fe445580ad15cb9dbce18a2450c84404e61f927fa2777bc9d4b93e9ef7c996"
     }
+  ],
+  "harnesses": [
+    {
+      "name": "codex-app-server",
+      "file": "codex-app-server.json.gz",
+      "version": "0.166.0",
+      "generator": "codex app-server generate-json-schema --out <dir> (codex-cli 0.166.0)",
+      "sha256": "133cd12bc2937b3c61f065b7d929e3c58e5041877cd55fdee76f01d82145ae2c"
+    },
+    {
+      "name": "hermes-cli",
+      "file": "hermes-cli-help.txt",
+      "version": "0.21.5",
+      "generator": "hermes --help; hermes profile create --help; hermes config --help (tag v2026.9.24)",
+      "sha256": "615d6a50dfa2ad8cabe85bf0c7dbff0186393a3b42f7801b8e72a5960a2935c5"
+    }
   ]
 }

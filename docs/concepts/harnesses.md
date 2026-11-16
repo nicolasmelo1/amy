@@ -122,10 +122,11 @@ as a failed run with nothing to wait for. Why:
 A harness runs apart from the operator's own setup: the run reads the
 repository's settings and none of the user's hooks, plugins, memory and
 skills. A skill a step names is lent to the run by that harness's own route:
-claude a fresh `--add-dir`, codex a link under the fresh home the run gets,
-and hermes `-s` through the profile's `external_dirs`. A step marked
-read-only is enforced by the harness's own sandbox, and a harness that cannot
-enforce it refuses the run so the relay hands it on. Why:
+claude a fresh `--add-dir`, codex a link and an explicit skill input under the
+fresh home the run gets, and hermes `-s` through the profile's
+`external_dirs`. A step marked read-only is enforced by the harness's own
+sandbox, and a harness that cannot enforce it refuses the run so the relay
+hands it on. Why:
 [a run carries only what amy hands it](../design/a-run-carries-only-what-amy-hands-it.md).
 
 ## Skills: who does the step

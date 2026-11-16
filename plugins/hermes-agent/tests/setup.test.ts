@@ -46,13 +46,19 @@ describe("the profile amy runs Hermes in", () => {
     ]);
   });
 
-  it("is left alone when it exists", async () => {
+  it("is kept when it exists, with amy's skill root added beside its directories", async () => {
     const runner = hermes(true);
 
     const check = await prepareProfile(runner, "amy", SKILLS);
 
     expect(check.ok).toBe(true);
-    expect(argvs(runner)).toEqual(["profile show amy"]);
+    // Nothing the operator set is touched, and the one setting that names
+    // amy's root is written even on a profile that already existed.
+    expect(argvs(runner)).toEqual([
+      "profile show amy",
+      "-p amy config get skills.external_dirs",
+      `-p amy config set skills.external_dirs ${externalDirsSetting(SKILLS).value}`,
+    ]);
   });
 
   it("reports a create hermes refused, with what hermes said", async () => {

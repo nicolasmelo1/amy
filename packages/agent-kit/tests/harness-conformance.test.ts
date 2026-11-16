@@ -96,8 +96,10 @@ describe("a skill reaches every harness (A9)", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-skill-every-"));
     const skill = path.join(root, "amy-groom");
     fs.mkdirSync(skill);
-    fs.writeFileSync(path.join(skill, "SKILL.md"), "# amy-groom\n");
+    fs.writeFileSync(path.join(skill, "SKILL.md"), "---\nname: amy-groom\ndescription: groom a ticket\n---\n# amy-groom\n");
     const context = { skill: { name: "amy-groom", path: skill } };
+    const before = process.env.HERMES_HOME;
+    process.env.HERMES_HOME = root;
     try {
       // claude: a fresh --add-dir whose skills link to the skill.
       let claudeLent = false;
@@ -123,7 +125,21 @@ describe("a skill reaches every harness (A9)", () => {
       let hermesArgs: string[] = [];
       const hermes = new HermesHarness(
         new ScriptedRunner([
-          { match: (_command, args) => { hermesArgs = [...args]; return true; }, result: { exitCode: 0, stdout: "done" } },
+          {
+            match: (_command, args) => {
+              if (!args.includes("get")) return false;
+              hermesArgs = [...args];
+              return true;
+            },
+            result: { exitCode: 0, stdout: `  - ${root}\n` },
+          },
+          {
+            match: (_command, args) => {
+              hermesArgs = [...args];
+              return true;
+            },
+            result: { exitCode: 0, stdout: "done" },
+          },
         ]),
         { profile: "amy" },
         root,
@@ -151,6 +167,8 @@ describe("a skill reaches every harness (A9)", () => {
       expect(codex.lendsSkill).toBe(true);
       expect(fs.readFileSync(lent, "utf8")).toBe("lent");
     } finally {
+      if (before === undefined) delete process.env.HERMES_HOME;
+      else process.env.HERMES_HOME = before;
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
