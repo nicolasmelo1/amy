@@ -22,6 +22,20 @@ touches:
   - packages/cli/tests/duplication.test.ts
   - plugins/file-worktree/tests/manager.test.ts
   - plugins/file-worktree/src/manager.ts
+  - packages/core/src/calls.ts
+  - packages/core/src/diagram.ts
+  - packages/workflow-setup/src/machine.ts
+  - plugins/claude/src/usage.ts
+  - packages/cli/src/assemble.ts
+  - packages/cli/src/config.ts
+  - packages/cli/src/index.ts
+  - packages/cli/src/update.ts
+  - registry/cli.json
+  - registry/core.json
+  - registry/plugin-claude.json
+  - registry/plugin-file-worktree.json
+  - registry/workflow-setup.json
+  - docs/development/the-gate.md
   - CONTRIBUTING.md
 criteria:
   - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "deferred:test:plugins/file-worktree/tests/manager.test.ts", sources: [S3, S4] }
@@ -31,6 +45,11 @@ criteria:
   - { id: A5, statement: "the baseline only shrinks: a pair it lists that is gone is dropped by the check, and a pair added to it by hand fails review as a ratchet key", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S8] }
   - { id: A6, statement: "duplicated-code-is-detected is an L6 toolchain rule asserting the gate still runs both detectors, with a mutation fixture that drops one", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S6, S8] }
 crosses:
+  - { mechanism: config, answer: n/a, why: "mountingFrom loses an unused parameter; no schema, template or environment name changes" }
+  - { mechanism: calls, answer: n/a, why: "folded loses the call site it never read; how a workflow calls another is unchanged" }
+  - { mechanism: diagram, answer: n/a, why: "readClass loses a count it never read; workflow.mmd is read and refused as before" }
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "assemble loses a config it never read; what boot binds and what a workflow reaches are unchanged" }
+  - { mechanism: agent-replies, answer: n/a, why: "the claude reader loses an unread timeout field it already copies into the timer; replies are parsed and classified as before" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "only an unread private field is deleted from the worktree manager; no checkout or lease changes" }
   - { mechanism: install-and-update, answer: n/a, why: "a devDependency and gate scripts; nothing an install or update of amy ships changes" }
 guarantee:
