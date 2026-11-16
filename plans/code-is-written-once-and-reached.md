@@ -22,6 +22,10 @@ touches:
   - packages/cli/tests/duplication.test.ts
   - plugins/file-worktree/tests/manager.test.ts
   - plugins/file-worktree/src/manager.ts
+  - packages/cli/tests/project.test.ts
+  - plugins/concurrent-engine/tests/lanes.test.ts
+  - plugins/hermes-agent/tests/setup.test.ts
+  - .allowed-root-files
   - packages/core/src/calls.ts
   - packages/core/src/diagram.ts
   - packages/workflow-setup/src/machine.ts
@@ -36,6 +40,8 @@ touches:
   - registry/plugin-file-worktree.json
   - registry/workflow-setup.json
   - docs/development/the-gate.md
+  - docs/rules.md
+  - docs/development/the-factory.md
   - CONTRIBUTING.md
 criteria:
   - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "deferred:test:plugins/file-worktree/tests/manager.test.ts", sources: [S3, S4] }
