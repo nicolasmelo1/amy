@@ -80,4 +80,5 @@ the rest.
 | 71 | [A threshold is measured, not guessed](a-threshold-is-measured-not-guessed.md) |
 | 72 | [Any decision model is a plugin](any-decision-model-is-a-plugin.md) |
 | 73 | [An edge is named for an outcome](an-edge-is-named-for-an-outcome.md) |
+| 74 | [A skill turn is refused unless the harness can load it](a-skill-turn-is-refused-unless-the-harness-can-load-it.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
