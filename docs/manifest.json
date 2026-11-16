@@ -1033,6 +1033,11 @@
           "slug": "claudes-usage-is-read-without-its-token-the-usage-reader-took-claude-codes-oauth-token-from-the-environment-claudecredentialsjson-or-the-macos-keychain-and-called-an-undocumented-endpoint-it-now-asks-claude-code-itself-for-getusage-over-a-short-lived-print-mode-child-no-model-call-no-credential-of-the-operators-and-a-runner-without-a-managed-spawn-reads-as-unavailable"
         },
         {
+          "depth": 3,
+          "title": "**The gate notices code nothing reaches, and code written twice.** tsc now runs with noUnusedLocals and noUnusedParameters, and the gate reads both detectors through one step: knip --production, where a test no longer counts as a caller, and jscpd over packages, plugins and examples. What the tree already carried is frozen by name in a ratchet with a date it comes due, so the next unused export or copied block fails instead of joining the pile. The unused parameters and the one unread private field this change exposed are gone.",
+          "slug": "the-gate-notices-code-nothing-reaches-and-code-written-twice-tsc-now-runs-with-nounusedlocals-and-nounusedparameters-and-the-gate-reads-both-detectors-through-one-step-knip---production-where-a-test-no-longer-counts-as-a-caller-and-jscpd-over-packages-plugins-and-examples-what-the-tree-already-carried-is-frozen-by-name-in-a-ratchet-with-a-date-it-comes-due-so-the-next-unused-export-or-copied-block-fails-instead-of-joining-the-pile-the-unused-parameters-and-the-one-unread-private-field-this-change-exposed-are-gone"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -5602,6 +5607,11 @@
           "depth": 3,
           "title": "L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED",
           "slug": "l6dependencyvulnerabilitiesarescanned"
+        },
+        {
+          "depth": 3,
+          "title": "L6.DUPLICATED_CODE_IS_DETECTED",
+          "slug": "l6duplicatedcodeisdetected"
         },
         {
           "depth": 3,
@@ -11470,6 +11480,13 @@
         "reason": ""
       },
       {
+        "id": "L6.DUPLICATED_CODE_IS_DETECTED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something detects the same block written in two places",
+        "reason": ""
+      },
+      {
         "id": "L6.FIXTURES_NAME_NOBODY_REAL",
         "enabled": true,
         "settings": {},
@@ -11617,6 +11634,34 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "code-is-written-once-and-reached",
+        "title": "**The gate notices code nothing reaches, and code written twice.** `tsc` now runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both detectors through one step: `knip --production`, where a test no longer counts as a caller, and `jscpd` over packages, plugins and examples. What the tree already carried is frozen by name in a ratchet with a date it comes due, so the next unused export or copied block fails instead of joining the pile. The unused parameters and the one unread private field this change exposed are gone.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-setup",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       }
     ],
     "changelogs": [

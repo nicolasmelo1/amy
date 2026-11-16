@@ -115,7 +115,7 @@ describe("the concurrent engine", () => {
         registry.port("notifier", { announce: async () => undefined });
         // An agent that runs and says each run added nothing new.
         registry.port("agent", {
-          ask: acceptsAction(async (action, context) => {
+          ask: acceptsAction(async (_action, context) => {
             if ((context.record as TaskRecord).input.task === "broken") throw new Error("the gate's runner is not answering");
             const name = (context.record as TaskRecord).input.task;
             moves.at(-1)!.push(name);

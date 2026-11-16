@@ -1855,7 +1855,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
     return;
   }
 
-  const outcome = await addInstalled(runner, home, config, picked, declared);
+  const outcome = await addInstalled(runner, home, picked, declared);
   if (outcome instanceof AddRefused) {
     console.error(outcome.why);
     process.exitCode = 1;
@@ -2009,7 +2009,6 @@ async function bootsAfterAdd(home: string, workflow: boolean, name?: string) {
 async function addInstalled(
   runner: NodeCommandRunner,
   home: string,
-  config: AmyConfig,
   picked: Picked,
   declared: readonly string[],
 ): Promise<AddRefused | Added> {

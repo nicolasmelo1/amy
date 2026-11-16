@@ -25,13 +25,13 @@
     "check:registry": "tsx scripts/registry-items.ts --check",
     "registry:generate": "tsx scripts/registry-items.ts",
     "contracts:update": "tsx scripts/contracts.ts --update",
-    "gate": "npm run build && npm run typecheck && npm run check:release && npm run check:config && npm run check:plans && npm run check:delivered && npm run check:private && npm run check:toolchain && npm run check:contracts && npm run check:registry && npm run docs:check && npm run test:coverage && npm run lint && npm run knip && npm run audit && sf check --allow-commands && sf verify",
+    "gate": "npm run build && npm run typecheck && npm run check:release && npm run check:config && npm run check:plans && npm run check:delivered && npm run check:private && npm run check:toolchain && npm run check:contracts && npm run check:registry && npm run docs:check && npm run test:coverage && npm run lint && npm run check:duplication && npm run audit && sf check --allow-commands && sf verify",
     "e2e": "./.software-factory/evidence/plugin-file-queue-scenario.sh && ./.software-factory/evidence/the-event-log-can-be-watched-scenario.sh && ./.software-factory/evidence/plugin-agent-relay-scenario.sh && ./.software-factory/evidence/plugin-serial-engine-scenario.sh && ./.software-factory/evidence/installed-binary-scenario.sh && ./.software-factory/evidence/installed-plugins-scenario.sh && ./.software-factory/evidence/ticket-to-qa-scenario.sh && ./.software-factory/evidence/plugin-next-steps-scenario.sh && ./.software-factory/evidence/plugin-telegram-scenario.sh && ./.software-factory/evidence/note-to-plan-scenario.sh && ./.software-factory/evidence/errand-scenario.sh && ./.software-factory/evidence/feature-grooming-scenario.sh && ./.software-factory/evidence/workflow-new-scenario.sh && ./.software-factory/evidence/bare-install-scenario.sh && ./.software-factory/evidence/amy-add-remove-scenario.sh && ./.software-factory/evidence/amy-update-scenario.sh && ./.software-factory/evidence/a-plugin-of-your-own-scenario.sh && ./.software-factory/evidence/project-phases-scenario.sh && ./.software-factory/evidence/ui-frame-scenario.sh && ./.software-factory/evidence/a-brief-is-groomed-through-amy-scenario.sh && ./.software-factory/evidence/amy-answers-in-the-chat-scenario.sh",
     "changeset": "changeset",
     "release:version": "changeset version && npm install --package-lock-only && npm run docs:generate && npm run registry:generate && sf lock && tsx scripts/check-lock-scope.ts",
     "release:publish": "npm run build && changeset publish",
     "install:local": "./scripts/install.sh",
-    "knip": "knip",
+    "knip": "knip --production --reporter json",
     "bench": "vitest bench --run --compare=packages/core/tests/bench-baseline.json",
     "bench:baseline": "vitest bench --run --outputJson=packages/core/tests/bench-baseline.json",
     "typecheck": "tsc --noEmit -p tsconfig.tests.json",
@@ -40,7 +40,9 @@
     "docs:changelog": "tsx scripts/docs/changelog.ts",
     "docs:draft": "tsx scripts/docs/draft.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
-    "setup": "./scripts/setup-dev.sh"
+    "setup": "./scripts/setup-dev.sh",
+    "jscpd": "jscpd --config .jscpd.json",
+    "check:duplication": "tsx scripts/check-duplication.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.2",
@@ -54,6 +56,7 @@
     "eslint-plugin-security": "^4.0.1",
     "fast-check": "^4.10.2",
     "jiti": "^2.7.0",
+    "jscpd": "^5.4.3",
     "knip": "^6.34.0",
     "tsx": "^4.23.15",
     "typescript": "^5.8.3",
@@ -66,25 +69,5 @@
     "packages/*",
     "plugins/*",
     "examples/*"
-  ],
-  "knip": {
-    "ignore": [
-      ".software-factory/**",
-      "packages/cli/guardrails/mutations/**",
-      "scripts/write-install-manifest.ts",
-      "packages/services/gates/**",
-      "packages/services/tests/example/generate.ts"
-    ],
-    "ignoreBinaries": [
-      "sf",
-      "schtasks",
-      "wscript.exe"
-    ],
-    "ignoreDependencies": [
-      "@amykit/workflow-ticket-to-qa",
-      "@amykit/plugin-notify-hermes",
-      "@amykit/plugin-notify-fanout",
-      "@amykit/plugin-terminal-conversation"
-    ]
-  }
+  ]
 }

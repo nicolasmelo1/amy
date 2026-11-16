@@ -65,7 +65,7 @@ deliberately partial commit is checked loosely. `pre-push` has the last word.
 ## What has to be green
 
 ```sh
-npm run gate      # build, typecheck, the repository checks, docs, coverage, lint, knip, audit, sf check, sf verify
+npm run gate      # build, typecheck, the repository checks, docs, coverage, lint, duplication, audit, sf check, sf verify
 npm run e2e       # every scenario, driving the installed command; minutes, and needs bun
 ```
 
@@ -78,6 +78,14 @@ Some of it is worth understanding rather than obeying:
   the build compiles `src` only, and vitest strips types without checking
   them. Without this step a test can reference a field that does not exist and
   stay green.
+- **`npm run check:duplication`** runs both detectors the gate keeps wired:
+  `knip --production`, which reports an export or a file nothing outside a test
+  reaches, and `jscpd`, which reports a block copied into another file.
+  What the repository already carries is frozen by name in
+  `scripts/duplication-baseline.json`, with a date it comes due; anything the
+  detectors report that the file does not name fails, and a frozen finding that
+  is gone is dropped from it. A copy is fixed by folding it into one helper,
+  not by raising a threshold.
 - **`npm run docs:check`** fails when the code moved and the generated half of
   the documentation did not, and when the written half breaks a prose rule (a
   hand-written count, a listed phrase, a page over its limit). Run

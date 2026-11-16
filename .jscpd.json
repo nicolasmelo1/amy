@@ -1,0 +1,27 @@
+{
+  "path": [
+    "packages",
+    "plugins",
+    "examples"
+  ],
+  "format": [
+    "typescript",
+    "tsx"
+  ],
+  "minTokens": 50,
+  "minLines": 5,
+  "reporters": [
+    "json"
+  ],
+  "ignore": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/tests/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.d.ts"
+  ],
+  "absolute": true,
+  "gitignore": true,
+  "silent": true
+}

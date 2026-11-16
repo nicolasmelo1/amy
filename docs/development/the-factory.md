@@ -280,6 +280,7 @@ expects to find and reports it as unrunnable when it is missing.
 | Concurrent code is exercised under a race detector | -race, go test -race | no tool listed | no tool listed | thread-sanitizer, -Zsanitizer=thread, loom | no tool listed |
 | Something detects code nothing reaches | staticcheck, deadcode, unused | vulture, deadcode | no tool listed | cargo udeps, cargo-udeps, dead_code | ts-prune, knip, depcheck |
 | Something audits dependencies for known vulnerabilities | govulncheck, osv-scanner, nancy, snyk | pip-audit, osv-scanner, safety, snyk | bundler-audit, bundle-audit, osv-scanner | cargo audit, cargo-audit, cargo-deny, osv-scanner | npm audit, pnpm audit, yarn audit, osv-scanner, snyk |
+| The same code is written once | no tool listed | no tool listed | no tool listed | no tool listed | jscpd |
 | Something scans the code for known-insecure patterns | gosec, semgrep, staticcheck, codeql | bandit, semgrep, codeql | brakeman, semgrep, codeql | cargo-geiger, cargo clippy, clippy, semgrep | semgrep, eslint-plugin-security, codeql |
 | Something would notice the code getting slower | go test -bench, benchstat, -bench | pytest-benchmark, asv, richbench | no tool listed | criterion, cargo bench, divan | vitest bench, benchmark.js, tinybench, hyperfine |
 | Something scans for committed secrets | detect-secrets, gitleaks, trufflehog | detect-secrets, gitleaks, trufflehog | detect-secrets, gitleaks, trufflehog | detect-secrets, gitleaks, trufflehog | detect-secrets, gitleaks, trufflehog |

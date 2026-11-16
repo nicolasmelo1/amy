@@ -48,7 +48,7 @@ export async function assembleProfile(
     return await assemble(
       [...loaded.plugins, ...services.host],
       pluginSlices(config, profile, home, new Map([[profile.workflow, loaded.bySpec.get(profile.workflow)?.name ?? profile.workflow]])),
-      config, place, profile, services, undefined,
+      place, profile, services, undefined,
     );
   }
 
@@ -59,7 +59,7 @@ export async function assembleProfile(
   return await assemble(
     [...prepared.plugins, ...services.host],
     prepared.slices,
-    config, place, profile, services,
+    place, profile, services,
     { workflowLabel: `the project at ${profile.project.root}`, workflowPlugin: prepared.plugin },
   );
 }
@@ -67,7 +67,6 @@ export async function assembleProfile(
 async function assemble(
   plugins: readonly Plugin[],
   slices: Record<string, unknown>,
-  config: AmyConfig,
   place: ReturnType<typeof profilePaths>,
   profile: Profile | undefined,
   services: AssemblyServices,

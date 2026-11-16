@@ -619,7 +619,7 @@ export function composedRuntime(own: WorkflowRuntime, sites: ReadonlyMap<string,
       if (fork && lane && inner) return foldedLane(record, fork, lane, runtimeOf, inner, outcomes, laneObservation(observation, lane), now);
       const site = siteOf(record);
       if (site && (plan as Plan & { [ENTER]?: true })[ENTER]) return enterCall(record, site, now);
-      if (inner && site) return folded(record, site, runtimeOf(site), inner, outcomes, childObservation(observation), now);
+      if (inner && site) return folded(record, runtimeOf(site), inner, outcomes, childObservation(observation), now);
       return ownMove(own, sites, forks, { record, plan, outcomes, observation, now, moved });
     },
   };
@@ -758,7 +758,6 @@ function joinedInto(record: WorkRecord, fork: ForkSite): WorkRecord {
 /** One look of the child, folded into its own record and kept inside its caller's. */
 function folded(
   record: WorkRecord,
-  site: CallSite,
   runtime: WorkflowRuntime,
   inner: Plan,
   outcomes: Record<string, unknown>,

@@ -219,7 +219,7 @@ function planConfiguring(record: SetupRecord, obs: Observation, policy: Policy):
 
   const answered = collected(cursor, record, obs, schema.value);
   const field = fieldsOf(schema.value).find(({ field }) => !(field in answered));
-  if (field) return askedPlan(record, obs, policy, cursor, inHand, field);
+  if (field) return askedPlan(record, obs, policy, inHand, field);
 
   return writtenPlan(record, obs, cursor, inHand, schema.value);
 }
@@ -237,7 +237,6 @@ function askedPlan(
   record: SetupRecord,
   obs: Observation,
   policy: Policy,
-  cursor: Configuring,
   inHand: string,
   field: { field: string; spec: ConfigField },
 ): Plan {

@@ -426,7 +426,7 @@ export function loadConfigFrom(root: string, text: string, profile?: string): Am
   const parsed = documentFrom(text);
   const own = profile === undefined ? undefined : profileSettings(root, profile);
 
-  return fromParsed(root, own ? layered(parsed, own) : parsed);
+  return fromParsed(own ? layered(parsed, own) : parsed);
 }
 
 /** A YAML mapping as an operator writes one; an array or a scalar is not one. */
@@ -512,7 +512,7 @@ export function loadConfig(root: string, profile?: string): AmyConfig {
   const own = profile === undefined ? undefined : profileSettings(root, profile);
   if (!general && !own) return DEFAULT_CONFIG;
 
-  return fromParsed(root, layered(general ?? {}, own ?? {}));
+  return fromParsed(layered(general ?? {}, own ?? {}));
 }
 
 /**
@@ -614,12 +614,12 @@ function refusedMovedKeys(parsed: Partial<AmyConfig>): void {
   }
 }
 
-function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
+function fromParsed(parsed: Partial<AmyConfig>): AmyConfig {
   refusedMovedKeys(parsed);
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
-    ...mountingFrom(root, parsed),
+    ...mountingFrom(parsed),
     ...autoUpdateFrom(parsed),
     notify: { ...DEFAULT_CONFIG.notify, ...(parsed.notify ?? {}) },
     skills: parsed.skills ?? {},
@@ -642,7 +642,6 @@ function fromParsed(root: string, parsed: Partial<AmyConfig>): AmyConfig {
  * edit for all three, which is why they default in one place.
  */
 function mountingFrom(
-  root: string,
   parsed: Partial<AmyConfig>,
 ): Pick<AmyConfig, "workflows" | "defaultWorkflow" | "extraPlugins"> {
   return {

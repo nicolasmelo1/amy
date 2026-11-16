@@ -1,0 +1,34 @@
+id: L6.DUPLICATED_CODE_IS_DETECTED
+layer: L6
+title: The same code is written once
+severity: high
+statement: >-
+  A copy detector runs over packages, plugins and examples src where this
+  repository actually executes — jscpd, through the one gate step that also
+  applies the ratchet — beside the knip the dead-code rule keeps wired.
+why: >-
+  A copied block is the residue of a helper that was written twice because the
+  second caller was in a hurry, and the two copies are identical only on the
+  day they are made. One gains a timeout, one gains a retry, and the difference
+  is invisible in review because neither file is wrong on its own; the product
+  simply behaves two ways depending on which path reached it. An agent reproduces
+  a block it has read far more readily than it finds the one place that block
+  already lives, so this failure grows with agent-heavy work rather than despite
+  it. The detector cannot say which copy should survive, but it names both, which
+  is the question a person needed to be asked.
+fix: >-
+  Run `npm run check:duplication` and read the pair each finding names. Fold the
+  block into one helper and give both callers that name; when the copy genuinely
+  has to stay — two workflows that must not import each other, say — freeze it in
+  scripts/duplication-baseline.json with a review_by and the reason, and the
+  gate will bring it back on that date.
+ratchet: allowlist
+check:
+  kind: toolchain
+defaults:
+  scope:
+    - "package.json"
+    - ".jscpd.json"
+    - ".github/workflows/**"
+  tools:
+    typescript: ["jscpd"]

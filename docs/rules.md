@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**71 rules shipped**, 60 enabled here, 11 switched off, 60 carrying a mutation fixture, 1 violations frozen.
+**72 rules shipped**, 61 enabled here, 11 switched off, 61 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
 | **L4** | Cadence | docs, plans and rules stay attached | 11 | 10 |
 | **L5** | Meta | the guardrail is proven to fire | 4 | 4 |
-| **L6** | Hazard | the defect classes this repository hunts | 15 | 10 |
+| **L6** | Hazard | the defect classes this repository hunts | 16 | 11 |
 
 <!-- sf:end layer-index -->
 
@@ -592,6 +592,16 @@ At least one dependency vulnerability scanner for each of this repository's lang
 **Why.** An agent adding a dependency is making a supply-chain decision in a one-line diff, usually while solving something else entirely, and it has no way to know what that package shipped last week. This check does not audit anything itself — the ecosystem tools are far better than anything that could live here. What it guarantees is the thing that actually rots: that the audit is still wired in. A scanner someone removed to make CI faster fails exactly like one that was never added.
 
 **Fix.** Add the scanner to your CI workflow or task runner. `pip-audit` for Python, `npm audit` or `osv-scanner` for TypeScript, `govulncheck` for Go, `cargo audit` for Rust, `bundler-audit` for Ruby.
+
+### L6.DUPLICATED_CODE_IS_DETECTED
+
+**The same code is written once**
+
+A copy detector runs over packages, plugins and examples src where this repository actually executes — jscpd, through the one gate step that also applies the ratchet — beside the knip the dead-code rule keeps wired.
+
+**Why.** A copied block is the residue of a helper that was written twice because the second caller was in a hurry, and the two copies are identical only on the day they are made. One gains a timeout, one gains a retry, and the difference is invisible in review because neither file is wrong on its own; the product simply behaves two ways depending on which path reached it. An agent reproduces a block it has read far more readily than it finds the one place that block already lives, so this failure grows with agent-heavy work rather than despite it. The detector cannot say which copy should survive, but it names both, which is the question a person needed to be asked.
+
+**Fix.** Run `npm run check:duplication` and read the pair each finding names. Fold the block into one helper and give both callers that name; when the copy genuinely has to stay — two workflows that must not import each other, say — freeze it in scripts/duplication-baseline.json with a review_by and the reason, and the gate will bring it back on that date.
 
 ### L6.FIXTURES_NAME_NOBODY_REAL
 

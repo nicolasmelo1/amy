@@ -251,8 +251,6 @@ export class WorktreeManager implements Worktree {
     fs.rmSync(tree, { recursive: true, force: true });
   }
 
-  private refusalFor = refusalFor;
-
   /**
    * Metadata belongs beside the tree, never inside it: git correctly calls
    * every untracked file in a checkout dirty, and an implementation detail

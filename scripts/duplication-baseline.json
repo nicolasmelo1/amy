@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "frozen": {
+    "knip:packages/cli/package.json#dependency:@amykit/plugin-file-notes": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/package.json#dependency:@amykit/plugin-file-tasks": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#export:checkConfigTemplate": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#export:namesTheExample": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#export:withExampleWorkflow": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#export:checkConfigBoots": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#type:SettingsSurface": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-template.ts#type:BootCheck": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/plan-board.ts#export:checkPlanBoard": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/plan-board.ts#type:PlanBoardInput": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/private-refs.ts#export:findPrivateReferences": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/private-refs.ts#type:DeniedTerm": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/private-refs.ts#type:PrivateRefsInput": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/private-refs.ts#type:PrivateRef": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/budget.ts#export:budgetLines": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/env.ts#export:parseEnv": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/chat-action.ts#export:lineDiff": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/assemble.ts#export:recoverChatParts": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/setup.ts#export:CHANNEL_CATALOG": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/config-explain.ts#export:describeEntries": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/slices.ts#export:worktreeNamespace": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/slices.ts#export:tiersFor": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/slices.ts#export:ladderNames": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/install.ts#export:ensurePluginsRoot": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/plugin-commands.ts#export:BUILT_IN_COMMANDS": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/prices.ts#export:STALE_AFTER_DAYS": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/workflow.ts#export:workflowSpecifier": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/workflow.ts#export:guardrailRules": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/workflow.ts#export:checkWorkflow": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/workflow-add.ts#export:relativeImports": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#export:FORK_RECORD": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#export:readRootManifest": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#export:mergeText": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#export:markedMergePlace": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#type:RootManifest": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/fork.ts#type:MergeLabels": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:manifestOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:updateRangeOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:versionIn": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:oneVersion": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:held": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/update.ts#export:globalPrefix": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/auto-update.ts#export:autoUpdatePath": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/skills-record.ts#export:readSkills": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/skills-record.ts#type:SkillsRecord": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/hermes-agent/src/HermesHarness.ts#export:skillsRoot": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/hermes-agent/src/profile.ts#export:externalDirsSetting": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/hermes-agent/src/profile.ts#type:ProfileSetting": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/codex/src/CodexHarness.ts#export:skillRoot": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/claude/src/envelope.ts#export:parseStream": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/claude/src/envelope.ts#export:classifyStream": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/claude/src/envelope.ts#export:retryAfterOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/claude/src/envelope.ts#type:ClaudeStream": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:plugins/claude/src/usage.ts#export:CLAUDE_PROBE_ARGS": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/ui-conformance/src/world.ts#export:WORK_DIAGRAM": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/supervisor/launchd.ts#export:plistOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/supervisor/systemd.ts#export:unitOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/supervisor/windows.ts#export:taskOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/supervisor/windows.ts#export:launcherOf": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:examples/workflow-ticket-to-qa/src/lanes.ts#export:reviewVerdict": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/duplication.ts#type:Detector": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "knip:packages/cli/src/duplication.ts#type:Frozen": {
+      "review_by": "2027-03-03",
+      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
+    },
+    "jscpd:examples/workflow-errand/src/actions.ts<->examples/workflow-note-to-plan/src/actions.ts#50:66b2f5ef77cd": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:examples/workflow-errand/src/plugin.ts<->examples/workflow-note-to-plan/src/plugin.ts#80:60b49d76594d": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackApi.ts<->plugins/telegram/src/BotApi.ts#57:640fffe047fa": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/skills-record.ts<->plugins/agent-relay/src/skills.ts#70:6746d7effcff": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/skills-record.ts<->plugins/agent-relay/src/skills.ts#54:04cf356932e3": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackApi.ts<->plugins/telegram/src/BotApi.ts#227:1e440bc359fd": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/file-notes/src/FileNotes.ts<->plugins/file-tasks/src/FileTasks.ts#68:f0cfee2fc028": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/command-gate/src/CommandGate.ts<->plugins/plan-check/src/PlanCommandCheck.ts#131:f54a1d998635": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/codex/src/CodexHarness.ts<->plugins/codex/src/CodexHarness.ts#53:ab7f8ef78c4b": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/file-notes/src/FileNotes.ts<->plugins/file-tasks/src/FileTasks.ts#79:1e27fbacccc9": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/core/src/chat/transcript.ts<->plugins/slack/src/SlackConversation.ts#54:ba0e7e449366": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/file-notes/src/FileNotes.ts<->plugins/file-tasks/src/FileTasks.ts#232:a693e0f779d4": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:examples/workflow-errand/src/task-file.ts<->examples/workflow-note-to-plan/src/note-file.ts#91:ea4392c54da1": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/core/src/action-ports.ts<->packages/core/src/chat/desk.ts#75:c28641aba3e4": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:examples/workflow-ticket-to-qa/src/plugin.ts<->examples/workflow-ticket-to-qa/src/plugin.ts#62:b89cec9dbd71": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/setup.ts<->packages/workflow-setup/src/answers.ts#52:5ea0e4082c72": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/codex/src/CodexHarness.ts<->plugins/codex/src/CodexHarness.ts#58:ceaa19af936c": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/core/src/define-workflow.ts<->packages/core/src/plugin.ts#55:649adfb3552d": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/telegram/src/TelegramConversation.ts#50:ab23637ef4be": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/plugin-commands.ts<->packages/cli/src/plugin-commands.ts#53:7ed041758236": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/workflow.ts<->packages/workflow-testkit/src/reachability.ts#68:8c2e83b2c0df": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/github/src/GitHubCodeHost.ts<->plugins/github/src/GitHubCodeHost.ts#79:ea2364defed2": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/github/src/GitHubCodeHost.ts<->plugins/github/src/GitHubCodeHost.ts#79:ea2364defed2@2": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/doctor.ts<->plugins/file-worktree/src/plugin.ts#55:6f49ef87ce9c": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/index.ts<->packages/cli/src/index.ts#141:7185a3b33fc6": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/telegram/src/TelegramConversation.ts#74:2c7e45932a26": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/telegram/src/TelegramConversation.ts#64:415f07ca926d": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/terminal-conversation/src/TerminalConversation.ts#58:3264710dbef8": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/telegram/src/TelegramConversation.ts#81:8440951c8261": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:plugins/slack/src/SlackConversation.ts<->plugins/telegram/src/TelegramConversation.ts#63:19478a5d1c7b": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    },
+    "jscpd:packages/cli/src/index.ts<->packages/cli/src/remove.ts#56:e40cd554c845": {
+      "review_by": "2027-03-03",
+      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
+    }
+  }
+}
