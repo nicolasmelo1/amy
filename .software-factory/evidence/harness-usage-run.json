@@ -6,7 +6,7 @@
     "entry": "the built Claude, Codex and Hermes plugins and the built CLI, each from its dist/index.js"
   },
   "observed": {
-    "assertions_run": 5,
+    "assertions_run": 6,
     "assertions_failed": 0
   },
   "assertions": [
@@ -16,6 +16,10 @@
     },
     {
       "type": "usage.recorded_provider_windows_are_normalized",
+      "status": "passed"
+    },
+    {
+      "type": "usage.claude_is_asked_not_its_token",
       "status": "passed"
     },
     {

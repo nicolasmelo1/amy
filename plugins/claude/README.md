@@ -17,7 +17,7 @@ Use it when the agent should be Claude Code, run through the claude CLI. It cont
 | Operations | _none_ |
 | Commands | _none_ |
 | Events | _none_ |
-| Environment | `CLAUDE_CODE_OAUTH_TOKEN` |
+| Environment | _none_ |
 
 ## Install
 
@@ -55,14 +55,6 @@ plugins:
 Every field is checked at boot against the schema this package declares. A key that is
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
-
-## Environment
-
-This package reads the following, which `amy doctor` checks for you:
-
-| Variable |  |
-| :-- | :-- |
-| `CLAUDE_CODE_OAUTH_TOKEN` | required at mount |
 
 ## Where the reasoning is
 

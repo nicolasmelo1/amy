@@ -20,18 +20,24 @@ npx vitest run \
 # fails here though every unit test above imports src.
 node --input-type=module - "$repo" <<'NODE'
 import { deepStrictEqual } from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const built = (name) => import(pathToFileURL(`${process.argv[2]}/plugins/${name}/dist/index.js`).href);
 const claude = await built("claude");
 const codex = await built("codex");
 const hermes = await built("hermes-agent");
 
-deepStrictEqual(claude.parseClaudeUsage(JSON.stringify({
-  five_hour: { utilization: 42, resets_at: "2026-11-07T15:00:00.000Z" },
-  seven_day: { utilization: 18, resets_at: "2026-11-12T12:00:00.000Z" },
-})), { windows: [
-  { label: "five-hour", usedPercent: 42, resetsAt: "2026-11-07T15:00:00.000Z" },
-  { label: "seven-day", usedPercent: 18, resetsAt: "2026-11-12T12:00:00.000Z" },
+// Claude's recorded answer is the get_usage response Claude Code sends, not
+// the account endpoint's document: the reader asks the CLI, never its token.
+const recorded = readFileSync(
+  `${process.argv[2]}/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl`,
+  "utf8",
+).trim().split("\n");
+const usage = JSON.parse(recorded.find((line) => line.includes('"request_id":"usage"'))).response.response;
+
+deepStrictEqual(claude.parseClaudeUsage(usage), { windows: [
+  { label: "five-hour", usedPercent: 2, resetsAt: "2026-11-15T19:19:59.758Z" },
+  { label: "seven-day", usedPercent: 30, resetsAt: "2026-11-16T17:59:59.758Z" },
 ] });
 
 deepStrictEqual(await new codex.CodexUsageReader({ readRateLimits: async () => ({ rateLimits: {
@@ -53,7 +59,9 @@ NODE
 # The built CLI must retain a working reader when another one rejects. A page
 # fixture alone cannot prove the command's exception boundary.
 world=$(mktemp -d)
-trap 'rm -rf "$world"' EXIT
+home=""
+stand=""
+trap 'rm -rf "$world" "$home" "$stand"' EXIT
 mkdir -p "$world/plugins/node_modules/@fixture/workflow" "$world/plugins/node_modules/@fixture/usage"
 core=$(node -p 'require("node:url").pathToFileURL(process.cwd() + "/packages/core/dist/index.js").href')
 kit=$(node -p 'require("node:url").pathToFileURL(process.cwd() + "/packages/agent-kit/dist/index.js").href')
@@ -103,12 +111,52 @@ if (!/Available.*Session: 12%/.test(usage) || !/Rejecting: unavailable/.test(usa
 }
 NODE
 
+# The built reader asks Claude Code itself, from another process with an empty
+# HOME. A stand-in prints the recorded get_usage answer and keeps its stdin
+# open; the reader must end it once it has the windows, and no credentials
+# file, Keychain item or token variable may be involved.
+home=$(mktemp -d)
+stand=$(mktemp -d)
+cat > "$stand/claude" <<EOF
+#!/bin/sh
+printf '%s\n' "\$@" > "$stand/argv"
+read -r init
+sed -n 1p "$repo/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl"
+read -r asked
+sed -n 2p "$repo/plugins/claude/tests/fixtures/get-usage-2.1.325.jsonl"
+while IFS= read -r line; do :; done
+EOF
+chmod +x "$stand/claude"
+HOME="$home" PATH="$stand:$PATH" node --input-type=module - "$repo" "$stand" "$home" <<'NODE'
+import { deepStrictEqual } from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const [repo, stand, home] = process.argv.slice(2);
+const claude = await import(pathToFileURL(`${repo}/plugins/claude/dist/index.js`).href);
+const { NodeCommandRunner } = await import(pathToFileURL(`${repo}/packages/core/dist/index.js`).href);
+
+deepStrictEqual(await new claude.ClaudeUsageReader(new NodeCommandRunner()).read(), { windows: [
+  { label: "five-hour", usedPercent: 2, resetsAt: "2026-11-15T19:19:59.758Z" },
+  { label: "seven-day", usedPercent: 30, resetsAt: "2026-11-16T17:59:59.758Z" },
+] });
+
+const argv = readFileSync(`${stand}/argv`, "utf8").trim().split("\n");
+if (!argv.includes("--strict-mcp-config") || !argv.includes("--no-session-persistence")) {
+  throw new Error(`the probe kept the operator's own setup: ${argv.join(" ")}`);
+}
+if (argv.some((word) => ["--model", "--permission-mode", "--resume", "--continue"].includes(word))) {
+  throw new Error(`the probe passed a run's words: ${argv.join(" ")}`);
+}
+if (readdirSync(home).length > 0) throw new Error(`the probe touched HOME: ${readdirSync(home).join(", ")}`);
+NODE
+
 node - "$report" <<'NODE'
 const fs = require("node:fs");
 const report = process.argv[2];
 const assertions = [
   "usage.readers_are_product_neutral",
   "usage.recorded_provider_windows_are_normalized",
+  "usage.claude_is_asked_not_its_token",
   "usage.ollama_is_unofficial_without_a_reset",
   "usage.status_keeps_other_readers_after_one_fails",
   "usage.budget_keeps_provider_windows_separate",

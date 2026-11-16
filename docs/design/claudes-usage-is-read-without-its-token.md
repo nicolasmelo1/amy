@@ -26,13 +26,13 @@ touches:
   - docs/development/the-gate.md
   - docs/start/installation.md
 criteria:
-  - { id: A1, statement: "the recorded get_usage answer normalizes to five-hour and seven-day windows with their percentages and resets; opus and sonnet windows appear only when not null", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S3, S4] }
-  - { id: A2, statement: "reading usage runs no curl and no security, opens no credentials file and reads no token variable", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S1, S2, S7] }
-  - { id: A3, statement: "the probe sends only initialize and get_usage, passes no prompt, loads no settings or MCP servers, keeps no session, and ends the child once answered", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S3, S6] }
-  - { id: A4, statement: "rate_limits_available false, an error response, or no answer within timeoutMs is unavailable naming why, and a hung child is killed", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S5, S6] }
-  - { id: A5, statement: "a runner with no managed spawn reads Claude usage as unavailable, saying so, while the other readers still answer", proof: "deferred:test:plugins/claude/tests/usage.test.ts", sources: [S6, S8] }
-  - { id: A6, statement: "the built reader, in another process with HOME empty and a stand-in claude printing the recording, gives A1's windows and touches no file under HOME", proof: "assertion:usage.claude_is_asked_not_its_token", sources: [S4, S7] }
-  - { id: A7, statement: "recorded Claude, Codex and Hermes answers still normalize to labeled percentage windows", proof: "assertion:usage.recorded_provider_windows_are_normalized", sources: [S6] }
+  - { id: A1, statement: "the recorded get_usage answer normalizes to five-hour and seven-day windows with their percentages and resets; opus and sonnet windows appear only when not null", proof: "test:plugins/claude/tests/usage.test.ts", sources: [S3, S4], done: true }
+  - { id: A2, statement: "reading usage runs no curl and no security, opens no credentials file and reads no token variable", proof: "test:plugins/claude/tests/usage.test.ts", sources: [S1, S2, S7], done: true }
+  - { id: A3, statement: "the probe sends only initialize and get_usage, passes no prompt, loads no settings or MCP servers, keeps no session, and ends the child once answered", proof: "test:plugins/claude/tests/usage.test.ts", sources: [S3, S6], done: true }
+  - { id: A4, statement: "rate_limits_available false, an error response, or no answer within timeoutMs is unavailable naming why, and a hung child is killed", proof: "test:plugins/claude/tests/usage.test.ts", sources: [S5, S6], done: true }
+  - { id: A5, statement: "a runner with no managed spawn reads Claude usage as unavailable, saying so, while the other readers still answer", proof: "test:plugins/claude/tests/usage.test.ts", sources: [S6, S8], done: true }
+  - { id: A6, statement: "the built reader, in another process with HOME empty and a stand-in claude printing the recording, gives A1's windows and touches no file under HOME", proof: "assertion:usage.claude_is_asked_not_its_token", sources: [S4, S7], done: true }
+  - { id: A7, statement: "recorded Claude, Codex and Hermes answers still normalize to labeled percentage windows", proof: "assertion:usage.recorded_provider_windows_are_normalized", sources: [S6], done: true }
 crosses:
   - { mechanism: agent-replies, answer: n/a, why: "the reader asks Claude Code about its account; no agent turn runs and no reply is read" }
   - { mechanism: status, answer: works, proof: "assertion:usage.status_keeps_other_readers_after_one_fails" }
@@ -50,7 +50,7 @@ exit: "amy budget shows Claude's five-hour and seven-day windows on a machine wh
 ---
 # Claude's usage is read without its token
 
-To show Claude's usage, amy takes Claude Code's OAuth token from the Keychain
-or its credentials file and calls an undocumented endpoint with it. Claude
-Code will report the same windows itself, through `get_usage` over
-stream-json, with no model call. amy asks it and never touches the token.
+Claude's reader asks Claude Code for `get_usage` over a short-lived print-mode
+child, so the token, the credentials file and the Keychain item stay Claude
+Code's: no model call and no agent turn runs. A runner without a managed spawn
+reads as unavailable, naming why.

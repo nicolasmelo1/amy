@@ -1,17 +1,18 @@
 {
   "schema_version": 1,
   "gate": "harness-usage",
-  "implementation_sha256": "5e3c9227e246c97c94befc4316875b95b9ecae593417ffcf07f1a2af26ef45d0",
+  "implementation_sha256": "5bb43d6d7feef5627472f4910f5d7c0c991036e84487eb8eefd1ad3c44968035",
   "runs": [
     {
       "scenario": "harness-usage",
       "status": "passed",
       "actor": "Amy's harness usage scenario against built workspace contracts",
       "report": ".software-factory/evidence/harness-usage-run.json",
-      "report_sha256": "0210a76c104a4d5086920667fe01e621ad0fb46a64e34af9b28b008d988ec0fd",
+      "report_sha256": "ccf1fd5963a2f46e763b015c54ad2a38de5e9731071c62f63d53a89a8067b2a3",
       "required_assertions": [
         "usage.readers_are_product_neutral",
         "usage.recorded_provider_windows_are_normalized",
+        "usage.claude_is_asked_not_its_token",
         "usage.ollama_is_unofficial_without_a_reset",
         "usage.status_keeps_other_readers_after_one_fails",
         "usage.budget_keeps_provider_windows_separate"
