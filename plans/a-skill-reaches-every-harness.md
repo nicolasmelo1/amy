@@ -1,5 +1,5 @@
 ---
-base: 07da968ed4591bdc81d03bf0574262454b61deb9
+base: ea3014a747fa2dc792c45f983de075e834bd5452
 sources:
   - { id: S1, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "withSkill", said: "a step's skill is put before the prompt as /name and its directory handed to every rung, whatever harness the rung runs on" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "lendsSkill", said: "a harness that cannot be handed a skill leaves lendsSkill unset, and a turn addressed to a skill is refused on it" }
@@ -26,9 +26,12 @@ touches:
   - plugins/codex/src/CodexHarness.ts
   - plugins/codex/tests/CodexHarness.test.ts
   - plugins/hermes-agent/src/HermesHarness.ts
+  - plugins/hermes-agent/src/plugin.ts
   - plugins/hermes-agent/src/profile.ts
   - plugins/hermes-agent/tests/HermesHarness.test.ts
   - plugins/hermes-agent/tests/setup.test.ts
+  - plugins/codex/package.json
+  - plugins/hermes-agent/package.json
   - registry/plugin-codex.json
   - registry/plugin-hermes-agent.json
   - registry/plugin-agent-relay.json
@@ -42,8 +45,8 @@ criteria:
   - { id: A2, statement: "codex sets lendsSkill, and a skill whose directory holds no SKILL.md is not lent, as on claude", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S2, S3, S10] }
   - { id: A3, statement: "a hermes turn with AskContext.skill passes -s <name> and nothing else changes in its arguments; hermes sets lendsSkill", proof: "deferred:test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S5, S9, S11] }
   - { id: A4, statement: "amy setup hermes writes amy's skill root into the profile's skills.external_dirs, and the profile check reports it drifted when it is gone", proof: "deferred:test:plugins/hermes-agent/tests/setup.test.ts", sources: [S8, S11] }
-  - { id: A5, statement: "hermes reports skillsDirectory, so harnessSkills.hermes-agent true mounts and links its skills", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S5, S8] }
-  - { id: A6, statement: "where codex's user skills are, ~/.agents/skills or CODEX_HOME/skills on codex 0.166, is read from the CLI before skillsDirectory changes", proof: "deferred:open — measured on the installed codex before the build", sources: [S7] }
+  - { id: A5, statement: "hermes reports skillsDirectory, so harnessSkills.hermes true mounts and links its skills", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S5, S8] }
+  - { id: A6, statement: "where codex's user skills are, ~/.agents/skills or CODEX_HOME/skills on codex 0.166, is read from the CLI before skillsDirectory changes", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7] }
   - { id: A7, statement: "a skills ladder for a step whose model ladder has a rung on a harness without lendsSkill is refused at boot, naming the step and the rung", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S1, S2, S12] }
   - { id: A8, statement: "the relay never sends /name to a rung it did not hand the skill to: the conformance suite fails a harness that receives a skill turn without lendsSkill", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S1, S2, S13] }
   - { id: A9, statement: "/amy-groom in the chat is answered with the skill lent on each of claude, codex and hermes, on stand-in CLIs", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S6, S13] }
