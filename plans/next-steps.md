@@ -81,3 +81,4 @@ the rest.
 | 72 | [An edge is named for an outcome](an-edge-is-named-for-an-outcome.md) |
 | 73 | [A skill turn is refused unless the harness can load it](a-skill-turn-is-refused-unless-the-harness-can-load-it.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
+| 73 | [The build job runs the ratchet](the-build-job-runs-the-ratchet.md) |
