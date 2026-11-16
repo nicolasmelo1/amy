@@ -11581,7 +11581,7 @@
       {
         "id": "a-skill-reaches-every-harness",
         "title": "**A skill reaches every harness.**",
-        "body": "A step's skill was lent only to Claude; Codex received `/name` with nothing\nbehind it and Hermes refused the turn. Codex now gets the skill as a link\nunder the fresh `CODEX_HOME` the run already had, Hermes passes `-s <name>`\nwith amy's skill root named in the profile's `skills.external_dirs`, and both\ndeclare `lendsSkill`. The relay never sends a skill's name to a rung it did\nnot hand the skill to, a ladder that could reach such a harness is refused at\nboot, and the conformance suite fails a harness that answers a skill turn\nwithout declaring it.",
+        "body": "A step's skill was lent only to Claude; Codex received `/name` with nothing\nbehind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that\nholds only the lent skill, and names it explicitly on `turn/start`; Hermes\npasses `-s <name>` with amy's skill root named in the profile's\n`skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a\nskill's name to a rung it did not hand the skill to, a ladder that could reach\nsuch a harness is refused at boot, and the conformance suite fails a harness\nthat answers a skill turn without declaring it. Codex and Hermes are held to\ntheir pinned CLI contracts, vendored beside the doubles.",
         "bumps": [
           {
             "package": "@amykit/agent-kit",

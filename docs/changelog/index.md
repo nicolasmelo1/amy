@@ -39,13 +39,14 @@ npm run docs:changelog     # refresh the cache from GitHub
 `minor` · `@amykit/agent-kit`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-codex`, `@amykit/plugin-hermes-agent`
 
 A step's skill was lent only to Claude; Codex received `/name` with nothing
-behind it and Hermes refused the turn. Codex now gets the skill as a link
-under the fresh `CODEX_HOME` the run already had, Hermes passes `-s <name>`
-with amy's skill root named in the profile's `skills.external_dirs`, and both
-declare `lendsSkill`. The relay never sends a skill's name to a rung it did
-not hand the skill to, a ladder that could reach such a harness is refused at
-boot, and the conformance suite fails a harness that answers a skill turn
-without declaring it.
+behind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that
+holds only the lent skill, and names it explicitly on `turn/start`; Hermes
+passes `-s <name>` with amy's skill root named in the profile's
+`skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a
+skill's name to a rung it did not hand the skill to, a ladder that could reach
+such a harness is refused at boot, and the conformance suite fails a harness
+that answers a skill turn without declaring it. Codex and Hermes are held to
+their pinned CLI contracts, vendored beside the doubles.
 
 ### **Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, `~/.claude/.credentials.json` or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for `get_usage` over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.
 
