@@ -72,6 +72,10 @@ interface HarnessContract {
   name: string;
   file: string;
   version: string;
+  /** The release page the contract is derived from, named so a reader can check it. */
+  url: string;
+  /** The publisher's releases endpoint, so the check can see a newer release. */
+  releases: string;
   /** The command whose output the file is, recorded so it can be produced again. */
   generator: string;
   sha256: string;
@@ -82,13 +86,17 @@ const HARNESSES: Omit<HarnessContract, "sha256">[] = [
     name: "codex-app-server",
     file: "codex-app-server.json.gz",
     version: "0.166.0",
+    url: "https://github.com/openai/codex/releases/tag/rust-v0.166.0",
+    releases: "https://api.github.com/repos/openai/codex/releases",
     generator: "codex app-server generate-json-schema --out <dir> (codex-cli 0.166.0)",
   },
   {
     name: "hermes-cli",
     file: "hermes-cli-help.txt",
-    version: "0.21.5",
-    generator: "hermes --help; hermes profile create --help; hermes config --help (tag v2026.9.24)",
+    version: "0.23.0",
+    url: "https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.0",
+    releases: "https://api.github.com/repos/NousResearch/hermes-agent/releases",
+    generator: "hermes --version; hermes --help; hermes profile create --help; hermes config --help (tag v0.23.0, commit 2bd378ed)",
   },
 ];
 
@@ -291,15 +299,28 @@ function codexContract(): Buffer {
   }
 }
 
-/** Hermes's CLI help, the only contract it publishes, from the pinned release. */
+/**
+ * Hermes's CLI help, the only contract it publishes, from the pinned release.
+ *
+ * The file starts with what the binary says it is (`Hermes Agent vX.Y.Z`), so
+ * a help text cannot be filed under a release it did not come from, and the
+ * check can compare the recorded release with what the publisher serves.
+ */
 function hermesContract(): Buffer {
   const binary = process.env.HERMES_BIN ?? "hermes";
   const run = (args: string[]): string =>
     execFileSync(binary, args, { encoding: "utf8", env: { ...process.env, COLUMNS: "100" }, stdio: ["ignore", "pipe", "pipe"] });
   const pinned = HARNESSES.find((one) => one.name === "hermes-cli")!;
+  const version = run(["--version"]).trim();
+  const reported = /Hermes Agent v(\d+\.\d+\.\d+)/.exec(version)?.[1];
+  if (reported !== pinned.version) {
+    throw new Error(`hermes at ${binary} reports ${reported ?? "no version"}, and the pinned release is ${pinned.version}`);
+  }
   return Buffer.from(
     [
-      `### hermes --help (v${pinned.version})`,
+      `### hermes --version`,
+      version,
+      `### hermes --help`,
       run(["--help"]),
       "### hermes profile create --help",
       run(["profile", "create", "--help"]),
@@ -415,8 +436,18 @@ async function ghFindings(manifest: ContractsManifest, found: Findings): Promise
   if (latest !== pinned) found.moved.push(`gh moved: ${latest} is the latest release, and the vendored contract is ${pinned}'s`);
 }
 
+/** The newest release of a harness's publisher, named the way the pinned version is. */
+async function latestHarness(harness: { readonly releases: string }): Promise<string> {
+  const url = `${harness.releases}/latest`;
+  const response = await fetch(url, { headers: { "user-agent": "amy-contracts", accept: "application/vnd.github+json" } });
+  if (!response.ok) throw new Error(`${url} answered ${response.status}`);
+  const tag = String(((await response.json()) as { tag_name?: string }).tag_name ?? "");
+  // Codex tags releases `rust-v0.166.0`, hermes `v0.23.0`.
+  return tag.replace(/^rust-v/, "").replace(/^v/, "");
+}
+
 /** Each harness contract is the pinned release's own output, and the copy the manifest recorded. */
-function harnessFindings(manifest: ContractsManifest, found: Findings): void {
+async function harnessFindings(manifest: ContractsManifest, found: Findings): Promise<void> {
   for (const harness of HARNESSES) {
     const recorded = manifest.harnesses?.find((entry) => entry.name === harness.name);
     if (!recorded) {
@@ -435,6 +466,11 @@ function harnessFindings(manifest: ContractsManifest, found: Findings): void {
         : `${harness.file} is not the copy its manifest recorded; run \`npm run contracts:update\` rather than editing it`
       : `${harness.file} is missing`;
     if (problem) found.problems.push(problem);
+
+    const latest = await latestHarness(harness);
+    if (latest !== harness.version) {
+      found.moved.push(`${harness.name} moved: ${latest} is the latest release, and the vendored contract is ${harness.version}'s`);
+    }
   }
 }
 
@@ -444,7 +480,7 @@ async function check(): Promise<void> {
   await documentFindings(manifest, found);
   await botApiFindings(manifest, found);
   await ghFindings(manifest, found);
-  harnessFindings(manifest, found);
+  await harnessFindings(manifest, found);
 
   const window = withinWindow(manifest.vendoredAt, new Date());
   const age = window.days === undefined ? "with no recorded date" : `${window.days} day(s) ago`;

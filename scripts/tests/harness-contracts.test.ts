@@ -64,16 +64,18 @@ describe("the harness contracts", () => {
     const reported = /Hermes Agent v(\d+\.\d+\.\d+)/.exec(body)?.[1];
 
     expect(reported).toBeDefined();
-    expect(entry.version.replace(/^v/, "")).toBe(reported);
+    expect(entry.version?.replace(/^v/, "")).toBe(reported);
   });
 
   it("name the publisher's release each harness contract is derived from, so the check can compare against it", () => {
     const codex = vendored(/codex/) as (Entry & { url?: string }) | undefined;
     const hermes = vendored(/hermes/) as (Entry & { url?: string }) | undefined;
 
+    expect(codex?.version).toBeDefined();
     expect(codex?.url).toMatch(/^https:\/\/github\.com\/openai\/codex\//);
-    expect(codex?.url).toContain(codex!.version);
+    expect(codex?.url).toContain(String(codex?.version));
+    expect(hermes?.version).toBeDefined();
     expect(hermes?.url).toMatch(/^https:\/\/github\.com\/NousResearch\/hermes-agent\//);
-    expect(hermes?.url).toContain(hermes!.version.replace(/^v/, ""));
+    expect(hermes?.url).toContain(String(hermes?.version).replace(/^v/, ""));
   });
 });

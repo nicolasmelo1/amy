@@ -1,5 +1,5 @@
 import { ChildProcessWithoutNullStreams } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -265,6 +265,11 @@ function skillProblem(skill: { name: string; path: string }): string | undefined
  * A skill is an explicit input item with the path of its SKILL.md, which is how
  * codex 0.166's `UserInput` names one; a leading `/name` is not a skill mention
  * to codex, so it is removed from the text rather than sent as prose.
+ *
+ * Codex canonicalizes the path of every skill it discovers and compares a
+ * `skill` input's path as a raw string, so the input must name the real
+ * SKILL.md: sent through a link in the user root, the skill was silently
+ * ignored and the turn ran without it.
  */
 function turnInput(
   prompt: string,
@@ -274,7 +279,7 @@ function turnInput(
   const addressed = `/${skill.name}`;
   const body = prompt.startsWith(addressed) ? prompt.slice(addressed.length).replace(/^\s+/, "") : prompt;
   return [
-    { type: "skill", name: skill.name, path: path.join(path.resolve(skill.path), "SKILL.md") },
+    { type: "skill", name: skill.name, path: realpathSync(path.join(path.resolve(skill.path), "SKILL.md")) },
     { type: "text", text: body },
   ];
 }

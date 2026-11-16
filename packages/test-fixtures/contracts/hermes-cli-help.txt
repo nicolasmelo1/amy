@@ -1,9 +1,18 @@
-### hermes --help (v0.21.5, tag v2026.9.24)
-usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [-m MODEL] [--provider PROVIDER]
-              [--reasoning LEVEL] [-t TOOLSETS] [--resume SESSION] [--no-restore-cwd] [--in DIR]
-              [--continue [SESSION_NAME]] [--worktree] [--accept-hooks] [--skills SKILLS] [--yolo]
-              [--pass-session-id] [--ignore-user-config] [--ignore-rules] [--safe-mode] [--tui]
-              [--cli] [--dev]
+### hermes --version
+Hermes Agent v0.23.0 (2026.9.24) · stable · local 2bd378ed1b8d
+Install directory: /private/tmp/hermes-023
+Install method: git
+Python: 3.12.13
+OpenAI SDK: 2.24.0
+Update available — run 'hermes update'
+
+### hermes --help
+usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [--cpu-profile PATH] [-m MODEL]
+              [--provider PROVIDER] [--reasoning LEVEL] [-t TOOLSETS] [--resume SESSION]
+              [--no-restore-cwd] [--in DIR] [--continue [SESSION_NAME]] [--worktree]
+              [--accept-hooks] [--skills SKILLS] [--yolo] [--pass-session-id] [--checkpoints]
+              [--ignore-user-config] [--ignore-rules] [--safe-mode] [--tui] [--native] [--cli]
+              [--dev]
               <command> ...
 
 Hermes Agent - AI assistant with tool-calling capabilities
@@ -18,7 +27,8 @@ positional arguments:
     browser             Real-profile browsing helpers (close a browser locking its profile)
     secrets             Manage external secret sources (Bitwarden, 1Password)
     egress              Manage the iron-proxy egress credential-injection firewall
-    migrate             Migrate configuration for retired models or deprecated settings
+    migrate             Move over from another agent, or migrate retired models and deprecated
+                        settings
     codex-runtime       Manage the optional codex app-server runtime (migrate MCP config)
     gateway             Messaging gateway management
     proxy               Local OpenAI-compatible proxy to OAuth providers
@@ -34,7 +44,6 @@ positional arguments:
     pause               Emergency stop: pause cron/kanban dispatch and new gateway turns
     resume              Lift the emergency stop set by `hermes pause`
     cron                Cron job management
-    sync                Skill Sync — sync your skills across devices and with your team
     webhook             Manage dynamic webhook subscriptions
     peer                Bot-to-bot DMs across machines (peer Hermes gateways)
     portal              Set up Nous Portal (login, model pick, Tool Gateway); see also `portal
@@ -51,7 +60,6 @@ positional arguments:
     backup              Back up Hermes home directory to a zip file
     checkpoints         Inspect / prune / clear ~/.hermes/checkpoints/
     import              Restore a Hermes backup from a zip file
-    import-agent        Import a Claude Code or Codex CLI setup into Hermes
     config              View and edit configuration
     skin                List, switch, and tweak skins
     console             Open the safe Hermes command console
@@ -66,13 +74,13 @@ positional arguments:
     memory              Configure external memory provider
     tools               Configure which tools are enabled per platform
     computer-use        Manage the Computer Use (cua-driver) backend (macOS/Windows/Linux)
-    mcp                 Manage MCP servers and run Hermes as an MCP server
+    mcp                 Manage MCP server connections
+    connectors          Manage hosted app connectors and their accounts
     sessions            Manage session history (list, rename, export, prune, delete)
     insights            Show usage insights and analytics
     usage               Show account rate-limit windows (the /usage block) without starting a
                         session
     monitoring          Inspect gateway monitoring (health & diagnostics export)
-    claw                OpenClaw migration tools
     vault               Manage the local encrypted autofill vault (add/list/rm credentials)
     update              Update Hermes Agent to the latest version
     uninstall           Uninstall Hermes Agent
@@ -82,6 +90,7 @@ positional arguments:
     dashboard           Start the web UI dashboard
     serve               Start the Hermes backend server (headless; powers the desktop app and
                         remote backends)
+    webapp              Open the Hermes Desktop workspace in a browser
     desktop (gui)       Build and launch the native desktop app
     logs                View and filter Hermes log files
     prompt-size         Show a byte breakdown of the system prompt + tool schemas
@@ -98,6 +107,10 @@ options:
                         cost, token counts, model, api_calls) to PATH. The report is written even
                         when the run fails, so pipelines can always account for spend. No effect
                         outside -z/--oneshot.
+  --cpu-profile PATH    Profile this process with cProfile and write PATH (pstats) plus PATH.txt
+                        (top functions) on exit. A relative PATH goes under the profile's
+                        logs/profiles/. Adds overhead for as long as the process runs; under --tui
+                        it profiles the launcher, not the agent backend.
   -m MODEL, --model MODEL
                         Model override for this invocation (e.g. anthropic/claude-sonnet-4.6).
                         Applies to -z/--oneshot and --tui. Also settable via
@@ -130,6 +143,8 @@ options:
                         Preload one or more skills for the session (repeat flag or comma-separate)
   --yolo                Bypass all dangerous command approval prompts (use at your own risk)
   --pass-session-id     Include the session ID in the agent's system prompt
+  --checkpoints         Enable filesystem checkpoints before destructive file operations (use
+                        /rollback to restore)
   --ignore-user-config  Ignore ~/.hermes/config.yaml and fall back to built-in defaults
                         (credentials in .env are still loaded)
   --ignore-rules        Skip auto-injection of AGENTS.md, SOUL.md, .cursorrules, memory, and
@@ -138,6 +153,8 @@ options:
                         AGENTS.md/memory injection, plugins, and MCP servers (implies --ignore-
                         user-config and --ignore-rules)
   --tui                 Launch the modern TUI instead of the classic REPL
+  --native, --tui-native
+                        With --tui: use native terminal scrollback and disable mouse tracking
   --cli                 Force the classic prompt_toolkit REPL (overrides display.interface=tui)
   --dev                 With --tui: run TypeScript sources via tsx (skip dist build)
 
@@ -242,3 +259,4 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+
