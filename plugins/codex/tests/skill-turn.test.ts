@@ -135,6 +135,23 @@ describe("a codex turn addressed to a skill", () => {
     expect(named?.path && fs.realpathSync(named.path)).toBe(fs.realpathSync(path.join(skill, "SKILL.md")));
   });
 
+  it("names the skill by the canonical path codex catalogs, when amy's root holds a link to it", async () => {
+    // Measured with two real codex-cli 0.166.0 turns: codex canonicalizes a
+    // discovered skill's path and compares the `skill` input's path as a raw
+    // string. Sent through the link, the input was ignored and the turn
+    // completed without the skill; sent canonical, the skill was loaded.
+    const real = skillAt("amy-groom", FRONTMATTER);
+    const amyRoot = path.join(root, "amy-root");
+    fs.mkdirSync(amyRoot);
+    fs.symlinkSync(real, path.join(amyRoot, "amy-groom"), "dir");
+
+    await codex().ask("/amy-groom\n\ngroom it", root, { skill: { name: "amy-groom", path: path.join(amyRoot, "amy-groom") } });
+
+    const named = read().input.find((item) => item.type === "skill");
+    expect(named?.path).toBe(fs.realpathSync(path.join(real, "SKILL.md")));
+    expect(read().skills.map((one) => one.path)).toContain(named?.path);
+  });
+
   it("is refused before a turn starts when the directory holds no SKILL.md", async () => {
     const skill = skillAt("amy-groom", undefined);
 

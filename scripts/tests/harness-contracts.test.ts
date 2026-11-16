@@ -54,4 +54,26 @@ describe("the harness contracts", () => {
     expect(entry?.version).toMatch(/^v?\d+\.\d+\.\d+/);
     expect(entry && matches(entry)).toBe(true);
   });
+
+  it("vendor hermes's CLI from the release the manifest names, as that binary reports itself", () => {
+    // `hermes --version` prints `Hermes Agent vX.Y.Z (date)`; the tag vX.Y.Z is
+    // the release. A help text that does not carry that line, or carries
+    // another version, was not produced by the release it is pinned to.
+    const entry = vendored(/hermes/)!;
+    const body = fs.readFileSync(path.join(directory, entry.file), "utf8");
+    const reported = /Hermes Agent v(\d+\.\d+\.\d+)/.exec(body)?.[1];
+
+    expect(reported).toBeDefined();
+    expect(entry.version.replace(/^v/, "")).toBe(reported);
+  });
+
+  it("name the publisher's release each harness contract is derived from, so the check can compare against it", () => {
+    const codex = vendored(/codex/) as (Entry & { url?: string }) | undefined;
+    const hermes = vendored(/hermes/) as (Entry & { url?: string }) | undefined;
+
+    expect(codex?.url).toMatch(/^https:\/\/github\.com\/openai\/codex\//);
+    expect(codex?.url).toContain(codex!.version);
+    expect(hermes?.url).toMatch(/^https:\/\/github\.com\/NousResearch\/hermes-agent\//);
+    expect(hermes?.url).toContain(hermes!.version.replace(/^v/, ""));
+  });
 });
