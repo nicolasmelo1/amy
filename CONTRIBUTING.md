@@ -85,7 +85,8 @@ Some of it is worth understanding rather than obeying:
   `scripts/duplication-baseline.json`, with a date it comes due; anything the
   detectors report that the file does not name fails, and a frozen finding that
   is gone is dropped from it. A copy is fixed by folding it into one helper,
-  not by raising a threshold.
+  not by raising a threshold. Why, and what the ratchet holds:
+  [code is written once and reached](docs/design/code-is-written-once-and-reached.md).
 - **`npm run docs:check`** fails when the code moved and the generated half of
   the documentation did not, and when the written half breaks a prose rule (a
   hand-written count, a listed phrase, a page over its limit). Run

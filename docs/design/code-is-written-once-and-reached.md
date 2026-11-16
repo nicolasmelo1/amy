@@ -44,12 +44,12 @@ touches:
   - docs/development/the-factory.md
   - CONTRIBUTING.md
 criteria:
-  - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "deferred:test:plugins/file-worktree/tests/manager.test.ts", sources: [S3, S4] }
-  - { id: A2, statement: "the gate runs knip --production with test helpers declared as entries, and fails on an export, type, file or dependency only a test reaches", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S1, S2, S6] }
-  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S2, S8] }
-  - { id: A4, statement: "the gate runs jscpd over packages, plugins and examples src; a copied block that is not in the baseline fails, naming both places", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S5, S7, S9] }
-  - { id: A5, statement: "the baseline only shrinks: a pair it lists that is gone is dropped by the check, and a pair added to it by hand fails review as a ratchet key", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S8] }
-  - { id: A6, statement: "duplicated-code-is-detected is an L6 toolchain rule asserting the gate still runs both detectors, with a mutation fixture that drops one", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S6, S8] }
+  - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "test:plugins/file-worktree/tests/manager.test.ts", done: true, sources: [S3, S4] }
+  - { id: A2, statement: "the gate runs knip --production with test helpers declared as entries, and fails on an export, type, file or dependency only a test reaches", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S1, S2, S6] }
+  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S2, S8] }
+  - { id: A4, statement: "the gate runs jscpd over packages, plugins and examples src; a copied block that is not in the baseline fails, naming both places", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S5, S7, S9] }
+  - { id: A5, statement: "the baseline only shrinks: a pair it lists that is gone is dropped by the check, and a pair added to it by hand fails review as a ratchet key", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S8] }
+  - { id: A6, statement: "duplicated-code-is-detected is an L6 toolchain rule asserting the gate still runs both detectors, with a mutation fixture that drops one", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S6, S8] }
 crosses:
   - { mechanism: config, answer: n/a, why: "mountingFrom loses an unused parameter; no schema, template or environment name changes" }
   - { mechanism: calls, answer: n/a, why: "folded loses the call site it never read; how a workflow calls another is unchanged" }
@@ -68,7 +68,9 @@ exit: "npm run gate fails on a copied block and on an export only a test reaches
 ---
 # Code is written once and reached
 
-The gate runs knip in a mode where a test counts as a caller. Nothing looks
-for copies, and the audit found helpers written up to ten times, already
-drifting apart. Both become gate failures. What exists today is frozen by
-name and comes due.
+The gate ran `knip` in its default mode, where a test counts as a caller, and
+nothing looked for copies. Now `knip --production` fails on an export, type,
+file or dependency nothing outside a test reaches, and `jscpd` fails on a block
+copied into another file. What the tree already carried is frozen by name in
+`scripts/duplication-baseline.json` with the date it comes due, so the ratchet
+only shrinks; `tsc` gained `noUnusedLocals` and `noUnusedParameters`.

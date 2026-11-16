@@ -535,6 +535,11 @@
           "description": ""
         },
         {
+          "title": "Code is written once and reached",
+          "path": "/design/code-is-written-once-and-reached",
+          "description": ""
+        },
+        {
           "title": "Every plugin is proven end to end",
           "path": "/design/every-plugin-is-proven-end-to-end",
           "description": ""
@@ -3007,6 +3012,17 @@
       "file": "docs/design/claudes-usage-is-read-without-its-token.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/claudes-usage-is-read-without-its-token.md",
       "title": "Claude's usage is read without its token",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/code-is-written-once-and-reached",
+      "file": "docs/design/code-is-written-once-and-reached.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/code-is-written-once-and-reached.md",
+      "title": "Code is written once and reached",
       "description": "",
       "group": "",
       "order": 999,
