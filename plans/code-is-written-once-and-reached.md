@@ -1,5 +1,5 @@
 ---
-base: f804048e391921013359b2d3fd4734e7c45b242a
+base: a169c2390d991d86967ecf78d681c184ebc3565c
 sources:
   - { id: S1, kind: code, ref: "package.json", symbol: "knip", said: "the gate runs knip in its default mode, which counts tests as callers, so an export only a test reaches passes; it exits 0 today" }
   - { id: S2, kind: reference, said: "measured 2026-11-15 at f804048e: knip --production reports 23 unused exports, 3 unused exported types, 2 unused dependencies and 76 files, most of them test helpers it was not told are entries" }
