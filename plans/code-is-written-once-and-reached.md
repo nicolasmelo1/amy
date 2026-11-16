@@ -1,5 +1,5 @@
 ---
-base: f804048e391921013359b2d3fd4734e7c45b242a
+base: a169c2390d991d86967ecf78d681c184ebc3565c
 sources:
   - { id: S1, kind: code, ref: "package.json", symbol: "knip", said: "the gate runs knip in its default mode, which counts tests as callers, so an export only a test reaches passes; it exits 0 today" }
   - { id: S2, kind: reference, said: "measured 2026-11-15 at f804048e: knip --production reports 23 unused exports, 3 unused exported types, 2 unused dependencies and 76 files, most of them test helpers it was not told are entries" }
@@ -22,15 +22,40 @@ touches:
   - packages/cli/tests/duplication.test.ts
   - plugins/file-worktree/tests/manager.test.ts
   - plugins/file-worktree/src/manager.ts
+  - packages/cli/tests/project.test.ts
+  - plugins/concurrent-engine/tests/lanes.test.ts
+  - plugins/hermes-agent/tests/setup.test.ts
+  - .allowed-root-files
+  - packages/core/src/calls.ts
+  - packages/core/src/diagram.ts
+  - packages/workflow-setup/src/machine.ts
+  - plugins/claude/src/usage.ts
+  - packages/cli/src/assemble.ts
+  - packages/cli/src/config.ts
+  - packages/cli/src/index.ts
+  - packages/cli/src/update.ts
+  - registry/cli.json
+  - registry/core.json
+  - registry/plugin-claude.json
+  - registry/plugin-file-worktree.json
+  - registry/workflow-setup.json
+  - docs/development/the-gate.md
+  - docs/rules.md
+  - docs/development/the-factory.md
   - CONTRIBUTING.md
 criteria:
   - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "deferred:test:plugins/file-worktree/tests/manager.test.ts", sources: [S3, S4] }
   - { id: A2, statement: "the gate runs knip --production with test helpers declared as entries, and fails on an export, type, file or dependency only a test reaches", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S1, S2, S6] }
-  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "deferred:open — counted when the build starts", sources: [S2, S8] }
+  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S2, S8] }
   - { id: A4, statement: "the gate runs jscpd over packages, plugins and examples src; a copied block that is not in the baseline fails, naming both places", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S5, S7, S9] }
   - { id: A5, statement: "the baseline only shrinks: a pair it lists that is gone is dropped by the check, and a pair added to it by hand fails review as a ratchet key", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S8] }
   - { id: A6, statement: "duplicated-code-is-detected is an L6 toolchain rule asserting the gate still runs both detectors, with a mutation fixture that drops one", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S6, S8] }
 crosses:
+  - { mechanism: config, answer: n/a, why: "mountingFrom loses an unused parameter; no schema, template or environment name changes" }
+  - { mechanism: calls, answer: n/a, why: "folded loses the call site it never read; how a workflow calls another is unchanged" }
+  - { mechanism: diagram, answer: n/a, why: "readClass loses a count it never read; workflow.mmd is read and refused as before" }
+  - { mechanism: mount-and-capabilities, answer: n/a, why: "assemble loses a config it never read; what boot binds and what a workflow reaches are unchanged" }
+  - { mechanism: agent-replies, answer: n/a, why: "the claude reader loses an unread timeout field it already copies into the timer; replies are parsed and classified as before" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "only an unread private field is deleted from the worktree manager; no checkout or lease changes" }
   - { mechanism: install-and-update, answer: n/a, why: "a devDependency and gate scripts; nothing an install or update of amy ships changes" }
 guarantee:

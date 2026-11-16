@@ -96,6 +96,14 @@ export class HarnessRelay implements Harness {
 
     while (index < ladder.length) {
       const rung = ladder[index]!;
+      // A skill turn is never sent to a rung that cannot be handed the skill:
+      // `/name` without the directory behind it is a method the run cannot
+      // follow. The boot refuses a configured ladder that could reach one;
+      // this is the same rule at the moment of asking, for a plugin that
+      // declared nothing.
+      if (skill && (handed.skill === undefined || rung.cli.lendsSkill !== true)) {
+        return cannotLend(rung, skill, handed.skill === undefined);
+      }
       last = await rung.cli.ask(asked(prompt, skill, handoff), cwd, handed);
       // The caller says whether a completed run holds while there is still a
       // rung to climb to, rather than after the ladder has stopped.
@@ -123,6 +131,30 @@ export class HarnessRelay implements Harness {
 function asked(prompt: string, skill: string | undefined, handoff: string | undefined): string {
   const body = handoff ? `${prompt}\n\n${handoff}` : prompt;
   return skill ? `/${skill}\n\n${body}` : body;
+}
+
+/**
+ * What a rung that cannot be handed the skill gets instead of the turn.
+ *
+ * A run that cannot follow the method is refused before it starts; sending it
+ * bare would look like work while proving nothing. The output says which rung
+ * and which of the two reasons, so the fix is the ladder or the install.
+ */
+function cannotLend(rung: NamedHarness, skill: string, missing: boolean): HarnessReply {
+  const why = missing
+    ? `the directory holding /${skill} was not found`
+    : `${rung.name} does not lend a skill`;
+  return {
+    text: "",
+    run: {
+      outcome: "failed",
+      harness: rung.harness,
+      model: rung.model,
+      durationMs: 0,
+      costSource: "unknown",
+      output: `${rung.name} was not asked /${skill}: ${why}, so the turn would act without the method.`,
+    },
+  };
 }
 
 /**

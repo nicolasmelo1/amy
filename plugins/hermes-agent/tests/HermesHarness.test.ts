@@ -3,7 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ScriptedRunner } from "@amykit/test-fixtures";
-import { HermesHarness, HermesUsage, classify, cost, readUsage, retryAfterMs, tokensOf } from "../src/index.js";
+import { HermesHarness } from "../src/HermesHarness.js";
+import { classify, cost, readUsage, retryAfterMs, skillsRoot, tokensOf } from "../src/HermesHarness.js";
+import type { HermesUsage } from "../src/HermesHarness.js";
 
 /**
  * A real `--usage-file` report, copied verbatim from a run.
@@ -233,5 +235,50 @@ describe("a run apart from the operator's own Hermes", () => {
     await harness.ask("fix the invoice total", "/w/northwind/backend");
 
     expect(runner.argvFor("hermes").slice(0, 4)).toEqual(["-p", "amy", "-z", "fix the invoice total"]);
+  });
+});
+
+describe("a skill is lent by name (A3)", () => {
+  it("passes -s <name> and nothing else changes in the arguments", async () => {
+    const root = path.join(tmp, "skills");
+    const skill = path.join(root, "amy-groom");
+    fs.mkdirSync(skill, { recursive: true });
+    fs.writeFileSync(path.join(skill, "SKILL.md"), "---\nname: amy-groom\ndescription: groom a ticket\n---\n");
+    const before = process.env.HERMES_HOME;
+    process.env.HERMES_HOME = tmp;
+    const runner = new ScriptedRunner([
+      {
+        match: (command, args) => command === "hermes" && args.includes("get") && args.includes("skills.external_dirs"),
+        result: { stdout: `  - ${root}\n`, exitCode: 0 },
+      },
+      { match: (command) => command === "hermes", result: { stdout: "done", exitCode: 0 } },
+    ]);
+    try {
+      const harness = new HermesHarness(runner, { profile: "amy" }, tmp);
+
+      await harness.ask("/amy-groom\n\ngo", "/w", { skill: { name: "amy-groom", path: skill } });
+
+      expect(harness.lendsSkill).toBe(true);
+      const oneShot = runner.callsTo("hermes").find((call) => call.args.includes("-z"));
+      expect(oneShot?.args).toEqual([
+        "-p",
+        "amy",
+        "-s",
+        "amy-groom",
+        "-z",
+        "/amy-groom\n\ngo",
+        "--usage-file",
+        expect.any(String),
+      ]);
+    } finally {
+      if (before === undefined) delete process.env.HERMES_HOME;
+      else process.env.HERMES_HOME = before;
+    }
+  });
+
+  it("reads the profile's own skills directory, and the operator's only without a profile", () => {
+    expect(skillsRoot("amy", "/machine/.hermes")).toBe(path.join("/machine/.hermes", "profiles", "amy", "skills"));
+    expect(skillsRoot(undefined, "/machine/.hermes")).toBe(path.join("/machine/.hermes", "skills"));
+    expect(new HermesHarness(new ScriptedRunner(), { profile: "amy" }, tmp).skillsDirectory).toBe(skillsRoot("amy"));
   });
 });

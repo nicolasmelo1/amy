@@ -119,11 +119,14 @@ as a failed run with nothing to wait for. Why:
 
 ## A run carries only what amy hands it
 
-A harness runs apart from the operator's own setup. The Claude harness loads
-the repository's settings and leaves out the user's hooks, plugins, memory and
-skills. A skill a step names is lent to the run by its directory. A step marked
-read-only is enforced by the harness's own sandbox, and a harness that cannot
-enforce it refuses the run so the relay hands it on. Why:
+A harness runs apart from the operator's own setup: the run reads the
+repository's settings and none of the user's hooks, plugins, memory and
+skills. A skill a step names is lent to the run by that harness's own route:
+claude a fresh `--add-dir`, codex a link and an explicit skill input under the
+fresh home the run gets, and hermes `-s` through the profile's
+`external_dirs`. A step marked read-only is enforced by the harness's own
+sandbox, and a harness that cannot enforce it refuses the run so the relay
+hands it on. Why:
 [a run carries only what amy hands it](../design/a-run-carries-only-what-amy-hands-it.md).
 
 ## Skills: who does the step
@@ -157,9 +160,15 @@ own directory is linked into `~/.amy/skills`, one symlink per skill, and
 nothing is copied. `false`, or leaving the harness out, removes the links; a
 skill amy ships keeps amy's copy. Where the directory is, the harness's plugin
 says (`Harness.skillsDirectory`: claude under `~/.claude`, codex under
-`CODEX_HOME` or `~/.codex`), and a name no harness plugin mounted, or one whose
-plugin does not say, is refused at boot. Written
-under the relay's own settings, it wins over the top-level one.
+`~/.agents/skills` or `CODEX_HOME`, hermes under its profile), and a name no
+harness plugin mounted, or one whose plugin does not say, is refused at boot.
+Written under the relay's own settings, it wins over the top-level one.
+
+Every harness amy ships can be handed a skill, so a skill ladder may name a
+step whose harness ladder runs on any of them. A ladder that could reach a
+harness which cannot be handed one is refused at boot, naming the step and
+the rung, rather than sending the skill's name with nothing behind it.
+[a skill reaches every harness](../design/a-skill-reaches-every-harness.md)
 
 A `chat` ladder is what a message may start with:
 
