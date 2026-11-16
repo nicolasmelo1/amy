@@ -1,5 +1,5 @@
 ---
-base: e339d0719f8511e8fd95d8bd303053687bd68ebc
+base: fa9104b5f86e58f0a160ce4850d7a031d6e150b6
 sources:
   - { id: S1, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "withSkill", said: "a step's skill is put before the prompt as /name and its directory handed to every rung, whatever harness the rung runs on" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "lendsSkill", said: "a harness that cannot be handed a skill leaves lendsSkill unset, and a turn addressed to a skill is refused on it" }
@@ -16,6 +16,7 @@ sources:
   - { id: S13, kind: friction, said: "2026-11-15: a-skill-is-asked-for-in-the-chat was marked done, but only claude loads a skill; codex and hermes either refuse or receive /name with nothing behind it" }
 touches:
   - packages/agent-kit/src/HarnessRelay.ts
+  - packages/agent-kit/src/harness-conformance.ts
   - packages/agent-kit/tests/HarnessRelay.test.ts
   - packages/agent-kit/tests/harness-conformance.test.ts
   - packages/core/src/ports/Harness.ts
