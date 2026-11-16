@@ -46,7 +46,7 @@ touches:
 criteria:
   - { id: A1, statement: "noUnusedLocals and noUnusedParameters are on, and refusalFor is gone; a private member nothing reads fails typecheck", proof: "deferred:test:plugins/file-worktree/tests/manager.test.ts", sources: [S3, S4] }
   - { id: A2, statement: "the gate runs knip --production with test helpers declared as entries, and fails on an export, type, file or dependency only a test reaches", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S1, S2, S6] }
-  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "deferred:open — counted when the build starts", sources: [S2, S8] }
+  - { id: A3, statement: "what knip --production reports at the base is deleted or frozen by name in the ratchet with a review_by, and the pull request says how many of each", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S2, S8] }
   - { id: A4, statement: "the gate runs jscpd over packages, plugins and examples src; a copied block that is not in the baseline fails, naming both places", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S5, S7, S9] }
   - { id: A5, statement: "the baseline only shrinks: a pair it lists that is gone is dropped by the check, and a pair added to it by hand fails review as a ratchet key", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S8] }
   - { id: A6, statement: "duplicated-code-is-detected is an L6 toolchain rule asserting the gate still runs both detectors, with a mutation fixture that drops one", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S6, S8] }
