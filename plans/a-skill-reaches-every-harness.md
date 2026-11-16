@@ -1,5 +1,5 @@
 ---
-base: fa9104b5f86e58f0a160ce4850d7a031d6e150b6
+base: 07da968ed4591bdc81d03bf0574262454b61deb9
 sources:
   - { id: S1, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "withSkill", said: "a step's skill is put before the prompt as /name and its directory handed to every rung, whatever harness the rung runs on" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "lendsSkill", said: "a harness that cannot be handed a skill leaves lendsSkill unset, and a turn addressed to a skill is refused on it" }
@@ -31,6 +31,8 @@ touches:
   - plugins/hermes-agent/tests/setup.test.ts
   - registry/plugin-codex.json
   - registry/plugin-hermes-agent.json
+  - registry/plugin-agent-relay.json
+  - registry/core.json
   - registry/agent-kit.json
   - docs/concepts/harnesses.md
   - plugins/codex/README.md
