@@ -66,6 +66,7 @@ against the schema it declares, and the plugin reads them back typed by it:
 | `AMY_PROJECT_ENV` | `@amykit/cli` |
 | `AMY_SUPERVISOR` | `@amykit/cli` |
 | `CODEX_HOME` | `@amykit/plugin-codex` |
+| `HERMES_HOME` | `@amykit/plugin-hermes-agent` |
 | `LANG` | `@amykit/cli` |
 | `LINEAR_API_KEY` | `@amykit/plugin-linear` |
 | `NO_COLOR` | `@amykit/cli` |
