@@ -400,6 +400,11 @@
           "description": ""
         },
         {
+          "title": "A skill reaches every harness",
+          "path": "/design/a-skill-reaches-every-harness",
+          "description": ""
+        },
+        {
           "title": "A Slack thread per piece of work",
           "path": "/design/a-slack-thread-per-piece-of-work",
           "description": ""
@@ -1016,6 +1021,11 @@
           "depth": 3,
           "title": "The examples in the docs, the tests and the prove plugin's help name tickets PROJ-, the placeholder the rest of the suite already used. A private term can now be denied as a whole word, so a three-letter key is caught in XYZ-12 without also firing on every identifier that contains those letters.",
           "slug": "the-examples-in-the-docs-the-tests-and-the-prove-plugins-help-name-tickets-proj--the-placeholder-the-rest-of-the-suite-already-used-a-private-term-can-now-be-denied-as-a-whole-word-so-a-three-letter-key-is-caught-in-xyz-12-without-also-firing-on-every-identifier-that-contains-those-letters"
+        },
+        {
+          "depth": 3,
+          "title": "**A skill reaches every harness.**",
+          "slug": "a-skill-reaches-every-harness"
         },
         {
           "depth": 3,
@@ -2330,6 +2340,17 @@
       "file": "docs/design/a-skill-is-asked-for-in-the-chat.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-skill-is-asked-for-in-the-chat.md",
       "title": "A skill is asked for in the chat",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/a-skill-reaches-every-harness",
+      "file": "docs/design/a-skill-reaches-every-harness.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-skill-reaches-every-harness.md",
+      "title": "A skill reaches every harness",
       "description": "",
       "group": "",
       "order": 999,
@@ -8094,6 +8115,10 @@
         "package": "@amykit/plugin-codex"
       },
       {
+        "variable": "HERMES_HOME",
+        "package": "@amykit/plugin-hermes-agent"
+      },
+      {
         "variable": "LANG",
         "package": "@amykit/cli"
       },
@@ -8890,6 +8915,7 @@
           }
         ],
         "environment": [
+          "HERMES_HOME",
           "OLLAMA_API_KEY"
         ]
       },
@@ -11551,6 +11577,34 @@
           }
         ],
         "level": "patch"
+      },
+      {
+        "id": "a-skill-reaches-every-harness",
+        "title": "**A skill reaches every harness.**",
+        "body": "A step's skill was lent only to Claude; Codex received `/name` with nothing\nbehind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that\nholds only the lent skill, and names it explicitly on `turn/start`; Hermes\npasses `-s <name>` with amy's skill root named in the profile's\n`skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a\nskill's name to a rung it did not hand the skill to, a ladder that could reach\nsuch a harness is refused at boot, and the conformance suite fails a harness\nthat answers a skill turn without declaring it. Codex and Hermes are held to\ntheir pinned CLI contracts, vendored beside the doubles.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-hermes-agent",
+            "level": "minor"
+          }
+        ],
+        "level": "minor"
       },
       {
         "id": "claudes-usage-is-read-without-its-token",

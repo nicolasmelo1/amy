@@ -6,7 +6,7 @@ The codex CLI as the agent, over its JSONL event stream.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `codex` in the `harness` collection and `Codex` in the `usage` collection.
 
-Use it when the agent should be Codex, run through the codex CLI. It contributes a harness and a usage reader to agent-relay, which must be installed beside it. At mount it checks that the installed codex speaks the app-server protocol it was built against, and refuses to mount otherwise. Codex reports no cost of its own, so a ceiling in money needs the price table to carry the model.
+Use it when the agent should be Codex, run through the codex CLI. It contributes a harness and a usage reader to agent-relay, which must be installed beside it. At mount it checks that the installed codex speaks the app-server protocol it was built against, and refuses to mount otherwise. A skill a step names is lent as a link under the fresh CODEX_HOME the run gets, so that skill is the only one it sees. Codex reports no cost of its own, so a ceiling in money needs the price table to carry the model.
 
 ## What it extends
 

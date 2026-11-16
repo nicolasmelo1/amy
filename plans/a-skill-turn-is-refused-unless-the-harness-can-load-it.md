@@ -64,4 +64,4 @@ the lent skill and names it explicitly on `turn/start`, hermes fails loudly on
 `unknown_skill` and refuses a hidden or unreachable skill before it runs, and
 setup names amy's root on a profile that already exists without dropping the
 directories it had. Their contracts are vendored beside the doubles, so a
-stand-in cannot drift from the CLI it stands in for.
+stand-in cannot drift from the CLI it stands in for, and every file this touches is declared above.

@@ -69,9 +69,12 @@ export interface Harness {
    * Whether this harness can be handed a skill by place, as `AskContext.skill`
    * asks.
    *
-   * A harness whose CLI reads skills from its own home and offers no way to
-   * add one leaves this unset, and a turn addressed to a skill is refused on
-   * it rather than acting without the method it was told to follow.
+   * Every harness amy ships says true: claude through a fresh `--add-dir`,
+   * codex through a link in its isolated home, hermes through `-s` and its
+   * profile's `external_dirs`. A harness whose CLI reads skills only from its
+   * own home and offers no way to add one leaves this unset, and a turn
+   * addressed to a skill is refused on it rather than acting without the
+   * method it was told to follow.
    */
   readonly lendsSkill?: boolean;
   /**

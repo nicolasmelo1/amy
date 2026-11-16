@@ -44,18 +44,18 @@ touches:
   - plugins/codex/README.md
   - plugins/hermes-agent/README.md
 criteria:
-  - { id: A1, statement: "a codex turn with AskContext.skill runs with that skill linked under its fresh CODEX_HOME's skills, nothing else of the operator's, and the link goes with the home", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S4, S7, S10] }
-  - { id: A2, statement: "codex sets lendsSkill, and a skill whose directory holds no SKILL.md is not lent, as on claude", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S2, S3, S10] }
-  - { id: A3, statement: "a hermes turn with AskContext.skill passes -s <name> and nothing else changes in its arguments; hermes sets lendsSkill", proof: "deferred:test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S5, S9, S11] }
-  - { id: A4, statement: "amy setup hermes writes amy's skill root into the profile's skills.external_dirs, and the profile check reports it drifted when it is gone", proof: "deferred:test:plugins/hermes-agent/tests/setup.test.ts", sources: [S8, S11] }
-  - { id: A5, statement: "hermes reports skillsDirectory, so harnessSkills.hermes true mounts and links its skills", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S5, S8] }
-  - { id: A6, statement: "where codex's user skills are, ~/.agents/skills or CODEX_HOME/skills on codex 0.166, is read from the CLI before skillsDirectory changes", proof: "deferred:test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7] }
-  - { id: A7, statement: "a skills ladder for a step whose model ladder has a rung on a harness without lendsSkill is refused at boot, naming the step and the rung", proof: "deferred:test:plugins/agent-relay/tests/plugin.test.ts", sources: [S1, S2, S12] }
-  - { id: A8, statement: "the relay never sends /name to a rung it did not hand the skill to: the conformance suite fails a harness that receives a skill turn without lendsSkill", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S1, S2, S13] }
-  - { id: A9, statement: "/amy-groom in the chat is answered with the skill lent on each of claude, codex and hermes, on stand-in CLIs", proof: "deferred:test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S6, S13] }
+  - { id: A1, statement: "a codex turn with AskContext.skill runs with that skill linked under its fresh CODEX_HOME's skills, nothing else of the operator's, and the link goes with the home", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S4, S7, S10], done: true }
+  - { id: A2, statement: "codex sets lendsSkill, and a skill whose directory holds no SKILL.md is not lent, as on claude", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S2, S3, S10], done: true }
+  - { id: A3, statement: "a hermes turn with AskContext.skill passes -s <name> and nothing else changes in its arguments; hermes sets lendsSkill", proof: "test:plugins/hermes-agent/tests/HermesHarness.test.ts", sources: [S5, S9, S11], done: true }
+  - { id: A4, statement: "amy setup hermes writes amy's skill root into the profile's skills.external_dirs, and the profile check reports it drifted when it is gone", proof: "test:plugins/hermes-agent/tests/setup.test.ts", sources: [S8, S11], done: true }
+  - { id: A5, statement: "hermes reports skillsDirectory, so harnessSkills.hermes true mounts and links its skills", proof: "test:plugins/agent-relay/tests/plugin.test.ts", sources: [S5, S8], done: true }
+  - { id: A6, statement: "where codex's user skills are, ~/.agents/skills or CODEX_HOME/skills on codex 0.166, is read from the CLI before skillsDirectory changes", proof: "test:plugins/codex/tests/CodexHarness.test.ts", sources: [S7], done: true }
+  - { id: A7, statement: "a skills ladder for a step whose model ladder has a rung on a harness without lendsSkill is refused at boot, naming the step and the rung", proof: "test:plugins/agent-relay/tests/plugin.test.ts", sources: [S1, S2, S12], done: true }
+  - { id: A8, statement: "the relay never sends /name to a rung it did not hand the skill to: the conformance suite fails a harness that receives a skill turn without lendsSkill", proof: "test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S1, S2, S13], done: true }
+  - { id: A9, statement: "/amy-groom in the chat is answered with the skill lent on each of claude, codex and hermes, on stand-in CLIs", proof: "test:packages/agent-kit/tests/harness-conformance.test.ts", sources: [S6, S13], done: true }
 crosses:
-  - { mechanism: agent-replies, answer: works, proof: "deferred:A9" }
-  - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A7" }
+  - { mechanism: agent-replies, answer: works, proof: "A9" }
+  - { mechanism: mount-and-capabilities, answer: works, proof: "A7" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "a rung refused at boot never runs, so a turn's attempts and waits climb the ladder as they do today" }
   - { mechanism: config, answer: n/a, why: "skills and harnessSkills keep their shape; only which harnesses can satisfy them grows" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "a harness is handed a skill to read; nothing is written to a tracker or a host" }
@@ -72,8 +72,8 @@ exit: "the same skills ladder lends amy-groom on claude, codex and hermes, and a
 ---
 # A skill reaches every harness
 
-`a-skill-is-asked-for-in-the-chat` lends a skill only on Claude. The relay
-still puts `/name` before a Codex or Hermes rung that never sees the skill.
-Codex gets the skill as a link in its fresh home, Hermes through `-s` and
-its profile's `external_dirs`. A ladder that could send a skill bare is
-refused at boot.
+`a-skill-is-asked-for-in-the-chat` lent a skill only on Claude, while the relay
+still put `/name` before a Codex or Hermes rung. Codex now gets the skill as a
+link under the fresh home the run already has, Hermes through `-s` and its
+profile's `external_dirs`, and a ladder that could reach a harness without the
+skill is refused at boot. Why: [a run carries only what amy hands it](a-run-carries-only-what-amy-hands-it.md).

@@ -6,7 +6,7 @@ Hermes as the agent, over its one-shot mode and usage report.
 
 A plugin for [amy](https://github.com/nicolasmelo1/amy). It provides `hermes` in the `harness` collection and `Hermes ()` in the `usage` collection.
 
-Use it when the agent should be Hermes, run in one-shot mode under a profile of its own so amy never touches your personal Hermes setup. It contributes a harness and a usage reader to agent-relay, so install the relay beside it. amy add prepares the profile and amy doctor checks it.
+Use it when the agent should be Hermes, run in one-shot mode under a profile of its own so amy never touches your personal Hermes setup. It contributes a harness and a usage reader to agent-relay, so install the relay beside it. amy add prepares the profile and amy doctor checks it. A skill a step names is passed with -s, and the profile's skills.external_dirs names amy's skill root so the name resolves.
 
 ## What it extends
 
@@ -17,7 +17,7 @@ Use it when the agent should be Hermes, run in one-shot mode under a profile of 
 | Operations | _none_ |
 | Commands | _none_ |
 | Events | _none_ |
-| Environment | `OLLAMA_API_KEY` |
+| Environment | `HERMES_HOME`, `OLLAMA_API_KEY` |
 
 ## Install
 
@@ -70,6 +70,7 @@ This package reads the following, which `amy doctor` checks for you:
 
 | Variable |  |
 | :-- | :-- |
+| `HERMES_HOME` | required at mount |
 | `OLLAMA_API_KEY` | required at mount |
 
 ## Where the reasoning is

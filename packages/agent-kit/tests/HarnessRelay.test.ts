@@ -16,12 +16,14 @@ function rung(
   harness: string,
   model: string,
   outcomes: AgentOutcome[],
+  lendsSkill = true,
 ): NamedHarness & { asked: string[] } {
   const asked: string[] = [];
   let turn = 0;
 
   const cli: Harness = {
     name: harness,
+    ...(lendsSkill ? { lendsSkill: true } : {}),
     ask: async (prompt) => {
       asked.push(prompt);
       const outcome = outcomes[Math.min(turn, outcomes.length - 1)] ?? "completed";
@@ -32,6 +34,9 @@ function rung(
 
   return { name: `${harness}:${model}`, harness, model, cli, asked };
 }
+
+/** Where the skills these tests name are installed. */
+const located = (skill: string) => `/skills/${skill}`;
 
 describe("a ladder per step", () => {
   it("sends a step to the ladder named for it", async () => {
@@ -199,6 +204,7 @@ describe("handing the step to a skill", () => {
     const contexts: AskContext[] = [];
     const cli: Harness = {
       name: "claude",
+      lendsSkill: true,
       ask: async (_prompt, _cwd, context = {}) => {
         contexts.push(context);
         return { text: "done", run: run(contexts.length === 1 ? "failed" : "completed", "claude", "sonnet") };
@@ -206,19 +212,23 @@ describe("handing the step to a skill", () => {
     };
     const only: NamedHarness = { name: "claude:sonnet", harness: "claude", model: "sonnet", cli };
 
-    await new HarnessRelay(oneLadder([only]), {
+    const reply = await new HarnessRelay(oneLadder([only]), {
       skills: { "draft-plan": ["factory-author", "logion"] },
       locate: (skill) => (skill === "factory-author" ? "/skills/factory-author" : undefined),
     }).ask("write a plan", "/x", { step: "draft-plan", workId: "note-1" });
 
-    expect(contexts.map((context) => context.skill)).toEqual([{ name: "factory-author", path: "/skills/factory-author" }, undefined]);
+    // The first skill is handed over. The second has no directory, so it is
+    // refused rather than sent `/logion` with nothing behind it.
+    expect(contexts.map((context) => context.skill)).toEqual([{ name: "factory-author", path: "/skills/factory-author" }]);
     expect(contexts.every((context) => context.workId === "note-1")).toBe(true);
+    expect(reply.run.outcome).toBe("failed");
+    expect(reply.run.output).toContain("was not found");
   });
 
   it("addresses the prompt to the skill named for the step", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
-    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["factory-author"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["factory-author"] }, locate: located }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -240,7 +250,7 @@ describe("handing the step to a skill", () => {
   it("asks no other skill once one has answered", async () => {
     const only = rung("claude", "sonnet", ["completed"]);
 
-    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] }, locate: located }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -252,7 +262,7 @@ describe("handing the step to a skill", () => {
   it("moves to the next skill when the first did not answer", async () => {
     const only = rung("claude", "sonnet", ["failed", "completed"]);
 
-    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] }, locate: located }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -267,7 +277,7 @@ describe("handing the step to a skill", () => {
     const claude = rung("claude", "sonnet", ["failed", "failed"]);
     const codex = rung("codex", "gpt-5", ["failed", "completed"]);
 
-    await new HarnessRelay(oneLadder([claude, codex]), { skills: { implement: ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([claude, codex]), { skills: { implement: ["first", "second"] }, locate: located }).ask(
       "do it",
       "/x",
       { step: "implement" },
@@ -280,7 +290,7 @@ describe("handing the step to a skill", () => {
   it("stops asking skills once a run was abandoned", async () => {
     const only = rung("claude", "sonnet", ["abandoned"]);
 
-    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] } }).ask(
+    await new HarnessRelay(oneLadder([only]), { skills: { "draft-plan": ["first", "second"] }, locate: located }).ask(
       "write a plan",
       "/x",
       { step: "draft-plan" },
@@ -297,10 +307,36 @@ describe("handing the step to a skill", () => {
       log,
       now: () => NOW,
       skills: { "draft-plan": ["first", "second"] },
+      locate: located,
     }).ask("write a plan", "/x", { workId: "note-1", step: "draft-plan" });
 
     expect(log.events.filter((e) => e.detail?.moved === "skill")).toMatchObject([
       { detail: { from: { skill: "first" }, to: { skill: "second" }, moved: "skill" } },
     ]);
+  });
+
+  it("never addresses a rung that cannot be handed the skill", async () => {
+    const only = rung("codex", "gpt-5", ["completed"], false);
+
+    const reply = await new HarnessRelay(oneLadder([only]), {
+      skills: { "draft-plan": ["amy-groom"] },
+      locate: located,
+    }).ask("write a plan", "/x", { step: "draft-plan" });
+
+    expect(only.asked).toEqual([]);
+    expect(reply.run.outcome).toBe("failed");
+    expect(reply.run.output).toContain("does not lend a skill");
+  });
+
+  it("refuses when the skill's directory is not found, rather than sending /name bare", async () => {
+    const only = rung("claude", "sonnet", ["completed"]);
+
+    const reply = await new HarnessRelay(oneLadder([only]), {
+      skills: { "draft-plan": ["amy-groom"] },
+    }).ask("write a plan", "/x", { step: "draft-plan" });
+
+    expect(only.asked).toEqual([]);
+    expect(reply.run.outcome).toBe("failed");
+    expect(reply.run.output).toContain("was not found");
   });
 });

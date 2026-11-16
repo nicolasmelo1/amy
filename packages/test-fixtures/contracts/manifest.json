@@ -1,32 +1,32 @@
 {
-  "vendoredAt": "2026-11-11T12:46:19.249Z",
+  "vendoredAt": "2026-11-16T20:10:59.638026+00:00",
   "documents": [
     {
       "name": "github-graphql",
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
-      "publisher": "GitHub — the public GraphQL schema for github.com",
+      "publisher": "GitHub \u2014 the public GraphQL schema for github.com",
       "sha256": "e77f0dc544b72bf889d62636f127cf4ce91c64056f648c95e26907253919467c"
     },
     {
       "name": "github-rest",
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
-      "publisher": "GitHub — the OpenAPI description of the github.com REST API",
+      "publisher": "GitHub \u2014 the OpenAPI description of the github.com REST API",
       "sha256": "b1807bbb9b79466d4c11ba869db9e2642568e7e493554bc1eb69dc4b06aee48b"
     },
     {
       "name": "linear-graphql",
       "file": "linear.graphql",
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
-      "publisher": "Linear — the GraphQL schema its own SDK is generated from",
+      "publisher": "Linear \u2014 the GraphQL schema its own SDK is generated from",
       "sha256": "dc0f838785760f8daa692e438fcd15071c5bc39c6997758d5c2d303364f98e56"
     },
     {
       "name": "slack-web",
       "file": "slack-web.json.gz",
       "url": "https://api.slack.com/specs/openapi/v2/slack_web.json",
-      "publisher": "Slack — the OpenAPI description of the Web API, served by Slack",
+      "publisher": "Slack \u2014 the OpenAPI description of the Web API, served by Slack",
       "sha256": "1f41356634b6636d1cd64ba68b72aa12b76989bde483c334f6069e2828e9f2d5"
     }
   ],
@@ -47,9 +47,29 @@
       "name": "telegram-bot-api",
       "file": "telegram-bot-api.json",
       "url": "https://core.telegram.org/bots/api",
-      "publisher": "Telegram — the Bot API reference page, derived into its types and methods",
+      "publisher": "Telegram \u2014 the Bot API reference page, derived into its types and methods",
       "version": "10.4",
       "sha256": "71fe445580ad15cb9dbce18a2450c84404e61f927fa2777bc9d4b93e9ef7c996"
+    }
+  ],
+  "harnesses": [
+    {
+      "name": "codex-app-server",
+      "file": "codex-app-server.json.gz",
+      "version": "0.166.0",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.166.0",
+      "releases": "https://api.github.com/repos/openai/codex/releases",
+      "generator": "codex app-server generate-json-schema --out <dir> (codex-cli 0.166.0)",
+      "sha256": "133cd12bc2937b3c61f065b7d929e3c58e5041877cd55fdee76f01d82145ae2c"
+    },
+    {
+      "name": "hermes-cli",
+      "file": "hermes-cli-help.txt",
+      "version": "0.23.0",
+      "url": "https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.0",
+      "releases": "https://api.github.com/repos/NousResearch/hermes-agent/releases",
+      "generator": "hermes --version; hermes --help; hermes profile create --help; hermes config --help (tag v0.23.0, commit 2bd378ed)",
+      "sha256": "2c6c58edbfb939cd2f54742d503be56d4bd2afc0ad5a7bb47a9d62887eb41277"
     }
   ]
 }
