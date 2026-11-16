@@ -1,5 +1,5 @@
 ---
-base: f804048e391921013359b2d3fd4734e7c45b242a
+base: e339d0719f8511e8fd95d8bd303053687bd68ebc
 sources:
   - { id: S1, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "withSkill", said: "a step's skill is put before the prompt as /name and its directory handed to every rung, whatever harness the rung runs on" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "lendsSkill", said: "a harness that cannot be handed a skill leaves lendsSkill unset, and a turn addressed to a skill is refused on it" }
@@ -9,7 +9,7 @@ sources:
   - { id: S6, kind: code, ref: "packages/core/src/chat/desk.ts", symbol: "readOnlyAnswer", said: "the chat refuses a skill turn on a harness that does not lend, naming one that does" }
   - { id: S7, kind: reference, ref: "https://developers.openai.com/codex/skills", said: "Codex reads a skill as a directory holding SKILL.md from its skill roots; the user root is documented as $HOME/.agents/skills, older docs say $CODEX_HOME/skills" }
   - { id: S8, kind: reference, ref: "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills", said: "Hermes scans ~/.hermes/skills and the directories skills.external_dirs names; the local one wins a name clash" }
-  - { id: S9, kind: reference, ref: "hermes_cli/_parser.py in hermes-agent 2bd378ed1b", said: "hermes -s/--skills preloads skills by name for the session, oneshot -z included; a name it cannot resolve is reported missing" }
+  - { id: S9, kind: reference, ref: "https://hermes-agent.nousresearch.com/docs/user-guide/cli", said: "hermes -s/--skills preloads named skills into the session prompt before the first turn, interactive and single-query mode alike; a name it cannot resolve is reported missing" }
   - { id: S10, kind: decision, said: "codex is lent a skill as a link under the fresh CODEX_HOME's skills, one per turn, removed with the home. Proposed 2026-11-15" }
   - { id: S11, kind: decision, said: "hermes is lent a skill with -s <name>; amy's profile names amy's skill root under skills.external_dirs, set and checked by amy setup hermes like the other profile settings. Proposed 2026-11-15" }
   - { id: S12, kind: decision, said: "a step's skill ladder over a model ladder with a rung on a harness that does not lend is refused at boot, naming the rung, rather than sent bare. Proposed 2026-11-15" }
