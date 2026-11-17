@@ -29,3 +29,5 @@ exit: "the daemon test proves both retrying the recoverable deadline and rethrow
 # A discovery timeout keeps the loop going
 
 The daemon treats its recoverable transport deadline as one failed pass, rather than a process exit. It waits before retrying and keeps unrelated programming errors visible.
+
+The deadline is core's own error, so the loop can tell a server that stopped answering from a defect of its own.
