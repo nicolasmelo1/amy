@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "note-to-plan",
-  "implementation_sha256": "28a595d37ce0768addcf4e290705c916d492f43dbf07c004a96827174029ec56",
+  "implementation_sha256": "eb379b0092035e9f82f2bd9b9083b8f7e953a73632b688ac5c959c0634632543",
   "runs": [
     {
       "scenario": "note-to-plan",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable from a written-down piece of friction to a pull request against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/note-to-plan-run.json",
-      "report_sha256": "567cedacb3e55731d855528708de022772a59c8d8c8058afb4a0d9a5675d6c4b",
+      "report_sha256": "717cf9d7d2a0f9e2ef4f30ef0a70e8d51a1880210cc9f7932c85bdc5c2b6452e",
       "required_assertions": []
     }
   ]
