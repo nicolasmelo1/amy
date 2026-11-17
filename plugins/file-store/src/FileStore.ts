@@ -9,18 +9,14 @@ const LOCK_TURNS = 500;
 
 /** One file per ticket, so a record can be read and edited by hand. */
 export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
-  /** What each record looked like when this writer read it, as text. */
-  private readonly read = new Map<string, string>();
-
   constructor(private readonly root: string, create = true) {
     if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   load(workId: string): R | null {
-    const text = this.readFile(workId);
-    if (text === undefined) return null;
-    this.read.set(workId, text);
-    return JSON.parse(text) as R;
+    const file = this.file(workId);
+    if (!fs.existsSync(file)) return null;
+    return JSON.parse(fs.readFileSync(file, "utf-8")) as R;
   }
 
   save(record: R): void {
@@ -54,39 +50,7 @@ export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
    * next look, and two writers never share a staged name.
    */
   private write(record: R): void {
-    const text = JSON.stringify(this.keepingTheRelease(record), null, 2);
-    writeAtomically(this.file(record.id), text);
-    this.read.set(record.id, text);
-  }
-
-  /**
-   * The record with a release another process made since this writer read it
-   * kept clear.
-   *
-   * The engine loads a record, works on it for as long as an agent takes, and
-   * saves the state it planned from. A `gaveUp` an operator cleared meanwhile
-   * is a decision it never saw, and writing this copy back would undo it.
-   */
-  private keepingTheRelease(record: R): R {
-    const before = this.read.get(record.id);
-    if (before === undefined || JSON.parse(before).gaveUp === undefined) return record;
-    const onDisk = this.readFile(record.id);
-    if (onDisk === undefined || JSON.parse(onDisk).gaveUp !== undefined) return record;
-    // Only when this writer did not decide the marker itself: a new `gaveUp`
-    // is the engine giving up, and that is its to write.
-    if (JSON.stringify(record.gaveUp) !== JSON.stringify(JSON.parse(before).gaveUp)) return record;
-    const { gaveUp: _cleared, ...rest } = record;
-    return rest as R;
-  }
-
-  /** A record's text as it stands, without changing what this writer is judged against. */
-  private readFile(workId: string): string | undefined {
-    try {
-      return fs.readFileSync(this.file(workId), "utf-8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-      throw error;
-    }
+    writeAtomically(this.file(record.id), JSON.stringify(record, null, 2));
   }
 
   private underLock<T>(workId: string, work: () => T): T {

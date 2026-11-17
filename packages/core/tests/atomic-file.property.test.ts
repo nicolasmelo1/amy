@@ -13,10 +13,6 @@ const plantedWriter = `
 import fs from "node:fs";
 export function writeAtomically(file, content) {
   fs.writeFileSync(\`\${file}.tmp\`, content, "utf-8");
-  // The gap between the staged write and the rename, widened so the defect is
-  // observable: every writer staged at the one name, and the first rename
-  // takes what the others were about to rename.
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
   fs.renameSync(\`\${file}.tmp\`, file);
 }
 `;
