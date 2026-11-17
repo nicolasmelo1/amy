@@ -655,6 +655,11 @@
           "description": ""
         },
         {
+          "title": "The ratchet cannot grow",
+          "path": "/design/the-ratchet-cannot-grow",
+          "description": ""
+        },
+        {
           "title": "The README counts nothing by hand",
           "path": "/design/the-readme-counts-nothing-by-hand",
           "description": ""
@@ -3765,6 +3770,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/the-ratchet-cannot-grow",
+      "file": "docs/design/the-ratchet-cannot-grow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-ratchet-cannot-grow.md",
+      "title": "The ratchet cannot grow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/the-readme-counts-nothing-by-hand",

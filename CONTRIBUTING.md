@@ -86,7 +86,9 @@ Some of it is worth understanding rather than obeying:
   detectors report that the file does not name fails, and a frozen finding that
   is gone is dropped from it. A copy is fixed by folding it into one helper,
   not by raising a threshold. Why, and what the ratchet holds:
-  [code is written once and reached](docs/design/code-is-written-once-and-reached.md).
+  [code is written once and reached](docs/design/code-is-written-once-and-reached.md),
+  and the baseline cannot grow from a change:
+  [the ratchet cannot grow](docs/design/the-ratchet-cannot-grow.md).
   CI's build job runs the same step, for the same reason:
   [the build job runs the ratchet](docs/design/the-build-job-runs-the-ratchet.md).
 - **`npm run docs:check`** fails when the code moved and the generated half of
