@@ -535,6 +535,11 @@
           "description": ""
         },
         {
+          "title": "Code is written once and reached",
+          "path": "/design/code-is-written-once-and-reached",
+          "description": ""
+        },
+        {
           "title": "Every plugin is proven end to end",
           "path": "/design/every-plugin-is-proven-end-to-end",
           "description": ""
@@ -600,6 +605,11 @@
           "description": ""
         },
         {
+          "title": "The build job runs the ratchet",
+          "path": "/design/the-build-job-runs-the-ratchet",
+          "description": ""
+        },
+        {
           "title": "The config is written by what is mounted",
           "path": "/design/the-config-is-written-by-what-is-mounted",
           "description": ""
@@ -642,6 +652,11 @@
         {
           "title": "The ports belong to the core",
           "path": "/design/the-ports-belong-to-the-core",
+          "description": ""
+        },
+        {
+          "title": "The ratchet cannot grow",
+          "path": "/design/the-ratchet-cannot-grow",
           "description": ""
         },
         {
@@ -1031,6 +1046,11 @@
           "depth": 3,
           "title": "**Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, ~/.claude/.credentials.json or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for get_usage over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.",
           "slug": "claudes-usage-is-read-without-its-token-the-usage-reader-took-claude-codes-oauth-token-from-the-environment-claudecredentialsjson-or-the-macos-keychain-and-called-an-undocumented-endpoint-it-now-asks-claude-code-itself-for-getusage-over-a-short-lived-print-mode-child-no-model-call-no-credential-of-the-operators-and-a-runner-without-a-managed-spawn-reads-as-unavailable"
+        },
+        {
+          "depth": 3,
+          "title": "**The gate notices code nothing reaches, and code written twice.** tsc now runs with noUnusedLocals and noUnusedParameters, and the gate reads both detectors through one step: knip --production, where a test no longer counts as a caller, and jscpd over packages, plugins and examples. What the tree already carried is frozen by name in a ratchet with a date it comes due, so the next unused export or copied block fails instead of joining the pile. The unused parameters and the one unread private field this change exposed are gone.",
+          "slug": "the-gate-notices-code-nothing-reaches-and-code-written-twice-tsc-now-runs-with-nounusedlocals-and-nounusedparameters-and-the-gate-reads-both-detectors-through-one-step-knip---production-where-a-test-no-longer-counts-as-a-caller-and-jscpd-over-packages-plugins-and-examples-what-the-tree-already-carried-is-frozen-by-name-in-a-ratchet-with-a-date-it-comes-due-so-the-next-unused-export-or-copied-block-fails-instead-of-joining-the-pile-the-unused-parameters-and-the-one-unread-private-field-this-change-exposed-are-gone"
         },
         {
           "depth": 2,
@@ -3009,6 +3029,17 @@
       "headings": []
     },
     {
+      "path": "/design/code-is-written-once-and-reached",
+      "file": "docs/design/code-is-written-once-and-reached.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/code-is-written-once-and-reached.md",
+      "title": "Code is written once and reached",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/every-plugin-is-proven-end-to-end",
       "file": "docs/design/every-plugin-is-proven-end-to-end.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/every-plugin-is-proven-end-to-end.md",
@@ -3334,6 +3365,17 @@
       "file": "docs/design/telegram-is-a-conversation.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/telegram-is-a-conversation.md",
       "title": "Telegram is a conversation",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
+      "path": "/design/the-build-job-runs-the-ratchet",
+      "file": "docs/design/the-build-job-runs-the-ratchet.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-build-job-runs-the-ratchet.md",
+      "title": "The build job runs the ratchet",
       "description": "",
       "group": "",
       "order": 999,
@@ -3728,6 +3770,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/the-ratchet-cannot-grow",
+      "file": "docs/design/the-ratchet-cannot-grow.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-ratchet-cannot-grow.md",
+      "title": "The ratchet cannot grow",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/the-readme-counts-nothing-by-hand",
@@ -5602,6 +5655,11 @@
           "depth": 3,
           "title": "L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED",
           "slug": "l6dependencyvulnerabilitiesarescanned"
+        },
+        {
+          "depth": 3,
+          "title": "L6.DUPLICATED_CODE_IS_DETECTED",
+          "slug": "l6duplicatedcodeisdetected"
         },
         {
           "depth": 3,
@@ -11470,6 +11528,13 @@
         "reason": ""
       },
       {
+        "id": "L6.DUPLICATED_CODE_IS_DETECTED",
+        "enabled": true,
+        "settings": {},
+        "title": "Something detects the same block written in two places",
+        "reason": ""
+      },
+      {
         "id": "L6.FIXTURES_NAME_NOBODY_REAL",
         "enabled": true,
         "settings": {},
@@ -11617,6 +11682,34 @@
           }
         ],
         "level": "minor"
+      },
+      {
+        "id": "code-is-written-once-and-reached",
+        "title": "**The gate notices code nothing reaches, and code written twice.** `tsc` now runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both detectors through one step: `knip --production`, where a test no longer counts as a caller, and `jscpd` over packages, plugins and examples. What the tree already carried is frozen by name in a ratchet with a date it comes due, so the next unused export or copied block fails instead of joining the pile. The unused parameters and the one unread private field this change exposed are gone.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-worktree",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-setup",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
       }
     ],
     "changelogs": [

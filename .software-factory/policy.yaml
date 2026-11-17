@@ -1301,6 +1301,9 @@ rules:
   # L6 — Something detects code nothing reaches
   L6.DEAD_CODE_IS_DETECTED:
     enabled: true
+  # L6 — Something detects the same block written in two places
+  L6.DUPLICATED_CODE_IS_DETECTED:
+    enabled: true
   # L6 — Something audits dependencies for known vulnerabilities
   L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED:
     enabled: true

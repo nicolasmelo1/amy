@@ -91,8 +91,8 @@ describe("what the doctor says about it", () => {
 
   it("is green when everything amy turned off is still off", async () => {
     const runner = new ScriptedRunner([
-      { match: (c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
-      { match: (c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: `- ${SKILLS}` } },
+      { match: (_c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
+      { match: (_c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: `- ${SKILLS}` } },
       ...PROFILE_SETTINGS.map((setting) => ({
         match: (c: string, a: readonly string[]) => c === "hermes" && a[3] === "get" && a[4] === setting.key,
         result: { exitCode: 0, stdout: setting.value },
@@ -104,8 +104,8 @@ describe("what the doctor says about it", () => {
 
   it("is red, naming amy's skill root, when the profile no longer sees it (A4)", async () => {
     const runner = new ScriptedRunner([
-      { match: (c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
-      { match: (c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: "[]" } },
+      { match: (_c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
+      { match: (_c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: "[]" } },
       ...PROFILE_SETTINGS.map((setting) => ({
         match: (c: string, a: readonly string[]) => c === "hermes" && a[3] === "get" && a[4] === setting.key,
         result: { exitCode: 0, stdout: setting.value },
@@ -121,11 +121,11 @@ describe("what the doctor says about it", () => {
 
   it("is red, naming the command that puts it back, when the profile remembers again", async () => {
     const runner = new ScriptedRunner([
-      { match: (c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
-      { match: (c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: `- ${SKILLS}` } },
-      { match: (c, a) => a[3] === "get" && a[4] === "memory.memory_enabled", result: { exitCode: 0, stdout: "True" } },
+      { match: (_c, a) => a[0] === "profile", result: { exitCode: 0, stdout: "" } },
+      { match: (_c, a) => a[3] === "get" && a[4] === "skills.external_dirs", result: { exitCode: 0, stdout: `- ${SKILLS}` } },
+      { match: (_c, a) => a[3] === "get" && a[4] === "memory.memory_enabled", result: { exitCode: 0, stdout: "True" } },
       ...PROFILE_SETTINGS.map((setting) => ({
-        match: (c: string, a: readonly string[]) => a[3] === "get" && a[4] === setting.key,
+        match: (_c: string, a: readonly string[]) => a[3] === "get" && a[4] === setting.key,
         result: { exitCode: 0, stdout: setting.value },
       })),
     ]);

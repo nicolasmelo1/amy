@@ -714,7 +714,7 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // implicit default the old loader supplied: materializing it changes the
   // file even when nothing moved from place to place, so it is answered
   // before deciding that no migration is needed at all.
-  const materialized = materializeTicketStatus(document, top, said);
+  const materialized = materializeTicketStatus(top, said);
   // A command-gate slice an older install wrote is put right whether or not
   // a top-level key moved into it: its `commands` and `checkouts` were valid
   // there, and the slice's schema now refuses both by name at boot.
@@ -785,7 +785,7 @@ function moveRetiredKeys(
  * without a value the mount will refuse. The ticket's profile gains what
  * init would have written, said the way a move is said.
  */
-function materializeTicketStatus(document: yaml.Document, top: yaml.YAMLMap, said: string[]): boolean {
+function materializeTicketStatus(top: yaml.YAMLMap, said: string[]): boolean {
   const workflowsMap = entryOf(top, "workflows");
   if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return false;
   let wrote = false;

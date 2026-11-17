@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { CommandRunner, CommandResult, Event } from "@amykit/core";
 import { WorktreeManager } from "../src/manager.js";
 
@@ -300,5 +300,46 @@ describe("the worktree manager", () => {
     await manager.acquire("ITEM-1", repo);
     expect(await manager.release("ITEM-1", repo, { force: true })).toBe(true);
     expect(fs.existsSync(manager.pathFor("ITEM-1", repo))).toBe(false);
+  });
+});
+
+/**
+ * A1: a private member nothing reads is an error, not a warning somebody turns
+ * off. The manager carried one (`private refusalFor`), which is exactly the
+ * shape the flags exist to catch: a field that reads like a hook and reaches
+ * nothing.
+ */
+describe("the type checker refuses code nothing reaches", () => {
+  const repo = path.resolve(import.meta.dirname, "../../..");
+
+  it("runs with noUnusedLocals and noUnusedParameters on", () => {
+    const base = JSON.parse(fs.readFileSync(path.join(repo, "tsconfig.base.json"), "utf8")) as {
+      compilerOptions: Record<string, boolean>;
+    };
+
+    expect(base.compilerOptions.noUnusedLocals).toBe(true);
+    expect(base.compilerOptions.noUnusedParameters).toBe(true);
+  });
+
+  it("reports an unread private field as an error", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "amy-unread-"));
+    const file = path.join(dir, "unread.ts");
+    fs.writeFileSync(file, "export class Thing {\n  private unread = 1;\n}\n", "utf8");
+
+    const tsc = path.join(repo, "node_modules", "typescript", "bin", "tsc");
+    const result = spawnSync(
+      process.execPath,
+      [tsc, "--noEmit", "--strict", "--noUnusedLocals", "--noUnusedParameters", file],
+      { encoding: "utf8" },
+    );
+
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain("TS6133");
+  });
+
+  it("leaves the manager with no private field nobody reads", () => {
+    const source = fs.readFileSync(path.join(repo, "plugins", "file-worktree", "src", "manager.ts"), "utf8");
+
+    expect(source).not.toContain("private refusalFor");
   });
 });

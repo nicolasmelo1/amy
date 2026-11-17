@@ -9,8 +9,8 @@ sources:
   - { id: S6, kind: code, ref: "plugins/linear/src/LinearTracker.ts:355", said: "a ticket's briefId is its parent's identifier, and a ticket with no parent carries none" }
   - { id: S7, kind: reference, ref: "docs/design/a-brief-reaches-every-ticket-it-explains.md", said: "in the machine the shipped workflow drives, the brief id is the tracker parent" }
   - { id: S8, kind: reference, ref: "docs/design/a-project-is-brief-work-and-proof.md", said: "a project walks one unit through brief, work and proof; the brief phase grooms that unit" }
-  - { id: S9, kind: friction, said: "a private project groomed one brief per ticket, stored under the ticket's own id; the GROOMED gate read it and went green, and the work phase read no brief at all: triage asked the operator a blocking question the brief's cut list already answered, and the implementation would have been written without the brief" }
-  - { id: S10, kind: decision, said: "the brief a unit is worked against is resolved by one core function, the same for the gate, `amy brief` and every ticket step: the brief stored under the unit's own id first, the tracker's briefId only when there is none" }
+  - { id: S9, kind: friction, said: "a private project groomed one brief per ticket under the ticket's own id; the GROOMED gate went green, the work phase read no brief, and triage asked a question the brief's cut list already answered" }
+  - { id: S10, kind: decision, said: "one core function resolves the brief a unit is worked against, for the gate, `amy brief` and every ticket step: the unit's own brief first, the tracker's briefId only when there is none" }
   - { id: S11, kind: decision, said: "the tracker keeps saying what it knows: briefId stays the parent's identifier, and a feature-level brief keeps reaching every child that has no brief of its own" }
   - { id: S12, kind: decision, said: "a question triage asks is appended to the brief the ticket was read with, so it lands where the answer will be written" }
 touches:
@@ -29,7 +29,7 @@ criteria:
   - { id: A3, statement: "a ticket whose own id holds no brief still reads the brief its parent names, as it does today", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/briefs.test.ts", sources: [S7, S11] }
   - { id: A4, statement: "the self-review lane reads the same brief the ticket was observed with", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/self-review.test.ts", sources: [S4, S10] }
   - { id: A5, statement: "triage's questions are appended to the brief the ticket was read with, its own when it has one", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/briefs.test.ts", sources: [S5, S12] }
-  - { id: A6, statement: "in a project of brief and work, a unit whose brief the GROOMED gate judged green reaches the work phase's triage prompt with that brief's text", proof: "deferred:test:.software-factory/evidence/project-phases-scenario.sh", sources: [S1, S8, S9] }
+  - { id: A6, statement: "in a project of brief and work, a unit whose brief the GROOMED gate judged green reaches the work phase's triage prompt with that brief's text", proof: "deferred:test:.software-factory/evidence/project-phases-scenario.sh", sources: [S1, S2, S8, S9] }
 crosses:
   - { mechanism: briefs, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/briefs.test.ts" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:test:.software-factory/evidence/project-phases-scenario.sh" }
@@ -48,61 +48,7 @@ exit: "a unit groomed under its own id is worked, reviewed and questioned agains
 ---
 # A ticket reads the brief its project judged
 
-A project names a brief by its unit, and the ticket steps name it by the
-tracker's parent. A brief groomed for the ticket itself passes the gate and
-is never read by the work.
-
-## Why
-
-A project walks one unit through brief, work and proof (S8). Its GROOMED gate
-and `amy brief check` read the brief stored under that unit's own work id
-(S1, S2). The shipped ticket-to-qa reads a brief only through
-`ticket.briefId` (S3, S4, S5), which the tracker fills from the ticket's
-parent (S6), as the brief design chose when a brief belonged to a feature and
-its tickets were children (S7).
-
-The two meet only when the brief is the parent's. When a project grooms the
-ticket itself, the gate goes green on a brief the work never reads (S9):
-
-- triage asks the operator questions the brief already settles;
-- the implementation is written without it;
-- the self-review reviews against nothing;
-- a question triage asks is appended to the parent's brief, or to none.
-
-Nothing refuses or says so, because an absent brief is a state and not an
-error.
-
-## The change
-
-One core function names the brief a unit is worked against (S10):
-
-```ts
-briefOf(store, { workId, briefId }): Promise<BriefRecord | null>
-```
-
-It reads the brief stored under the unit's own id first, and `briefId` only
-when there is none. It lives beside `renderBrief` in
-`packages/core/src/ports/Brief.ts` and is exported with it, so a private
-workflow resolves a brief the same way the shipped one does.
-
-ticket-to-qa calls it in its three places:
-
-- `requireTicketWithBrief`, which feeds triage and the implementation;
-- the self-review lane's observation;
-- `ask-question`, which appends to the brief it found (S12).
-
-`Ticket.briefId` keeps its meaning, the tracker's word for the parent's
-brief (S11). Its doc says the work's own brief comes first.
-
-The project gate already reads the unit's own id, so it does not change. The
-gate and the work now name the same brief.
-
-## Proof
-
-- `packages/core/tests/Brief.test.ts` covers the order: own id, then `briefId`, then null (A1).
-- ticket-to-qa's brief and self-review tests cover:
-  - a ticket with its own brief, both with a parent and without one (A2);
-  - a ticket with only its parent's brief (A3);
-  - the self-review reading the same brief (A4);
-  - the append going to the brief that was read (A5).
-- `project-phases-scenario.sh` grooms a unit under its own id, walks it past GROOMED, and checks that the work phase's triage prompt carries the brief's text (A6).
+A project's GROOMED gate and `amy brief check` read the brief under the
+unit's own id, while ticket-to-qa reads only the tracker's parent `briefId`.
+A brief groomed for the ticket itself passes the gate and is never read by
+the work. One core `briefOf` resolves both: own id first, `briefId` after.

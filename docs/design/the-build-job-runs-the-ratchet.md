@@ -6,7 +6,7 @@ touches:
   - .github/workflows/software-factory.yml
   - packages/cli/tests/duplication.test.ts
 criteria:
-  - { id: A1, statement: "the build job runs the duplication step, so CI applies the same ratchet the gate does instead of failing on what is already frozen", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S1] }
+  - { id: A1, statement: "the build job runs the duplication step, so CI applies the same ratchet the gate does instead of failing on what is already frozen", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S1] }
 crosses:
   - { mechanism: workflow-tooling, answer: n/a, why: "the step that runs the detectors is CI's; what `amy workflow check` draws and walks is unchanged" }
 guarantee:
@@ -21,4 +21,6 @@ exit: "the build job's duplication step is green on a tree whose only findings a
 
 The build job runs `knip` as its own step, so a tree that is green through the
 gate is red in that job: the gate applies the ratchet and the step does not.
-Both jobs run the same step, and a test reads the workflow to say so.
+Both jobs run the same step, and a test reads the workflow to say so. The step
+had named the detector since the detector was wired; what was missing is the
+ratchet, which is the part that decides what a finding means.

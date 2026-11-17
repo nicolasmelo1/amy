@@ -13,7 +13,7 @@
     "examples/workflow-note-to-plan/package.json": "adc93e5c100c98beb591bf47764071a1036968188dea4b78ecddb37766ffe113",
     "examples/workflow-pull-request/package.json": "5d3b132ebd40e7d4ff7c169bf684eefeb3e529056dd8c61ad679d9ec72ee8737",
     "examples/workflow-ticket-to-qa/package.json": "1de9682170d957cee566e0ebd48b205246974b32d00241afad2bffbd0da991c3",
-    "package.json": "61f8fbd88105ea6a857427fbe2d94335b5da4b69947d61614653e646f2e53be2",
+    "package.json": "77c032ff734e7414e883cd929d456d22d444562ce0a258be63bc3dfa024df35a",
     "packages/agent-kit/package.json": "9f898e051b4ebd8fc8e3f4cec57ee4b77a1cc8f989f102aac46761f42d77ea8f",
     "packages/cli/package.json": "edfe2c242c3c11c9f58c668ba471a57182bbbb629f6ceb41e496fb73ea712500",
     "packages/core/package.json": "00a438b7d48be7372b7660aaa0b6b8afb8ad9d40c352f008d41fe42cc95b2bbf",

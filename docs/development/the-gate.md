@@ -89,6 +89,7 @@ held to a gate that is proven to work.
 | `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |
 | `L6.DEAD_CODE_IS_DETECTED` | Something detects code nothing reaches |
 | `L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED` | Something audits dependencies for known vulnerabilities |
+| `L6.DUPLICATED_CODE_IS_DETECTED` | Something detects the same block written in two places |
 | `L6.FIXTURES_NAME_NOBODY_REAL` |  |
 | `L6.INSECURE_PATTERNS_ARE_SCANNED` | Something scans the code for known-insecure patterns |
 | `L6.PERFORMANCE_REGRESSION_IS_GUARDED` | Something would notice the code getting slower |
@@ -142,7 +143,8 @@ fails exactly like one that was never added.
 | Dependency vulnerabilities | `npm audit` | the gate, and CI |
 | Committed secrets | `gitleaks` | CI, on what a pull request adds |
 | Insecure patterns | `eslint-plugin-security` | the gate, and CI |
-| Dead code | `knip` | the gate, and CI |
+| Dead code | `knip --production` | the gate, and CI |
+| Duplicated code | `jscpd` | the gate, and CI |
 | Insecure workflows | `zizmor` | CI |
 | Performance regression | `vitest bench` | CI, against a committed baseline |
 
@@ -152,7 +154,7 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **60 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **61 rules**, and `sf verify` proves every one fires against a broken fixture.
 
 **30 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 

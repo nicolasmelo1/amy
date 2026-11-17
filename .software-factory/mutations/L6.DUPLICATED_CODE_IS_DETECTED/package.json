@@ -1,0 +1,10 @@
+{
+  "name": "mutation-duplicated-code",
+  "private": true,
+  "scripts": {
+    "knip": "knip --production"
+  },
+  "devDependencies": {
+    "knip": "^6.34.0"
+  }
+}
