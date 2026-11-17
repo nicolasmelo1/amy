@@ -194,6 +194,13 @@ describe("the L6 rule that keeps both detectors wired", () => {
     expect(read(`${fixture}/package.json`)).not.toContain("jscpd");
   });
 
+  it("is a step of CI's build job, so CI applies the ratchet the gate applies", () => {
+    const workflow = read(".github/workflows/software-factory.yml");
+
+    expect(workflow).toContain("npm run check:duplication");
+    expect(workflow).not.toContain("npm run knip");
+  });
+
   it("is a step of the gate, and the step runs knip and jscpd", () => {
     const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
     const step = read("scripts/check-duplication.ts");

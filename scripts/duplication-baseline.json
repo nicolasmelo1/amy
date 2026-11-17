@@ -241,14 +241,6 @@
       "review_by": "2027-03-03",
       "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
     },
-    "knip:packages/cli/src/duplication.ts#type:Detector": {
-      "review_by": "2027-03-03",
-      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
-    },
-    "knip:packages/cli/src/duplication.ts#type:Frozen": {
-      "review_by": "2027-03-03",
-      "note": "Reached only through a dynamic import of the built dist, or by a test: delete it or give it a production caller"
-    },
     "jscpd:examples/workflow-errand/src/actions.ts<->examples/workflow-note-to-plan/src/actions.ts#50:66b2f5ef77cd": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"

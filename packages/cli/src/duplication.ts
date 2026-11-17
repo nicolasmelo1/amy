@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 /** Which detector spoke. The key carries it, so one ratchet holds both. */
-export type Detector = "knip" | "jscpd";
+type Detector = "knip" | "jscpd";
 
 export type Finding = {
   detector: Detector;
@@ -19,7 +19,7 @@ export type Finding = {
 };
 
 /** A frozen finding, and the day somebody has to look at it again. */
-export type Frozen = { review_by: string; note: string };
+type Frozen = { review_by: string; note: string };
 
 export type Baseline = { version: 1; frozen: Record<string, Frozen> };
 

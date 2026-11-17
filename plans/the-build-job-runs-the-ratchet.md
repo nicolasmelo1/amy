@@ -21,4 +21,6 @@ exit: "the build job's duplication step is green on a tree whose only findings a
 
 The build job runs `knip` as its own step, so a tree that is green through the
 gate is red in that job: the gate applies the ratchet and the step does not.
-Both jobs run the same step, and a test reads the workflow to say so.
+Both jobs run the same step, and a test reads the workflow to say so. The step
+had named the detector since the detector was wired; what was missing is the
+ratchet, which is the part that decides what a finding means.

@@ -152,9 +152,11 @@ jobs:
           npx changeset status --since "origin/$BASE_REF"
       - run: npm run test:coverage
       - run: npm run lint
-      # Dead code is the residue of work that changed direction. Nobody
-      # deletes it by hand because nobody can prove it is unreachable.
-      - run: npm run knip
+      # Dead code is the residue of work that changed direction, and a copied
+      # block is a helper written twice. Nobody deletes either by hand because
+      # nobody can prove it is unused, so both detectors run here, held to the
+      # ratchet in scripts/duplication-baseline.json.
+      - run: npm run check:duplication
       - run: npm run audit
       # Reports rather than fails: a runner's hardware is not this laptop, so
       # a threshold here would be a coin toss. An accidental quadratic is not
