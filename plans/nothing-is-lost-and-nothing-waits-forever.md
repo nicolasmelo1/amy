@@ -1,5 +1,5 @@
 ---
-base: f804048e391921013359b2d3fd4734e7c45b242a
+base: 1198a210bcb3820babf2361bbd89bb3a5b15a4e4
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/index.ts", said: "amy run loops engine.tick() and never calls engine.discover(); amy tick and the daemon discover first, and the serial Worker's tick only claims from the queue" }
   - { id: S2, kind: reference, said: "probe 2026-11-15 at f804048e: the amy run loop over the real Worker with an empty queue and TICKET-1 found came back idle, expected [] to include TICKET-1" }
