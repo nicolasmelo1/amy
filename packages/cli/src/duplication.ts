@@ -27,6 +27,7 @@ export type Verdict = {
   added: Finding[];
   /** In this baseline, but not in the one the merge base froze: debt grown by an edit. */
   grown: Finding[];
+  extended: string[];
   gone: string[];
   unreviewed: string[];
   overdue: string[];
@@ -137,13 +138,20 @@ export function compare(baseline: Baseline, findings: readonly Finding[], today:
   const still = frozen.filter(([key]) => present.has(key));
   const added: Finding[] = [];
   const grown: Finding[] = [];
+  const extended: string[] = [];
   for (const finding of findings) {
-    if (baseline.frozen[finding.key] === undefined) added.push(finding);
-    else if (before !== undefined && before.frozen[finding.key] === undefined) grown.push(finding);
+    const current = baseline.frozen[finding.key];
+    const base = before?.frozen[finding.key];
+    if (current === undefined) added.push(finding);
+    else if (before !== undefined && base === undefined) grown.push(finding);
+    else if (base !== undefined && DATE.test(base.review_by) && DATE.test(current.review_by) && current.review_by > base.review_by) {
+      extended.push(finding.key);
+    }
   }
   return {
     added,
     grown,
+    extended: extended.sort(),
     gone: frozen.filter(([key]) => !present.has(key)).map(([key]) => key).sort(),
     unreviewed: still.filter(([, entry]) => !DATE.test(entry.review_by ?? "")).map(([key]) => key).sort(),
     overdue: still.filter(([, entry]) => DATE.test(entry.review_by ?? "") && entry.review_by < today).map(([key]) => key).sort(),
@@ -162,6 +170,7 @@ export function passed(verdict: Verdict): boolean {
   return (
     verdict.added.length === 0 &&
     verdict.grown.length === 0 &&
+    verdict.extended.length === 0 &&
     verdict.unreviewed.length === 0 &&
     verdict.overdue.length === 0
   );
@@ -177,6 +186,9 @@ export function render(verdict: Verdict): string[] {
   for (const finding of verdict.grown) {
     lines.push(`added to the baseline outside the merge base: ${finding.detail}`);
     lines.push(`  the base did not hold this key, so the ratchet cannot take it: write it once, or give it a production caller`);
+  }
+  for (const key of verdict.extended) {
+    lines.push(`review_by moved later than the merge base: ${key}`);
   }
   for (const key of verdict.unreviewed) {
     lines.push(`frozen without a review_by: ${key}`);

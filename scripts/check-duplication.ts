@@ -141,7 +141,7 @@ function main(): number {
   if (!passed(verdict)) {
     console.error(
       `\nduplication: ${verdict.added.length} new, ${verdict.grown.length} grown outside the base, ` +
-        `${verdict.unreviewed.length} without a review_by, ${verdict.overdue.length} past theirs`,
+        `${verdict.extended.length} review dates moved later, ${verdict.unreviewed.length} without a review_by, ${verdict.overdue.length} past theirs`,
     );
     return 1;
   }
