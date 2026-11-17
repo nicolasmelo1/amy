@@ -19,12 +19,15 @@ sources:
 touches:
   - packages/cli/src/index.ts
   - packages/cli/src/loader.ts
+  - packages/cli/src/pass.ts
   - packages/cli/src/setup.ts
   - packages/cli/tests/a-pass-discovers.property.test.ts
   - packages/cli/tests/a-fork-is-what-is-read.property.test.ts
+  - packages/cli/tests/models.test.ts
   - packages/core/src/http.ts
   - packages/core/src/atomic-file.ts
   - packages/core/src/index.ts
+  - packages/core/src/ports/Store.ts
   - packages/core/tests/http.property.test.ts
   - packages/core/tests/atomic-file.property.test.ts
   - plugins/slack/src/SlackApi.ts
@@ -47,9 +50,16 @@ touches:
   - .software-factory/rules/a-resolver-knows-its-profile.yaml
   - .software-factory/evidence/nothing-is-lost-scenario.sh
   - .software-factory/evidence/nothing-is-lost/drive.ts
+  - registry/cli.json
   - registry/core.json
   - registry/plugin-slack.json
   - registry/plugin-linear.json
+  - registry/plugin-agent-relay.json
+  - registry/plugin-file-store.json
+  - registry/plugin-telegram.json
+  - docs/rules.md
+  - docs/development/the-factory.md
+  - docs/development/the-gate.md
 criteria:
   - { id: A1, statement: "for any queue state and any tickets the runtime finds, one pass of amy run, amy tick or the daemon, the same function, claims every ticket found", proof: "deferred:property:packages/cli/tests/a-pass-discovers.property.test.ts#a_pass_that_skips_discover", sources: [S1, S2, S13] }
   - { id: A2, statement: "for any server that stalls before headers or trickles after any number of bytes, a Slack, Linear, Telegram or models.dev call settles by its deadline, through the one transport in core", proof: "deferred:property:packages/core/tests/http.property.test.ts#a_fetch_without_a_signal", sources: [S3, S4, S13] }
