@@ -6,7 +6,7 @@ touches:
   - .github/workflows/software-factory.yml
   - packages/cli/tests/duplication.test.ts
 criteria:
-  - { id: A1, statement: "the build job runs the duplication step, so CI applies the same ratchet the gate does instead of failing on what is already frozen", proof: "deferred:test:packages/cli/tests/duplication.test.ts", sources: [S1] }
+  - { id: A1, statement: "the build job runs the duplication step, so CI applies the same ratchet the gate does instead of failing on what is already frozen", proof: "test:packages/cli/tests/duplication.test.ts", done: true, sources: [S1] }
 crosses:
   - { mechanism: workflow-tooling, answer: n/a, why: "the step that runs the detectors is CI's; what `amy workflow check` draws and walks is unchanged" }
 guarantee:
