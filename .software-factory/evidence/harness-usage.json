@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "harness-usage",
-  "implementation_sha256": "0d8ade9b821b0a4f111c15233c8c18126beac3a95345ea0041dca5298b0aaac5",
+  "implementation_sha256": "e86e44a83b1aaef055262a9d008929db04a77039da793755dcd991e79ba57b12",
   "runs": [
     {
       "scenario": "harness-usage",

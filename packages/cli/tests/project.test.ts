@@ -232,7 +232,7 @@ describe("a project is brief, work and proof", () => {
       }));
 
       const spec = path.join(base, "invoices", "workflow");
-      const assembled = await assembledFor(base, home, { invoices: { workflow: spec, plugins: mountsFor(spec) } });
+      const assembled = await assembledFor(home, { invoices: { workflow: spec, plugins: mountsFor(spec) } });
       expect(assembled.ok).toBe(true);
       // The walk that mounted draws an edge for every end its proving phase
       // can arrive at, the fold at SATISFIED and the refusal that carries the
@@ -302,7 +302,7 @@ describe("a project is brief, work and proof", () => {
       writePluginFile(path.join(base, "invoices", "workflow"), fixturePhaseModule("invoices-work", { states: ["OPENED"], terminal: ["OPENED"], decide: "settled" }));
 
       const spec = path.join(base, "invoices", "workflow");
-      const assembled = await assembledFor(base, home, { execution: { workflow: spec, plugins: mountsFor(spec) } });
+      const assembled = await assembledFor(home, { execution: { workflow: spec, plugins: mountsFor(spec) } });
       expect(assembled.ok).toBe(false);
       const said = problems(assembled).join("\n");
       expect(said).toContain("prove/");
@@ -331,7 +331,7 @@ describe("a project is brief, work and proof", () => {
         },
       }));
       const spec = path.join(base, "invoices", "workflow");
-      const assembled = await assembledFor(base, home, {
+      const assembled = await assembledFor(home, {
         invoices: {
           workflow: spec,
           plugins: mountsFor(spec),
@@ -381,7 +381,7 @@ describe("a project is brief, work and proof", () => {
       writePluginFile(path.join(base, "invoices", "workflow"), fixturePhaseModule("invoices-work", { states: ["OPENED"], terminal: ["OPENED"], decide: "settled" }));
 
       const spec = path.join(base, "invoices", "workflow");
-      const assembled = await assembledFor(base, home, { execution: { workflow: spec, plugins: mountsFor(spec) } });
+      const assembled = await assembledFor(home, { execution: { workflow: spec, plugins: mountsFor(spec) } });
       expect(assembled.ok).toBe(false);
       const said = problems(assembled).join("\n");
       expect(said).toContain("test");
@@ -634,7 +634,6 @@ describe("a project walks a row from brief through proof", () => {
 
 /** The config one assembled test drives: every profile the list names, with the folder spec. */
 async function assembledFor(
-  base: string,
   home: string,
   workflows: AmyConfig["workflows"],
 ): Promise<Awaited<ReturnType<typeof assembleProfile>>> {

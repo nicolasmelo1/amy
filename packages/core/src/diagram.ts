@@ -210,7 +210,7 @@ function readLine(line: string, number: number, reading: Reading, source: string
   if (arrow) return readTransition(arrow.from, arrow.to, arrow.label, number, reading, source);
 
   const marked = classIn(line);
-  if (marked) return readClass(marked.states, marked.name, number, reading);
+  if (marked) return readClass(marked.states, marked.name, reading);
 
   throw new DiagramError(number, `\`${line}\` is not a line amy reads; it reads \`A --> B\`, \`[*] --> A\`, \`A --> [*]\`, \`class A name\` and \`state "description" as A\``, source);
 }
@@ -284,7 +284,7 @@ function readTransition(from: string, to: string, label: string | undefined, num
   reading.transitions.push(said ? { from, to, label: said } : { from, to });
 }
 
-function readClass(states: readonly string[], name: string, number: number, reading: Reading): void {
+function readClass(states: readonly string[], name: string, reading: Reading): void {
   if (!(DIAGRAM_CLASSES as readonly string[]).includes(name)) return;
   for (const state of states) {
     reading.classes.get(name as DiagramClass)!.add(state);

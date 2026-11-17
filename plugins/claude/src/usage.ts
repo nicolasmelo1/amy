@@ -118,7 +118,7 @@ class Probe {
   constructor(
     private readonly child: ChildProcessWithoutNullStreams,
     private readonly command: string,
-    private readonly timeoutMs: number,
+    timeoutMs: number,
     private readonly settle: (result: UsageResult) => void,
   ) {
     this.timer = setTimeout(() => this.finish(unavailable(`${command} did not answer in ${timeoutMs}ms`)), timeoutMs);

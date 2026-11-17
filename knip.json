@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    ".software-factory/**",
+    "packages/cli/guardrails/mutations/**",
+    "scripts/write-install-manifest.ts",
+    "packages/services/gates/**",
+    "packages/services/tests/example/generate.ts"
+  ],
+  "ignoreBinaries": ["sf", "schtasks", "wscript.exe"],
+  "ignoreDependencies": [
+    "@amykit/workflow-ticket-to-qa",
+    "@amykit/plugin-notify-hermes",
+    "@amykit/plugin-notify-fanout",
+    "@amykit/plugin-terminal-conversation"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.ts!", "!scripts/**/*.test.ts!"],
+      "project": ["scripts/**/*.ts!", "!scripts/**/*.test.ts!"]
+    },
+    "packages/*": {
+      "entry": ["src/index.ts!", "src/cli.ts!"],
+      "project": ["src/**/*.ts!", "src/**/*.tsx!"]
+    },
+    "plugins/*": {
+      "entry": ["src/index.ts!"],
+      "project": ["src/**/*.ts!", "src/**/*.tsx!"]
+    },
+    "examples/*": {
+      "entry": ["src/index.ts!", "workflow/index.ts!", "brief/index.ts!", "prove/index.ts!"],
+      "project": ["**/*.ts!", "**/*.tsx!", "!dist/**!", "!tests/**!"]
+    }
+  }
+}

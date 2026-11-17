@@ -11,6 +11,9 @@ assets
 .gitignore
 # gitleaks reads its config from here: the default rules, and the hash locks it misreads.
 .gitleaks.toml
+# The copy detector's paths and floor, and what knip reads instead of package.json.
+.jscpd.json
+knip.json
 .npmrc
 .software-factory
 CONTRIBUTING.md
