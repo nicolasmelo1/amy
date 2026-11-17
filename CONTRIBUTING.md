@@ -91,6 +91,12 @@ Some of it is worth understanding rather than obeying:
   [the ratchet cannot grow](docs/design/the-ratchet-cannot-grow.md).
   CI's build job runs the same step, for the same reason:
   [the build job runs the ratchet](docs/design/the-build-job-runs-the-ratchet.md).
+- **`nothing-is-lost`** proves that nothing a process writes is lost to
+  another and that no call waits forever: notes and tasks written at one
+  instant, a look beside an engine's save, one bot behind a stale lock, a call
+  to a server that never answers, and a pass of `amy run` over work sitting in the world.
+  Why each fix exists, and the falsifier that replants it:
+  [nothing is lost and nothing waits forever](docs/design/nothing-is-lost-and-nothing-waits-forever.md).
 - **`npm run docs:check`** fails when the code moved and the generated half of
   the documentation did not, and when the written half breaks a prose rule (a
   hand-written count, a listed phrase, a page over its limit). Run

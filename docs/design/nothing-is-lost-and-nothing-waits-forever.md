@@ -67,18 +67,18 @@ touches:
   - docs/concepts/ports.md
   - docs/reference/contracts.md
 criteria:
-  - { id: A1, statement: "for any queue state and any tickets the runtime finds, one pass of amy run, amy tick or the daemon, the same function, claims every ticket found", proof: "deferred:property:packages/cli/tests/a-pass-discovers.property.test.ts#a_pass_that_skips_discover", sources: [S1, S2, S13] }
-  - { id: A2, statement: "for any server that stalls before headers or trickles after any number of bytes, a Slack, Linear, Telegram or models.dev call settles by its deadline, through the one transport in core", proof: "deferred:property:packages/core/tests/http.property.test.ts#a_fetch_without_a_signal", sources: [S3, S4, S13] }
-  - { id: A3, statement: "a fetch( under packages, plugins or examples src outside packages/core/src/http.ts fails the build, naming the file", proof: "deferred:test:plugins/slack/tests/fetchTransport.test.ts", sources: [S3, S14] }
-  - { id: A4, statement: "for config explain, workflow check and workflow export and any profile with a fork, the fork is what is read; every resolver comes from one function taking the profile", proof: "deferred:property:packages/cli/tests/a-fork-is-what-is-read.property.test.ts#a_resolver_without_its_profile", sources: [S5, S6, S13] }
-  - { id: A5, statement: "pluginsRootResolver( called anywhere under packages/cli/src but that function fails the build", proof: "deferred:test:packages/cli/tests/a-fork-is-what-is-read.property.test.ts", sources: [S5, S14] }
-  - { id: A6, statement: "for any number of processes writing one file through core's atomic write, none throws, no read is torn and the file ends as one whole write", proof: "deferred:property:packages/core/tests/atomic-file.property.test.ts#one_temp_name_for_every_writer", sources: [S7, S8, S13] }
-  - { id: A7, statement: "for any interleaving of the engine saving a record and amy look clearing gaveUp, no state move is lost: look updates the record through the store under its lock", proof: "deferred:property:plugins/file-store/tests/FileStore.property.test.ts#look_loads_then_saves", sources: [S7, S8, S13] }
-  - { id: A8, statement: "a temp name built by hand, a template ending in .tmp, under packages, plugins or examples src outside core's atomic write fails the build; today's others are frozen by name with a review_by", proof: "deferred:test:packages/core/tests/atomic-file.property.test.ts", sources: [S7, S14] }
-  - { id: A9, statement: "for any number of processes and any stale lock, the Telegram bot is held by at most one at a time and no claim throws, through core's takeLock", proof: "deferred:property:plugins/telegram/tests/bot-lock.property.test.ts#a_stale_lock_renamed_blindly", sources: [S9, S10, S13] }
-  - { id: A10, statement: "for any number of processes writing a note at one instant, every note exists with its own content and each enqueued id names it", proof: "deferred:property:examples/workflow-note-to-plan/tests/note-file.property.test.ts#a_note_written_over_another", sources: [S11, S12, S13] }
-  - { id: A11, statement: "the same holds for errand tasks", proof: "deferred:property:examples/workflow-errand/tests/task-file.property.test.ts#a_task_written_over_another", sources: [S11, S12, S13] }
-  - { id: A12, statement: "the built amy, in separate processes, keeps two notes and tasks of one instant, loses no move to a look, holds one Telegram bot after a stale lock, ends a stalled call, and amy run picks up a found ticket", proof: "deferred:assertion:lost.two_notes_at_one_instant_are_two", sources: [S2, S4, S8, S10, S12, S15] }
+  - { id: A1, statement: "for any queue state and any tickets the runtime finds, one pass of amy run, amy tick or the daemon, the same function, claims every ticket found", proof: "property:packages/cli/tests/a-pass-discovers.property.test.ts#a_pass_that_skips_discover", sources: [S1, S2, S13] , done: true }
+  - { id: A2, statement: "for any server that stalls before headers or trickles after any number of bytes, a Slack, Linear, Telegram or models.dev call settles by its deadline, through the one transport in core", proof: "property:packages/core/tests/http.property.test.ts#a_fetch_without_a_signal", sources: [S3, S4, S13] , done: true }
+  - { id: A3, statement: "a fetch( under packages, plugins or examples src outside packages/core/src/http.ts fails the build, naming the file", proof: "test:plugins/slack/tests/fetchTransport.test.ts", sources: [S3, S14] , done: true }
+  - { id: A4, statement: "for config explain, workflow check and workflow export and any profile with a fork, the fork is what is read; every resolver comes from one function taking the profile", proof: "property:packages/cli/tests/a-fork-is-what-is-read.property.test.ts#a_resolver_without_its_profile", sources: [S5, S6, S13] , done: true }
+  - { id: A5, statement: "pluginsRootResolver( called anywhere under packages/cli/src but that function fails the build", proof: "test:packages/cli/tests/a-fork-is-what-is-read.property.test.ts", sources: [S5, S14] , done: true }
+  - { id: A6, statement: "for any number of processes writing one file through core's atomic write, none throws, no read is torn and the file ends as one whole write", proof: "property:packages/core/tests/atomic-file.property.test.ts#one_temp_name_for_every_writer", sources: [S7, S8, S13] , done: true }
+  - { id: A7, statement: "for any interleaving of the engine saving a record and amy look clearing gaveUp, no state move is lost: look updates the record through the store under its lock", proof: "property:plugins/file-store/tests/FileStore.property.test.ts#look_loads_then_saves", sources: [S7, S8, S13] , done: true }
+  - { id: A8, statement: "a temp name built by hand, a template ending in .tmp, under packages, plugins or examples src outside core's atomic write fails the build; today's others are frozen by name with a review_by", proof: "test:packages/core/tests/atomic-file.property.test.ts", sources: [S7, S14] , done: true }
+  - { id: A9, statement: "for any number of processes and any stale lock, the Telegram bot is held by at most one at a time and no claim throws, through core's takeLock", proof: "property:plugins/telegram/tests/bot-lock.property.test.ts#a_stale_lock_renamed_blindly", sources: [S9, S10, S13] , done: true }
+  - { id: A10, statement: "for any number of processes writing a note at one instant, every note exists with its own content and each enqueued id names it", proof: "property:examples/workflow-note-to-plan/tests/note-file.property.test.ts#a_note_written_over_another", sources: [S11, S12, S13] , done: true }
+  - { id: A11, statement: "the same holds for errand tasks", proof: "property:examples/workflow-errand/tests/task-file.property.test.ts#a_task_written_over_another", sources: [S11, S12, S13] , done: true }
+  - { id: A12, statement: "the built amy, in separate processes, keeps two notes and tasks of one instant, loses no move to a look, holds one Telegram bot after a stale lock, ends a stalled call, and amy run picks up a found ticket", proof: "assertion:lost.two_notes_at_one_instant_are_two", sources: [S2, S4, S8, S10, S12, S15] , done: true }
 crosses:
   - { mechanism: engines, answer: works, proof: "deferred:A1" }
   - { mechanism: queue-and-store, answer: works, proof: "deferred:A7" }
@@ -100,10 +100,12 @@ cut:
   - "the low findings of 2026-11-15: every-claim-and-path-agrees"
 exit: "the gate nothing-is-lost is green on the built amy, every property here fails with its falsifier planted, and the three rules fire on their mutation fixtures"
 ---
+
 # Nothing is lost and nothing waits forever
 
-`amy run` ignores work that sits in the tracker. Slack and Linear wait forever
-on a stalled server. Three commands read the published package, not the fork.
-Concurrent writers lose records, notes and tasks, and two processes can hold
-the Telegram lock at once. Each fix is proven by a falsifier that replants the
-measured defect.
+The gate's assertions are `lost.two_notes_at_one_instant_are_two`,
+`lost.two_tasks_at_one_instant_are_two`, `lost.a_look_loses_no_engine_move`,
+`lost.one_bot_holds_after_a_stale_lock`, `lost.a_stalled_call_ends` and
+`lost.run_picks_up_a_found_ticket`, on the built artifacts in separate processes.
+One pass discovers before it ticks, one transport has a deadline, writes stage under a private name and records move under a lock, and the bot holds core's lock.
+Three repo-local rules keep each class out.
