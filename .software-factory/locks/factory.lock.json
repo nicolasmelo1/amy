@@ -19,7 +19,7 @@
     ".software-factory/rules/an-agent-never-touches-git.yaml": "eb88cffef2e9352dc8e00f2d7f0344728d54ea1288159c5b9da8befc1262c52b",
     ".software-factory/rules/branch-reset-loses-commits.yaml": "204b3806cb3b1b14b69d57e1a256efa9447a35f4e25b45d417c494d6aafd5101",
     ".software-factory/rules/core-stays-ignorant.yaml": "f49946b95bd97b7e075ef73d3241c3530d323607abb5b9b9a5558f8f216f2942",
-    ".software-factory/rules/duplicated-code-is-detected.yaml": "c7b9b16065ae6b11f06ecdab1f144a0294e17cf1de5f4f71685d5c14b6c61b33",
+    ".software-factory/rules/duplicated-code-is-detected.yaml": "edde7c0ccac430a8a0117c3c6cf3fab57cd5ab2937949b8e07161408b4d2cb3b",
     ".software-factory/rules/every-declared-error-is-tested.yaml": "e1404bd87fbd4e1ac0fbf2b94fa354df61dee04edd10147b9c36cf0e13c3becb",
     ".software-factory/rules/every-renderer-holds-the-frame.yaml": "8388bdd27e64edafbef717f9881e400ec4656bf19ef63f89c3d02b0d062fd7cd",
     ".software-factory/rules/fixtures-name-nobody-real.yaml": "57fff70f00a2b96e6c18661a9d78710b6761db9db2e84881d0c956b528904969",

@@ -29,4 +29,6 @@ exit: "the duplication gate accepts only the base findings that remain, rejects 
 
 The duplication gate accepts the current baseline alone, so a change can add
 debt and label it reviewed in the same commit. The base baseline must remain
-the ceiling: only its still-present entries can pass.
+the ceiling: only its still-present entries can pass. The detector's config
+counted a test as a caller too, so an export a helper reached stayed live; a
+test is not a caller, and the report says so now.

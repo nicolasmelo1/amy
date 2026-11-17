@@ -67,15 +67,17 @@ describe("knip --production, read as findings", () => {
     expect(passed(compare(frozen(findings[0]!.key), findings, "2026-11-16"))).toBe(true);
   });
 
-  it("runs in production mode with test helpers declared as entries", () => {
+  it("runs in production mode with no test declared as an entry", () => {
     const config = JSON.parse(read("knip.json")) as {
-      workspaces: Record<string, { entry?: string[] }>;
+      workspaces: Record<string, { entry?: string[]; project?: string[] }>;
     };
     const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
+    const entries = Object.values(config.workspaces).flatMap((workspace) => workspace.entry ?? []);
 
     expect(scripts.knip).toContain("--production");
-    expect(config.workspaces["packages/*"]?.entry).toContain("tests/**/*.ts!");
-    expect(config.workspaces["packages/*"]?.entry).toContain("!tests/**/*.test.ts!");
+    // A test is not a caller: once it is an entry, everything it reaches is live.
+    expect(entries.some((entry) => entry.includes("tests/**"))).toBe(false);
+    expect(config.workspaces["."]?.entry).toContain("!scripts/**/*.test.ts!");
   });
 });
 

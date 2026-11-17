@@ -25,6 +25,8 @@ export type Baseline = { version: 1; frozen: Record<string, Frozen> };
 
 export type Verdict = {
   added: Finding[];
+  /** In this baseline, but not in the one the merge base froze: debt grown by an edit. */
+  grown: Finding[];
   gone: string[];
   unreviewed: string[];
   overdue: string[];
@@ -120,13 +122,28 @@ export function jscpdFindings(report: JscpdReport, root: string): Finding[] {
   });
 }
 
-/** What the detectors report now, against what this repository froze. */
-export function compare(baseline: Baseline, findings: readonly Finding[], today: string): Verdict {
+/**
+ * What the detectors report now, against what this repository froze.
+ *
+ * `before` is the baseline as the merge base froze it. With it, a key this
+ * baseline names and the base did not is debt the change grew: the file was
+ * edited to take a finding the base had refused, and that fails like an
+ * unfrozen finding does. Without it — a base that carries no baseline — the
+ * comparison is the adoption step and only what this file names passes.
+ */
+export function compare(baseline: Baseline, findings: readonly Finding[], today: string, before?: Baseline): Verdict {
   const present = new Set(findings.map((finding) => finding.key));
   const frozen = Object.entries(baseline.frozen);
   const still = frozen.filter(([key]) => present.has(key));
+  const added: Finding[] = [];
+  const grown: Finding[] = [];
+  for (const finding of findings) {
+    if (baseline.frozen[finding.key] === undefined) added.push(finding);
+    else if (before !== undefined && before.frozen[finding.key] === undefined) grown.push(finding);
+  }
   return {
-    added: findings.filter((finding) => baseline.frozen[finding.key] === undefined),
+    added,
+    grown,
     gone: frozen.filter(([key]) => !present.has(key)).map(([key]) => key).sort(),
     unreviewed: still.filter(([, entry]) => !DATE.test(entry.review_by ?? "")).map(([key]) => key).sort(),
     overdue: still.filter(([, entry]) => DATE.test(entry.review_by ?? "") && entry.review_by < today).map(([key]) => key).sort(),
@@ -142,7 +159,12 @@ export function shrunk(baseline: Baseline, verdict: Verdict): Baseline {
 
 /** Whether a verdict is something the gate can pass. */
 export function passed(verdict: Verdict): boolean {
-  return verdict.added.length === 0 && verdict.unreviewed.length === 0 && verdict.overdue.length === 0;
+  return (
+    verdict.added.length === 0 &&
+    verdict.grown.length === 0 &&
+    verdict.unreviewed.length === 0 &&
+    verdict.overdue.length === 0
+  );
 }
 
 /** The lines a failing gate prints, in the order a reader can act on them. */
@@ -150,7 +172,11 @@ export function render(verdict: Verdict): string[] {
   const lines: string[] = [];
   for (const finding of verdict.added) {
     lines.push(`not frozen: ${finding.detail}`);
-    lines.push(`  write it once, or freeze it in scripts/duplication-baseline.json with a review_by and a reason`);
+    lines.push(`  write it once, or give it a production caller: the baseline holds only what the merge base froze`);
+  }
+  for (const finding of verdict.grown) {
+    lines.push(`added to the baseline outside the merge base: ${finding.detail}`);
+    lines.push(`  the base did not hold this key, so the ratchet cannot take it: write it once, or give it a production caller`);
   }
   for (const key of verdict.unreviewed) {
     lines.push(`frozen without a review_by: ${key}`);

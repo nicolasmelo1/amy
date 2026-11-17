@@ -5,8 +5,13 @@
 // A finding the baseline does not name fails; a finding it names and no longer
 // exists is dropped from the file, so the ratchet only ever shrinks.
 //
+// The baseline the merge base froze is read from git and passed to the
+// comparison, so a finding this change introduced cannot be taken into the file:
+// the ratchet holds what the base already carried, and nothing else.
+//
 // `--seed` writes the baseline from what the tree reports right now. It is the
-// adoption step in the plan, run once, and never a way to make a red gate green.
+// adoption step, run once on a tree that has no baseline, and it refuses to run
+// over one: it is never a way to make a red gate green.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -66,6 +71,34 @@ function measured(): Finding[] {
   return [...knipFindings(knip), ...jscpdFindings(clones, root)];
 }
 
+/** One git command, quiet, in this checkout. */
+function git(args: readonly string[]): { ok: boolean; stdout: string } {
+  const result = spawnSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return { ok: result.status === 0, stdout: result.stdout ?? "" };
+}
+
+/**
+ * The baseline as the merge base froze it, or nothing when the base had none.
+ *
+ * A base with no baseline is adoption: there is no earlier ratchet to grow from,
+ * and the file this change writes is the first one. A base that cannot be found
+ * at all is an error, because passing every key in that case would quietly turn
+ * "this key was already debt" into "anything this file names is debt".
+ */
+function atBase(): Baseline | undefined {
+  const ref = ["origin/main", "main"].find((name) => git(["rev-parse", "--verify", "--quiet", name]).ok);
+  if (ref === undefined) {
+    throw new Error("no origin/main or main to compare against: the ratchet holds only what the merge base froze");
+  }
+  const mergeBase = git(["merge-base", "HEAD", ref]);
+  if (!mergeBase.ok) {
+    throw new Error(`no merge base with ${ref}: the ratchet holds only what the merge base froze`);
+  }
+  const shown = git(["show", `${mergeBase.stdout.trim()}:${path.relative(root, BASELINE)}`]);
+  if (!shown.ok) return undefined;
+  return JSON.parse(shown.stdout) as Baseline;
+}
+
 /** The baseline as it sits on disk, or the reason there is not one. */
 function frozen(): Baseline {
   if (!fs.existsSync(BASELINE)) {
@@ -81,16 +114,25 @@ function seeded(findings: readonly Finding[]): Baseline {
 }
 
 function main(): number {
-  const findings = measured();
+  const named = path.relative(root, BASELINE);
   if (process.argv.includes("--seed")) {
+    if (fs.existsSync(BASELINE)) {
+      console.error(
+        `${named} already exists, and --seed does not rewrite a ratchet that is holding debt. ` +
+          `New findings are fixed where they are written; the file only shrinks.`,
+      );
+      return 1;
+    }
+    const findings = measured();
     fs.writeFileSync(BASELINE, `${JSON.stringify(seeded(findings), null, 2)}\n`, "utf8");
-    console.log(`froze ${findings.length} finding(s) in ${path.relative(root, BASELINE)}, due ${REVIEW_BY}`);
+    console.log(`froze ${findings.length} finding(s) in ${named}, due ${REVIEW_BY}`);
     return 0;
   }
 
+  const findings = measured();
   const baseline = frozen();
   const today = new Date().toISOString().slice(0, 10);
-  const verdict = compare(baseline, findings, today);
+  const verdict = compare(baseline, findings, today, atBase());
   if (verdict.gone.length > 0) {
     fs.writeFileSync(BASELINE, `${JSON.stringify(shrunk(baseline, verdict), null, 2)}\n`, "utf8");
   }
@@ -98,8 +140,8 @@ function main(): number {
   if (lines.length > 0) console.log(lines.join("\n"));
   if (!passed(verdict)) {
     console.error(
-      `\nduplication: ${verdict.added.length} new, ${verdict.unreviewed.length} without a review_by, ` +
-        `${verdict.overdue.length} past theirs`,
+      `\nduplication: ${verdict.added.length} new, ${verdict.grown.length} grown outside the base, ` +
+        `${verdict.unreviewed.length} without a review_by, ${verdict.overdue.length} past theirs`,
     );
     return 1;
   }

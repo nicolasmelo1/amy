@@ -601,7 +601,7 @@ A copy detector runs over packages, plugins and examples src where this reposito
 
 **Why.** A copied block is the residue of a helper that was written twice because the second caller was in a hurry, and the two copies are identical only on the day they are made. One gains a timeout, one gains a retry, and the difference is invisible in review because neither file is wrong on its own; the product simply behaves two ways depending on which path reached it. An agent reproduces a block it has read far more readily than it finds the one place that block already lives, so this failure grows with agent-heavy work rather than despite it. The detector cannot say which copy should survive, but it names both, which is the question a person needed to be asked.
 
-**Fix.** Run `npm run check:duplication` and read the pair each finding names. Fold the block into one helper and give both callers that name; when the copy genuinely has to stay — two workflows that must not import each other, say — freeze it in scripts/duplication-baseline.json with a review_by and the reason, and the gate will bring it back on that date.
+**Fix.** Run `npm run check:duplication` and read the pair each finding names. Fold the block into one helper and give both callers that name. The baseline is not an escape hatch: it holds only the findings the merge base already carried, and a key this change adds to it is refused, so a block written twice in this change is a block this change has to fold.
 
 ### L6.FIXTURES_NAME_NOBODY_REAL
 
