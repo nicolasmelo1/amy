@@ -83,4 +83,5 @@ the rest.
 | 74 | [A skill turn is refused unless the harness can load it](a-skill-turn-is-refused-unless-the-harness-can-load-it.md) |
 | 75 | [A discovery timeout keeps the loop going](a-discovery-timeout-keeps-the-loop-going.md) |
 | 76 | [A records directory holds only records](a-records-directory-holds-only-records.md) |
+| 77 | [A wait fits inside its deadline](a-wait-fits-inside-its-deadline.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
