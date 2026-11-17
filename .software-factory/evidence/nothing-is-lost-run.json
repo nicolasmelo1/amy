@@ -1,10 +1,10 @@
 {
   "scenario": "nothing-is-lost",
   "status": "passed",
-  "goal": "Nothing a process writes is lost to another process: two notes or tasks of one instant are two, a look does not erase an engine's move, one bot holds after a stale lock, a call to a server that never answers ends at its deadline, and a pass of `amy run` picks up a ticket sitting in the world.",
+  "goal": "Nothing a process writes is lost to another process: two notes or tasks of one instant are two, `amy look` does not erase an engine's move and the engine's save does not undo the release `amy look` made, the Telegram plugin's bot holds after a stale lock, a stalled call made through the Slack and Linear plugins ends at its deadline, and a pass of `amy run` picks up a ticket sitting in the world.",
   "artifact": {
     "package": "@amykit/cli",
-    "entry": "the installed executable, driven by `amy add` and `amy run`, with the built packages run in processes of their own",
+    "entry": "the installed executable, driven by `amy add`, `amy run` and `amy look`, with the built plugins (file-store, telegram, slack, linear) run in processes of their own",
     "built_by": "scripts/install.sh"
   },
   "observed": {
@@ -12,7 +12,7 @@
     "assertions_failed": 0,
     "notes": 2,
     "tasks": 2,
-    "stalled": "127.0.0.1:62307 did not answer within 300 ms",
+    "stalled": "127.0.0.1:64205 did not answer within 300 ms; 127.0.0.1:64207 did not answer within 300 ms",
     "run": [
       "the machine boots: run `amy doctor`, then `amy tick`.",
       "queued TICKET-1",

@@ -7,6 +7,9 @@ import { DEFAULT_CONFIG, loadConfig } from "../src/config.js";
 import { pluginsRootResolver } from "../src/loader.js";
 import { exportWorkflow, writeWorkflow } from "../src/workflow.js";
 
+/** A profile that holds no fork: every name resolves from the machine's own root. */
+const NO_FORK = "no-fork";
+
 const DRAWN = `stateDiagram-v2
     classDef waiting stroke-dasharray: 4 4
     [*] --> PAGED
@@ -80,7 +83,7 @@ export const plugin = defineWorkflow({
     const relative = { ...config, workflows: { ...config.workflows, oncall: { ...config.workflows.oncall!, workflow: "./workflows/oncall/index.ts" } } };
 
     // The resolver the command uses, which takes a directory to its entry.
-    const resolve = pluginsRootResolver(home, path.join(home, "plugins"));
+    const resolve = pluginsRootResolver(home, path.join(home, "plugins"), NO_FORK);
 
     await expect(exportWorkflow(home, "oncall", relative, { resolve })).resolves.toBe(DRAWN);
   });
@@ -110,6 +113,7 @@ export const plugin = defineWorkflow({
       const directory = writeWorkflow(home, "pager", loadConfig(home), file);
       fs.writeFileSync(path.join(directory, "index.ts"), `import { call, defineWorkflow, settled } from "@amykit/core";
 import { plugin as review } from "./workflows/review/index.ts";
+
 export const plugin = defineWorkflow({
   name: "pager", configSchema: {}, policy: {}, needs: {},
   calls: { REVIEW: call(review) },

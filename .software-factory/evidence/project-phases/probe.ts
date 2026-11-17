@@ -80,7 +80,7 @@ const configured = (workflows: Record<string, WorkflowProfile>): AmyConfig => ({
 const services = {
   runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
   load: (specs: readonly string[]) => {
-    const fromHome = pluginsRootResolver(home, path.join(home, "plugins"));
+    const fromHome = pluginsRootResolver(home, path.join(home, "plugins"), "");
     return load(specs, (spec) => isFilesystemWorkflow(spec) ? fromHome(spec) : spec);
   },
   log: (file: string) => new FileEventLog(file),

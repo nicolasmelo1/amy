@@ -62,7 +62,7 @@ their pinned CLI contracts, vendored beside the doubles.
 
 ### **Nothing a process writes is lost to another, and no call waits forever.**
 
-`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-file-store`, `@amykit/plugin-linear`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`
+`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-file-brief-store`, `@amykit/plugin-file-store`, `@amykit/plugin-linear`, `@amykit/plugin-prove`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`
 
 `amy run` now discovers before it ticks, through the same pass `amy tick` and the
 daemon use, so a ticket sitting in the world is picked up on the first pass. One

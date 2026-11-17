@@ -1,4 +1,4 @@
-import { DEFAULT_HTTP_DEADLINE_MS, TooLarge, fetchTransport } from "@amykit/core";
+import { TooLarge, fetchTransport } from "@amykit/core";
 import type { HttpRequest, HttpResponse, HttpTransport } from "@amykit/core";
 
 // The one transport, named here too: a caller that already imported it from
@@ -34,6 +34,15 @@ export const DEFAULT_RETRY_AFTER_S = 60;
 export const DEFAULT_RATE_LIMIT_RETRIES = 5;
 
 /**
+ * How long one call may take, its waits included.
+ *
+ * Longer than the one-a-minute rhythm Slack's `429` imposes: a call allowed
+ * less than that would refuse to obey the server it is talking to. Bounded
+ * all the same, so a `Retry-After` of a day is not five days of waiting.
+ */
+export const DEFAULT_SLACK_DEADLINE_MS = 120_000;
+
+/**
  * The Web API, and only the Web API.
  *
  * No Socket Mode: Slack hands each event to one of an app's connections, so
@@ -54,7 +63,7 @@ export class SlackApi {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
     this.defaultRetryAfterS = options.defaultRetryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
-    this.deadlineMs = options.deadlineMs ?? DEFAULT_HTTP_DEADLINE_MS;
+    this.deadlineMs = options.deadlineMs ?? DEFAULT_SLACK_DEADLINE_MS;
   }
 
   /** Calls a method form-encoded, which every method accepts, and refuses `ok: false`. */
@@ -101,14 +110,29 @@ export class SlackApi {
     return response.body;
   }
 
+  /**
+   * The exchange, and the waits a `429` costs, inside one deadline.
+   *
+   * `Retry-After` is the server's wish, not the call's budget: a `429` that
+   * asks for a day cannot be waited out by a call allowed a second, and five
+   * such waits are not five attempts within the deadline. The call settles
+   * when the next wait no longer fits in what is left.
+   */
   private async send(request: HttpRequest): Promise<HttpResponse> {
+    const allowed = request.deadlineMs ?? this.deadlineMs;
+    const until = Date.now() + allowed;
     for (let attempt = 0; ; attempt++) {
       const response = await this.transport(request);
       if (response.status !== 429) return response;
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
       }
-      await this.sleep(retryAfterMs(response.headers?.["retry-after"], this.defaultRetryAfterS));
+      const wait = retryAfterMs(response.headers?.["retry-after"], this.defaultRetryAfterS);
+      const left = until - Date.now();
+      if (wait > left) {
+        throw new Error(`slack asked to wait ${wait} ms for ${request.url}, past the ${allowed} ms it had`);
+      }
+      await this.sleep(wait);
     }
   }
 }

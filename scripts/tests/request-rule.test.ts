@@ -8,6 +8,7 @@ interface Rule {
 }
 
 const rule = parse(fs.readFileSync(path.join(process.cwd(), ".software-factory/rules/a-request-has-a-deadline.yaml"), "utf-8")) as Rule;
+// eslint-disable-next-line security/detect-non-literal-regexp -- the patterns are the rule's own, read from its catalog file
 const patterns = rule.defaults.forbidden.map((one) => new RegExp(one.regex));
 const flagged = (line: string) => patterns.some((pattern) => pattern.test(line));
 

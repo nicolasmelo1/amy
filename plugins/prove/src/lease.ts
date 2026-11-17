@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type HeldLock, takeLock } from "@amykit/core";
+import { type HeldLock, takeLock, writeAtomically } from "@amykit/core";
 import { segment } from "./names.js";
 
 /**
@@ -183,9 +183,7 @@ export class Leases {
       const now = this.now().getTime();
       expire(ledger, now);
       const answer = change(ledger, now);
-      const temporary = `${this.file(resource)}.${process.pid}.tmp`;
-      fs.writeFileSync(temporary, `${JSON.stringify(ledger, null, 2)}\n`);
-      fs.renameSync(temporary, this.file(resource));
+      writeAtomically(this.file(resource), `${JSON.stringify(ledger, null, 2)}\n`);
       return answer;
     } finally {
       held.release();

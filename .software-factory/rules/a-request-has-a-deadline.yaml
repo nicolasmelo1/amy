@@ -27,5 +27,5 @@ defaults:
   exclude:
     - "packages/core/src/http.ts"
   forbidden:
-    - regex: '(^|[^.\w])fetch\('
+    - regex: '\bfetch\('
       message: "Call core's fetchTransport with a deadline instead: a bare fetch waits as long as the server does."

@@ -68,8 +68,9 @@ import { environmentFor, envFiles, loadEnvFiles } from "./env.js";
 import { diagnose, supervisorCheck } from "./doctor.js";
 import { CHAT_COMMANDS, chatAct } from "./chat-action.js";
 import { LoopSpec, MachineFacts, RESTART_EXIT, findSupervisor, labelFor } from "./supervisor/index.js";
-import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
+import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginResolver, pluginVersion } from "./loader.js";
 import { onePass } from "./pass.js";
+import type { Pass } from "./pass.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf, linkableHarnesses } from "./assemble.js";
@@ -168,8 +169,8 @@ function requestedProfile(argv: readonly string[]): string | undefined {
  * one call site and not the others is what made `plugin list` report a
  * directory `amy workflow new` had just written as `FAIL`.
  */
-function loadMountable(specs: readonly string[], profile?: string): Promise<LoadResult> {
-  return load(specs, pluginsRootResolver(home, paths(home).plugins, profile), paths(home).plugins);
+function loadMountable(specs: readonly string[], profile: string): Promise<LoadResult> {
+  return load(specs, pluginResolver(home, profile), paths(home).plugins);
 }
 
 /**
@@ -858,7 +859,9 @@ program
           // Discovery every pass, because work appears in the world rather than
           // being handed over: a ticket moved into the working status while
           // nothing was due is exactly what this loop exists to notice.
-          const result = (await onePass(engine)).moved as TickResult;
+          const pass = await onePass(engine);
+          reportMissed(pass);
+          const result = pass.moved as TickResult;
           report(result);
           return { idle: result.kind === "idle" || result.kind === "stopped" };
         },
@@ -1403,9 +1406,10 @@ program
       // queue while a ticket sat in the working status. Work already on the
       // queue is left alone — that includes work waiting out a backoff, which
       // is what keeps a cheap tick from trampling it.
-      const { found, moved } = await onePass(engine);
-      if (found.length > 0) console.log(`queued ${found.join(", ")}`);
-      report(moved as TickResult);
+      const pass = await onePass(engine);
+      reportMissed(pass);
+      if (pass.found.length > 0) console.log(`queued ${pass.found.join(", ")}`);
+      report(pass.moved as TickResult);
     });
   });
 
@@ -1436,9 +1440,10 @@ program
 
       try {
         for (let move = 0; move < max && !stopping; move += 1) {
-          const { found, moved } = await onePass(engine);
-          if (found.length > 0) console.log(`queued ${found.join(", ")}`);
-          const result = moved as TickResult;
+          const pass = await onePass(engine);
+          reportMissed(pass);
+          if (pass.found.length > 0) console.log(`queued ${pass.found.join(", ")}`);
+          const result = pass.moved as TickResult;
           report(result);
           if (result.kind === "idle" || result.kind === "stopped") return;
         }
@@ -2057,7 +2062,7 @@ async function addInstalled(
   // is installed there as a copy under the name its manifest carries, so a
   // workflow importing the core it is declared with resolves it there, and
   // not beside the directory it was added from, where there is none.
-  const loaded = await importPluginBySpec(completed.imported, pluginsRootResolver(home, place.plugins, profile));
+  const loaded = await importPluginBySpec(completed.imported, pluginResolver(home, profile, place.plugins));
   if (!loaded.ok) return rollback(runner, place.plugins, completed, before, loaded.problem);
 
   const probe = await whatMountingSays(loaded.plugin, place.plugins);
@@ -3105,7 +3110,7 @@ configCommand
     const config = configFor(selected());
     // Where the installed packages are: the report reads the plugins this
     // machine mounted, not whichever copy a repo checkout sees first.
-    const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins, selected(config).name), paths(home).plugins);
+    const report = await explainReport(config, selected(config), plugin, pluginResolver(home, selected(config).name), paths(home).plugins);
     for (const line of report.lines) console.log(line);
     if (report.refused !== undefined) {
       console.error(report.refused);
@@ -3281,7 +3286,7 @@ workflowCommand
   .description("Drive a workflow's lifecycle against its stub world")
   .argument("<name>", "the configured workflow to check")
   .action(async (name: string) => {
-    const { problems, stubs, drawnNotWalked } = await inspectWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins, name));
+    const { problems, stubs, drawnNotWalked } = await inspectWorkflow(home, name, loadConfig(home), pluginResolver(home, name));
     // What is left to write is said whether or not the walk is green: for a
     // workflow still being written, it is the to-do list.
     for (const state of stubs) console.log(`not written yet: the decision for ${state}`);
@@ -3310,7 +3315,7 @@ workflowCommand
       process.stdout.write(await exportWorkflow(home, name, config, {
         ...(record ? { record: record as WorkRecord } : {}),
         ...(options.expand ? { expand: true } : {}),
-        resolve: pluginsRootResolver(home, paths(home).plugins, profiles(config, home)[name] ? name : selected(config).name),
+        resolve: pluginResolver(home, profiles(config, home)[name] ? name : selected(config).name),
       }));
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));
@@ -3385,6 +3390,17 @@ queueCommand
     );
     console.log(`returned ${recovered.length} abandoned item(s)`);
   });
+
+/**
+ * Says what a pass could not look at, when discovery ran out of time.
+ *
+ * The pass went on with the work it already held; saying so keeps a deadline
+ * from becoming a loop that stopped without saying why.
+ */
+function reportMissed(pass: Pass<unknown>): void {
+  if (pass.missed === undefined) return;
+  console.error(`discovery ran out of time: ${pass.missed.host} did not answer within ${pass.missed.deadlineMs} ms; the work already queued still moved`);
+}
 
 function report(result: TickResult): void {
   switch (result.kind) {

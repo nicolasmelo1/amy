@@ -20,6 +20,9 @@ import { profiles } from "../src/profiles.js";
 import { briefsOf, checkBrief, composeProject, phasesOf, resolvePhases, sectionsOf, withSection } from "../src/project.js";
 import { hostPaths, pluginSlices, worktreeNamespace } from "../src/slices.js";
 
+/** A profile that holds no fork: every name resolves from the machine's own root. */
+const NO_FORK = "no-fork";
+
 /** One phase's plugin, as the composition reads it. */
 type PhasePlugin = Parameters<typeof composeProject>[0]["phases"][number]["plugin"];
 
@@ -546,7 +549,7 @@ describe("a project walks a row from brief through proof", () => {
   const services = (): AssemblyServices => ({
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     load: (specs: readonly string[]) => {
-      const fromHome = pluginsRootResolver(home, path.join(home, "plugins"));
+      const fromHome = pluginsRootResolver(home, path.join(home, "plugins"), NO_FORK);
       return load(specs, (spec) => isFilesystemWorkflow(spec) ? fromHome(spec) : spec);
     },
     log: (file: string) => new FileEventLog(file),
@@ -642,7 +645,7 @@ async function assembledFor(
   return assembleProfile(home, config, profile, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     load: (specs: readonly string[]) => {
-      const fromHome = pluginsRootResolver(home, path.join(home, "plugins"));
+      const fromHome = pluginsRootResolver(home, path.join(home, "plugins"), NO_FORK);
       return load(specs, (spec) => isFilesystemWorkflow(spec) ? fromHome(spec) : spec);
     },
     log: (file: string) => new FileEventLog(file),

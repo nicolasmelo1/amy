@@ -51,7 +51,7 @@ export { FileLeases, LeaseHeld } from "./leases.js";
 export type { BranchLeases } from "./leases.js";
 export { processAlive, takeLock } from "./process-lock.js";
 export type { HeldLock, LockOptions } from "./process-lock.js";
-export { DEFAULT_HTTP_DEADLINE_MS, TooLarge, fetchTransport } from "./http.js";
+export { DEFAULT_HTTP_DEADLINE_MS, DeadlineExceeded, TooLarge, deadlineOf, fetchTransport, isDeadlineExceeded } from "./http.js";
 export type { HttpRequest, HttpResponse, HttpTransport } from "./http.js";
 export { createExclusively, writeAtomically, writeUnderAFreeName } from "./atomic-file.js";
 export { expandDiagram } from "./expand.js";

@@ -88,7 +88,7 @@ export interface Gathered {
 export async function gather(
   config: AmyConfig,
   known: readonly Profile[],
-  load: (specs: readonly string[], profile?: string) => Promise<LoadResult>,
+  load: (specs: readonly string[], profile: string) => Promise<LoadResult>,
 ): Promise<Gathered> {
   // Each profile is read through its own resolver: a profile that forked a
   // package mounts the fork, so what it contributes is the fork's.

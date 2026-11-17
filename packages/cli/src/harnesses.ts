@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writeAtomically } from "@amykit/core";
 
 /**
  * A harness this machine has, and where it looks for skills.
@@ -124,14 +125,7 @@ function unlinkUnwanted(own: string, made: Record<string, string>, wanted: Reado
 /** Replaces the record whole, so a write that fails leaves the previous one. */
 function saveLinks(record: string, made: Record<string, string>): void {
   fs.mkdirSync(path.dirname(record), { recursive: true });
-  const next = `${record}.${process.pid}.tmp`;
-  fs.writeFileSync(next, `${JSON.stringify(made, null, 2)}\n`, "utf-8");
-  try {
-    fs.renameSync(next, record);
-  } catch (error) {
-    fs.rmSync(next, { force: true });
-    throw error;
-  }
+  writeAtomically(record, `${JSON.stringify(made, null, 2)}\n`);
 }
 
 /** The skills a harness's directory holds: each directory with a SKILL.md in it. */

@@ -6,6 +6,8 @@
 "@amykit/plugin-telegram": patch
 "@amykit/plugin-agent-relay": patch
 "@amykit/plugin-file-store": patch
+"@amykit/plugin-file-brief-store": patch
+"@amykit/plugin-prove": patch
 "@amykit/workflow-note-to-plan": patch
 "@amykit/workflow-errand": patch
 ---

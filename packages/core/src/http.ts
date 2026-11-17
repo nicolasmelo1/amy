@@ -41,6 +41,41 @@ export class TooLarge extends Error {
   }
 }
 
+/**
+ * A call that ran out of the time it allowed itself.
+ *
+ * Typed so a loop can tell a server that stopped answering from a defect of
+ * its own: the first is a pass to repeat, the second is not.
+ */
+export class DeadlineExceeded extends Error {
+  constructor(
+    readonly host: string,
+    readonly deadlineMs: number,
+  ) {
+    super(`${host} did not answer within ${deadlineMs} ms`);
+  }
+}
+
+/** Whether an error is a call that ran out of time, wrapped or not. */
+export function isDeadlineExceeded(error: unknown): boolean {
+  return deadlineOf(error) !== undefined;
+}
+
+/**
+ * The deadline an error names, whether it is core's own or a message that
+ * wrapped one.
+ *
+ * A caller that keeps going after a timeout still has to say which host ran
+ * out of time and for how long: that is the difference between a server that
+ * stopped answering and a loop that stopped without saying so.
+ */
+export function deadlineOf(error: unknown): DeadlineExceeded | undefined {
+  if (error instanceof DeadlineExceeded) return error;
+  const said = error instanceof Error ? error.message : "";
+  const named = /(\S+) did not answer within (\d+) ms$/.exec(said);
+  return named === null ? undefined : new DeadlineExceeded(named[1]!, Number(named[2]));
+}
+
 export const fetchTransport: HttpTransport = async (request) => {
   const deadlineMs = request.deadlineMs ?? DEFAULT_HTTP_DEADLINE_MS;
   // One signal for the request and the body, so a server that trickles bytes
@@ -56,7 +91,7 @@ export const fetchTransport: HttpTransport = async (request) => {
   } catch (error) {
     // Named by host and deadline rather than by the abort's own name: the
     // caller has to be able to say what it waited for and for how long.
-    if (signal.aborted) throw new Error(`${hostOf(request.url)} did not answer within ${deadlineMs} ms`, { cause: error });
+    if (signal.aborted) throw new DeadlineExceeded(hostOf(request.url), deadlineMs);
     throw error;
   }
 };

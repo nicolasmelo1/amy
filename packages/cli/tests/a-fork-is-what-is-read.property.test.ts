@@ -14,7 +14,7 @@ const planted = process.env.SF_FALSIFIER === FALSIFIER;
  * while a fork of the same name sat in the profile.
  */
 const resolverFor = (home: string, plugins: string, profile: string) =>
-  planted ? pluginsRootResolver(home, plugins) : pluginsRootResolver(home, plugins, profile);
+  planted ? pluginsRootResolver(home, plugins, "") : pluginsRootResolver(home, plugins, profile);
 
 /** A home with a fork of `name` in its profile, and a published copy beside it. */
 function homeWith(name: string): { home: string; plugins: string; profile: string } {

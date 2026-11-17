@@ -4,9 +4,12 @@ import { WorkRecord } from "../work.js";
  * Where the record of one piece of work is kept between looks.
  *
  * Generic over the record, because the shape past the four fields the core
- * reads belongs to whichever workflow is mounted.
+ * reads belongs to whichever workflow is mounted. A store needs only an id
+ * to key a record: what else the record carries is the workflow's, and a
+ * file store that demanded the core's four fields could not keep a record
+ * written by hand or by an older amy.
  */
-export interface Store<R extends WorkRecord = WorkRecord> {
+export interface Store<R extends { id: string } = WorkRecord> {
   load(workId: string): R | null;
   save(record: R): void;
   all(): R[];

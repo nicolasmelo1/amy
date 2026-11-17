@@ -14,7 +14,7 @@
     ".software-factory/rules/a-push-never-forces.yaml": "5ea760d7ad8a4f2637d49c6c6d8b4292bd14956527280ed811fe9e6767ae47e6",
     ".software-factory/rules/a-renderer-names-no-colour.yaml": "8cd141d09fa92be97ac9977516b3b7b21e1659752b2ca0056127547462988675",
     ".software-factory/rules/a-renderer-only-translates.yaml": "2220fc3063a8b9d05df78946701ce98854759bf78b6501cce5f8e393786e358e",
-    ".software-factory/rules/a-request-has-a-deadline.yaml": "33e51162444e25a6f3dae03b720af1b2b247773978173e149bd8c402b6146486",
+    ".software-factory/rules/a-request-has-a-deadline.yaml": "5ea9e03c0719327e451bb2047ca52d3285046b341cb804720c49b5ca6d732c02",
     ".software-factory/rules/a-resolver-knows-its-profile.yaml": "9b0421ac2eb30a099d59a04f18bbd5a0fa79d2c0afdf04395356096b4a4a8323",
     ".software-factory/rules/a-ticket-requires-what-every-tracker-has.yaml": "37c7b2af6f9979e79617b492477ad2d66649b0f8f8af4ec5dd453bc53f0abcec",
     ".software-factory/rules/a-view-draws-nothing.yaml": "1743df329af244aa7c7f87de8a2e2fd497b17dde54061bf73b1bcc618f537c58",

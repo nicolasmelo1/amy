@@ -4,19 +4,23 @@ import { Store, WorkRecord, takeLock, writeAtomically } from "@amykit/core";
 
 /** How long a write may take before the lock is judged abandoned. */
 const LOCK_LEASE_MS = 10_000;
-/** How long a writer waits its turn, counted in turns rather than seconds. */
-const LOCK_TURNS = 500;
+/** How long one turn of waiting for another writer costs before it is asked again. */
+const LOCK_PAUSE_MS = 2;
 
 /** One file per ticket, so a record can be read and edited by hand. */
-export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
+export class FileStore<R extends { id: string } = WorkRecord> implements Store<R> {
+  /** What each record looked like when this writer read it, as text. */
+  private readonly read = new Map<string, string>();
+
   constructor(private readonly root: string, create = true) {
     if (create) fs.mkdirSync(this.root, { recursive: true });
   }
 
   load(workId: string): R | null {
-    const file = this.file(workId);
-    if (!fs.existsSync(file)) return null;
-    return JSON.parse(fs.readFileSync(file, "utf-8")) as R;
+    const text = this.readFile(workId);
+    if (text === undefined) return null;
+    this.read.set(workId, text);
+    return JSON.parse(text) as R;
   }
 
   save(record: R): void {
@@ -50,12 +54,54 @@ export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
    * next look, and two writers never share a staged name.
    */
   private write(record: R): void {
-    writeAtomically(this.file(record.id), JSON.stringify(record, null, 2));
+    const text = JSON.stringify(this.keepingTheRelease(record), null, 2);
+    writeAtomically(this.file(record.id), text);
+    this.read.set(record.id, text);
   }
 
+  /**
+   * The record with a release another process made since this writer read it
+   * kept clear.
+   *
+   * The engine loads a record, works on it for as long as an agent takes, and
+   * saves the state it planned from. A `gaveUp` an operator cleared meanwhile
+   * is a decision it never saw, and writing this copy back would undo it.
+   */
+  private keepingTheRelease(record: R): R {
+    const before = this.read.get(record.id);
+    const wasMarked = before === undefined ? undefined : gaveUpOf(JSON.parse(before));
+    if (wasMarked === undefined) return record;
+    const onDisk = this.readFile(record.id);
+    if (onDisk === undefined || gaveUpOf(JSON.parse(onDisk)) !== undefined) return record;
+    // Only when this writer did not decide the marker itself: a new `gaveUp`
+    // is the engine giving up, and that is its to write.
+    if (JSON.stringify(gaveUpOf(record)) !== JSON.stringify(wasMarked)) return record;
+    const { gaveUp: _cleared, ...rest } = record as R & { gaveUp?: unknown };
+    return rest as R;
+  }
+
+  /** A record's text as it stands, without changing what this writer is judged against. */
+  private readFile(workId: string): string | undefined {
+    try {
+      return fs.readFileSync(this.file(workId), "utf-8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+  }
+
+  /**
+   * Under the record's lock, for as long as a lock may legitimately be held.
+   *
+   * The lease is the only honest ceiling: past it the lock counts abandoned
+   * and is taken over, so giving up sooner would fail a save beside a writer
+   * that is still working — and the move it carries would be lost. A writer
+   * that waited the whole lease has waited for every holder there can be.
+   */
   private underLock<T>(workId: string, work: () => T): T {
     const lock = `${this.file(workId)}.lock`;
-    for (let turn = 0; turn < LOCK_TURNS; turn += 1) {
+    const giveUpAt = Date.now() + LOCK_LEASE_MS;
+    for (;;) {
       const held = takeLock(lock, { leaseMs: LOCK_LEASE_MS });
       if (held) {
         try {
@@ -64,14 +110,21 @@ export class FileStore<R extends WorkRecord = WorkRecord> implements Store<R> {
           held.release();
         }
       }
-      pause(2);
+      if (Date.now() >= giveUpAt) {
+        throw new Error(`could not take ${lock}: another writer held it for ${LOCK_LEASE_MS} ms`);
+      }
+      pause(LOCK_PAUSE_MS);
     }
-    throw new Error(`could not take ${lock}: another writer held it for ${LOCK_TURNS * 2} ms`);
   }
 
   private file(workId: string): string {
     return path.join(this.root, `${workId}.json`);
   }
+}
+
+/** A record's release marker, as read from a store that may keep any shape. */
+function gaveUpOf(record: unknown): unknown {
+  return (record as { gaveUp?: unknown }).gaveUp;
 }
 
 /** A synchronous wait, for the turns a held lock costs: this store's API is synchronous. */

@@ -11826,11 +11826,19 @@
             "level": "patch"
           },
           {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "patch"
+          },
+          {
             "package": "@amykit/plugin-file-store",
             "level": "patch"
           },
           {
             "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-prove",
             "level": "patch"
           },
           {

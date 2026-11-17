@@ -6,7 +6,7 @@ import { drawn } from "./drawn.js";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { heldByProfile } from "./fork.js";
-import { profileRoot } from "./paths.js";
+import { paths, profileRoot } from "./paths.js";
 
 export interface LoadResult {
   plugins: Plugin[];
@@ -140,8 +140,13 @@ function read(directory: string): string[] {
  * its directory first, and a spec that is a path resolves as itself; both
  * arrive here already a specifier, because that is what the resolver contract
  * has always handed `import()`.
+ *
+ * The profile is required: a resolver built without one read the published
+ * package while the profile held a fork of the same name, and nothing in the
+ * call said which of the two the command meant. {@link pluginResolver} is the
+ * one place a command builds this.
  */
-export function pluginsRootResolver(home: string, pluginsRoot: string, profile?: string): (spec: string) => string {
+export function pluginsRootResolver(home: string, pluginsRoot: string, profile: string): (spec: string) => string {
   return (spec: string) => {
     const local = localWorkflow(home, spec);
     if (local) return local;
@@ -157,17 +162,21 @@ export function pluginsRootResolver(home: string, pluginsRoot: string, profile?:
 
     // A profile's own root answers first, for the names it holds: a fork,
     // and what imports one. Everything else is the machine's.
-    // A resolver built without its profile reads the published package,
-    // which is exactly the defect `a-resolver-knows-its-profile` refuses:
-    // every call under packages/cli/src passes the profile it acts for.
-    const own = profile === undefined ? undefined : profileRoot(home, profile);
-    const directory =
-      own !== undefined && profile !== undefined && heldByProfile(home, profile, spec)
-        ? packageDirectory(own, spec)
-        : packageDirectory(pluginsRoot, spec);
+    const directory = heldByProfile(home, profile, spec) ? packageDirectory(profileRoot(home, profile), spec) : packageDirectory(pluginsRoot, spec);
     if (!fs.existsSync(directory)) throw pluginNotInstalled(spec);
     return packageEntrySpecifier(directory);
   };
+}
+
+/**
+ * The resolver a command acts through, built in one place for one profile.
+ *
+ * Every command goes through this rather than building the resolver itself:
+ * a command that built its own could leave the profile out, and read the
+ * published package while the profile held a fork.
+ */
+export function pluginResolver(home: string, profile: string, pluginsRoot: string = paths(home).plugins): (spec: string) => string {
+  return pluginsRootResolver(home, pluginsRoot, profile);
 }
 
 function pluginNotInstalled(spec: string): Error & { code: string } {
