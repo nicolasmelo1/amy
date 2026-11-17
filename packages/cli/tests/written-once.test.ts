@@ -112,6 +112,29 @@ describe("the baseline only shrinks", () => {
     expect(passed(verdict)).toBe(true);
   });
 
+  it("fails a due date moved later than the base set it", () => {
+    const before = frozen(finding[0]!.key);
+    const after: Baseline = {
+      version: 1,
+      frozen: { [finding[0]!.key]: { review_by: "2099-12-31", note: "debt" } },
+    };
+
+    const verdict = compare(after, finding, "2026-11-17", before);
+
+    expect(passed(verdict)).toBe(false);
+    expect(render(verdict).join("\n")).toContain(finding[0]!.key);
+  });
+
+  it("keeps a due date the change brought earlier", () => {
+    const before = frozen(finding[0]!.key);
+    const after: Baseline = {
+      version: 1,
+      frozen: { [finding[0]!.key]: { review_by: "2027-01-01", note: "debt" } },
+    };
+
+    expect(passed(compare(after, finding, "2026-11-17", before))).toBe(true);
+  });
+
   it("never tells the reader to add a new finding to the baseline", () => {
     const verdict = compare(frozen(), finding, "2026-11-16");
     const rule = fs.readFileSync(path.join(root, ".software-factory/rules/duplicated-code-is-detected.yaml"), "utf8");
