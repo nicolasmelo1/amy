@@ -57,9 +57,13 @@ touches:
   - registry/plugin-agent-relay.json
   - registry/plugin-file-store.json
   - registry/plugin-telegram.json
+  - registry/workflow-errand.json
+  - registry/workflow-note-to-plan.json
   - docs/rules.md
   - docs/development/the-factory.md
   - docs/development/the-gate.md
+  - docs/concepts/ports.md
+  - docs/reference/contracts.md
 criteria:
   - { id: A1, statement: "for any queue state and any tickets the runtime finds, one pass of amy run, amy tick or the daemon, the same function, claims every ticket found", proof: "deferred:property:packages/cli/tests/a-pass-discovers.property.test.ts#a_pass_that_skips_discover", sources: [S1, S2, S13] }
   - { id: A2, statement: "for any server that stalls before headers or trickles after any number of bytes, a Slack, Linear, Telegram or models.dev call settles by its deadline, through the one transport in core", proof: "deferred:property:packages/core/tests/http.property.test.ts#a_fetch_without_a_signal", sources: [S3, S4, S13] }
