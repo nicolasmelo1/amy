@@ -69,6 +69,7 @@ import { diagnose, supervisorCheck } from "./doctor.js";
 import { CHAT_COMMANDS, chatAct } from "./chat-action.js";
 import { LoopSpec, MachineFacts, RESTART_EXIT, findSupervisor, labelFor } from "./supervisor/index.js";
 import { LoadResult, NOT_INSTALLED, installedPlugins, isFilesystemWorkflow, load, pluginsRootResolver, pluginVersion } from "./loader.js";
+import { onePass } from "./pass.js";
 import { describePoke, poke } from "./poke.js";
 import { Profile, profiles, resolveProfile } from "./profiles.js";
 import { Assembled, ChatParts, assembleChat, assembleProfile, chatPartsOf, linkableHarnesses } from "./assemble.js";
@@ -857,8 +858,7 @@ program
           // Discovery every pass, because work appears in the world rather than
           // being handed over: a ticket moved into the working status while
           // nothing was due is exactly what this loop exists to notice.
-          await engine.discover();
-          const result = (await engine.tick()) as TickResult;
+          const result = (await onePass(engine)).moved as TickResult;
           report(result);
           return { idle: result.kind === "idle" || result.kind === "stopped" };
         },
@@ -1373,11 +1373,13 @@ program
     // Asking for it by name is what releases work the engine let go of at its
     // attempt ceiling: the marker is cleared here and nowhere else.
     const records = new FileStore<AnyRecord>(place.records);
-    const record = records.load(workId);
-    if (record?.gaveUp) {
+    // Read and written under the store's own lock: the engine may be saving
+    // the record between a load and a save here, and that move would be lost.
+    records.update(workId, (record) => {
+      if (!record.gaveUp) return undefined;
       const { gaveUp: _released, ...rest } = record;
-      records.save(rest);
-    }
+      return rest;
+    });
   });
 
 program
@@ -1401,9 +1403,9 @@ program
       // queue while a ticket sat in the working status. Work already on the
       // queue is left alone — that includes work waiting out a backoff, which
       // is what keeps a cheap tick from trampling it.
-      const found = await engine.discover();
+      const { found, moved } = await onePass(engine);
       if (found.length > 0) console.log(`queued ${found.join(", ")}`);
-      report((await engine.tick()) as TickResult);
+      report(moved as TickResult);
     });
   });
 
@@ -1434,7 +1436,9 @@ program
 
       try {
         for (let move = 0; move < max && !stopping; move += 1) {
-          const result = (await engine.tick()) as TickResult;
+          const { found, moved } = await onePass(engine);
+          if (found.length > 0) console.log(`queued ${found.join(", ")}`);
+          const result = moved as TickResult;
           report(result);
           if (result.kind === "idle" || result.kind === "stopped") return;
         }
@@ -1828,6 +1832,15 @@ async function writeAddedEntry(
  * that only shows up as a boot refusal three commands later is worse than a
  * command that failed.
  */
+/**
+ * The profile `add`'s probe resolves through: the one this machine boots, or
+ * the one `add` is about to write on a machine that boots nothing yet.
+ */
+function profileForAdd(config: AmyConfig, picked: Picked): string {
+  if (config.defaultWorkflow !== "") return config.defaultWorkflow;
+  return Object.keys(config.workflows)[0] ?? workflowProfileName(picked.imported);
+}
+
 async function addCommand(home: string, spec: string): Promise<void> {
   const config = loadConfig(home);
   const place = paths(home);
@@ -1855,7 +1868,7 @@ async function addCommand(home: string, spec: string): Promise<void> {
     return;
   }
 
-  const outcome = await addInstalled(runner, home, picked, declared);
+  const outcome = await addInstalled(runner, home, picked, declared, profileForAdd(config, picked));
   if (outcome instanceof AddRefused) {
     console.error(outcome.why);
     process.exitCode = 1;
@@ -2011,6 +2024,7 @@ async function addInstalled(
   home: string,
   picked: Picked,
   declared: readonly string[],
+  profile: string,
 ): Promise<AddRefused | Added> {
   const place = paths(home);
   const before = installedPackageNames(place.plugins);
@@ -2043,7 +2057,7 @@ async function addInstalled(
   // is installed there as a copy under the name its manifest carries, so a
   // workflow importing the core it is declared with resolves it there, and
   // not beside the directory it was added from, where there is none.
-  const loaded = await importPluginBySpec(completed.imported, pluginsRootResolver(home, place.plugins));
+  const loaded = await importPluginBySpec(completed.imported, pluginsRootResolver(home, place.plugins, profile));
   if (!loaded.ok) return rollback(runner, place.plugins, completed, before, loaded.problem);
 
   const probe = await whatMountingSays(loaded.plugin, place.plugins);
@@ -3091,7 +3105,7 @@ configCommand
     const config = configFor(selected());
     // Where the installed packages are: the report reads the plugins this
     // machine mounted, not whichever copy a repo checkout sees first.
-    const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins), paths(home).plugins);
+    const report = await explainReport(config, selected(config), plugin, pluginsRootResolver(home, paths(home).plugins, selected(config).name), paths(home).plugins);
     for (const line of report.lines) console.log(line);
     if (report.refused !== undefined) {
       console.error(report.refused);
@@ -3267,7 +3281,7 @@ workflowCommand
   .description("Drive a workflow's lifecycle against its stub world")
   .argument("<name>", "the configured workflow to check")
   .action(async (name: string) => {
-    const { problems, stubs, drawnNotWalked } = await inspectWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins));
+    const { problems, stubs, drawnNotWalked } = await inspectWorkflow(home, name, loadConfig(home), pluginsRootResolver(home, paths(home).plugins, name));
     // What is left to write is said whether or not the walk is green: for a
     // workflow still being written, it is the to-do list.
     for (const state of stubs) console.log(`not written yet: the decision for ${state}`);
@@ -3296,7 +3310,7 @@ workflowCommand
       process.stdout.write(await exportWorkflow(home, name, config, {
         ...(record ? { record: record as WorkRecord } : {}),
         ...(options.expand ? { expand: true } : {}),
-        resolve: pluginsRootResolver(home, paths(home).plugins),
+        resolve: pluginsRootResolver(home, paths(home).plugins, profiles(config, home)[name] ? name : selected(config).name),
       }));
     } catch (error) {
       console.error(error instanceof Error ? error.message : String(error));

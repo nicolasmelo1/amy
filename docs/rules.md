@@ -7,7 +7,7 @@ but do not delete a rule's section while the rule is enabled:
 `L4.EVERY_RULE_HAS_A_WHY` fails when enforcement and prose come apart.
 
 <!-- sf:generated rules-summary -->
-**72 rules shipped**, 61 enabled here, 11 switched off, 61 carrying a mutation fixture, 1 violations frozen.
+**75 rules shipped**, 64 enabled here, 11 switched off, 64 carrying a mutation fixture, 1 violations frozen.
 
 Frozen, with a date the build fails on: `L1.COMPLEXITY_CEILING` by 2027-03-03.
 <!-- sf:end rules-summary -->
@@ -25,7 +25,7 @@ A layer with nothing enabled is a deliberate choice, and
 | **L3** | Effect | a real actor achieved the outcome | 4 | 3 |
 | **L4** | Cadence | docs, plans and rules stay attached | 11 | 10 |
 | **L5** | Meta | the guardrail is proven to fire | 4 | 4 |
-| **L6** | Hazard | the defect classes this repository hunts | 16 | 11 |
+| **L6** | Hazard | the defect classes this repository hunts | 19 | 14 |
 
 <!-- sf:end layer-index -->
 
@@ -543,6 +543,16 @@ A rule that is switched on must be configured to look at something: a lock rule 
 
 ## L6 — Hazard: the defect classes this repository hunts
 
+### L6.A_FILE_IS_REPLACED_ONE_WAY
+
+**A file is replaced one way**
+
+No file under packages, plugins or examples src stages beside its target under a name anybody else can build. Writing goes through core's `writeAtomically` or `createExclusively`.
+
+**Why.** Every writer used to stage at `<file>.tmp`. Two processes saving one record meant the first rename took the staged file the second was about to rename: 161 of 200 rounds threw ENOENT, and 10 loads read a body another process was still writing. Notes and tasks built their ids the same way, checking a name free and then writing it, and lost one of two notes at the same instant in 193 of 200 rounds.
+
+**Fix.** Use `writeAtomically(file, content)` to replace a file, or `createExclusively(file, content)` to claim a name: both stage under a `randomUUID` of their own. Never build a `.tmp` name by hand.
+
 ### L6.A_PRIVATE_NAME_STAYS_PRIVATE
 
 **A private name stays out of this public repository**
@@ -562,6 +572,26 @@ Nothing amy runs pushes with `--force`, `--force-with-lease`, `-f` or a `+` refs
 **Why.** A workflow that commits after every round and pushes once per cycle is only safe while the remote refuses anything that is not a fast-forward of what it already holds. A forced push replaces the remote branch with the local one, so a reviewer's suggestion committed on the forge, or the other half of a stacked change, is gone with no record it was there. Git already refuses a non-fast-forward push and says why; the only way to lose that refusal is to ask for it, and one flag is enough to ask.
 
 **Fix.** Push without forcing and let git refuse. When the refusal arrives, it is the information: fetch, and either fast-forward onto what the remote holds or stop and say which branch moved. A line cannot prove that what it overwrites was worthless, so there is no exemption to write on it.
+
+### L6.A_REQUEST_HAS_A_DEADLINE
+
+**A request has a deadline**
+
+Nothing under packages, plugins or examples src calls `fetch` itself. Every request goes through core's `fetchTransport`, which abandons the exchange at its deadline, body included.
+
+**Why.** Slack and Linear each carried their own copy of the transport, and neither passed a signal or a deadline: a server that stalled before its headers, or trickled a byte every 200 ms, held the tick that asked for six seconds and would have held it forever. A call that can wait forever is not a slow call, it is a loop that stopped without saying so.
+
+**Fix.** Call `fetchTransport` from `@amykit/core` with `deadlineMs`, and read the answer's `status`, `headers` and `body`. A transport a test needs is passed in, never reached for.
+
+### L6.A_RESOLVER_KNOWS_ITS_PROFILE
+
+**A plugin resolver knows its profile**
+
+Every `pluginsRootResolver` built under packages/cli/src passes the profile it acts for, so a fork in that profile is read before the published package.
+
+**Why.** `config explain`, `workflow check` and `workflow export` built the resolver without a profile. With a fork drawing FORK_ONLY and the published package drawing PUBLISHED_ONLY, all three read the published one, so a person editing a fork saw settings and a diagram the machine does not run.
+
+**Fix.** Pass the profile: `pluginsRootResolver(home, paths(home).plugins, profile)`. The command knows which profile it explains or walks; a resolver built without one reads the published package.
 
 ### L6.BRANCH_RESET_LOSES_COMMITS
 

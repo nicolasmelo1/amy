@@ -157,8 +157,14 @@ export function pluginsRootResolver(home: string, pluginsRoot: string, profile?:
 
     // A profile's own root answers first, for the names it holds: a fork,
     // and what imports one. Everything else is the machine's.
+    // A resolver built without its profile reads the published package,
+    // which is exactly the defect `a-resolver-knows-its-profile` refuses:
+    // every call under packages/cli/src passes the profile it acts for.
     const own = profile === undefined ? undefined : profileRoot(home, profile);
-    const directory = own && heldByProfile(home, profile!, spec) ? packageDirectory(own, spec) : packageDirectory(pluginsRoot, spec);
+    const directory =
+      own !== undefined && profile !== undefined && heldByProfile(home, profile, spec)
+        ? packageDirectory(own, spec)
+        : packageDirectory(pluginsRoot, spec);
     if (!fs.existsSync(directory)) throw pluginNotInstalled(spec);
     return packageEntrySpecifier(directory);
   };

@@ -1,0 +1,11 @@
+# Mutation fixture for L6.A_FILE_IS_REPLACED_ONE_WAY. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.A_FILE_IS_REPLACED_ONE_WAY
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.A_FILE_IS_REPLACED_ONE_WAY:
+    enabled: true

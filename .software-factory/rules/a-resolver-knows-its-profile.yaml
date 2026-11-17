@@ -1,0 +1,26 @@
+id: L6.A_RESOLVER_KNOWS_ITS_PROFILE
+layer: L6
+title: A plugin resolver knows its profile
+severity: high
+statement: >-
+  Every `pluginsRootResolver` built under packages/cli/src passes the profile
+  it acts for, so a fork in that profile is read before the published package.
+why: >-
+  `config explain`, `workflow check` and `workflow export` built the resolver
+  without a profile. With a fork drawing FORK_ONLY and the published package
+  drawing PUBLISHED_ONLY, all three read the published one, so a person
+  editing a fork saw settings and a diagram the machine does not run.
+fix: >-
+  Pass the profile: `pluginsRootResolver(home, paths(home).plugins, profile)`.
+  The command knows which profile it explains or walks; a resolver built
+  without one reads the published package.
+ratchet: none
+check:
+  kind: text_pattern
+defaults:
+  scope: ["packages/cli/src/**"]
+  forbidden:
+    - regex: 'pluginsRootResolver\(home,\s*paths\(home\)\.plugins\)'
+      message: "Name the profile this command acts for: pluginsRootResolver(home, paths(home).plugins, profile)."
+    - regex: 'pluginsRootResolver\(home,\s*place\.plugins\)'
+      message: "Name the profile this command acts for: pluginsRootResolver(home, place.plugins, profile)."

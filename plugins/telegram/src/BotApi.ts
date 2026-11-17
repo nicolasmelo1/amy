@@ -1,67 +1,10 @@
-/** One HTTP exchange, small enough to script in a test. */
-export interface HttpRequest {
-  url: string;
-  method: "GET" | "POST";
-  headers: Record<string, string>;
-  body?: string;
-  /** Refuse the answer once its body passes this many bytes, while it arrives. */
-  maxBytes?: number;
-  /** Abandon the exchange, the body's last byte included, after this long. */
-  deadlineMs?: number;
-}
+import { TooLarge, fetchTransport } from "@amykit/core";
+import type { HttpRequest, HttpResponse, HttpTransport } from "@amykit/core";
 
-export interface HttpResponse {
-  status: number;
-  body: Uint8Array;
-}
-
-export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
-
-/** An answer larger than the request allowed, refused before it was held whole. */
-export class TooLarge extends Error {
-  constructor(readonly limit: number) {
-    super(`the answer is larger than ${limit} bytes`);
-  }
-}
-
-export const fetchTransport: HttpTransport = async (request) => {
-  // One signal for the request and the body, so a server that trickles bytes forever is cut off too.
-  const signal = request.deadlineMs === undefined ? undefined : AbortSignal.timeout(request.deadlineMs);
-  const response = await fetch(request.url, { method: request.method, headers: request.headers, body: request.body, ...(signal ? { signal } : {}) });
-  return { status: response.status, body: await readBody(response, request.maxBytes) };
-};
-
-/**
- * The body, counted as it arrives: a declared length over the limit is
- * refused unread, and a missing or understated one is caught by the count.
- */
-async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
-  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
-  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
-    await response.body.cancel();
-    throw new TooLarge(maxBytes);
-  }
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  const reader = response.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      throw new TooLarge(maxBytes);
-    }
-    chunks.push(value);
-  }
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
-}
+// The one transport and its shapes, named here too: existing importers of
+// this plugin keep one import, and there is no second copy to drift.
+export { TooLarge, fetchTransport };
+export type { HttpRequest, HttpResponse, HttpTransport };
 
 /** Telegram's own server; a local Bot API server, or a stand-in, is another. */
 export const TELEGRAM_API = "https://api.telegram.org";

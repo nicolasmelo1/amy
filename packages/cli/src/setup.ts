@@ -300,7 +300,7 @@ function installerPort(home: string, runner: CommandRunner): Installer {
         const harnessesMountedByLadder = new Set(Object.values(HARNESS_PLUGINS));
         if (harnessesMountedByLadder.has(picked.imported)) return { ok: true, value: undefined };
 
-        const imported = await importPluginBySpec(picked.imported, pluginsRootResolver(home, place.plugins));
+        const imported = await importPluginBySpec(picked.imported, pluginsRootResolver(home, place.plugins, SETUP_PROFILE));
         if (!imported.ok) return { ok: false, kind: "internal", why: imported.problem };
         const says = await whatMountingSays(imported.plugin, home);
         if (!says.ok) return { ok: false, kind: "internal", why: says.problems.join("; ") };
@@ -356,7 +356,7 @@ function configPort(home: string): ConfigFile {
         if (config.defaultWorkflow === "" || config.defaultWorkflow === SETUP_PROFILE) writeDefaultWorkflow(home, name, config);
       }),
     schemaOf: async (plugin: string) => {
-      const imported = await importPluginBySpec(plugin, pluginsRootResolver(home, paths(home).plugins));
+      const imported = await importPluginBySpec(plugin, pluginsRootResolver(home, paths(home).plugins, SETUP_PROFILE));
       if (!imported.ok) return { ok: false, kind: "internal", why: imported.problem };
       return { ok: true, value: (imported.plugin.configSchema ?? {}) as ConfigSchema };
     },
@@ -456,7 +456,7 @@ function setupProfile(config: AmyConfig, home: string, options: { terminal: bool
  * into the root by the walk itself, and takes that path first.
  */
 function setupResolver(home: string): (spec: string) => string {
-  const machine = pluginsRootResolver(home, paths(home).plugins);
+  const machine = pluginsRootResolver(home, paths(home).plugins, SETUP_PROFILE);
   return (spec: string) => {
     try {
       return machine(spec);

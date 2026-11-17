@@ -1,73 +1,10 @@
-/** One HTTP exchange, small enough to script in a test. */
-export interface HttpRequest {
-  url: string;
-  method: "GET" | "POST";
-  headers: Record<string, string>;
-  body?: string;
-  /** Refuse the answer once its body passes this many bytes, while it arrives. */
-  maxBytes?: number;
-}
+import { DEFAULT_HTTP_DEADLINE_MS, TooLarge, fetchTransport } from "@amykit/core";
+import type { HttpRequest, HttpResponse, HttpTransport } from "@amykit/core";
 
-export interface HttpResponse {
-  status: number;
-  /** Lower-cased names. */
-  headers: Record<string, string>;
-  body: Uint8Array;
-}
-
-export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
-
-/** An answer larger than the request allowed, refused before it was held whole. */
-export class TooLarge extends Error {
-  constructor(readonly limit: number) {
-    super(`the answer is larger than ${limit} bytes`);
-  }
-}
-
-export const fetchTransport: HttpTransport = async (request) => {
-  const response = await fetch(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-  const headers: Record<string, string> = {};
-  response.headers.forEach((value, name) => {
-    headers[name.toLowerCase()] = value;
-  });
-  return { status: response.status, headers, body: await readBody(response, request.maxBytes) };
-};
-
-/**
- * The body, counted as it arrives: a declared length over the limit is
- * refused unread, and a missing or wrong one is caught by the count.
- */
-async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
-  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
-  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
-    await response.body.cancel();
-    throw new TooLarge(maxBytes);
-  }
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  const reader = response.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      throw new TooLarge(maxBytes);
-    }
-    chunks.push(value);
-  }
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
-}
+// The one transport, named here too: a caller that already imported it from
+// this plugin keeps working, and no second copy of it exists to drift.
+export { TooLarge, fetchTransport };
+export type { HttpRequest, HttpResponse, HttpTransport };
 
 export const SLACK_API = "https://slack.com/api";
 
@@ -84,6 +21,8 @@ export interface SlackApiOptions {
   maxRateLimitRetries?: number;
   /** How long a `429` that names no `Retry-After` is waited out. */
   defaultRetryAfterSeconds?: number;
+  /** How long one exchange may take, body included. */
+  deadlineMs?: number;
 }
 
 /**
@@ -105,6 +44,7 @@ export class SlackApi {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly maxRetries: number;
   private readonly defaultRetryAfterS: number;
+  private readonly deadlineMs: number;
 
   constructor(
     private readonly token: string,
@@ -114,6 +54,7 @@ export class SlackApi {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
     this.defaultRetryAfterS = options.defaultRetryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
+    this.deadlineMs = options.deadlineMs ?? DEFAULT_HTTP_DEADLINE_MS;
   }
 
   /** Calls a method form-encoded, which every method accepts, and refuses `ok: false`. */
@@ -129,6 +70,7 @@ export class SlackApi {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: form.toString(),
+      deadlineMs: this.deadlineMs,
     });
     if (response.status !== 200) throw new Error(`slack ${method} answered HTTP ${response.status}`);
 
@@ -138,7 +80,7 @@ export class SlackApi {
       const needed = typeof body.needed === "string" ? ` (needs ${body.needed})` : "";
       throw new Error(`slack ${method} refused: ${String(body.error ?? "unknown error")}${needed}`);
     }
-    return { body, headers: response.headers };
+    return { body, headers: response.headers ?? {} };
   }
 
   /**
@@ -152,7 +94,7 @@ export class SlackApi {
     if (parsed.protocol !== "https:" || !isSlackHost(parsed.hostname)) {
       throw new Error(`refusing to send the slack token to ${parsed.origin}`);
     }
-    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes });
+    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes, deadlineMs: this.deadlineMs });
     if (response.status !== 200) throw new Error(`slack file ${parsed.pathname} answered HTTP ${response.status}`);
     // Checked again here for a transport that does not honour the limit.
     if (maxBytes !== undefined && response.body.byteLength > maxBytes) throw new TooLarge(maxBytes);
@@ -166,7 +108,7 @@ export class SlackApi {
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
       }
-      await this.sleep(retryAfterMs(response.headers["retry-after"], this.defaultRetryAfterS));
+      await this.sleep(retryAfterMs(response.headers?.["retry-after"], this.defaultRetryAfterS));
     }
   }
 }

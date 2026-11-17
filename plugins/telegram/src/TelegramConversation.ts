@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { addressed, Ask, ChatMessage, Conversation, Reply, ThreadRef } from "@amykit/core";
+import { takeLock } from "@amykit/core";
 import { BotApi, BotApiRefusal, TooLarge } from "./BotApi.js";
 
 export interface TelegramConversationOptions {
@@ -839,23 +840,23 @@ export class TelegramConversation implements Conversation {
     const lock = path.join(this.shared(), "lock");
     const lease = this.options.leaseMs ?? 60_000;
     const deadline = Date.now() + (this.options.lockWaitMs ?? 120_000);
-    const me = randomUUID();
-    while (!claim(lock, me)) {
-      const since = mtimeOf(lock);
-      if (since !== undefined && Date.now() - since > lease) {
-        ignoringGone(() => fs.renameSync(lock, path.join(this.shared(), `.${randomUUID()}.stale`)));
-        removeStale(this.shared());
-        continue;
-      }
+    // The core's one way of taking a lock: a stale one is buried through a
+    // tombstone only one process can create. Renaming it aside blindly let
+    // two processes each decide the same lock was theirs.
+    removeStale(this.shared());
+    let holding = takeLock(lock, { leaseMs: lease });
+    while (!holding) {
       if (Date.now() > deadline) throw new Error(`${this.shared()} is held by another process; waited for it and gave up`);
       await new Promise((resolve) => setTimeout(resolve, 50));
+      holding = takeLock(lock, { leaseMs: lease });
     }
-    const renew = setInterval(() => ignoringGone(() => ownedBy(lock, me) && fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
+    const taken = holding;
+    const renew = setInterval(() => taken.renew(), Math.max(10, lease / 3));
     try {
       return await work();
     } finally {
       clearInterval(renew);
-      if (ownedBy(lock, me)) fs.rmSync(lock, { recursive: true, force: true });
+      taken.release();
     }
   }
 }
@@ -919,26 +920,6 @@ function jsonFilesIn(directory: string): string[] {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
-  }
-}
-
-/** Takes the hold if nobody has it, writing who holds it inside. */
-function claim(lock: string, me: string): boolean {
-  try {
-    fs.mkdirSync(lock);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-    throw error;
-  }
-  fs.writeFileSync(path.join(lock, "owner"), me, { mode: 0o600 });
-  return true;
-}
-
-function ownedBy(lock: string, me: string): boolean {
-  try {
-    return fs.readFileSync(path.join(lock, "owner"), "utf-8") === me;
-  } catch {
-    return false;
   }
 }
 
@@ -1186,14 +1167,6 @@ function mtimeOf(file: string): number | undefined {
     return fs.statSync(file).mtimeMs;
   } catch {
     return undefined;
-  }
-}
-
-function ignoringGone(act: () => unknown): void {
-  try {
-    act();
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 

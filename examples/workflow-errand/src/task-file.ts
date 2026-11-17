@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import { writeUnderAFreeName } from "@amykit/core";
 import { NewTask, Task } from "./ports/Tasks.js";
 
 /** How many words of the task become the branch name. */
@@ -62,20 +62,14 @@ export function pullRequestBody(task: Task, said: string): string {
  */
 export function writeTaskFile(directory: string, task: NewTask, now: Date): Task {
   fs.mkdirSync(directory, { recursive: true });
-  const written: Task = { ...task, id: freeTaskId(directory, now), addedAt: now.toISOString() };
-  fs.writeFileSync(path.join(directory, `${written.id}.md`), taskMarkdown(written), "utf-8");
-  return written;
+  const addedAt = now.toISOString();
+  const stamp = `task-${addedAt.replace(/[:.]/g, "").replace("Z", "")}`;
+  // Created, never checked-then-written: two writers at one instant both find
+  // the first name free, and the loser would overwrite the winner's task.
+  const id = writeUnderAFreeName(directory, stamp, ".md", (name) => taskMarkdown({ ...task, id: name, addedAt }));
+  return { ...task, id, addedAt };
 }
 
 function taskMarkdown(task: Task): string {
   return ["---", `repo: ${task.repo}`, `source: ${task.source}`, `added: ${task.addedAt}`, "---", "", task.text.trim(), ""].join("\n");
-}
-
-function freeTaskId(directory: string, now: Date): string {
-  const stamp = `task-${now.toISOString().replace(/[:.]/g, "").replace("Z", "")}`;
-  const taken = (id: string) => fs.existsSync(path.join(directory, `${id}.md`));
-  if (!taken(stamp)) return stamp;
-  for (let n = 2; ; n += 1) {
-    if (!taken(`${stamp}-${n}`)) return `${stamp}-${n}`;
-  }
 }

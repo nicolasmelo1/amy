@@ -1,0 +1,35 @@
+id: L6.A_FILE_IS_REPLACED_ONE_WAY
+layer: L6
+title: A file is replaced one way
+severity: high
+statement: >-
+  No file under packages, plugins or examples src stages beside its target
+  under a name anybody else can build. Writing goes through core's
+  `writeAtomically` or `createExclusively`.
+why: >-
+  Every writer used to stage at `<file>.tmp`. Two processes saving one record
+  meant the first rename took the staged file the second was about to rename:
+  161 of 200 rounds threw ENOENT, and 10 loads read a body another process was
+  still writing. Notes and tasks built their ids the same way, checking a name
+  free and then writing it, and lost one of two notes at the same instant in
+  193 of 200 rounds.
+fix: >-
+  Use `writeAtomically(file, content)` to replace a file, or
+  `createExclusively(file, content)` to claim a name: both stage under a
+  `randomUUID` of their own. Never build a `.tmp` name by hand.
+ratchet: none
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "packages/*/src/**"
+    - "plugins/*/src/**"
+    - "examples/*/src/**"
+  exclude:
+    - "packages/core/src/atomic-file.ts"
+  forbidden:
+    - regex: '\.tmp[`"'']'
+      # A name carrying this process's id or a UUID is one no other writer can
+      # build, which is what the rule asks for; the defect is the shared one.
+      unless: '\.\$\{(process\.pid|randomUUID\(\))'
+      message: "Stage under a name only this writer holds: use writeAtomically or createExclusively from @amykit/core."

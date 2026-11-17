@@ -15,6 +15,7 @@ import {
   hasACeiling,
   parseBudget,
   ConfigOf,
+  fetchTransport,
 } from "@amykit/core";
 import { MODELS_DEV_URL, ModelsDevCatalog, OVERRIDE_FILE, RefreshReport, forgetSpecTable, refreshFrom, specTable } from "@amykit/model-specs";
 import { HARNESS_COLLECTION, HarnessRelay, NamedHarness, Ladders, Rung, SkillLadders, rungsFor } from "@amykit/agent-kit";
@@ -155,9 +156,9 @@ async function refreshed(home: string): Promise<RefreshReport | { reason: string
     // Bounded, because this runs on a start and an update: a price list is
     // not worth holding a loop up for, and a machine with no route out must
     // come back to the table it already had rather than wait.
-    const response = await fetch(MODELS_DEV_URL, { signal: AbortSignal.timeout(5_000) });
-    if (!response.ok) return { reason: `${MODELS_DEV_URL} answered ${response.status}` };
-    return refreshFrom((await response.json()) as ModelsDevCatalog, specTable(home));
+    const response = await fetchTransport({ url: MODELS_DEV_URL, method: "GET", headers: {}, deadlineMs: 5_000 });
+    if (response.status < 200 || response.status >= 300) return { reason: `${MODELS_DEV_URL} answered ${response.status}` };
+    return refreshFrom(JSON.parse(new TextDecoder().decode(response.body)) as ModelsDevCatalog, specTable(home));
   } catch (error) {
     return { reason: error instanceof Error ? error.message : String(error) };
   }
