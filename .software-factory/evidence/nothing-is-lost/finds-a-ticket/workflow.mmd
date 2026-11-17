@@ -1,0 +1,4 @@
+stateDiagram-v2
+    [*] --> queued
+    queued --> done: the ticket was found
+    done --> [*]

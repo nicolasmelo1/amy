@@ -1,0 +1,18 @@
+{
+  "name": "@acme/workflow-finds-a-ticket",
+  "version": "1.0.0",
+  "description": "A workflow whose discovery finds a ticket and whose only move settles it.",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "workflow.mmd"
+  ],
+  "dependencies": {
+    "@amykit/core": "current"
+  }
+}

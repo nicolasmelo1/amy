@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "a-plugin-of-your-own",
-  "implementation_sha256": "6ae30bddb0fb369110c52b2a6818b0998491254a641af3825c67efd937f46669",
+  "implementation_sha256": "be4c8966be320e21ee1b04757a32c6a0af9030ef792cdb05e1ddd9a5d933792f",
   "runs": [
     {
       "scenario": "a-plugin-of-your-own",
