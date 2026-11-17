@@ -83,3 +83,4 @@ the rest.
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
 | 73 | [The build job runs the ratchet](the-build-job-runs-the-ratchet.md) |
 | 74 | [The ratchet cannot grow](the-ratchet-cannot-grow.md) |
+| 75 | [The ratchet reads its base](the-ratchet-reads-its-base.md) |
