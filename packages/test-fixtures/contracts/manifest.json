@@ -1,26 +1,26 @@
 {
-  "vendoredAt": "2026-11-16T20:10:59.638026+00:00",
+  "vendoredAt": "2026-11-16T15:49:55.014Z",
   "documents": [
     {
       "name": "github-graphql",
       "file": "github.graphql",
       "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
-      "publisher": "GitHub \u2014 the public GraphQL schema for github.com",
-      "sha256": "e77f0dc544b72bf889d62636f127cf4ce91c64056f648c95e26907253919467c"
+      "publisher": "GitHub — the public GraphQL schema for github.com",
+      "sha256": "d928ebbb2d08cba348c0c5713ab3c8756a39e838324089ff66fcddf1bab2c496"
     },
     {
       "name": "github-rest",
       "file": "github-rest.json.gz",
       "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
-      "publisher": "GitHub \u2014 the OpenAPI description of the github.com REST API",
-      "sha256": "b1807bbb9b79466d4c11ba869db9e2642568e7e493554bc1eb69dc4b06aee48b"
+      "publisher": "GitHub — the OpenAPI description of the github.com REST API",
+      "sha256": "f7a3de68869181d34b232d88840d31f8157ade45cad1746eaab90cd3c801b31c"
     },
     {
       "name": "linear-graphql",
       "file": "linear.graphql",
       "url": "https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql",
-      "publisher": "Linear \u2014 the GraphQL schema its own SDK is generated from",
-      "sha256": "dc0f838785760f8daa692e438fcd15071c5bc39c6997758d5c2d303364f98e56"
+      "publisher": "Linear — the GraphQL schema its own SDK is generated from",
+      "sha256": "20cadd5061b0c95acbd0ecdb2b387023b1beb3be84c10c74d22b560f61cd8730"
     },
     {
       "name": "slack-web",
@@ -31,11 +31,11 @@
     }
   ],
   "gh": {
-    "version": "2.103.3",
+    "version": "2.104.0",
     "releases": "https://api.github.com/repos/cli/cli/releases",
     "reference": {
       "file": "gh-reference.md",
-      "sha256": "94abe2ebac6046332d96b7eeec0d966d085f87e5d35e4c1e91d116bc968f8425"
+      "sha256": "67082a05c7ae29076b36477ffa64ef52bf4decb822be49bb6bad5f05c8a60357"
     },
     "prJsonFields": {
       "file": "gh-pr-json-fields.txt",
