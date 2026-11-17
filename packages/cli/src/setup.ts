@@ -24,7 +24,8 @@ import {
   writeWorkflowProfile,
 } from "./config.js";
 import { harnesses } from "./harnesses.js";
-import { load, pluginResolver } from "./loader.js";
+import { load } from "./loader.js";
+import { pluginResolver } from "./plugin-commands.js";
 import { paths } from "./paths.js";
 import { Profile, profiles } from "./profiles.js";
 import { installIntoPluginsRoot } from "./install.js";

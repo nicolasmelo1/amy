@@ -64,21 +64,21 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 40227,
+      "pid": 82728,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "the Slack operator pressed ✅ for BRL and revised the brief",
-      "the automated reviewer looked at c7fce5e and left one comment",
-      "the automated reviewer looked at 6c45452 and had nothing to say",
+      "the automated reviewer looked at 186c745 and left one comment",
+      "the automated reviewer looked at cc79bfb and had nothing to say",
       "one of ada's other reviews was merged, so she is carrying one",
-      "ada asked for changes on 6c45452",
+      "ada asked for changes on cc79bfb",
       "the owner settled the disagreement in Slack",
-      "ada approved 2009434",
-      "the automated reviewer looked at 2009434 and had nothing to say",
-      "the automated reviewer looked at 68b3239 and had nothing to say",
-      "ada approved 68b3239"
+      "ada approved 1001a14",
+      "the automated reviewer looked at 1001a14 and had nothing to say",
+      "the automated reviewer looked at 8ab7cc4 and had nothing to say",
+      "ada approved 8ab7cc4"
     ],
     "agent_calls": [
       "triage",
@@ -106,7 +106,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-17T19:39:29.200Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-17T19:39:28.738Z): Should the invoice total use BRL?\"\n}"
+      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-17T20:36:09.780Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-17T20:36:09.322Z): Should the invoice total use BRL?\"\n}"
     },
     "budget": "Codex: unavailable — codex app-server exited before completion (1)",
     "second_run_transitions": 22,
@@ -114,12 +114,12 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 4,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-Qn3R51/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "5f1135ed9cf2772d53403ef1cc3abe6bf3e5909d"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-fpm3mf/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "bf14dcfa4b3eb1666757ed75c10204343b867bcd"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-Qn3R51/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "c7fce5ed52c4a56a6cf8668b8adff5272f206e9e"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-fpm3mf/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "186c74558457eb2173127e7703b91c9ec8e40339"
       }
     ]
   },

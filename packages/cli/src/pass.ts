@@ -1,12 +1,6 @@
 import { deadlineOf } from "@amykit/core";
 import type { Engine } from "@amykit/core";
 
-/** A discovery that ran out of time: which host it was, and the deadline it had. */
-export interface MissedDiscovery {
-  readonly host: string;
-  readonly deadlineMs: number;
-}
-
 /** What one pass over the world found, and the move it made. */
 export interface Pass<M = unknown> {
   readonly found: readonly string[];
@@ -15,7 +9,7 @@ export interface Pass<M = unknown> {
    * Set when discovery ran out of time. The pass is still a pass: the work
    * already on the queue was advanced, and the caller says what it missed.
    */
-  readonly missed?: MissedDiscovery;
+  readonly missed?: { readonly host: string; readonly deadlineMs: number };
 }
 
 /**
@@ -33,7 +27,7 @@ export interface Pass<M = unknown> {
  */
 export async function onePass<M = unknown>(engine: Engine): Promise<Pass<M>> {
   let found: readonly string[] = [];
-  let missed: MissedDiscovery | undefined;
+  let missed: { host: string; deadlineMs: number } | undefined;
   try {
     found = await engine.discover();
   } catch (error) {

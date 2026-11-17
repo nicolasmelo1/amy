@@ -6,7 +6,7 @@ import { drawn } from "./drawn.js";
 import { localWorkflow } from "./workflow.js";
 import { packageEntrySpecifier } from "./spec.js";
 import { heldByProfile } from "./fork.js";
-import { paths, profileRoot } from "./paths.js";
+import { profileRoot } from "./paths.js";
 
 export interface LoadResult {
   plugins: Plugin[];
@@ -166,17 +166,6 @@ export function pluginsRootResolver(home: string, pluginsRoot: string, profile: 
     if (!fs.existsSync(directory)) throw pluginNotInstalled(spec);
     return packageEntrySpecifier(directory);
   };
-}
-
-/**
- * The resolver a command acts through, built in one place for one profile.
- *
- * Every command goes through this rather than building the resolver itself:
- * a command that built its own could leave the profile out, and read the
- * published package while the profile held a fork.
- */
-export function pluginResolver(home: string, profile: string, pluginsRoot: string = paths(home).plugins): (spec: string) => string {
-  return pluginsRootResolver(home, pluginsRoot, profile);
 }
 
 function pluginNotInstalled(spec: string): Error & { code: string } {

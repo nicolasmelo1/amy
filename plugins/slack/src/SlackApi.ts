@@ -40,7 +40,7 @@ export const DEFAULT_RATE_LIMIT_RETRIES = 5;
  * less than that would refuse to obey the server it is talking to. Bounded
  * all the same, so a `Retry-After` of a day is not five days of waiting.
  */
-export const DEFAULT_SLACK_DEADLINE_MS = 120_000;
+const DEFAULT_SLACK_DEADLINE_MS = 120_000;
 
 /**
  * The Web API, and only the Web API.
