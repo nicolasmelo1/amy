@@ -1,5 +1,5 @@
 ---
-base: 7996f184da931d0d9b9c6e86369a202cacb51cf6
+base: 176c7c4adbaf856478175a8e2756ecca470c36de
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/daemon.ts", symbol: "runLoop", said: "await loop.turn() escapes the loop when discovery rejects, so a recoverable HTTP deadline ends the foreground daemon" }
   - { id: S2, kind: code, ref: "packages/cli/src/index.ts", said: "the daemon turn calls onePass(engine), whose discovery is the Linear HTTP path before the tick" }
@@ -7,7 +7,10 @@ sources:
 touches:
   - packages/cli/src/daemon.ts
   - packages/cli/tests/daemon.test.ts
+  - packages/core/src/http.ts
+  - packages/core/src/index.ts
   - registry/cli.json
+  - registry/core.json
 criteria:
   - { id: A1, statement: "when a daemon turn rejects with the recoverable deadline error, the loop reports it, waits its idle interval and runs a later turn", proof: "deferred:test:packages/cli/tests/daemon.test.ts", sources: [S1, S2, S3] }
   - { id: A2, statement: "a daemon turn rejecting with an unrelated error still rejects", proof: "deferred:test:packages/cli/tests/daemon.test.ts", sources: [S1, S3] }
