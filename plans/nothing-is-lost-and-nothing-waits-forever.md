@@ -50,6 +50,8 @@ touches:
   - .software-factory/rules/a-resolver-knows-its-profile.yaml
   - .software-factory/evidence/nothing-is-lost-scenario.sh
   - .software-factory/evidence/nothing-is-lost/drive.ts
+  - scripts/duplication-baseline.json
+  - CONTRIBUTING.md
   - registry/cli.json
   - registry/core.json
   - registry/plugin-slack.json
