@@ -110,8 +110,10 @@ export interface Ticket {
    * the store still reads the current statement.
    *
    * The tracker's own facts — the parent, say — decide the id; nothing
-   * derives it from the body. A ticket with no brief carries neither field,
-   * and every prompt built from it is unchanged.
+   * derives it from the body. A project's brief is the other kind, stored
+   * under the unit's own id and resolved first by `briefOf`. A ticket with
+   * no brief carries neither field, and every prompt built from it is
+   * unchanged.
    */
   briefId?: string;
   /**

@@ -3,6 +3,7 @@ import {
   AgentRun,
   Ask,
   baseBranchFor,
+  briefOf,
   Conversation,
   FoundWork,
   Moved,
@@ -204,15 +205,16 @@ const ACTIONS: TicketActions = {
     }
     await scope.announce(`${unitOf(work.record)} needs an answer before I can start.`);
 
-    // The same question, appended to the brief it is about, with this
-    // ticket's id and the time — the one channel a later sibling reads.
-    // Nothing appends an answer: deciding the question is the owning
-    // workflow's revision, never this workflow's write.
-    const briefId = work.observation.ticket.briefId;
-    if (briefId && brief) {
+    // The same question, appended to the brief the ticket was read with,
+    // under its own id when it has one, with this ticket's id and the time —
+    // the one channel a later sibling reads. Nothing appends an answer:
+    // deciding the question is the owning workflow's revision, never this
+    // workflow's write.
+    const about = await briefOf(brief, { workId: work.observation.ticket.id, briefId: work.observation.ticket.briefId });
+    if (brief && about) {
       for (const question of effect.questions) {
         await brief.appendQuestion({
-          id: briefId,
+          id: about.id,
           question: { workId: unitOf(work.record), question: questionText(question), at: scope.ctx.now().toISOString() },
           at: scope.ctx.now().toISOString(),
         });
@@ -419,10 +421,7 @@ async function requireTicket(scope: Scope, workId: string): Promise<Ticket> {
  */
 async function requireTicketWithBrief(scope: Scope, workId: string): Promise<Ticket> {
   const ticket = await requireTicket(scope, workId);
-  const briefs = scope.ports.brief;
-  if (!ticket.briefId || !briefs) return ticket;
-
-  const record = await briefs.get(ticket.briefId);
+  const record = await briefOf(scope.ports.brief, { workId: ticket.id, briefId: ticket.briefId });
   if (!record) return ticket;
 
   return { ...ticket, brief: renderBrief(record).text };

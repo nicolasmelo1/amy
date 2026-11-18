@@ -126,6 +126,42 @@ describe("the self-review half-step", () => {
     expect(ask?.context?.brief).toBeUndefined();
     expect(record?.lastSelfReview?.ok).toBe(true);
   });
+
+  it("reads the brief stored under the ticket's own id, ahead of the one its parent names", async () => {
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    let at = clock.getTime();
+    const next = (): string => new Date((at += 1000)).toISOString();
+    const { agent } = recordingAgent(seen, next);
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-own-brief-"));
+    const briefs = new FileBriefStore(path.join(root, "briefs"));
+    await briefs.write({
+      id: "PROJ-1239",
+      sections: [{ name: "Goal", body: "The total is the sum of the lines, in one currency." }],
+      explains: ["PROJ-1239"],
+      at: clock.toISOString(),
+    });
+    await briefs.write({
+      id: "invoice-currency",
+      sections: [{ name: "Goal", body: "One currency on every invoice line." }],
+      explains: ["PROJ-1239"],
+      at: clock.toISOString(),
+    });
+
+    const withParent = (): Ticket => ({ ...ticket(), briefId: "invoice-currency" });
+    const { record } = await driveToSelfReview(
+      { tracker: trackerFor(withParent), agent, briefs, gate: { run: async () => ({ ok: true, output: "", at: next() }) }, now: () => new Date(next()) },
+    );
+    fs.rmSync(root, { recursive: true, force: true });
+
+    const ask = seen.find((entry) => entry.context?.step === "self-review");
+    // The review reads the same brief the ticket was observed with: the
+    // project's own for this unit, not its parent's feature-level statement.
+    expect(ask?.prompt).toContain("The total is the sum of the lines, in one currency.");
+    expect(ask?.prompt).not.toContain("One currency on every invoice line.");
+    expect(ask?.context?.brief).toContain("The total is the sum of the lines, in one currency.");
+    expect(record?.lastSelfReview?.ok).toBe(true);
+  });
 });
 describe("the verdict a review ends on", () => {
   it.each([

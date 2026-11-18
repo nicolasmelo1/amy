@@ -121,3 +121,24 @@ export function renderBrief(brief: BriefRecord): BriefView {
 
   return { text, revision: brief.revision };
 }
+
+/**
+ * The brief a unit is worked against: the one stored under its own id when
+ * there is one, the one `briefId` names when there is not, and null when
+ * neither exists.
+ *
+ * A project grooms one brief per unit, under that unit's id, and its
+ * GROOMED gate judges the same one. The tracker's `briefId` is the other
+ * kind: a feature-level statement every child ticket reads. Resolving here,
+ * once, is what keeps the gate, `amy brief` and every ticket step answering
+ * with the same brief.
+ */
+export async function briefOf(
+  store: BriefStore | undefined,
+  unit: { readonly workId: string; readonly briefId?: string },
+): Promise<BriefRecord | null> {
+  if (!store) return null;
+  const own = await store.get(unit.workId);
+  if (own) return own;
+  return unit.briefId ? store.get(unit.briefId) : null;
+}

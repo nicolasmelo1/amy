@@ -8,6 +8,7 @@ import {
   Tracker,
   WorkRecord,
   Worktree,
+  briefOf,
   defineWorkflow,
   optional,
   port,
@@ -149,7 +150,7 @@ export const selfReviewLane = withDiagram(defineWorkflow({
     const ticketId = (record as ReviewRecord).input.ticketId;
     const ticket = await scope.ports.tracker.get(ticketId);
     if (!ticket) throw new Error(`${ticketId} is not in the tracker any more`);
-    const brief = ticket.briefId && scope.ports.brief ? await scope.ports.brief.get(ticket.briefId) : null;
+    const brief = await briefOf(scope.ports.brief, { workId: ticket.id, briefId: ticket.briefId });
     return { id: ticket.id, title: ticket.title, ...(brief ? { brief: renderBrief(brief).text } : {}) };
   },
   actions: {
