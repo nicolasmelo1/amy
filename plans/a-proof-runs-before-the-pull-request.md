@@ -15,6 +15,12 @@ sources:
   - { id: S13, kind: decision, said: "a refused proof also says what it could not decide: an unsupported step, an unanswered human step, or a failed step no assertion reads once every criterion is answered. Decided 2026-11-11, in the private project's fork" }
   - { id: S15, kind: decision, said: "undecided work goes to ESCALATED naming each step, charging no attempt, and the owner's answer proves the same revision again. Decided 2026-11-11, in the private project's fork" }
   - { id: S14, kind: decision, said: "leaving IMPLEMENTING for the checks clears its attempts. Decided 2026-11-11, in the private project's fork" }
+  - { id: S16, kind: reference, ref: "plans/a-step-escalates-by-where-its-work-came-back-from.md", said: "IMPLEMENTING is the one place code changes and maxImplementAttempts is removed; a refused proof is a round of origin proof, counted on its own" }
+  - { id: S17, kind: code, ref: "packages/cli/src/project.ts", symbol: "criteriaOf", said: "every criterion the brief settled must appear in the proof's answer; none is proven by the review reading the code instead" }
+  - { id: S18, kind: decision, said: "every change is proven again, since every change passes the checks; a head already proven is not proven twice. Decided 2026-11-18, in the private project's fork" }
+  - { id: S19, kind: decision, said: "a criterion the brief marks `proof: review` is proven by the review, not the scenario: no assertion is asked for it, and it holds no pull request. Decided 2026-11-18, in the private project's fork" }
+  - { id: S20, kind: decision, said: "a proof that held but left criteria no assertion names goes to the owner, not the agent: no change to the code answers that. Decided 2026-11-18, in the private project's fork" }
+  - { id: S21, kind: decision, said: "a reply a proof's step accepts as its answer is the proof's, never new work; an agent that changes nothing on a proven head leaves it standing, its reason recorded. Decided 2026-11-18, in the private project's fork" }
 touches:
   - packages/core/src/define-workflow.ts
   - packages/core/src/calls.ts
@@ -44,13 +50,17 @@ criteria:
   - { id: A2, statement: "a mount refuses a fill naming a state the workflow declares no slot for, and a callee one of whose ends the slot draws no edge for, naming the slot and the end", proof: "deferred:test:packages/core/tests/calls.test.ts", sources: [S5, S7] }
   - { id: A3, statement: "ticket-to-qa's verdict, both checks clean, goes to a PROVING slot before PR_OPEN; standing alone the slot goes straight on to PR_OPEN, and every conformance world walks as it did", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts", sources: [S3, S7] }
   - { id: A4, statement: "a project whose WORK declares the slot fills it with its prove/ phase, handed the brief's criteria and run against the work's branch; the walk is BRIEF, WORK, DONE, with no PROVE after WORK", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S2, S4, S6, S7] }
-  - { id: A5, statement: "a proof refused because an assertion did not hold, or that leaves a criterion the brief settled unanswered, sends the work back to IMPLEMENTING carrying what did not hold, counted against maxImplementAttempts; a proven one goes on to PR_OPEN", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S1, S4, S7, S13, S15] }
+  - { id: A5, statement: "a proof refused because an assertion did not hold, or that leaves a criterion the brief settled unanswered, sends the work back to IMPLEMENTING carrying what did not hold, a round of origin proof; a proven one goes to PR_OPEN", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S1, S4, S7, S13, S15, S16] }
   - { id: A6, statement: "the pull request opened after a proof names it and every file its steps kept, in the body amy writes or the turn it hands the operator", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts", sources: [S1] }
   - { id: A8, statement: "the workflow testkit's every-edge property holds a filled slot to the edges of its ends, and leaves the callee's inner edges to the callee's own suite", proof: "deferred:test:packages/workflow-testkit/tests/conforms.test.ts", sources: [S8] }
   - { id: A7, statement: "a project whose WORK declares no slot keeps BRIEF, WORK, PROVE and DONE, and its proof runs where it ran", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S2, S4] }
   - { id: A9, statement: "a refused proof names, apart from what did not hold, what it could not decide: an unsupported step, an unanswered human step, a failed step no assertion reads once every criterion is answered", proof: "deferred:test:plugins/prove/tests/steps.test.ts", sources: [S9, S10, S11, S13] }
   - { id: A10, statement: "an undecided proof takes the work to ESCALATED naming each undecided step, charging no implement attempt; the owner's answer proves the same revision again, and a code change goes back to IMPLEMENTING as before", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S9, S15] }
-  - { id: A11, statement: "an implementation that reaches the checks clears IMPLEMENTING's attempts, so each return from PROVING has maxImplementAttempts of its own", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/attempts.property.test.ts", sources: [S12, S14] }
+  - { id: A11, statement: "an implementation that reaches the checks clears IMPLEMENTING's attempts, so each return from PROVING starts its origin's rounds afresh", proof: "deferred:property:examples/workflow-ticket-to-qa/tests/attempts.property.test.ts", sources: [S12, S14, S16] }
+  - { id: A12, statement: "a change made after the pull request opened is proven again before it is pushed, and a head already proven goes on without a second proof", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S16, S18] }
+  - { id: A13, statement: "a criterion marked `proof: review` needs no assertion, and the proof leaving it unanswered holds no pull request", proof: "deferred:test:packages/cli/tests/project.test.ts", sources: [S17, S19] }
+  - { id: A14, statement: "a proof that held with criteria no assertion names goes to ESCALATED naming them, charging no attempt; the owner's answer proves again", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S20] }
+  - { id: A15, statement: "a reply a proof's step accepts is not new work, and an agent changing nothing on a proven head leaves it standing with its reason, no attempt charged", proof: "deferred:test:examples/a-whole-project/tests/project.test.ts", sources: [S21] }
 crosses:
   - { mechanism: calls, answer: works, proof: "deferred:test:packages/core/tests/calls.test.ts" }
   - { mechanism: diagram, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/conformance.test.ts" }
@@ -62,7 +72,7 @@ crosses:
   - { mechanism: hooks, answer: n/a, why: "a slot is a call state; no hook is added or read" }
   - { mechanism: checkouts-and-leases, answer: n/a, why: "the proof's resources lease as they do; running the work's branch is a-proof-runs-against-its-own-branch's" }
 guarantee:
-  - { holds: "no pull request is opened for work whose proof did not pass", not_against: "a pull request a person opens by hand" }
+  - { holds: "no pull request is opened, and no later change pushed, for work whose proof did not pass", not_against: "a pull request a person opens or pushes to by hand" }
   - { holds: "the proof a pull request names is the proof of the head it opens with", not_against: "a push to the branch by somebody else after it opened" }
 failures:
   - { step: PROVING, when: "a resource does not come up or a fixture cannot be met", goes_to: "the proof's own wait or give-up, said in the work's thread; nothing is opened" }
@@ -70,7 +80,6 @@ failures:
   - { step: PROVING, when: "the proof could not decide a step", goes_to: "ESCALATED, naming each undecided step and how to settle it; the answer proves again" }
   - { step: ESCALATED, when: "the owner answers an undecided proof but the scenario still cannot run the step", goes_to: "ESCALATED again, naming the step; no implement attempt is charged" }
 cut:
-  - "proving again after review changes: a later plan, once the first proof holds"
   - "a slot anywhere but ticket-to-qa's PROVING: the mechanism is general, and this plan fills only that one"
 exit: "a project of amy's shipped brief, ticket-to-qa and prove phases proves a ticket's branch before its pull request opens, on the fakes, and opens it naming the proof and its pictures"
 ---

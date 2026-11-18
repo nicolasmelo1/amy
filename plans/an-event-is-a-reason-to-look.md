@@ -9,7 +9,7 @@ sources:
   - { id: S7, kind: decision, said: "the look is ordinary: observe reads the world, pure plan() decides, one move; the payload is never the observation, since events arrive twice, out of order or late. Events change only when a look happens" }
   - { id: S8, kind: decision, said: "events are named for the port: code-host.pull-request.opened, code-host.review.submitted, code-host.thread.replied, tracker.ticket.created, tracker.ticket.updated, tracker.comment.created, conversation.reply.posted" }
   - { id: S9, kind: decision, said: "each adapter translates its tool's payload into one port event name and the work ids it concerns; the core stays vendor-neutral as THE_CORE_NAMES_NO_VENDOR holds it" }
-  - { id: S10, kind: decision, ref: "packages/core/src/diagram.ts", said: "a waiting state's edge may be labelled with an event name (HUMAN_REVIEW --> HUMAN_FIX: code-host.review.submitted); the event wakes the record, plan() still picks the edge" }
+  - { id: S10, kind: decision, ref: "packages/core/src/diagram.ts", said: "a waiting state's edge may be labelled with an event name (HUMAN_REVIEW --> IMPLEMENTING: code-host.review.submitted); the event wakes the record, plan() still picks the edge" }
   - { id: S11, kind: decision, said: "labels stay prose except one naming a published event; a dotted name nothing publishes is refused at boot; no event edge keeps its backoff; an event edge keeps a slow reconciliation backoff" }
   - { id: S12, kind: decision, ref: "packages/cli/src/doctor.ts", said: "discovery keeps running, longer cadence once a source reports events, finding what an event never reached (asleep, stopped, tunnel down); amy doctor says per source whether events arrive or it polls only" }
   - { id: S13, kind: decision, ref: "plugins/github/src/plugin.ts", said: "plugin-github receives pull_request, pull_request_review, pull_request_review_comment at POST /v1/events/github (amy speaks in domains), verified by X-Hub-Signature-256 with the webhook secret" }
@@ -37,17 +37,24 @@ touches:
   - packages/core/src/diagram.ts
   - packages/core/src/mount.ts
   - packages/core/tests/diagram.test.ts
-  - plugins/github/src/**
+  - plugins/github/src/plugin.ts
+  - plugins/github/src/config.ts
+  - plugins/github/src/events.ts
   - plugins/github/tests/events.test.ts
-  - plugins/linear/src/**
-  - plugins/linear/tests/**
+  - plugins/linear/src/plugin.ts
+  - plugins/linear/src/config.ts
+  - plugins/linear/src/events.ts
+  - plugins/linear/tests/events.test.ts
   - plugins/slack/src/config.ts
   - plugins/slack/src/SlackConversation.ts
   - plugins/slack/tests/SlackConversation.asks.test.ts
-  - packages/server/src/**
+  - packages/services/src/domains/events.ts
+  - packages/services/src/domains/index.ts
   - packages/cli/src/doctor.ts
   - packages/cli/tests/doctor.test.ts
-  - .software-factory/evidence/ticket-to-qa/**
+  - .software-factory/evidence/ticket-to-qa/drive.ts
+  - .software-factory/evidence/ticket-to-qa/world.ts
+  - .software-factory/evidence/ticket-to-qa/tracker.ts
   - .software-factory/policy.yaml
   - docs/build/receive-events.md
   - scripts/docs/tests/examples.test.ts
