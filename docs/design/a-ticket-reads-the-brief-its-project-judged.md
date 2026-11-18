@@ -55,6 +55,6 @@ exit: "a unit groomed under its own id is worked, reviewed and questioned agains
 # A ticket reads the brief its project judged
 
 A project grooms a brief per unit, under that unit's id, and its GROOMED gate
-judges that same one; ticket-to-qa read only the tracker's parent `briefId`.
+judges that same one; ticket-to-qa read only the tracker parent's `briefId`.
 `briefOf` answers the unit's own brief first, the parent's after, and the gate,
 `amy brief`, triage, self-review and the appended question all read it.
