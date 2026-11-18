@@ -83,4 +83,5 @@ the rest.
 | 74 | [A discovery timeout keeps the loop going](a-discovery-timeout-keeps-the-loop-going.md) |
 | 75 | [A wait fits inside its deadline](a-wait-fits-inside-its-deadline.md) |
 | 76 | [A records directory holds only records](a-records-directory-holds-only-records.md) |
+| 77 | [The chat climbs its own ladder](the-chat-climbs-its-own-ladder.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
