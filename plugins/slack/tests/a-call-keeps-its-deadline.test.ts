@@ -68,4 +68,10 @@ describe("a call that is retried", () => {
     await expect(api.call("conversations.replies", { channel: "C1", ts: "1.0" })).rejects.toThrow();
     expect(Date.now() - started).toBeLessThanOrEqual(1_150);
   }, 10_000);
+
+  it("says the deadline the call declared, not what was left of it", async () => {
+    const api = new SlackApi("xoxb-test", { transport: quickThenStalled(400), deadlineMs: 1_000 });
+
+    await expect(api.call("conversations.replies", { channel: "C1", ts: "1.0" })).rejects.toThrow(/\b1000 ms\b/);
+  }, 10_000);
 });
