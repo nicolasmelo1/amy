@@ -23,11 +23,20 @@ sources:
   - { id: S20, kind: decision, said: "an evidence signature is the source's first line verbatim, with no normalisation; this replaces S8's 'normalised', so two lines differing in a path, a line number or an id are two signatures. Decided 2026-11-08" }
   - { id: S21, kind: decision, said: "the lessons file is a YAML list of { signature: { step, agent, key }, lesson, state, at } entries and nothing else: lesson non-empty, at an ISO instant, state proposed, approved, rejected or removal-proposed. Decided 2026-11-08" }
   - { id: S22, kind: decision, said: "the lessons file is read all or nothing: one entry that fails S21 makes the whole file unreadable; a distilling reply is malformed when its lesson would fail S21. Decided 2026-11-08" }
+  - { id: S23, kind: decision, said: "the review loop is for learning: a review thread taken up as new work is a mistake of the step and agent that wrote the head it was left on, keyed by the finding's group key. Decided 2026-11-18" }
+  - { id: S24, kind: reference, ref: "plans/a-step-escalates-by-where-its-work-came-back-from.md", said: "a review thread is new work of origin review thread, sent to IMPLEMENTING with the head it was left on" }
 touches:
   - packages/core/src/ports/Lessons.ts
   - packages/core/src/index.ts
   - packages/core/tests/ports.test.ts
-  - plugins/file-lessons/**
+  - plugins/file-lessons/README.md
+  - plugins/file-lessons/package.json
+  - plugins/file-lessons/tsconfig.json
+  - plugins/file-lessons/src/FileLessons.ts
+  - plugins/file-lessons/src/config.ts
+  - plugins/file-lessons/src/index.ts
+  - plugins/file-lessons/src/plugin.ts
+  - plugins/file-lessons/tests/FileLessons.test.ts
   - packages/agent-kit/src/HarnessRelay.ts
   - packages/agent-kit/src/lessons.ts
   - packages/agent-kit/src/index.ts
@@ -55,10 +64,11 @@ criteria:
   - { id: A12, statement: "two evidence first lines that differ only in a path, a line number or an id are two signatures, each counted on its own", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S20] }
   - { id: A13, statement: "a lessons file with one entry that fails the schema puts no lesson in any prompt, and amy doctor names the file and the entry", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S21, S22] }
   - { id: A14, statement: "a distilling reply whose lesson would not be a valid entry writes nothing to the file and is counted as no lesson", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S21] }
+  - { id: A15, statement: "the same review finding taken up as new work in three of ten settled records, on heads one agent wrote at implement, is one signature with count three, and gets one proposed lesson", proof: "deferred:test:packages/agent-kit/tests/lessons.test.ts", sources: [S5, S23, S24] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A2; an empty or malformed distilling reply writes no lesson" }
   - { mechanism: attempts-and-waits, answer: n/a, why: "distilling is a read-only run outside any record; it charges no attempt and gives none back" }
-  - { mechanism: tracker-and-host-writes, answer: n/a, why: "Lessons.ts is a new port that writes only the profile's lessons file; no tracker or code-host write is added" }
+  - { mechanism: tracker-and-host-writes, answer: n/a, why: "Lessons.ts is a new port that writes only the profile's lessons file; review threads are read from the record, and no tracker or code-host write is added" }
   - { mechanism: budget-and-evidence, answer: works, proof: "deferred:A8; evidence is read, never written, and a distilling run passes the budget check before it is asked" }
 guarantee:
   - { holds: "no lesson reaches a prompt without the operator's approval", not_against: "a person writing a lesson into the file by hand" }
@@ -78,7 +88,7 @@ exit: "after ten settled pieces of work where hermes:glm left the same gate find
 ---
 # A workflow learns from its mistakes
 
-amy keeps what went wrong (evidence on history, findings, events) and does
-nothing with it. A recurring mistake becomes a proposed lesson for one step and
-one model, applied only when the operator approves it and dropped when it does
-not help.
+amy keeps what went wrong (evidence on history, findings, review threads, events)
+and does nothing with it. A recurring mistake, a reviewer's included, becomes a
+proposed lesson for one step and one model, applied only when the operator
+approves it and dropped when it does not help.
