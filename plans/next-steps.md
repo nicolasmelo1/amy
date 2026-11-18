@@ -86,3 +86,4 @@ Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 s
 | 77 | [The work phase reads its project's brief](the-work-phase-reads-its-projects-brief.md) |
 | 78 | [The review is handed the unit's work id](the-review-is-handed-the-unit-work-id.md) |
 | 79 | [A failed update does not hold the daemon](a-failed-update-does-not-hold-the-daemon.md) |
+| 80 | [The chat climbs its own ladder](the-chat-climbs-its-own-ladder.md) |
