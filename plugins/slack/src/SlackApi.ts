@@ -1,4 +1,4 @@
-import { TooLarge, fetchTransport } from "@amykit/core";
+import { DeadlineExceeded, TooLarge, deadlineOf, fetchTransport } from "@amykit/core";
 import type { HttpRequest, HttpResponse, HttpTransport } from "@amykit/core";
 
 // The one transport, named here too: a caller that already imported it from
@@ -123,10 +123,15 @@ export class SlackApi {
     const until = Date.now() + allowed;
     for (let attempt = 0; ; attempt++) {
       const left = until - Date.now();
-      if (left <= 0) throw new Error(`slack ran out of the ${allowed} ms it had for ${request.url}`);
+      if (left <= 0) throw new DeadlineExceeded(new URL(request.url).host, allowed);
       // Each exchange gets what is left of the call, not a fresh deadline: a
       // second attempt allowed the whole budget is a call that outlives it.
-      const response = await this.transport({ ...request, deadlineMs: left });
+      // The slice is the transport's business; the call that ran out says the
+      // deadline it declared, so the error names the same number every time.
+      const response = await this.transport({ ...request, deadlineMs: left }).catch((error: unknown) => {
+        const missed = deadlineOf(error);
+        throw missed === undefined ? error : new DeadlineExceeded(missed.host, allowed);
+      });
       if (response.status !== 429) return response;
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);

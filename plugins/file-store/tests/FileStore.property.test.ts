@@ -67,6 +67,35 @@ function run(script: string, args: readonly string[]): Promise<{ code: number | 
   });
 }
 
+/** The engine: reads a record, works, then saves the state it planned from. */
+const staleEngine = `
+import fs from "node:fs";
+import { FileStore } from ${JSON.stringify(SOURCE)};
+const [directory] = process.argv.slice(2);
+const wait = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const store = new FileStore(directory, false);
+const record = store.load("W-1");
+fs.writeFileSync(directory + "/read", "");
+// The agent call the engine waits on while the operator releases the work.
+while (!fs.existsSync(directory + "/released")) wait(1);
+store.save({ ...record, attempts: record.attempts + 1 });
+`;
+
+/** The look: releases the work between the engine's read and its save. */
+const releasingLook = `
+import fs from "node:fs";
+import { FileStore } from ${JSON.stringify(SOURCE)};
+const [directory] = process.argv.slice(2);
+const wait = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const store = new FileStore(directory, false);
+while (!fs.existsSync(directory + "/read")) wait(1);
+store.update("W-1", (record) => {
+  const { gaveUp, ...rest } = record;
+  return rest;
+});
+fs.writeFileSync(directory + "/released", "");
+`;
+
 describe("a record", () => {
   it("look_loads_then_saves", async () => {
     await fc.assert(
@@ -102,4 +131,33 @@ describe("a record", () => {
       { numRuns: 4 },
     );
   }, 60_000);
+
+  it("keeps a release made while the engine was working", async () => {
+    // Inside the repository, so the scripts resolve `@amykit/core` the way
+    // the plugin does; removed before the test returns.
+    const directory = fs.mkdtempSync(path.join(process.cwd(), ".tmp-file-store-"));
+    try {
+      fs.writeFileSync(path.join(directory, "W-1.json"), JSON.stringify({ id: "W-1", state: "WORKING", attempts: 0, gaveUp: "ceiling" }), "utf-8");
+      fs.writeFileSync(path.join(directory, "engine.ts"), staleEngine, "utf-8");
+      fs.writeFileSync(path.join(directory, "look.ts"), releasingLook, "utf-8");
+
+      // The engine reads and then waits, as it does across an agent call; the
+      // look releases the work in that window; the engine saves what it read.
+      const [moved, looked] = await Promise.all([
+        run(path.join(directory, "engine.ts"), [directory]),
+        run(path.join(directory, "look.ts"), [directory]),
+      ]);
+
+      expect(moved.stderr).toBe("");
+      expect(looked.stderr).toBe("");
+      expect(moved.code).toBe(0);
+      expect(looked.code).toBe(0);
+      const record = JSON.parse(fs.readFileSync(path.join(directory, "W-1.json"), "utf-8")) as { attempts: number; gaveUp?: string };
+      // The move is in the record, and the operator's release was not undone.
+      expect(record.attempts).toBe(1);
+      expect(record.gaveUp).toBeUndefined();
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  }, 30_000);
 });
