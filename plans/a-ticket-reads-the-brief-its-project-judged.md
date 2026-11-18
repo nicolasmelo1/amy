@@ -1,5 +1,5 @@
 ---
-base: d14155c16e9669f5462df4f9e2fa91fc2ac3be02
+base: 39f9bacea40278299a85ccbd789d83114fef27d0
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/project.ts", symbol: "refusedBrief", said: "the project's GROOMED gate judges the brief stored under the unit's own work id: refusedBrief(briefs, record.id, ...) reads store.get(id)" }
   - { id: S2, kind: code, ref: "packages/cli/src/index.ts", symbol: "brief", said: "`amy brief show|check <id>` read the brief stored under the id they are given, the unit's" }
@@ -15,6 +15,9 @@ sources:
   - { id: S12, kind: decision, said: "a question triage asks is appended to the brief the ticket was read with, so it lands where the answer will be written" }
 touches:
   - registry/core.json
+  - registry/workflow-ticket-to-qa.json
+  - CONTRIBUTING.md
+  - docs/design/a-ticket-reads-the-brief-its-project-judged.md
   - packages/core/src/ports/Brief.ts
   - packages/core/src/ports/Ticketing.ts
   - packages/core/src/index.ts
