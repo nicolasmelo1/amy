@@ -97,6 +97,11 @@ Some of it is worth understanding rather than obeying:
   to a server that never answers, and a pass of `amy run` over work sitting in the world.
   Why each fix exists, and the falsifier that replants it:
   [nothing is lost and nothing waits forever](docs/design/nothing-is-lost-and-nothing-waits-forever.md).
+- **`briefOf`** resolves the brief a unit is worked against: the one its
+  project groomed under the unit's own id first, the tracker's parent
+  `briefId` after. The GROOMED gate, `amy brief` and every ticket step read
+  that one brief. Why: [a ticket reads the brief its project
+  judged](docs/design/a-ticket-reads-the-brief-its-project-judged.md).
 - **`npm run docs:check`** fails when the code moved and the generated half of
   the documentation did not, and when the written half breaks a prose rule (a
   hand-written count, a listed phrase, a page over its limit). Run

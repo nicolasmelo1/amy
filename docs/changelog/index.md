@@ -48,6 +48,15 @@ such a harness is refused at boot, and the conformance suite fails a harness
 that answers a skill turn without declaring it. Codex and Hermes are held to
 their pinned CLI contracts, vendored beside the doubles.
 
+### **A ticket reads the brief its project judged.**
+
+`minor` · `@amykit/core`, `@amykit/workflow-ticket-to-qa`
+
+`briefOf` resolves the brief a unit is worked against: the one stored under
+the unit's own id first, the tracker's `briefId` after. Triage, self-review,
+the question triage appends and a project's GROOMED gate read that one brief,
+so a unit groomed for itself is worked against what the gate judged.
+
 ### **Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, `~/.claude/.credentials.json` or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for `get_usage` over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.
 
 `minor` · `@amykit/plugin-claude`

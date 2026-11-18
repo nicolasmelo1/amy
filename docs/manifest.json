@@ -430,6 +430,11 @@
           "description": ""
         },
         {
+          "title": "A ticket reads the brief its project judged",
+          "path": "/design/a-ticket-reads-the-brief-its-project-judged",
+          "description": ""
+        },
+        {
           "title": "A usage limit is not an attempt",
           "path": "/design/a-usage-limit-is-not-an-attempt",
           "description": ""
@@ -1046,6 +1051,11 @@
           "depth": 3,
           "title": "**A skill reaches every harness.**",
           "slug": "a-skill-reaches-every-harness"
+        },
+        {
+          "depth": 3,
+          "title": "**A ticket reads the brief its project judged.**",
+          "slug": "a-ticket-reads-the-brief-its-project-judged"
         },
         {
           "depth": 3,
@@ -2536,6 +2546,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-ticket-reads-the-brief-its-project-judged",
+      "file": "docs/design/a-ticket-reads-the-brief-its-project-judged.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-ticket-reads-the-brief-its-project-judged.md",
+      "title": "A ticket reads the brief its project judged",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-usage-limit-is-not-an-attempt",
@@ -11764,6 +11785,22 @@
           {
             "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-ticket-reads-the-brief-its-project-judged",
+        "title": "**A ticket reads the brief its project judged.**",
+        "body": "`briefOf` resolves the brief a unit is worked against: the one stored under\nthe unit's own id first, the tracker's `briefId` after. Triage, self-review,\nthe question triage appends and a project's GROOMED gate read that one brief,\nso a unit groomed for itself is worked against what the gate judged.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
           }
         ],
         "level": "minor"
