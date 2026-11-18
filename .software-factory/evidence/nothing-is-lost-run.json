@@ -12,7 +12,7 @@
     "assertions_failed": 0,
     "notes": 2,
     "tasks": 2,
-    "stalled": "127.0.0.1:51789 did not answer within 300 ms; 127.0.0.1:51791 did not answer within 300 ms",
+    "stalled": "127.0.0.1:61682 did not answer within 300 ms; 127.0.0.1:61684 did not answer within 300 ms",
     "run": [
       "the machine boots: run `amy doctor`, then `amy tick`.",
       "queued TICKET-1",

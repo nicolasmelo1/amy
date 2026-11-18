@@ -132,6 +132,25 @@ describe("a lock an earlier version left", () => {
 });
 
 describe("a dead owner's lock", () => {
+  it("is buried without leaving a tombstone of its own", () => {
+    const file = lockIn();
+    fs.writeFileSync(file, `${JSON.stringify({ pid: DEAD, stamp: "dead" })}\n`);
+    expect(takeLock(file)?.holds()).toBe(true);
+    // Whatever a writer needed to get its turn is not there once it has it:
+    // the directory holds the lock, and nothing beside it.
+    expect(fs.readdirSync(path.dirname(file))).toEqual(["thing.lock"]);
+  });
+
+  it("keeps the tombstone that holds a directory lock moved aside", () => {
+    const file = lockIn();
+    fs.mkdirSync(file);
+    fs.writeFileSync(path.join(file, "owner.json"), JSON.stringify({ pid: DEAD, stamp: "gone" }));
+    expect(takeLock(file)?.holds()).toBe(true);
+    // The tombstone is the old lock itself, moved in one step: a recoverer
+    // that comes late would otherwise rename a new owner's lock out of place.
+    expect(fs.readdirSync(path.dirname(file)).filter((name) => name.includes(".dead-"))).toHaveLength(1);
+  });
+
   it("is left to the process burying it", () => {
     const file = lockIn();
     fs.writeFileSync(file, `${JSON.stringify({ pid: DEAD, stamp: "dead" })}\n`);

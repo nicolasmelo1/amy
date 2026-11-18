@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "nothing-is-lost",
-  "implementation_sha256": "c74e7b6e69bfd1a1727dfb010b3c291f9e193416671dfcc3a289230664a88c92",
+  "implementation_sha256": "5b85c8b86c3aecdebba0f3c5074ec9acad5b5469b4fb832390810e019106ea1e",
   "runs": [
     {
       "scenario": "nothing-is-lost",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable and the built packages in separate processes on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/nothing-is-lost-run.json",
-      "report_sha256": "a5c89cc44855e7af9de89e125b3fd7d5614745a7267e79db9e07dfc576a5182e",
+      "report_sha256": "a4a719a2ddc9540f5cae10df1e448105e2543688ffb83c9c7681d67f3c84b4ea",
       "required_assertions": []
     }
   ]
