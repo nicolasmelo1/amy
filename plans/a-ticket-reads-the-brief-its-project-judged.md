@@ -1,5 +1,5 @@
 ---
-base: f4282cadec995255a7980b86b8927582cde4e9b6
+base: d14155c16e9669f5462df4f9e2fa91fc2ac3be02
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/project.ts", symbol: "refusedBrief", said: "the project's GROOMED gate judges the brief stored under the unit's own work id: refusedBrief(briefs, record.id, ...) reads store.get(id)" }
   - { id: S2, kind: code, ref: "packages/cli/src/index.ts", symbol: "brief", said: "`amy brief show|check <id>` read the brief stored under the id they are given, the unit's" }
@@ -14,6 +14,7 @@ sources:
   - { id: S11, kind: decision, said: "the tracker keeps saying what it knows: briefId stays the parent's identifier, and a feature-level brief keeps reaching every child that has no brief of its own" }
   - { id: S12, kind: decision, said: "a question triage asks is appended to the brief the ticket was read with, so it lands where the answer will be written" }
 touches:
+  - registry/core.json
   - packages/core/src/ports/Brief.ts
   - packages/core/src/ports/Ticketing.ts
   - packages/core/src/index.ts
