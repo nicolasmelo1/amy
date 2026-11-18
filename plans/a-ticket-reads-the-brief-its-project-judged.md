@@ -1,12 +1,12 @@
 ---
-base: 22c5f228f564a4f3d82e0d449e06a7bf2ea6138a
+base: f4282cadec995255a7980b86b8927582cde4e9b6
 sources:
-  - { id: S1, kind: code, ref: "packages/cli/src/project.ts:497", said: "the project's GROOMED gate judges the brief stored under the unit's own work id: refusedBrief(briefs, record.id, ...) reads store.get(id)" }
-  - { id: S2, kind: code, ref: "packages/cli/src/index.ts:1575", said: "`amy brief show|check <id>` read the brief stored under the id they are given, the unit's" }
-  - { id: S3, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts:423", said: "requireTicketWithBrief resolves a ticket's brief only through ticket.briefId, and returns the ticket without one when briefId is unset or names nothing the store holds" }
-  - { id: S4, kind: code, ref: "examples/workflow-ticket-to-qa/src/lanes.ts:152", said: "the self-review lane reads the brief through ticket.briefId alone" }
-  - { id: S5, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts:211", said: "ask-question appends triage's questions to the brief ticket.briefId names, and to none when it is unset" }
-  - { id: S6, kind: code, ref: "plugins/linear/src/LinearTracker.ts:355", said: "a ticket's briefId is its parent's identifier, and a ticket with no parent carries none" }
+  - { id: S1, kind: code, ref: "packages/cli/src/project.ts", symbol: "refusedBrief", said: "the project's GROOMED gate judges the brief stored under the unit's own work id: refusedBrief(briefs, record.id, ...) reads store.get(id)" }
+  - { id: S2, kind: code, ref: "packages/cli/src/index.ts", symbol: "brief", said: "`amy brief show|check <id>` read the brief stored under the id they are given, the unit's" }
+  - { id: S3, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", symbol: "requireTicketWithBrief", said: "requireTicketWithBrief resolves a ticket's brief only through ticket.briefId, and returns the ticket without one when briefId is unset or names nothing the store holds" }
+  - { id: S4, kind: code, ref: "examples/workflow-ticket-to-qa/src/lanes.ts", symbol: "selfReviewLane", said: "the self-review lane reads the brief through ticket.briefId alone" }
+  - { id: S5, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", symbol: "ACTIONS", said: "ask-question appends triage's questions to the brief ticket.briefId names, and to none when it is unset" }
+  - { id: S6, kind: code, ref: "plugins/linear/src/LinearTracker.ts", symbol: "toTicket", said: "a ticket's briefId is its parent's identifier, and a ticket with no parent carries none" }
   - { id: S7, kind: reference, ref: "docs/design/a-brief-reaches-every-ticket-it-explains.md", said: "in the machine the shipped workflow drives, the brief id is the tracker parent" }
   - { id: S8, kind: reference, ref: "docs/design/a-project-is-brief-work-and-proof.md", said: "a project walks one unit through brief, work and proof; the brief phase grooms that unit" }
   - { id: S9, kind: friction, said: "a private project groomed one brief per ticket under the ticket's own id; the GROOMED gate went green, the work phase read no brief, and triage asked a question the brief's cut list already answered" }
