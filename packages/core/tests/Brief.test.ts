@@ -84,3 +84,31 @@ describe("the brief a unit is worked against", () => {
       .rejects.toThrow("the brief `PROJ-1239` could not be read");
   });
 });
+
+
+describe("a brief that cannot be read", () => {
+  it("names the unit's id when the store's own error does not", async () => {
+    const corrupt: BriefStore = {
+      ...storeOf({}),
+      get: async () => {
+        throw new SyntaxError("Unexpected token } in JSON at position 3");
+      },
+    };
+
+    await expect(briefOf(corrupt, { workId: "PROJ-1239", briefId: "invoice-currency" }))
+      .rejects.toThrow(/PROJ-1239/);
+  });
+
+  it("names the id briefId gave when the parent's read fails", async () => {
+    const corrupt: BriefStore = {
+      ...storeOf({}),
+      get: async (id) => {
+        if (id === "PROJ-1239") return null;
+        throw new SyntaxError("Unexpected end of JSON input");
+      },
+    };
+
+    await expect(briefOf(corrupt, { workId: "PROJ-1239", briefId: "invoice-currency" }))
+      .rejects.toThrow(/invoice-currency/);
+  });
+});

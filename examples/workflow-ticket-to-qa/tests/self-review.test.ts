@@ -162,6 +162,32 @@ describe("the self-review half-step", () => {
     expect(ask?.context?.brief).toContain("The total is the sum of the lines, in one currency.");
     expect(record?.lastSelfReview?.ok).toBe(true);
   });
+
+  it("does not present the unit's own brief to the review as the feature's", async () => {
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    let at = clock.getTime();
+    const next = (): string => new Date((at += 1000)).toISOString();
+    const { agent } = recordingAgent(seen, next);
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-own-label-"));
+    const briefs = new FileBriefStore(path.join(root, "briefs"));
+    await briefs.write({
+      id: "PROJ-1239",
+      sections: [{ name: "Goal", body: "The total is the sum of the lines, in one currency." }],
+      explains: ["PROJ-1239"],
+      at: clock.toISOString(),
+    });
+
+    const { record } = await driveToSelfReview(
+      { tracker: trackerFor(() => ticket()), agent, briefs, gate: { run: async () => ({ ok: true, output: "", at: next() }) }, now: () => new Date(next()) },
+    );
+    fs.rmSync(root, { recursive: true, force: true });
+
+    const ask = seen.find((entry) => entry.context?.step === "self-review");
+    expect(ask?.prompt).toContain("The total is the sum of the lines, in one currency.");
+    expect(ask?.prompt).not.toMatch(/brief for the feature this ticket belongs to/);
+    expect(record?.lastSelfReview?.ok).toBe(true);
+  });
 });
 describe("the verdict a review ends on", () => {
   it.each([
