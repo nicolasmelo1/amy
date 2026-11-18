@@ -27,3 +27,11 @@ describe("the nothing-is-lost gate", () => {
     expect(drive).toMatch(/plugins\/linear\/dist\//);
   });
 });
+
+describe("the nothing-is-lost gate's stalled call", () => {
+  it("ends at the deadline the plugin itself asked for, not one the gate imposes underneath it", () => {
+    // A transport that overrides the request's deadline proves the core's
+    // transport, and would stay green for a plugin that never set one.
+    expect(drive).not.toMatch(/\.\.\.request\b[^\n]*\bdeadlineMs\s*:\s*\d/);
+  });
+});

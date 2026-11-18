@@ -40,3 +40,32 @@ describe("a rate-limited call", () => {
     expect(waited.reduce((total, ms) => total + ms, 0)).toBeLessThanOrEqual(1_000);
   });
 });
+
+/**
+ * A server that answers the first call with a quick 429 and no wait, then
+ * stops answering. It honours the deadline each request carries, as the real
+ * transport does.
+ */
+function quickThenStalled(firstMs: number): (request: HttpRequest) => Promise<HttpResponse> {
+  let calls = 0;
+  return (request) =>
+    new Promise((resolve, reject) => {
+      calls += 1;
+      if (calls === 1) {
+        setTimeout(() => resolve({ status: 429, headers: { "retry-after": "0" }, body: new TextEncoder().encode("{}") }), firstMs);
+        return;
+      }
+      const allowed = request.deadlineMs ?? 60_000;
+      setTimeout(() => reject(new Error(`slack.com did not answer within ${allowed} ms`)), allowed);
+    });
+}
+
+describe("a call that is retried", () => {
+  it("gives the retry only what is left of its deadline", async () => {
+    const api = new SlackApi("xoxb-test", { transport: quickThenStalled(400), deadlineMs: 1_000 });
+    const started = Date.now();
+
+    await expect(api.call("conversations.replies", { channel: "C1", ts: "1.0" })).rejects.toThrow();
+    expect(Date.now() - started).toBeLessThanOrEqual(1_150);
+  }, 10_000);
+});
