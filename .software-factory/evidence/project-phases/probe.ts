@@ -12,6 +12,7 @@ import type { Plugin, WorkRecord } from "@amykit/core";
 import type { AmyConfig, WorkflowProfile } from "../../../packages/cli/src/config.js";
 import type { Profile } from "../../../packages/cli/src/profiles.js";
 import { FileQueue } from "@amykit/plugin-file-queue";
+import { FileBriefStore } from "@amykit/plugin-file-brief-store";
 import { FileStore } from "@amykit/plugin-file-store";
 
 /** The nth argument the scenario passed, or a usage line and an exit. */
@@ -162,6 +163,40 @@ await attempt("project.what_was_briefed_is_what_is_proven", async () => {
     .map((child) => JSON.stringify(child.input));
   if (handed.length !== 2 || handed.some((one) => one !== JSON.stringify(briefed))) {
     throw new Error(`the proof was handed ${handed.join(", ")}`);
+  }
+  return true;
+});
+
+
+// 1a. A unit groomed under its own id: the brief the GROOMED gate judged
+// green is the brief the work phase's triage prompt is built from, not the
+// parent's feature-level one and not none at all.
+await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async () => {
+  const briefed = path.join(work, "briefed");
+  phase("phase-brief-declares", path.join(briefed, "brief"));
+  phase("phase-triage", path.join(briefed, "workflow"));
+  const config = configured({ briefed: { workflow: path.join(briefed, "workflow") } });
+  const profile = must(profiles(config, home).briefed, "briefed");
+  const artifacts = must(profilePaths(home, profile).artifacts, "the project's artifact root");
+  const store = new FileBriefStore(path.join(artifacts, "briefs"));
+  // The brief the project groomed: stored under the unit's own id.
+  await store.write({
+    id: "INVOICE-2",
+    sections: [{ name: "Goal", body: "Every invoice line is in the currency the customer pays in." }],
+    explains: ["INVOICE-2"],
+    at: new Date().toISOString(),
+  });
+
+  const assembled = await mountedAs(config, "briefed");
+  if (!assembled.ok) throw new Error(assembled.problems.join("; "));
+  const records = new FileStore<WorkRecord>(profilePaths(home, profile).records);
+  new FileQueue(profilePaths(home, profile).queue).enqueue({ workId: "INVOICE-2", reason: "groomed" }, new Date());
+  const walked = await walkUntilDone(assembled, records, "INVOICE-2");
+
+  const asked = (walked as WorkRecord & { workflow?: { prompt?: string } }).workflow;
+  if (walked.state !== "DONE") throw new Error(`the walk stopped at ${walked.state}`);
+  if (!asked?.prompt?.includes("Every invoice line is in the currency the customer pays in.")) {
+    throw new Error(`triage was asked ${JSON.stringify(asked?.prompt)}`);
   }
   return true;
 });

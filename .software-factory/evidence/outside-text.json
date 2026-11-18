@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "outside-text-reaches-the-agent-as-data",
-  "implementation_sha256": "83f510a2a7ff758d6e48874a0f2a600704d283f798825e46f5cf71756607da4f",
+  "implementation_sha256": "c58dcc20415b87d31ba9bc195d95e1c6131a077b2fe3af3516b1e1618351f494",
   "runs": [
     {
       "scenario": "outside-text",
