@@ -30,6 +30,8 @@ sources:
   - { id: S27, kind: decision, said: "a pull request already open for the ticket, found also on a branch the tracker shortened, is taken up at its review from DISCOVERED or CLARIFYING. Decided 2026-11-18" }
   - { id: S28, kind: decision, said: "the agent may write the commit body in .amy-commit-body; amy commits it under its own subject, so a check reading justifications in the body can pass. Decided 2026-11-18" }
   - { id: S29, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "findPullRequestMentioning", said: "a code host may find a pull request by the ticket id it mentions, beside findPullRequest by branch" }
+  - { id: S30, kind: code, ref: "plugins/codex/src/CodexHarness.ts", symbol: "classify", said: "a codex turn that completed with a message is completed, however wrong its answer" }
+  - { id: S31, kind: code, ref: "plugins/hermes-agent/src/HermesHarness.ts", symbol: "classify", said: "a hermes run its report calls completed is completed, however wrong its answer; hermes reports a rate limit only as failure_reason" }
 touches:
   - packages/core/src/ports/Harness.ts
   - packages/core/src/ports/Agent.ts
@@ -82,7 +84,7 @@ touches:
   - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - examples/workflow-ticket-to-qa/README.md
 criteria:
-  - { id: A1, statement: "a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason instead of 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S2, S4, S10] }
+  - { id: A1, statement: "on a claude, codex or hermes-agent rung alike, a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason, not 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S1, S2, S4, S10, S30, S31] }
   - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10] }
   - { id: A3, statement: "an ask that names a starting rung begins there, and rate-limited, failed and abandoned move from it exactly as from the first", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S5] }
   - { id: A4, statement: "a gate answers how many checks were red, and every sendsBack state's outcome carries a findings count", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/escalating.test.ts", sources: [S7, S12] }
