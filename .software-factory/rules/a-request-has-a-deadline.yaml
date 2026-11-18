@@ -1,0 +1,31 @@
+id: L6.A_REQUEST_HAS_A_DEADLINE
+layer: L6
+title: A request has a deadline
+severity: high
+statement: >-
+  Nothing under packages, plugins or examples src calls `fetch` itself. Every
+  request goes through core's `fetchTransport`, which abandons the exchange at
+  its deadline, body included.
+why: >-
+  Slack and Linear each carried their own copy of the transport, and neither
+  passed a signal or a deadline: a server that stalled before its headers, or
+  trickled a byte every 200 ms, held the tick that asked for six seconds and
+  would have held it forever. A call that can wait forever is not a slow call,
+  it is a loop that stopped without saying so.
+fix: >-
+  Call `fetchTransport` from `@amykit/core` with `deadlineMs`, and read the
+  answer's `status`, `headers` and `body`. A transport a test needs is passed
+  in, never reached for.
+ratchet: none
+check:
+  kind: text_pattern
+defaults:
+  scope:
+    - "packages/*/src/**"
+    - "plugins/*/src/**"
+    - "examples/*/src/**"
+  exclude:
+    - "packages/core/src/http.ts"
+  forbidden:
+    - regex: '\bfetch\('
+      message: "Call core's fetchTransport with a deadline instead: a bare fetch waits as long as the server does."

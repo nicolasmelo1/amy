@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { addressed, Ask, ChatMessage, Conversation, Reply, ThreadRef } from "@amykit/core";
+import { takeLock } from "@amykit/core";
 import { BotApi, BotApiRefusal, TooLarge } from "./BotApi.js";
 
 export interface TelegramConversationOptions {
@@ -191,9 +192,12 @@ export class TelegramConversation implements Conversation {
     // Two looks at the same work in one process must not open two topics.
     const pending = this.opening.get(workId);
     if (pending) return pending;
-    const opened = this.held(async () => {
+    const opened = this.held(async (stillHeld) => {
       // Another process may have opened it while this one waited.
       const already = this.topicOfWork(workId);
+      // The hold is what makes this opening this process's to record; without
+      // it the topic it opens is another process's to own.
+      if (!stillHeld()) throw holdLost(this.shared());
       if (already !== undefined) return { id: String(already) };
       // Said before asking, so a reply in a topic Telegram creates now is kept until its owner is recorded.
       const opening = path.join(this.shared(), "opening", String(this.chatId()), `${randomUUID()}.json`);
@@ -271,7 +275,8 @@ export class TelegramConversation implements Conversation {
     // Under the bot's shared lock, as a poll reads callbacks: a keyboard is
     // never visible to another process before its ask is recorded, and a
     // second post of the same ask finds the first one and sends nothing.
-    return this.held(async () => {
+    return this.held(async (stillHeld) => {
+      if (!stillHeld()) throw holdLost(this.shared());
       const recorded = readJson<FiledAsk>(this.askFile(topic, ask.id));
       if (recorded) return String(recorded.messageId);
       return this.sendParts(topic, body, ask);
@@ -301,9 +306,10 @@ export class TelegramConversation implements Conversation {
     const after = instantToMicros(since);
     if (Number.isNaN(after)) throw new Error(`replies since ${since}: not an instant`);
     const topic = this.threadOf(thread);
-    await this.held(async () => {
+    await this.held(async (stillHeld) => {
+      if (!stillHeld()) throw holdLost(this.shared());
       this.adopt(`${this.chatId()}-${topic}`);
-      await this.fileUpdates();
+      await this.fileUpdates(stillHeld);
     });
 
     // Telegram dates to the second; ids in one chat only grow. A reply numbered below the last message amy
@@ -374,7 +380,7 @@ export class TelegramConversation implements Conversation {
    * read all the time and not only when a work is looked at (S20).
    */
   async chat(): Promise<ChatMessage[]> {
-    await this.held(() => this.fileUpdates());
+    await this.held((stillHeld) => this.fileUpdates(stillHeld));
     const directory = path.join(this.shared(), "chat", String(this.chatId()));
     return jsonFilesIn(directory)
       .flatMap((name) => {
@@ -465,9 +471,12 @@ export class TelegramConversation implements Conversation {
    * more, its profile removed or made again, is skipped. The offset moves
    * only once what it confirms is durably on disk.
    */
-  private async fileUpdates(): Promise<void> {
+  private async fileUpdates(stillHeld: () => boolean): Promise<void> {
     this.pruneAbandoned();
     for (;;) {
+      // The bot's hold can change hands between two reads of its updates; a
+      // process that keeps reading past that is taking another's turn.
+      if (!stillHeld()) throw holdLost(this.shared());
       const offset = this.offset();
       const updates = await this.api.call<TelegramUpdate[]>("getUpdates", {
         ...(offset === undefined ? {} : { offset }),
@@ -834,30 +843,43 @@ export class TelegramConversation implements Conversation {
    * topic at a time: a hold not renewed within its lease is taken over. Being
    * passed over costs a 409 or a second topic, never a reply, since nothing
    * filed is ever rewritten.
+   *
+   * A renewal that fails means another process owns the bot now. That is said
+   * to the work — `stillHeld` — before each step it would take, because a
+   * process that keeps spending the hold it lost is the defect, not the lock
+   * changing hands.
    */
-  private async held<T>(work: () => Promise<T>): Promise<T> {
+  private async held<T>(work: (stillHeld: () => boolean) => Promise<T>): Promise<T> {
     const lock = path.join(this.shared(), "lock");
     const lease = this.options.leaseMs ?? 60_000;
     const deadline = Date.now() + (this.options.lockWaitMs ?? 120_000);
-    const me = randomUUID();
-    while (!claim(lock, me)) {
-      const since = mtimeOf(lock);
-      if (since !== undefined && Date.now() - since > lease) {
-        ignoringGone(() => fs.renameSync(lock, path.join(this.shared(), `.${randomUUID()}.stale`)));
-        removeStale(this.shared());
-        continue;
-      }
+    // The core's one way of taking a lock: a stale one is buried through a
+    // tombstone only one process can create. Renaming it aside blindly let
+    // two processes each decide the same lock was theirs.
+    removeStale(this.shared());
+    let holding = takeLock(lock, { leaseMs: lease });
+    while (!holding) {
       if (Date.now() > deadline) throw new Error(`${this.shared()} is held by another process; waited for it and gave up`);
       await new Promise((resolve) => setTimeout(resolve, 50));
+      holding = takeLock(lock, { leaseMs: lease });
     }
-    const renew = setInterval(() => ignoringGone(() => ownedBy(lock, me) && fs.utimesSync(lock, new Date(), new Date())), Math.max(10, lease / 3));
+    const taken = holding;
+    let lost = false;
+    const renew = setInterval(() => {
+      if (!taken.renew()) lost = true;
+    }, Math.max(10, lease / 3));
     try {
-      return await work();
+      return await work(() => !lost && taken.holds());
     } finally {
       clearInterval(renew);
-      if (ownedBy(lock, me)) fs.rmSync(lock, { recursive: true, force: true });
+      taken.release();
     }
   }
+}
+
+/** Said when another process took the bot's hold while this work was mid-flight. */
+function holdLost(shared: string): Error {
+  return new Error(`another amy took the bot's hold on ${shared}; the work it started is not continued here`);
 }
 
 /** A compact, opaque ask id for callback_data; Telegram permits at most 64 bytes. */
@@ -919,26 +941,6 @@ function jsonFilesIn(directory: string): string[] {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
-  }
-}
-
-/** Takes the hold if nobody has it, writing who holds it inside. */
-function claim(lock: string, me: string): boolean {
-  try {
-    fs.mkdirSync(lock);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
-    throw error;
-  }
-  fs.writeFileSync(path.join(lock, "owner"), me, { mode: 0o600 });
-  return true;
-}
-
-function ownedBy(lock: string, me: string): boolean {
-  try {
-    return fs.readFileSync(path.join(lock, "owner"), "utf-8") === me;
-  } catch {
-    return false;
   }
 }
 
@@ -1186,14 +1188,6 @@ function mtimeOf(file: string): number | undefined {
     return fs.statSync(file).mtimeMs;
   } catch {
     return undefined;
-  }
-}
-
-function ignoringGone(act: () => unknown): void {
-  try {
-    act();
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 

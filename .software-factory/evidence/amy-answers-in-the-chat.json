@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "amy-answers-in-the-chat",
-  "implementation_sha256": "c7be8cc4f638a39512e150b4d65a479ca3ee21bca251c0eaa9ab045819c2a910",
+  "implementation_sha256": "e65263ce1fcba72e143e11ca3157a0af9b8e87f9e861438c3c597ab4fd8f2eb5",
   "runs": [
     {
       "scenario": "amy-answers-in-the-chat",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable's supervised loop with Telegram as its conversation against a stand-in Bot API, playing its supervisor, on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/amy-answers-in-the-chat-run.json",
-      "report_sha256": "0a64aba0a936d147ddb2fc801fc7085fb8043803c90ed3f07a5755c509f954a0",
+      "report_sha256": "c5377e654a6fce53cdbeb49b4c16a2fc541c31ce41a31f9b5bc72cdd860de2f5",
       "required_assertions": []
     }
   ]

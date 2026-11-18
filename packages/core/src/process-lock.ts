@@ -233,6 +233,13 @@ function bury(file: string, seen: Seen): boolean {
     return false;
   }
   if (!seen.directory && look(file)?.ino === seen.ino) fs.rmSync(file, { force: true });
+  // A file's tombstone is a second name for the lock just removed, needed only
+  // while the burial is decided: a recoverer that comes late links the new
+  // owner's lock rather than moving it, and `sameLock` refuses it. A
+  // directory's tombstone is the lock itself moved aside, so it keeps its
+  // hour: unlinking it early would let a late recoverer rename a new owner's
+  // lock out of the way.
+  if (!seen.directory) fs.rmSync(tombstone, { force: true });
   return true;
 }
 

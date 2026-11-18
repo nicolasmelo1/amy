@@ -1,0 +1,11 @@
+# Mutation fixture for L6.A_RESOLVER_KNOWS_ITS_PROFILE. It is supposed to fail.
+version: 1
+project:
+  name: mutation-L6.A_RESOLVER_KNOWS_ITS_PROFILE
+  languages: [typescript]
+docs:
+  scan: ["docs/**/*.md"]
+gates: {}
+rules:
+  L6.A_RESOLVER_KNOWS_ITS_PROFILE:
+    enabled: true

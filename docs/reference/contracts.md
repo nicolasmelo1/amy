@@ -330,6 +330,7 @@ Declared in `packages/core/src/ports/Store.ts`.
 | `load(workId: string): R \| null` |  |
 | `save(record: R): void` |  |
 | `all(): R[]` |  |
+| `update(workId: string, change: (record: R) => R \| undefined): R \| null` | Reads, changes and writes one record while no other writer can move it. |
 
 ### `TrackerReads`
 

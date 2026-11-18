@@ -59,7 +59,7 @@ describe("a profile root", () => {
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
   type Paging = { plugin: { pager: { said: string; core: object }; core: object } };
-  const mount = async (name?: string) => (await import(pluginsRootResolver(home, plugins, name)(PAGING))) as Paging;
+  const mount = async (name: string) => (await import(pluginsRootResolver(home, plugins, name)(PAGING))) as Paging;
 
   it("lets two profiles mount one package name, one published and one forked, each resolving its own", async () => {
     const forked = profile("forked");
@@ -80,7 +80,7 @@ describe("a profile root", () => {
     await addFork({ runner: new NpmBringsACore(), home, profile: forked, specs: forked.plugins, spec: PAGER, cwd: home });
 
     const own = await mount("forked");
-    const host = (await import(pluginsRootResolver(home, plugins)("@amykit/core"))) as { identity: object };
+    const host = (await import(pluginsRootResolver(home, plugins, "published")("@amykit/core"))) as { identity: object };
 
     const cores = (fs.readdirSync(profileRoot(home, "forked"), { recursive: true }) as string[]).filter((file) => file.endsWith(path.join("@amykit", "core")));
     expect(cores).toEqual([]);

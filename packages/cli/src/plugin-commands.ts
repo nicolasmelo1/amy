@@ -15,7 +15,8 @@ import {
 } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 import { spellingProblems } from "./operations/argv.js";
-import { LoadResult } from "./loader.js";
+import { LoadResult, pluginsRootResolver } from "./loader.js";
+import { paths } from "./paths.js";
 import { Profile, directoriesFor } from "./profiles.js";
 import { pluginList, pluginSlices } from "./slices.js";
 
@@ -85,10 +86,22 @@ export interface Gathered {
  * refused here: one missing plugin must not take the whole command line with
  * it.
  */
+/**
+ * The resolver a command acts through, built in one place for one profile.
+ *
+ * Every command goes through this rather than building the resolver itself:
+ * a command that built its own could leave the profile out, and read the
+ * published package while the profile held a fork. The profile has no
+ * default, so a command cannot forget it.
+ */
+export function pluginResolver(home: string, profile: string, pluginsRoot: string = paths(home).plugins): (spec: string) => string {
+  return pluginsRootResolver(home, pluginsRoot, profile);
+}
+
 export async function gather(
   config: AmyConfig,
   known: readonly Profile[],
-  load: (specs: readonly string[], profile?: string) => Promise<LoadResult>,
+  load: (specs: readonly string[], profile: string) => Promise<LoadResult>,
 ): Promise<Gathered> {
   // Each profile is read through its own resolver: a profile that forked a
   // package mounts the fork, so what it contributes is the fork's.

@@ -1,0 +1,49 @@
+{
+  "scenario": "nothing-is-lost",
+  "status": "passed",
+  "goal": "Nothing a process writes is lost to another process: two notes or tasks of one instant are two, `amy look` does not erase an engine's move and the engine's save does not undo the release `amy look` made, the Telegram plugin's bot holds after a stale lock, a stalled call made through the Slack and Linear plugins ends at its deadline, and a pass of `amy run` picks up a ticket sitting in the world.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "the installed executable, driven by `amy add`, `amy run` and `amy look`, with the built plugins (file-store, telegram, slack, linear) run in processes of their own",
+    "built_by": "scripts/install.sh"
+  },
+  "observed": {
+    "assertions_run": 6,
+    "assertions_failed": 0,
+    "notes": 2,
+    "tasks": 2,
+    "stalled": "127.0.0.1:53860 did not answer within 300 ms; 127.0.0.1:53862 did not answer within 300 ms",
+    "run": [
+      "the machine boots: run `amy doctor`, then `amy tick`.",
+      "queued TICKET-1",
+      "TICKET-1  queued -> done  the ticket was found",
+      "stopped after 1 moves"
+    ]
+  },
+  "assertions": [
+    {
+      "type": "lost.two_notes_at_one_instant_are_two",
+      "status": "passed"
+    },
+    {
+      "type": "lost.two_tasks_at_one_instant_are_two",
+      "status": "passed"
+    },
+    {
+      "type": "lost.a_look_loses_no_engine_move",
+      "status": "passed"
+    },
+    {
+      "type": "lost.one_bot_holds_after_a_stale_lock",
+      "status": "passed"
+    },
+    {
+      "type": "lost.a_stalled_call_ends",
+      "status": "passed"
+    },
+    {
+      "type": "lost.run_picks_up_a_found_ticket",
+      "status": "passed"
+    }
+  ]
+}

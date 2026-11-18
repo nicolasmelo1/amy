@@ -580,6 +580,11 @@
           "description": ""
         },
         {
+          "title": "Nothing is lost and nothing waits forever",
+          "path": "/design/nothing-is-lost-and-nothing-waits-forever",
+          "description": ""
+        },
+        {
           "title": "Outside text reaches the agent as data",
           "path": "/design/outside-text-reaches-the-agent-as-data",
           "description": ""
@@ -1051,6 +1056,11 @@
           "depth": 3,
           "title": "**The gate notices code nothing reaches, and code written twice.** tsc now runs with noUnusedLocals and noUnusedParameters, and the gate reads both detectors through one step: knip --production, where a test no longer counts as a caller, and jscpd over packages, plugins and examples. What the tree already carried is frozen by name in a ratchet with a date it comes due, so the next unused export or copied block fails instead of joining the pile. The unused parameters and the one unread private field this change exposed are gone.",
           "slug": "the-gate-notices-code-nothing-reaches-and-code-written-twice-tsc-now-runs-with-nounusedlocals-and-nounusedparameters-and-the-gate-reads-both-detectors-through-one-step-knip---production-where-a-test-no-longer-counts-as-a-caller-and-jscpd-over-packages-plugins-and-examples-what-the-tree-already-carried-is-frozen-by-name-in-a-ratchet-with-a-date-it-comes-due-so-the-next-unused-export-or-copied-block-fails-instead-of-joining-the-pile-the-unused-parameters-and-the-one-unread-private-field-this-change-exposed-are-gone"
+        },
+        {
+          "depth": 3,
+          "title": "**Nothing a process writes is lost to another, and no call waits forever.**",
+          "slug": "nothing-a-process-writes-is-lost-to-another-and-no-call-waits-forever"
         },
         {
           "depth": 2,
@@ -3268,6 +3278,17 @@
           "slug": "the-proof"
         }
       ]
+    },
+    {
+      "path": "/design/nothing-is-lost-and-nothing-waits-forever",
+      "file": "docs/design/nothing-is-lost-and-nothing-waits-forever.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/nothing-is-lost-and-nothing-waits-forever.md",
+      "title": "Nothing is lost and nothing waits forever",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/outside-text-reaches-the-agent-as-data",
@@ -5633,6 +5654,11 @@
         },
         {
           "depth": 3,
+          "title": "L6.A_FILE_IS_REPLACED_ONE_WAY",
+          "slug": "l6afileisreplacedoneway"
+        },
+        {
+          "depth": 3,
           "title": "L6.A_PRIVATE_NAME_STAYS_PRIVATE",
           "slug": "l6aprivatenamestaysprivate"
         },
@@ -5640,6 +5666,16 @@
           "depth": 3,
           "title": "L6.A_PUSH_NEVER_FORCES",
           "slug": "l6apushneverforces"
+        },
+        {
+          "depth": 3,
+          "title": "L6.A_REQUEST_HAS_A_DEADLINE",
+          "slug": "l6arequesthasadeadline"
+        },
+        {
+          "depth": 3,
+          "title": "L6.A_RESOLVER_KNOWS_ITS_PROFILE",
+          "slug": "l6aresolverknowsitsprofile"
         },
         {
           "depth": 3,
@@ -6677,6 +6713,11 @@
             "name": "all",
             "signature": "all(): R[]",
             "doc": ""
+          },
+          {
+            "name": "update",
+            "signature": "update(workId: string, change: (record: R) => R | undefined): R | null",
+            "doc": "Reads, changes and writes one record while no other writer can move it."
           }
         ]
       },
@@ -10748,6 +10789,41 @@
         "scenario": ".software-factory/evidence/note-to-plan-scenario.sh"
       },
       {
+        "name": "nothing-is-lost",
+        "activation": [
+          "packages/core/src/http.ts",
+          "packages/core/src/atomic-file.ts",
+          "packages/core/src/process-lock.ts",
+          "packages/core/src/ports/Store.ts",
+          "packages/core/src/index.ts",
+          "packages/cli/src/pass.ts",
+          "packages/cli/src/loader.ts",
+          "packages/cli/src/setup.ts",
+          "packages/cli/src/index.ts",
+          "examples/workflow-note-to-plan/src/**",
+          "examples/workflow-note-to-plan/workflow.mmd",
+          "examples/workflow-errand/src/**",
+          "examples/workflow-errand/workflow.mmd",
+          "plugins/file-store/src/FileStore.ts",
+          "plugins/telegram/src/TelegramConversation.ts",
+          "plugins/telegram/src/BotApi.ts",
+          "plugins/slack/src/SlackApi.ts",
+          "plugins/linear/src/HttpGraphQLClient.ts",
+          "plugins/agent-relay/src/plugin.ts"
+        ],
+        "evidence": ".software-factory/evidence/nothing-is-lost.json",
+        "plan": "docs/design/nothing-is-lost-and-nothing-waits-forever.md",
+        "assertions": [
+          "lost.two_notes_at_one_instant_are_two",
+          "lost.two_tasks_at_one_instant_are_two",
+          "lost.a_look_loses_no_engine_move",
+          "lost.one_bot_holds_after_a_stale_lock",
+          "lost.a_stalled_call_ends",
+          "lost.run_picks_up_a_found_ticket"
+        ],
+        "scenario": ".software-factory/evidence/nothing-is-lost-scenario.sh"
+      },
+      {
         "name": "outside-text-reaches-the-agent-as-data",
         "activation": [
           "packages/core/src/outside-text.ts",
@@ -11478,6 +11554,13 @@
         "reason": ""
       },
       {
+        "id": "L6.A_FILE_IS_REPLACED_ONE_WAY",
+        "enabled": true,
+        "settings": {},
+        "title": "A file is replaced one way, under a name only its writer holds",
+        "reason": ""
+      },
+      {
         "id": "L6.A_PRIVATE_NAME_STAYS_PRIVATE",
         "enabled": true,
         "settings": {},
@@ -11489,6 +11572,20 @@
         "enabled": true,
         "settings": {},
         "title": "A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md)",
+        "reason": ""
+      },
+      {
+        "id": "L6.A_REQUEST_HAS_A_DEADLINE",
+        "enabled": true,
+        "settings": {},
+        "title": "A request has a deadline, and every request goes through one transport",
+        "reason": ""
+      },
+      {
+        "id": "L6.A_RESOLVER_KNOWS_ITS_PROFILE",
+        "enabled": true,
+        "settings": {},
+        "title": "A plugin resolver knows the profile it acts for",
         "reason": ""
       },
       {
@@ -11706,6 +11803,58 @@
           },
           {
             "package": "@amykit/workflow-setup",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "nothing-is-lost-and-nothing-waits-forever",
+        "title": "**Nothing a process writes is lost to another, and no call waits forever.**",
+        "body": "`amy run` now discovers before it ticks, through the same pass `amy tick` and the\ndaemon use, so a ticket sitting in the world is picked up on the first pass. One\ntransport in core gives every request a deadline and counts the body as it\narrives; Slack, Linear, Telegram and the models.dev refresh go through it. One\natomic write stages under a name only its writer holds, and notes, tasks and\nrecords use it: two writers at one instant both survive, and `amy look` changes\na record under its own lock instead of overwriting the engine's move. The\nTelegram bot takes core's lock, so a stale one is buried through a tombstone\nrather than renamed aside by two processes at once. `config explain`, `workflow\ncheck` and `workflow export` build their resolver with the profile they act for,\nso a fork is what they read. Three repo-local rules keep each class out: a bare\n`fetch`, a hand-built `.tmp` name and a resolver without its profile.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-agent-relay",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-brief-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-file-store",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-linear",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-prove",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-slack",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-telegram",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-errand",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-note-to-plan",
             "level": "patch"
           }
         ],

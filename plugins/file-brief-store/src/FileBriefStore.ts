@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { flock } from "fs-ext";
-import { BriefId, BriefQuestion, BriefRecord, BriefStore } from "@amykit/core";
+import { BriefId, BriefQuestion, BriefRecord, BriefStore, writeAtomically } from "@amykit/core";
 
 /**
  * Briefs on disk, one JSON file per brief under a directory the host chose.
@@ -83,15 +82,7 @@ export class FileBriefStore implements BriefStore {
 
   /** Written to a sibling and renamed, so a brief is never half-written. */
   private save(record: BriefRecord): void {
-    const file = this.file(record.id);
-    const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
-    try {
-      fs.writeFileSync(temporary, `${JSON.stringify(record, null, 2)}\n`, "utf-8");
-      fs.renameSync(temporary, file);
-    } catch (error: unknown) {
-      fs.rmSync(temporary, { force: true });
-      throw error;
-    }
+    writeAtomically(this.file(record.id), `${JSON.stringify(record, null, 2)}\n`);
   }
 
   /** Serializes a read-modify-write across phase processes for one brief. */

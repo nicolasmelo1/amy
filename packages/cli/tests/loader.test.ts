@@ -7,6 +7,9 @@ import { mount, type HostServices } from "@amykit/core";
 import { NOT_INSTALLED, installedPlugins, load, pluginsRootResolver } from "../src/loader.js";
 import { Profile, recommendedFor } from "../src/profiles.js";
 
+/** A profile that holds no fork: every name resolves from the machine's own root. */
+const NO_FORK = "no-fork";
+
 /**
  * A workflow declared the way a config declares one.
  *
@@ -191,7 +194,7 @@ describe("what this machine has", () => {
 
     const loaded = await load(
       ["@acme/plugin-oncall"],
-      pluginsRootResolver(home, root),
+      pluginsRootResolver(home, root, NO_FORK),
       root,
     );
 
@@ -210,7 +213,7 @@ describe("what this machine has", () => {
 
     const loaded = await load(
       ["@acme/plugin-import-only"],
-      pluginsRootResolver(home, root),
+      pluginsRootResolver(home, root, NO_FORK),
       root,
     );
 
@@ -226,7 +229,7 @@ describe("what this machine has", () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n');
 
-    const result = await load(["@acme/plugin-parent"], pluginsRootResolver(home, root), root);
+    const result = await load(["@acme/plugin-parent"], pluginsRootResolver(home, root, NO_FORK), root);
 
     expect(result.problems).toEqual([`@acme/plugin-parent: not installed — install it, or drop it from the config (${root})`]);
     expect(installedPlugins(root)).not.toContain("@acme/plugin-parent");
@@ -249,7 +252,7 @@ describe("what this machine has", () => {
     fs.writeFileSync(entry, 'export const plugin = { name: "@acme/plugin-path", version: "1.0.0", register() {} };\n', "utf-8");
     try {
       const spec = pathToFileURL(entry).href;
-      const loaded = await load([spec], pluginsRootResolver(home, root), root);
+      const loaded = await load([spec], pluginsRootResolver(home, root, NO_FORK), root);
 
       expect(loaded.problems).toEqual([]);
       expect(loaded.bySpec.get(spec)?.name).toBe("@acme/plugin-path");
@@ -261,7 +264,7 @@ describe("what this machine has", () => {
   it("names what a phase directory lacks instead of calling it not installed", async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-loader-empty-phase-"));
     try {
-      const loaded = await load([directory], pluginsRootResolver(home, root), root);
+      const loaded = await load([directory], pluginsRootResolver(home, root, NO_FORK), root);
 
       expect(loaded.problems).toHaveLength(1);
       expect(loaded.problems[0]).toContain("neither package.json nor index.js/index.ts");
@@ -280,7 +283,7 @@ describe("what this machine has", () => {
         "utf-8",
       );
 
-      const loaded = await load([directory], pluginsRootResolver(home, root), root);
+      const loaded = await load([directory], pluginsRootResolver(home, root, NO_FORK), root);
 
       expect(loaded.problems).toEqual([]);
       expect(loaded.bySpec.get(directory)?.name).toBe("workflow-local");

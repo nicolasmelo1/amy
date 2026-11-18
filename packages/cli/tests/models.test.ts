@@ -132,7 +132,9 @@ describe("keeping the price table current", () => {
     const catalog = {
       "claude-sonnet-5": { cost: { input: 3, output: 15, cache_read: 0.3, cache_write: 3.75 } },
     };
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => catalog })));
+    // A whole response, because the price list is read through core's one
+    // transport: a shape with only `json` proves a transport nobody has.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(catalog), { status: 200, headers: { "Content-Type": "application/json" } })));
 
     const { env } = environment();
     const ran = await runById(gathered.contributions, "models.refresh-prices", { staleAfter: STALE_AFTER_DAYS }, { ...env, home });

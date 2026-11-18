@@ -7,6 +7,7 @@
     ".software-factory/evidence/amy-add-remove/plugin-extra/package.json": "fdf46ddf207e8cd09cf998cc6b9f41268b0e5485efd7e95db94438f9a04e7724",
     ".software-factory/evidence/amy-add-remove/workflow-oncall/package.json": "bb99fdbbe6e4d8c6ba2440098d057cc7849d80effd790ad45973c4bb6fc694eb",
     ".software-factory/evidence/installed-plugins/workflow-oncall/package.json": "c71bf396a8aa7574a8aa8f021659d241ccf0082311cc2b6616d3b4508157a06c",
+    ".software-factory/evidence/nothing-is-lost/finds-a-ticket/package.json": "f4c3e862424d9dbfc512dac3698105d8f6a45395f339b0349ce9189f1efafdbb",
     "examples/a-whole-project/package.json": "15021d038b11ec576278f12d30a86b65230d6dee3d713bee724f760b1b96216f",
     "examples/workflow-errand/package.json": "0788f44f38a25c1ad01ef13e1346a35f6bf852eb269a0a50149ccf1b3474f853",
     "examples/workflow-feature-grooming/package.json": "c140a41f9d031dfbb78b1c8bf01319af7a8ccc4518acc50e0f473ae3d0108037",

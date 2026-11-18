@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { AssertionResult, blocking, holds } from "./assertions.js";
+import { writeAtomically } from "@amykit/core";
 import { segment } from "./names.js";
 
 /**
@@ -51,10 +52,7 @@ export class ProofStore {
 
   write(proof: ProofRecord): void {
     fs.mkdirSync(this.root, { recursive: true });
-    const file = this.file(proof.unit);
-    const temporary = `${file}.${process.pid}.tmp`;
-    fs.writeFileSync(temporary, `${JSON.stringify(proof, null, 2)}\n`);
-    fs.renameSync(temporary, file);
+    writeAtomically(this.file(proof.unit), `${JSON.stringify(proof, null, 2)}\n`);
   }
 
   get(unit: string): ProofRecord | null {

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { processAlive, takeLock } from "@amykit/core";
+import { isDeadlineExceeded, processAlive, takeLock } from "@amykit/core";
 
 /**
  * What is written down about the loop that is running.
@@ -112,7 +112,17 @@ export async function runLoop(loop: Loop): Promise<void> {
       await loop.remount();
       if (loop.stopping()) break;
     }
-    const { idle } = await loop.turn();
+    let idle: boolean;
+    try {
+      ({ idle } = await loop.turn());
+    } catch (error) {
+      // A tracker that ran out of time is one failed pass, not the end of the
+      // machine: say so, wait, and look again. Anything else is a defect, and
+      // stays the caller's to see.
+      if (!isDeadlineExceeded(error)) throw error;
+      console.error(`pass failed: ${(error as Error).message}`);
+      idle = true;
+    }
     if (idle) await loop.sleep(loop.idleMs);
   }
 }

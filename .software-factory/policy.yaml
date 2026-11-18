@@ -52,6 +52,48 @@ gates:
       - "bare.doctor_still_reports_what_it_found"
       - "bare.no_workflow_mounts_so_nothing_assembles"
 
+  # Not that each piece behaves: that nothing a process writes is lost to
+  # another process. Two notes or tasks of one instant, a look beside an
+  # engine's save, one bot behind a stale lock, a call to a server that never
+  # answers, and a pass of `amy run` over work sitting in the world. Every
+  # claim runs on the built artifacts, in processes of their own.
+  #
+  # The activation is every file one of those claims rests on: the one
+  # transport, the one atomic write, the one lock, the store, the pass the
+  # three commands share, the resolver the three commands build, and the two
+  # plugins and two writers the probes measured.
+  nothing-is-lost:
+    activation:
+      - "packages/core/src/http.ts"
+      - "packages/core/src/atomic-file.ts"
+      - "packages/core/src/process-lock.ts"
+      - "packages/core/src/ports/Store.ts"
+      - "packages/core/src/index.ts"
+      - "packages/cli/src/pass.ts"
+      - "packages/cli/src/loader.ts"
+      - "packages/cli/src/setup.ts"
+      - "packages/cli/src/index.ts"
+      - "examples/workflow-note-to-plan/src/**"
+      # Its shape: a changed diagram is a changed workflow.
+      - "examples/workflow-note-to-plan/workflow.mmd"
+      - "examples/workflow-errand/src/**"
+      - "examples/workflow-errand/workflow.mmd"
+      - "plugins/file-store/src/FileStore.ts"
+      - "plugins/telegram/src/TelegramConversation.ts"
+      - "plugins/telegram/src/BotApi.ts"
+      - "plugins/slack/src/SlackApi.ts"
+      - "plugins/linear/src/HttpGraphQLClient.ts"
+      - "plugins/agent-relay/src/plugin.ts"
+    evidence: ".software-factory/evidence/nothing-is-lost.json"
+    plan: "docs/design/nothing-is-lost-and-nothing-waits-forever.md"
+    required_assertions:
+      - "lost.two_notes_at_one_instant_are_two"
+      - "lost.two_tasks_at_one_instant_are_two"
+      - "lost.a_look_loses_no_engine_move"
+      - "lost.one_bot_holds_after_a_stale_lock"
+      - "lost.a_stalled_call_ends"
+      - "lost.run_picks_up_a_found_ticket"
+
   # Not that the class behaves: that the built artifact, loaded from another
   # process, claims each item exactly once. The activation paths are the
   # plugin's own source, so changing it expires the proof, which is correct —
@@ -1303,6 +1345,15 @@ rules:
     enabled: true
   # L6 — Something detects the same block written in two places
   L6.DUPLICATED_CODE_IS_DETECTED:
+    enabled: true
+  # L6 — A request has a deadline, and every request goes through one transport
+  L6.A_REQUEST_HAS_A_DEADLINE:
+    enabled: true
+  # L6 — A file is replaced one way, under a name only its writer holds
+  L6.A_FILE_IS_REPLACED_ONE_WAY:
+    enabled: true
+  # L6 — A plugin resolver knows the profile it acts for
+  L6.A_RESOLVER_KNOWS_ITS_PROFILE:
     enabled: true
   # L6 — Something audits dependencies for known vulnerabilities
   L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED:

@@ -249,19 +249,11 @@
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
-    "jscpd:plugins/slack/src/SlackApi.ts<->plugins/telegram/src/BotApi.ts#57:640fffe047fa": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
     "jscpd:packages/cli/src/skills-record.ts<->plugins/agent-relay/src/skills.ts#70:6746d7effcff": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
     "jscpd:packages/cli/src/skills-record.ts<->plugins/agent-relay/src/skills.ts#54:04cf356932e3": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
-    "jscpd:plugins/slack/src/SlackApi.ts<->plugins/telegram/src/BotApi.ts#227:1e440bc359fd": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
@@ -286,10 +278,6 @@
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
     "jscpd:plugins/file-notes/src/FileNotes.ts<->plugins/file-tasks/src/FileTasks.ts#232:a693e0f779d4": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
-    "jscpd:examples/workflow-errand/src/task-file.ts<->examples/workflow-note-to-plan/src/note-file.ts#91:ea4392c54da1": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },

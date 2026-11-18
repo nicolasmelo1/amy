@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DeadlineExceeded } from "@amykit/core";
 import { claimDaemonBoundary, claimExitedDaemon, clearDaemon, readDaemon, runLoop, running, runningForWorkflow, writeDaemon } from "../src/daemon.js";
 
 describe("the loop that is running", () => {
@@ -155,5 +156,56 @@ describe("the loop, when what it mounted changes", () => {
     });
 
     expect(turns).toBe(0);
+  });
+
+  it("treats a tracker's deadline as one failed pass, not the end of the loop", async () => {
+    let turns = 0;
+    const slept: number[] = [];
+    const reported: string[] = [];
+    const said = console.error;
+    console.error = (line: string) => reported.push(line);
+
+    try {
+      await runLoop({
+        idleMs: 25,
+        stopping: () => turns >= 2,
+        paused: () => false,
+        turn: async () => {
+          turns += 1;
+          if (turns === 1) throw new DeadlineExceeded("api.linear.test", 300);
+          return { idle: true };
+        },
+        changed: () => false,
+        remount: async () => {},
+        sleep: async (ms) => {
+          slept.push(ms);
+        },
+      });
+    } finally {
+      console.error = said;
+    }
+
+    // It waited its idle interval and looked again.
+    expect(turns).toBe(2);
+    expect(slept).toEqual([25, 25]);
+    expect(reported).toEqual(["pass failed: api.linear.test did not answer within 300 ms"]);
+  });
+
+  it("lets an unrelated failure out of the loop", async () => {
+    const broken = new Error("a defect of its own");
+
+    await expect(
+      runLoop({
+        idleMs: 1,
+        stopping: () => false,
+        paused: () => false,
+        turn: async () => {
+          throw broken;
+        },
+        changed: () => false,
+        remount: async () => {},
+        sleep: async () => {},
+      }),
+    ).rejects.toBe(broken);
   });
 });

@@ -84,8 +84,11 @@ held to a gate that is proven to work.
 | `L5.EVERY_CHECK_HAS_A_MUTATION_TEST` | Every enabled rule has a mutation that proves it fires |
 | `L5.EVERY_PROPERTY_HAS_A_FALSIFIER` | Every property a plan cites is proven able to fail |
 | `L5.NO_INERT_RULE` | An enabled rule must be capable of producing a finding |
+| `L6.A_FILE_IS_REPLACED_ONE_WAY` | A file is replaced one way, under a name only its writer holds |
 | `L6.A_PRIVATE_NAME_STAYS_PRIVATE` | A private name stays out of this public repository (docs/design/a-short-private-name-is-a-whole-word.md) |
 | `L6.A_PUSH_NEVER_FORCES` | A push is a fast-forward or nothing (docs/design/a-private-workflow-composes-the-shipped-one.md) |
+| `L6.A_REQUEST_HAS_A_DEADLINE` | A request has a deadline, and every request goes through one transport |
+| `L6.A_RESOLVER_KNOWS_ITS_PROFILE` | A plugin resolver knows the profile it acts for |
 | `L6.BRANCH_RESET_LOSES_COMMITS` | scaffolded workflow ships with, here because the core drives git too. |
 | `L6.DEAD_CODE_IS_DETECTED` | Something detects code nothing reaches |
 | `L6.DEPENDENCY_VULNERABILITIES_ARE_SCANNED` | Something audits dependencies for known vulnerabilities |
@@ -154,9 +157,9 @@ Counted from the policy on every build:
 
 <!-- amy:generated factory-counts -->
 
-This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **61 rules**, and `sf verify` proves every one fires against a broken fixture.
+This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **64 rules**, and `sf verify` proves every one fires against a broken fixture.
 
-**30 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**31 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end factory-counts -->
 
@@ -194,6 +197,7 @@ digest. A gate's `plan` in the policy names the design note that argues for it.
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |
 | `installed-plugins` | `packages/cli/src/loader.ts`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/paths.ts`<br>`packages/cli/src/slices.ts`<br>`scripts/install.sh`<br>`scripts/write-install-manifest.ts`<br>`packages/core/src/mount.ts`<br>`packages/core/src/dispatch.ts`<br>`plugins/serial-engine/src/Worker.ts` | 17 |
 | `note-to-plan` | `examples/workflow-note-to-plan/src/**`<br>`examples/workflow-note-to-plan/workflow.mmd`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`plugins/file-notes/src/**`<br>`plugins/plan-check/src/**`<br>`plugins/agent-relay/src/**`<br>`plugins/serial-engine/src/**`<br>`plugins/github/src/**`<br>`examples/workflow-pull-request/src/**`<br>`examples/workflow-pull-request/workflow.mmd`<br>`packages/core/src/calls.ts` | 22 |
+| `nothing-is-lost` | `packages/core/src/http.ts`<br>`packages/core/src/atomic-file.ts`<br>`packages/core/src/process-lock.ts`<br>`packages/core/src/ports/Store.ts`<br>`packages/core/src/index.ts`<br>`packages/cli/src/pass.ts`<br>`packages/cli/src/loader.ts`<br>`packages/cli/src/setup.ts`<br>`packages/cli/src/index.ts`<br>`examples/workflow-note-to-plan/src/**`<br>`examples/workflow-note-to-plan/workflow.mmd`<br>`examples/workflow-errand/src/**`<br>`examples/workflow-errand/workflow.mmd`<br>`plugins/file-store/src/FileStore.ts`<br>`plugins/telegram/src/TelegramConversation.ts`<br>`plugins/telegram/src/BotApi.ts`<br>`plugins/slack/src/SlackApi.ts`<br>`plugins/linear/src/HttpGraphQLClient.ts`<br>`plugins/agent-relay/src/plugin.ts` | 6 |
 | `outside-text-reaches-the-agent-as-data` | `packages/core/src/outside-text.ts`<br>`packages/core/src/index.ts`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd` | 1 |
 | `plugin-agent-relay` | `plugins/agent-relay/src/**`<br>`packages/agent-kit/src/**`<br>`examples/workflow-ticket-to-qa/src/**`<br>`examples/workflow-ticket-to-qa/workflow.mmd` | 27 |
 | `plugin-file-queue` | `plugins/file-queue/src/**` | 9 |

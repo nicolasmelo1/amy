@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { processAlive } from "@amykit/core";
+import { createExclusively, processAlive, writeAtomically } from "@amykit/core";
 
 /**
  * One generation of a work item's thread: its root `ts` once Slack answered,
@@ -398,27 +398,19 @@ export class ThreadMap {
    */
   private create(workId: string, n: number, entry: ThreadEntry): boolean {
     privateDirectory(this.root);
-    // Staged outside the chain, so a forget can always remove an empty one.
-    const staged = path.join(this.root, `.${randomUUID()}.tmp`);
-    fs.writeFileSync(staged, JSON.stringify(entry), { mode: 0o600 });
     try {
       fs.mkdirSync(this.directoryOf(workId), { recursive: true, mode: 0o700 });
-      fs.linkSync(staged, this.file(workId, n));
-      return true;
+      return createExclusively(this.file(workId, n), JSON.stringify(entry));
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code !== "EEXIST" && code !== "ENOENT") throw error;
+      // The directory went away under a forget: the number is not this claim's.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       return false;
-    } finally {
-      fs.rmSync(staged, { force: true });
     }
   }
 
   /** Only by the tombstone's owner, whole and renamed into place. */
   private release(workId: string, n: number, entry: ThreadEntry): void {
-    const staged = path.join(this.root, `.${randomUUID()}.tmp`);
-    fs.writeFileSync(staged, JSON.stringify(entry), { mode: 0o600 });
-    fs.renameSync(staged, this.file(workId, n));
+    writeAtomically(this.file(workId, n), JSON.stringify(entry));
   }
 
   /** Generations under `n` are settled history once `n` is decided. */

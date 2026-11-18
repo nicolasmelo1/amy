@@ -20,6 +20,9 @@ import { load, pluginsRootResolver } from "../src/loader.js";
 import { Profile } from "../src/profiles.js";
 import { pluginList } from "../src/slices.js";
 
+/** A profile that holds no fork: every name resolves from the machine's own root. */
+const NO_FORK = "no-fork";
+
 /** The core a package on disk imports, by file: a temporary root has no workspace to resolve it from. */
 const CORE = new URL("../../core/dist/index.js", import.meta.url).href;
 
@@ -163,7 +166,7 @@ describe("importPluginBySpec", () => {
 
     const loaded = await importPluginBySpec(
       "@acme/workflow-oncall",
-      pluginsRootResolver(home, root),
+      pluginsRootResolver(home, root, NO_FORK),
     );
 
     expect(loaded.ok).toBe(true);
@@ -173,7 +176,7 @@ describe("importPluginBySpec", () => {
     fs.mkdirSync(root, { recursive: true });
     fs.writeFileSync(path.join(root, "package.json"), '{"name":"amy-plugins","private":true}\n', "utf-8");
 
-    const loaded = await importPluginBySpec("@acme/plugin-nowhere", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-nowhere", pluginsRootResolver(home, root, NO_FORK));
 
     expect(loaded).toEqual({
       ok: false,
@@ -242,7 +245,7 @@ export const plugin = defineWorkflow({
     );
     fs.writeFileSync(path.join(directory, "workflow.mmd"), "stateDiagram-v2\n    [*] --> paged\n    paged --> acknowledged\n    acknowledged --> [*]\n", "utf-8");
 
-    const loaded = await importPluginBySpec("@acme/workflow-oncall", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/workflow-oncall", pluginsRootResolver(home, root, NO_FORK));
     expect(loaded.ok).toBe(true);
 
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
@@ -265,7 +268,7 @@ export const plugin = defineWorkflow({
 `,
     );
 
-    const loaded = await importPluginBySpec("@acme/plugin-extra", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-extra", pluginsRootResolver(home, root, NO_FORK));
     expect(loaded.ok).toBe(true);
 
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
@@ -288,7 +291,7 @@ export const plugin = defineWorkflow({
 };
 `,
     );
-    const loaded = await importPluginBySpec("@acme/plugin-codex-shaped", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-codex-shaped", pluginsRootResolver(home, root, NO_FORK));
 
     await expect(whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home)).resolves.toEqual({ ok: true, workflow: false });
   });
@@ -308,7 +311,7 @@ export const plugin = defineWorkflow({
 `,
     );
 
-    const loaded = await importPluginBySpec("@acme/plugin-refusing", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-refusing", pluginsRootResolver(home, root, NO_FORK));
     expect(loaded.ok).toBe(true);
 
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
@@ -335,7 +338,7 @@ export const plugin = defineWorkflow({
 `,
     );
 
-    const loaded = await importPluginBySpec("@acme/plugin-by-hand", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-by-hand", pluginsRootResolver(home, root, NO_FORK));
     expect(loaded.ok).toBe(true);
 
     const probe = await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
@@ -359,7 +362,7 @@ export const plugin = defineWorkflow({
 `,
     );
 
-    const loaded = await importPluginBySpec("@acme/plugin-scribbler", pluginsRootResolver(home, root));
+    const loaded = await importPluginBySpec("@acme/plugin-scribbler", pluginsRootResolver(home, root, NO_FORK));
     expect(loaded.ok).toBe(true);
 
     await whatMountingSays(loaded.ok ? loaded.plugin : ({} as never), home);
@@ -568,7 +571,7 @@ describe("the loader answers an added workflow the boot asks for", () => {
       'export const plugin = { name: "@acme/workflow-oncall", version: "1.0.0", register() {} };\n',
     );
 
-    const result = await load(["@acme/workflow-oncall"], pluginsRootResolver(home, root), root);
+    const result = await load(["@acme/workflow-oncall"], pluginsRootResolver(home, root, NO_FORK), root);
 
     expect(result.bySpec.get("@acme/workflow-oncall")?.name).toBe("@acme/workflow-oncall");
     expect(result.problems).toEqual([]);

@@ -1,73 +1,10 @@
-/** One HTTP exchange, small enough to script in a test. */
-export interface HttpRequest {
-  url: string;
-  method: "GET" | "POST";
-  headers: Record<string, string>;
-  body?: string;
-  /** Refuse the answer once its body passes this many bytes, while it arrives. */
-  maxBytes?: number;
-}
+import { DeadlineExceeded, TooLarge, deadlineOf, fetchTransport } from "@amykit/core";
+import type { HttpRequest, HttpResponse, HttpTransport } from "@amykit/core";
 
-export interface HttpResponse {
-  status: number;
-  /** Lower-cased names. */
-  headers: Record<string, string>;
-  body: Uint8Array;
-}
-
-export type HttpTransport = (request: HttpRequest) => Promise<HttpResponse>;
-
-/** An answer larger than the request allowed, refused before it was held whole. */
-export class TooLarge extends Error {
-  constructor(readonly limit: number) {
-    super(`the answer is larger than ${limit} bytes`);
-  }
-}
-
-export const fetchTransport: HttpTransport = async (request) => {
-  const response = await fetch(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-  const headers: Record<string, string> = {};
-  response.headers.forEach((value, name) => {
-    headers[name.toLowerCase()] = value;
-  });
-  return { status: response.status, headers, body: await readBody(response, request.maxBytes) };
-};
-
-/**
- * The body, counted as it arrives: a declared length over the limit is
- * refused unread, and a missing or wrong one is caught by the count.
- */
-async function readBody(response: Response, maxBytes: number | undefined): Promise<Uint8Array> {
-  if (maxBytes === undefined || !response.body) return new Uint8Array(await response.arrayBuffer());
-  if (Number(response.headers.get("content-length") ?? 0) > maxBytes) {
-    await response.body.cancel();
-    throw new TooLarge(maxBytes);
-  }
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  const reader = response.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      throw new TooLarge(maxBytes);
-    }
-    chunks.push(value);
-  }
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return body;
-}
+// The one transport, named here too: a caller that already imported it from
+// this plugin keeps working, and no second copy of it exists to drift.
+export { TooLarge, fetchTransport };
+export type { HttpRequest, HttpResponse, HttpTransport };
 
 export const SLACK_API = "https://slack.com/api";
 
@@ -84,6 +21,8 @@ export interface SlackApiOptions {
   maxRateLimitRetries?: number;
   /** How long a `429` that names no `Retry-After` is waited out. */
   defaultRetryAfterSeconds?: number;
+  /** How long one exchange may take, body included. */
+  deadlineMs?: number;
 }
 
 /**
@@ -93,6 +32,15 @@ export interface SlackApiOptions {
 export const DEFAULT_RETRY_AFTER_S = 60;
 
 export const DEFAULT_RATE_LIMIT_RETRIES = 5;
+
+/**
+ * How long one call may take, its waits included.
+ *
+ * Longer than the one-a-minute rhythm Slack's `429` imposes: a call allowed
+ * less than that would refuse to obey the server it is talking to. Bounded
+ * all the same, so a `Retry-After` of a day is not five days of waiting.
+ */
+const DEFAULT_SLACK_DEADLINE_MS = 120_000;
 
 /**
  * The Web API, and only the Web API.
@@ -105,6 +53,7 @@ export class SlackApi {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly maxRetries: number;
   private readonly defaultRetryAfterS: number;
+  private readonly deadlineMs: number;
 
   constructor(
     private readonly token: string,
@@ -114,6 +63,7 @@ export class SlackApi {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.maxRetries = options.maxRateLimitRetries ?? DEFAULT_RATE_LIMIT_RETRIES;
     this.defaultRetryAfterS = options.defaultRetryAfterSeconds ?? DEFAULT_RETRY_AFTER_S;
+    this.deadlineMs = options.deadlineMs ?? DEFAULT_SLACK_DEADLINE_MS;
   }
 
   /** Calls a method form-encoded, which every method accepts, and refuses `ok: false`. */
@@ -129,6 +79,7 @@ export class SlackApi {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: form.toString(),
+      deadlineMs: this.deadlineMs,
     });
     if (response.status !== 200) throw new Error(`slack ${method} answered HTTP ${response.status}`);
 
@@ -138,7 +89,7 @@ export class SlackApi {
       const needed = typeof body.needed === "string" ? ` (needs ${body.needed})` : "";
       throw new Error(`slack ${method} refused: ${String(body.error ?? "unknown error")}${needed}`);
     }
-    return { body, headers: response.headers };
+    return { body, headers: response.headers ?? {} };
   }
 
   /**
@@ -152,21 +103,45 @@ export class SlackApi {
     if (parsed.protocol !== "https:" || !isSlackHost(parsed.hostname)) {
       throw new Error(`refusing to send the slack token to ${parsed.origin}`);
     }
-    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes });
+    const response = await this.send({ url, method: "GET", headers: { Authorization: `Bearer ${this.token}` }, maxBytes, deadlineMs: this.deadlineMs });
     if (response.status !== 200) throw new Error(`slack file ${parsed.pathname} answered HTTP ${response.status}`);
     // Checked again here for a transport that does not honour the limit.
     if (maxBytes !== undefined && response.body.byteLength > maxBytes) throw new TooLarge(maxBytes);
     return response.body;
   }
 
+  /**
+   * The exchange, and the waits a `429` costs, inside one deadline.
+   *
+   * `Retry-After` is the server's wish, not the call's budget: a `429` that
+   * asks for a day cannot be waited out by a call allowed a second, and five
+   * such waits are not five attempts within the deadline. The call settles
+   * when the next wait no longer fits in what is left.
+   */
   private async send(request: HttpRequest): Promise<HttpResponse> {
+    const allowed = request.deadlineMs ?? this.deadlineMs;
+    const until = Date.now() + allowed;
     for (let attempt = 0; ; attempt++) {
-      const response = await this.transport(request);
+      const left = until - Date.now();
+      if (left <= 0) throw new DeadlineExceeded(new URL(request.url).host, allowed);
+      // Each exchange gets what is left of the call, not a fresh deadline: a
+      // second attempt allowed the whole budget is a call that outlives it.
+      // The slice is the transport's business; the call that ran out says the
+      // deadline it declared, so the error names the same number every time.
+      const response = await this.transport({ ...request, deadlineMs: left }).catch((error: unknown) => {
+        const missed = deadlineOf(error);
+        throw missed === undefined ? error : new DeadlineExceeded(missed.host, allowed);
+      });
       if (response.status !== 429) return response;
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
       }
-      await this.sleep(retryAfterMs(response.headers["retry-after"], this.defaultRetryAfterS));
+      const wait = retryAfterMs(response.headers?.["retry-after"], this.defaultRetryAfterS);
+      const remaining = until - Date.now();
+      if (wait > remaining) {
+        throw new Error(`slack asked to wait ${wait} ms for ${request.url}, past the ${allowed} ms it had`);
+      }
+      await this.sleep(wait);
     }
   }
 }

@@ -11,6 +11,9 @@ import { dropFork } from "../src/remove.js";
 import { ForkWorld, Upstream, installed } from "./fork-world.js";
 import { CORE_RANGE } from "./core-version.js";
 
+/** A profile that holds no fork: every name resolves from the machine's own root. */
+const NO_FORK = "no-fork";
+
 const PAGER = "@acme/plugin-pager";
 
 /** A profile driving a workflow somebody else published, so its forks live under AMY_HOME. */
@@ -78,7 +81,7 @@ describe("amy add --fork", () => {
 
     const mounted = (await import(pluginsRootResolver(home, plugins, "paging")(PAGER))) as { plugin: { said: string } };
     expect(mounted.plugin.said).toBe("1.0.0 as released");
-    const elsewhere = (await import(pluginsRootResolver(home, plugins)(PAGER))) as { plugin: { said: string } };
+    const elsewhere = (await import(pluginsRootResolver(home, plugins, NO_FORK)(PAGER))) as { plugin: { said: string } };
     expect(elsewhere.plugin.said).toBe("published");
   });
 
