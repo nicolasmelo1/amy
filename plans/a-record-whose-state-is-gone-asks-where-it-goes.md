@@ -19,6 +19,7 @@ sources:
   - { id: S16, kind: code, ref: "plugins/serial-engine/src/Worker.ts", symbol: "advance", said: "a look runs its plan's actions, checking the stop switch between them, then saves the next state; the worker is the record's one writer while it holds the item" }
   - { id: S17, kind: decision, said: "`amy move <work> <STATE>` moves any work to any drawn state; without --force the step in flight finishes, its result kept, then the work goes where asked, not where the step chose. Decided 2026-11-17" }
   - { id: S18, kind: decision, said: "`--force` ends only that work's child processes, logs the step as interrupted, leaves its checkout as it is, and moves. Decided 2026-11-17" }
+  - { id: S19, kind: code, ref: "plugins/codex/src/CodexHarness.ts", said: "claude and hermes-agent start each run with runner.run; codex starts its app-server child with runner.spawn, and a stopped app-server is an abandoned run" }
 touches:
   - packages/core/src/plugin.ts
   - packages/core/src/define-workflow.ts
@@ -59,7 +60,7 @@ criteria:
   - { id: A12, statement: "`amy move <work> <STATE>` on work with no step in flight moves it at once, logs work.moved naming the operator, and the next look plans from the new state", proof: "deferred:test:packages/cli/tests/move.test.ts", sources: [S13, S17] }
   - { id: A13, statement: "without --force, a move asked while a step runs is kept and applied when that step's actions finish: its result stays in history, and the record lands in the asked state, not the step's", proof: "deferred:test:plugins/serial-engine/tests/Worker.move.test.ts", sources: [S16, S17] }
   - { id: A14, statement: "with --force, only the child processes started for that work end, another work's run goes on, the step is logged interrupted, its checkout is untouched, and the record moves", proof: "deferred:test:plugins/serial-engine/tests/Worker.move.test.ts", sources: [S14, S15, S18] }
-  - { id: A15, statement: "the runner tracks each child by the work it was started for and ends one work's children without touching another's", proof: "deferred:test:packages/core/tests/NodeCommandRunner.test.ts", sources: [S15, S18] }
+  - { id: A15, statement: "the runner tracks each child by the work it was started for, run and spawn alike, so claude's and hermes-agent's runs and codex's app-server end with their work and another work's are untouched", proof: "deferred:test:packages/core/tests/NodeCommandRunner.test.ts", sources: [S15, S18, S19] }
   - { id: A16, statement: "a move asked from another process than the daemon is a request the worker applies, so the record keeps one writer; with no daemon running, the command applies it itself", proof: "deferred:test:packages/cli/tests/move.test.ts", sources: [S16, S17] }
   - { id: A17, statement: "the built daemon, in another process, running a step for PROJ-1: `amy move PROJ-1 IMPLEMENTING --force` ends that step's process, and the next look is in IMPLEMENTING", proof: "deferred:test:packages/cli/tests/move.test.ts", sources: [S13, S18] }
 crosses:
