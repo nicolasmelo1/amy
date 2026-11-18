@@ -214,10 +214,13 @@ async function aStalledCallEnds(): Promise<{ ended: boolean; said: string }> {
 /** One plugin, its own build, and this gate's socket underneath it. */
 async function stalledThrough(built: string, host: string): Promise<string> {
   const core = (await import(pathToFileURL(BUILT.http).href)) as {
-    fetchTransport: (request: { url: string; method: "GET" | "POST"; headers: Record<string, string>; body?: string; deadlineMs: number }) => Promise<unknown>;
+    fetchTransport: (request: { url: string; method: "GET" | "POST"; headers: Record<string, string>; body?: string; deadlineMs?: number }) => Promise<unknown>;
   };
+  // Only the socket moves: the deadline in the request is the plugin's own.
+  // Imposed here, it would end a call whose plugin never asked for one, and the
+  // gate would go on proving a deadline the product does not set.
   const transport = (request: { url: string; method: "GET" | "POST"; headers: Record<string, string>; body?: string; deadlineMs?: number }) =>
-    core.fetchTransport({ ...request, url: `http://${host}${new URL(request.url).pathname}`, deadlineMs: 300 });
+    core.fetchTransport({ ...request, url: `http://${host}${new URL(request.url).pathname}` });
 
   const started = Date.now();
   const said = await (built === BUILT.slack ? stalledSlack(built, transport) : stalledLinear(built, transport, host));

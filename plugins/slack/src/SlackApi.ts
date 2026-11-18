@@ -122,14 +122,18 @@ export class SlackApi {
     const allowed = request.deadlineMs ?? this.deadlineMs;
     const until = Date.now() + allowed;
     for (let attempt = 0; ; attempt++) {
-      const response = await this.transport(request);
+      const left = until - Date.now();
+      if (left <= 0) throw new Error(`slack ran out of the ${allowed} ms it had for ${request.url}`);
+      // Each exchange gets what is left of the call, not a fresh deadline: a
+      // second attempt allowed the whole budget is a call that outlives it.
+      const response = await this.transport({ ...request, deadlineMs: left });
       if (response.status !== 429) return response;
       if (attempt >= this.maxRetries) {
         throw new Error(`slack kept rate limiting ${request.url} after ${attempt + 1} tries`);
       }
       const wait = retryAfterMs(response.headers?.["retry-after"], this.defaultRetryAfterS);
-      const left = until - Date.now();
-      if (wait > left) {
+      const remaining = until - Date.now();
+      if (wait > remaining) {
         throw new Error(`slack asked to wait ${wait} ms for ${request.url}, past the ${allowed} ms it had`);
       }
       await this.sleep(wait);
