@@ -220,12 +220,15 @@ const ACTIONS: TicketActions = {
     // Appended to the brief the triage prompt was built from, recorded with
     // what triage said: a brief that appeared while the agent was reading is
     // not the one the question answers, and the store is not read again here.
+    // A record triaged before that was recorded has no id to go on, so its
+    // question lands where this look read the brief, as it did before.
     // Nothing appends an answer; that is the owning workflow's revision.
     const read = outcomesOf(work).triage ?? work.record.triage;
-    if (brief && read?.briefId) {
+    const briefId = read?.briefId ?? work.observation.briefId;
+    if (brief && briefId) {
       for (const question of effect.questions) {
         await brief.appendQuestion({
-          id: read.briefId,
+          id: briefId,
           question: { workId: unitOf(work.record), question: questionText(question), at: scope.ctx.now().toISOString() },
           at: scope.ctx.now().toISOString(),
         });

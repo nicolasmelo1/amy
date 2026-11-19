@@ -149,14 +149,16 @@ export const selfReviewLane = withDiagram(defineWorkflow({
   },
   record: () => ({}),
   observe: async (scope, record): Promise<ReviewObservation> => {
-    const ticketId = (record as ReviewRecord).input.ticketId;
-    const ticket = await scope.ports.tracker.get(ticketId);
-    if (!ticket) throw new Error(`${ticketId} is not in the tracker any more`);
-    const brief = await briefOf(scope.ports.brief, { workId: ticket.id, briefId: ticket.briefId });
+    const input = (record as ReviewRecord).input;
+    const ticket = await scope.ports.tracker.get(input.ticketId);
+    if (!ticket) throw new Error(`${input.ticketId} is not in the tracker any more`);
+    // The unit's work id, not the ticket's: a ticket worked in one of several
+    // repositories keeps its brief under the id its project judges.
+    const brief = await briefOf(scope.ports.brief, { workId: input.workId, briefId: ticket.briefId });
     return {
       id: ticket.id,
       title: ticket.title,
-      ...(brief ? { brief: renderBrief(brief).text, unitOwn: brief.id === ticket.id } : {}),
+      ...(brief ? { brief: renderBrief(brief).text, unitOwn: brief.id === input.workId } : {}),
     };
   },
   actions: {
