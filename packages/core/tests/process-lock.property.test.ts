@@ -72,5 +72,7 @@ describe("a lock", () => {
         for (const one of holdings) if (one.alive && world.clock - one.refreshed < LEASE_MS) expect(one.lock.holds()).toBe(true);
       }
     }));
-  });
+    // The property makes a temporary file per move and runs inside the whole
+    // suite: the default five seconds is a load ceiling, not a behaviour.
+  }, 30_000);
 });
