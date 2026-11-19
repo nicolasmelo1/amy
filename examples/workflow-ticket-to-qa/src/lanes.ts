@@ -8,6 +8,7 @@ import {
   Tracker,
   WorkRecord,
   Worktree,
+  briefOf,
   defineWorkflow,
   optional,
   port,
@@ -102,6 +103,8 @@ interface ReviewObservation {
   readonly title: string;
   /** The brief as it reads now, so a revision between looks reaches the review. */
   readonly brief?: string;
+  /** Whether that brief is the unit's own, the one its project judged. */
+  readonly unitOwn?: boolean;
 }
 
 type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> };
@@ -146,11 +149,17 @@ export const selfReviewLane = withDiagram(defineWorkflow({
   },
   record: () => ({}),
   observe: async (scope, record): Promise<ReviewObservation> => {
-    const ticketId = (record as ReviewRecord).input.ticketId;
-    const ticket = await scope.ports.tracker.get(ticketId);
-    if (!ticket) throw new Error(`${ticketId} is not in the tracker any more`);
-    const brief = ticket.briefId && scope.ports.brief ? await scope.ports.brief.get(ticket.briefId) : null;
-    return { id: ticket.id, title: ticket.title, ...(brief ? { brief: renderBrief(brief).text } : {}) };
+    const input = (record as ReviewRecord).input;
+    const ticket = await scope.ports.tracker.get(input.ticketId);
+    if (!ticket) throw new Error(`${input.ticketId} is not in the tracker any more`);
+    // The unit's work id, not the ticket's: a ticket worked in one of several
+    // repositories keeps its brief under the id its project judges.
+    const brief = await briefOf(scope.ports.brief, { workId: input.workId, briefId: ticket.briefId });
+    return {
+      id: ticket.id,
+      title: ticket.title,
+      ...(brief ? { brief: renderBrief(brief).text, unitOwn: brief.id === input.workId } : {}),
+    };
   },
   actions: {
     // The work reads itself against the brief before a person is asked to,
@@ -167,7 +176,7 @@ export const selfReviewLane = withDiagram(defineWorkflow({
           `and say what a reviewer should look at first.`,
           `End with a line saying APPROVED if it is ready for a reviewer, or`,
           `CHANGES_ASKED and what has to change before it is.`,
-          ...(ticket.brief ? [``, `The current brief for the feature this ticket belongs to:`, ``, ticket.brief] : []),
+          ...(ticket.brief ? [``, ticket.unitOwn ? `The current brief this ticket is worked against:` : `The current brief for the feature this ticket belongs to:`, ``, ticket.brief] : []),
         ].join("\n"),
         tree.path,
         { workId: record.id, step: "self-review", brief: ticket.brief },

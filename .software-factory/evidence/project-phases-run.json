@@ -7,7 +7,7 @@
     "entry": "dist/assemble.js"
   },
   "observed": {
-    "assertions_run": 10,
+    "assertions_run": 11,
     "assertions_failed": 0,
     "node": "v22.22.2"
   },
@@ -22,6 +22,10 @@
     },
     {
       "type": "project.what_was_briefed_is_what_is_proven",
+      "status": "passed"
+    },
+    {
+      "type": "project.the_brief_the_gate_judged_reaches_the_work_triage",
       "status": "passed"
     },
     {

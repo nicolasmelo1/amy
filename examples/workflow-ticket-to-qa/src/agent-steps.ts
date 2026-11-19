@@ -16,6 +16,12 @@ export interface TriageOutcome {
   questions: TriageQuestion[];
   at: string;
   /**
+   * The brief this triage's prompt was built from, kept so a question it asks
+   * lands on the same brief even when another one appeared while the agent
+   * was reading.
+   */
+  briefId?: string;
+  /**
    * The questions the machine asked on the ticket for this ticket to be
    * read again.
    *
@@ -54,13 +60,13 @@ export function branchOf(ticket: Ticket): string {
   );
 }
 
-export function triagePrompt(ticket: Ticket, conversation?: readonly string[]): string {
+export function triagePrompt(ticket: Ticket, conversation?: readonly string[], unitOwn = false): string {
   return withOutsideNotice([
     `You are deciding whether a ticket can be implemented as written.`,
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
-    ...briefLines(ticket),
+    ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
     ...conversationLines(conversation),
@@ -121,13 +127,14 @@ export function implementPrompt(
   continuationContext?: string,
   conversation?: readonly string[],
   discussion?: readonly string[],
+  unitOwn = false,
 ): string {
   return withOutsideNotice([
     `Implement this ticket in the current repository.`,
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
-    ...briefLines(ticket),
+    ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
     ...conversationLines(conversation),
@@ -162,6 +169,7 @@ export function threadPrompt(
   from: "automated" | "human",
   reviewerHints: ReviewerHints = {},
   discussion?: readonly string[],
+  unitOwn = false,
 ): string {
   const hints = [
     ...new Set(
@@ -177,7 +185,7 @@ export function threadPrompt(
       : `A human reviewer left comments on the pull request for this ticket.`,
     ``,
     ...titleLines(ticket),
-    ...briefLines(ticket),
+    ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
     `Comments:`,
@@ -212,13 +220,14 @@ export function discussPrompt(
   thread: readonly string[],
   turns: readonly { author: string; text: string }[],
   settled: { clarification?: readonly string[]; threads?: readonly ReviewThread[] } = {},
+  unitOwn = false,
 ): string {
   return withOutsideNotice([
     `This work is waiting on a person, and they are discussing it with you before they decide.`,
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
-    ...briefLines(ticket),
+    ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
     ``,
@@ -279,10 +288,12 @@ export function readVerdicts(answer: unknown, threads: readonly ReviewThread[]):
  * says *now*. A ticket with no brief carries none, and the prompt is
  * unchanged.
  */
-function briefLines(ticket: Ticket): string[] {
+function briefLines(ticket: Ticket, unitOwn: boolean): string[] {
   if (!ticket.brief) return [];
   return [
-    `The current brief for the feature this ticket belongs to:`,
+    unitOwn
+      ? `The current brief this ticket is worked against:`
+      : `The current brief for the feature this ticket belongs to:`,
     ``,
     ticket.brief,
     ``,

@@ -430,6 +430,11 @@
           "description": ""
         },
         {
+          "title": "A ticket reads the brief its project judged",
+          "path": "/design/a-ticket-reads-the-brief-its-project-judged",
+          "description": ""
+        },
+        {
           "title": "A usage limit is not an attempt",
           "path": "/design/a-usage-limit-is-not-an-attempt",
           "description": ""
@@ -1049,6 +1054,11 @@
         },
         {
           "depth": 3,
+          "title": "**A ticket reads the brief its project judged.**",
+          "slug": "a-ticket-reads-the-brief-its-project-judged"
+        },
+        {
+          "depth": 3,
           "title": "**Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, ~/.claude/.credentials.json or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for get_usage over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.",
           "slug": "claudes-usage-is-read-without-its-token-the-usage-reader-took-claude-codes-oauth-token-from-the-environment-claudecredentialsjson-or-the-macos-keychain-and-called-an-undocumented-endpoint-it-now-asks-claude-code-itself-for-getusage-over-a-short-lived-print-mode-child-no-model-call-no-credential-of-the-operators-and-a-runner-without-a-managed-spawn-reads-as-unavailable"
         },
@@ -1061,6 +1071,16 @@
           "depth": 3,
           "title": "**Nothing a process writes is lost to another, and no call waits forever.**",
           "slug": "nothing-a-process-writes-is-lost-to-another-and-no-call-waits-forever"
+        },
+        {
+          "depth": 3,
+          "title": "**The review and an in-flight question read the brief the unit was worked with.**",
+          "slug": "the-review-and-an-in-flight-question-read-the-brief-the-unit-was-worked-with"
+        },
+        {
+          "depth": 3,
+          "title": "**The work phase reads its project's brief.**",
+          "slug": "the-work-phase-reads-its-projects-brief"
         },
         {
           "depth": 2,
@@ -2536,6 +2556,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-ticket-reads-the-brief-its-project-judged",
+      "file": "docs/design/a-ticket-reads-the-brief-its-project-judged.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-ticket-reads-the-brief-its-project-judged.md",
+      "title": "A ticket reads the brief its project judged",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-usage-limit-is-not-an-attempt",
@@ -11769,6 +11800,22 @@
         "level": "minor"
       },
       {
+        "id": "a-ticket-reads-the-brief-its-project-judged",
+        "title": "**A ticket reads the brief its project judged.**",
+        "body": "`briefOf` resolves the brief a unit is worked against: the one stored under\nthe unit's own id first, the tracker's `briefId` after. Triage, self-review,\nthe question triage appends and a project's GROOMED gate read that one brief,\nso a unit groomed for itself is worked against what the gate judged.",
+        "bumps": [
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "minor"
+      },
+      {
         "id": "claudes-usage-is-read-without-its-token",
         "title": "**Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, `~/.claude/.credentials.json` or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for `get_usage` over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.",
         "body": "",
@@ -11855,6 +11902,38 @@
           },
           {
             "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-review-reads-the-brief-the-unit-was-worked-with",
+        "title": "**The review and an in-flight question read the brief the unit was worked with.**",
+        "body": "The self-review lane resolves the brief under the unit's work id, not the\nticket's, so a ticket worked in one of several repositories reviews against\nthe same brief triage read and labels it as its own. A record triaged before\ntriage kept the brief it read appends its question to the brief the current\nlook resolved, instead of appending nowhere.",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-work-phase-reads-its-projects-brief",
+        "title": "**The work phase reads its project's brief.**",
+        "body": "A project's phase folders now decide which phases run, so a workflow that\ndeclares its own brief phase absent can still be the work phase of a project\nthat grooms one. Triage records the brief its prompt was built from and\nappends its question there, a unit's brief is read under its work id even when\nthe ticket spans repositories, prompts name the brief as the one the ticket is\nworked against, and `briefOf` names the id whose read failed.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "patch"
           }
         ],

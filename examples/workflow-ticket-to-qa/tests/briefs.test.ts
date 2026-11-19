@@ -26,6 +26,21 @@ async function briefStoreWith(root: string): Promise<BriefStore> {
   return store;
 }
 
+/**
+ * The same store with one brief the unit itself owns: a project grooms a
+ * brief per unit under that unit's id, and its GROOMED gate judges that one.
+ */
+async function briefStoreWithOwn(root: string): Promise<BriefStore> {
+  const store = await briefStoreWith(root);
+  await store.write({
+    id: "PROJ-1239",
+    sections: [{ name: "Goal", body: "The total is the sum of the lines, in one currency." }],
+    explains: ["PROJ-1239"],
+    at: clock.toISOString(),
+  });
+  return store;
+}
+
 /** The ticket as the tracker holds it, referencing the brief it belongs to. */
 function ticketWithBrief(): Ticket {
   return { ...ticket(), briefId: "invoice-currency" };
@@ -239,5 +254,109 @@ describe("a runtime whose tickets carry a brief", () => {
     expect(tracker.comments).not.toHaveBeenCalled();
     expect(replies).toHaveBeenCalledWith(thread, clock.toISOString());
     expect(record?.state).toBe("READY");
+  });
+
+  it("reads the brief stored under the ticket's own id, ahead of the one its parent names", async () => {
+    const own = { ...ticket(), briefId: "invoice-currency" };
+    const tracker = {
+      inProgress: vi.fn<() => Promise<Ticket[]>>().mockResolvedValue([own]),
+      get: vi.fn<() => Promise<Ticket | null>>().mockResolvedValue(own),
+      comment: async () => {},
+      comments: async () => [],
+      hasReplyAfter: async () => false,
+      setStatus: async () => {},
+      assign: async () => {},
+      createFollowUp: async () => "PROJ-9999",
+    } as unknown as Tracker;
+
+    const seen: string[] = [];
+    const agent = fakeAgent({
+      triage: vi.fn().mockImplementation(async (prompt: string) => {
+        seen.push(prompt);
+        return {
+          value: { clear: true, questions: [], askedQuestions: [], at: clock.toISOString() },
+          run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
+        };
+      }),
+    });
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-own-"));
+    const briefs = await briefStoreWithOwn(root);
+    const { record } = await drive({ tracker, agent, briefs });
+    fs.rmSync(root, { recursive: true, force: true });
+
+    // What the project groomed for this unit is what triage reads: the
+    // parent's feature-level statement is not folded over it.
+    expect(seen[0]).toContain("The total is the sum of the lines, in one currency.");
+    expect(seen[0]).not.toContain("One currency on every invoice line.");
+    expect(record?.state).toBe("READY");
+  });
+
+  it("reads the ticket's own brief when the tracker names no parent", async () => {
+    const own = ticket();
+    const tracker = {
+      inProgress: vi.fn<() => Promise<Ticket[]>>().mockResolvedValue([own]),
+      get: vi.fn<() => Promise<Ticket | null>>().mockResolvedValue(own),
+      comment: async () => {},
+      comments: async () => [],
+      hasReplyAfter: async () => false,
+      setStatus: async () => {},
+      assign: async () => {},
+      createFollowUp: async () => "PROJ-9999",
+    } as unknown as Tracker;
+
+    const seen: string[] = [];
+    const agent = fakeAgent({
+      triage: vi.fn().mockImplementation(async (prompt: string) => {
+        seen.push(prompt);
+        return {
+          value: { clear: true, questions: [], askedQuestions: [], at: clock.toISOString() },
+          run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
+        };
+      }),
+    });
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-own-unlinked-"));
+    const { record } = await drive({ tracker, agent, briefs: await briefStoreWithOwn(root) });
+    fs.rmSync(root, { recursive: true, force: true });
+
+    expect(seen[0]).toContain("The total is the sum of the lines, in one currency.");
+    expect(record?.state).toBe("READY");
+  });
+
+  it("appends triage's question to the ticket's own brief, not the parent's", async () => {
+    const own = { ...ticket(), briefId: "invoice-currency" };
+    const tracker = {
+      inProgress: vi.fn<() => Promise<Ticket[]>>().mockResolvedValue([own]),
+      get: vi.fn<() => Promise<Ticket | null>>().mockResolvedValue(own),
+      comment: vi.fn<Tracker["comment"]>().mockResolvedValue(undefined),
+      comments: async () => [],
+      hasReplyAfter: async () => false,
+      setStatus: async () => {},
+      assign: async () => {},
+      createFollowUp: async () => "PROJ-9999",
+    } as unknown as Tracker;
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-brief-own-append-"));
+    const briefs = await briefStoreWithOwn(root);
+    const agent = fakeAgent({
+      triage: vi.fn().mockResolvedValue({
+        value: { clear: false, questions: ["Which currency for the total?"], askedQuestions: ["Which currency for the total?"], at: clock.toISOString() },
+        run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" },
+      }),
+    });
+
+    await drive({ tracker, agent, briefs }, 2);
+
+    const unit = await briefs.get("PROJ-1239");
+    const parent = await briefs.get("invoice-currency");
+    fs.rmSync(root, { recursive: true, force: true });
+
+    // The question lands where the answer will be written: the brief the
+    // ticket was read with, which is its own.
+    expect(unit?.questions).toEqual([
+      { workId: "PROJ-1239", question: "Which currency for the total?", at: clock.toISOString() },
+    ]);
+    expect(parent?.questions).toEqual([]);
   });
 });

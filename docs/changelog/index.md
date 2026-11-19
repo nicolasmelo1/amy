@@ -48,6 +48,15 @@ such a harness is refused at boot, and the conformance suite fails a harness
 that answers a skill turn without declaring it. Codex and Hermes are held to
 their pinned CLI contracts, vendored beside the doubles.
 
+### **A ticket reads the brief its project judged.**
+
+`minor` · `@amykit/core`, `@amykit/workflow-ticket-to-qa`
+
+`briefOf` resolves the brief a unit is worked against: the one stored under
+the unit's own id first, the tracker's `briefId` after. Triage, self-review,
+the question triage appends and a project's GROOMED gate read that one brief,
+so a unit groomed for itself is worked against what the gate judged.
+
 ### **Claude's usage is read without its token.** The usage reader took Claude Code's OAuth token from the environment, `~/.claude/.credentials.json` or the macOS Keychain and called an undocumented endpoint. It now asks Claude Code itself for `get_usage` over a short-lived print-mode child: no model call, no credential of the operator's, and a runner without a managed spawn reads as unavailable.
 
 `minor` · `@amykit/plugin-claude`
@@ -76,6 +85,27 @@ rather than renamed aside by two processes at once. `config explain`, `workflow
 check` and `workflow export` build their resolver with the profile they act for,
 so a fork is what they read. Three repo-local rules keep each class out: a bare
 `fetch`, a hand-built `.tmp` name and a resolver without its profile.
+
+### **The review and an in-flight question read the brief the unit was worked with.**
+
+`patch` · `@amykit/workflow-ticket-to-qa`
+
+The self-review lane resolves the brief under the unit's work id, not the
+ticket's, so a ticket worked in one of several repositories reviews against
+the same brief triage read and labels it as its own. A record triaged before
+triage kept the brief it read appends its question to the brief the current
+look resolved, instead of appending nowhere.
+
+### **The work phase reads its project's brief.**
+
+`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-ticket-to-qa`
+
+A project's phase folders now decide which phases run, so a workflow that
+declares its own brief phase absent can still be the work phase of a project
+that grooms one. Triage records the brief its prompt was built from and
+appends its question there, a unit's brief is read under its work id even when
+the ticket spans repositories, prompts name the brief as the one the ticket is
+worked against, and `briefOf` names the id whose read failed.
 
 <!-- amy:end changelog-unreleased -->
 

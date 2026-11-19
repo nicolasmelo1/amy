@@ -11,6 +11,13 @@ import { Ticket } from "./ticket.js";
  */
 export interface Observation {
   ticket: Ticket;
+  /**
+   * The brief this look resolved for the unit, when it has one: the unit's
+   * own id, or the parent's when the unit has none. Kept beside the ticket so
+   * a step that asks a question appends it to the brief its prompt was built
+   * from rather than resolving the store again.
+   */
+  briefId?: string;
   /** Null until a pull request exists for the ticket's branch. */
   pullRequest: PullRequestView | null;
   /**
