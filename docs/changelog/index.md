@@ -69,6 +69,12 @@ so a unit groomed for itself is worked against what the gate judged.
 
 
 
+### **Every claim and every path agrees.** A stale daemon update claim is taken through the one lock and recovered once. A worktree's meta is replaced whole, never edited in place. A long Slack post is split at 4,000 characters and arrives in order. `AMY_HOME` means the same to the Windows launcher and to `amy stop`. The doctor and the manager read one workspace parser, an empty `workspaceRoot` is refused at boot, and a child record speaks in its unit's thread.
+
+`patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-file-worktree`, `@amykit/plugin-slack`
+
+
+
 ### **Nothing a process writes is lost to another, and no call waits forever.**
 
 `patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-agent-relay`, `@amykit/plugin-file-brief-store`, `@amykit/plugin-file-store`, `@amykit/plugin-linear`, `@amykit/plugin-prove`, `@amykit/plugin-slack`, `@amykit/plugin-telegram`, `@amykit/workflow-errand`, `@amykit/workflow-note-to-plan`

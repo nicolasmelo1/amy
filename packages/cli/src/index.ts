@@ -122,7 +122,7 @@ import { exportWorkflow, inspectWorkflow, localWorkflow, workflowsDirectory, wri
 import { addWorkflowInto } from "./workflow-add.js";
 import { ForkTarget, applyForkUpdates, treeDigest, forkTargets, mergeForks, prepareForks, profileForkDirectories, readRecord, readTree, writeMarkedMerges, writeRecord, writeTree } from "./fork.js";
 import { aboveRelease, belowRelease, compareVersions, Copy, firstParty, firstPartyCopies, Held, isRange, line, localRoot, migrateSettingsFile, move, Release, restore, Root, roots, survey } from "./update.js";
-import { beginAutoUpdateInvocation, finishDaemonUpdate, hasDaemonUpdate, markDaemonUpdate, retryDaemonUpdate, runWithAutoUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
+import { beginAutoUpdateInvocation, hasDaemonUpdate, markDaemonUpdate, runWithAutoUpdate, settleClaimedDaemonUpdate, settleDaemonUpdate, takeDaemonUpdate } from "./auto-update.js";
 import { keepSkills, locateSkill, ownSkillRoot, recordWrite, skillRoots, writeSkills } from "./skills-record.js";
 
 // One amy per machine, not one per directory: it is reached from whichever
@@ -787,11 +787,7 @@ program
     if (!resolution.ok) return;
     if (!profileDaemonPids(home, resolution.profile).some((file) => claimExitedDaemon(file, pid))) return;
     if (!takeDaemonUpdate(home, workflow)) return;
-    if (await scheduledUpdate() === 0) finishDaemonUpdate(home, workflow);
-    else {
-      retryDaemonUpdate(home, workflow);
-      process.exitCode = 1;
-    }
+    if (!await settleClaimedDaemonUpdate(home, workflow, scheduledUpdate)) process.exitCode = 1;
   });
 
 program
@@ -1337,12 +1333,9 @@ async function runDueBeforeDaemonUpdate(schedule: { due: boolean; timing: "befor
   if (!schedule.due || schedule.timing !== "before") return;
   markDaemonUpdate(home, profile.name);
   if (anotherProfileDaemonIsRunning(profile, config)) return;
-  const claimed = takeDaemonUpdate(home, profile.name);
-  if (!claimed || await scheduledUpdate() !== 0) {
-    if (claimed) retryDaemonUpdate(home, profile.name);
+  if (!takeDaemonUpdate(home, profile.name) || !await settleClaimedDaemonUpdate(home, profile.name, scheduledUpdate)) {
     throw new Error("amy update failed");
   }
-  finishDaemonUpdate(home, profile.name);
 }
 
 /** Reserve a due after-update while this foreground daemon is still visible. */
@@ -1356,11 +1349,9 @@ function reserveAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "
 /** Run a foreground daemon's reserved after-update, retaining failure for retry. */
 async function finishAfterDaemonUpdate(schedule: { due: boolean; timing: "before" | "after" }, profile: Profile, claimed: boolean): Promise<void> {
   if (!schedule.due || schedule.timing !== "after") return;
-  if (!claimed || await scheduledUpdate() !== 0) {
-    if (claimed) retryDaemonUpdate(home, profile.name);
+  if (!claimed || !await settleClaimedDaemonUpdate(home, profile.name, scheduledUpdate)) {
     throw new Error("amy update failed");
   }
-  finishDaemonUpdate(home, profile.name);
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

@@ -321,10 +321,6 @@
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
-    "jscpd:packages/cli/src/doctor.ts<->plugins/file-worktree/src/plugin.ts#55:6f49ef87ce9c": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
     "jscpd:packages/cli/src/index.ts<->packages/cli/src/index.ts#141:7185a3b33fc6": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"

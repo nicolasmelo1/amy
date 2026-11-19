@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { escapeXml } from "./launchd.js";
+import { amyHome } from "../home.js";
 import type { LoopSpec, MachineFacts, Supervisor } from "./index.js";
 
 /**
@@ -77,7 +78,9 @@ function stopMarker(directory: string, label: string): string {
 
 /** Where amy keeps what a supervisor needs, under its state directory. */
 function supervisorDirectory(machine: MachineFacts): string {
-  return path.join(machine.env.AMY_HOME || path.join(machine.home, ".amy"), "supervisor");
+  const named = machine.env.AMY_HOME?.trim();
+  const home = named ? amyHome(machine.env) : path.join(machine.home, ".amy");
+  return path.join(home, "supervisor");
 }
 
 /** How many times the launcher starts a loop that did not exit cleanly before it gives up. */

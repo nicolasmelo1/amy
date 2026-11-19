@@ -1,0 +1,56 @@
+{
+  "scenario": "every-claim-and-path-agrees",
+  "status": "passed",
+  "goal": "I want every claim a workflow, a supervisor or an operator channel makes about a piece of work to name the same path and the same record that every other part of amy acts on, with a stale claim recovered once and a long message delivered whole.",
+  "artifact": {
+    "package": "@amykit/cli",
+    "entry": "the dist modules `npm run build` wrote, loaded in processes of their own",
+    "built_by": "tsc --build"
+  },
+  "observed": {
+    "agree.a_stale_update_claim_is_recovered_once": "took 1",
+    "agree.a_live_claim_is_not_taken": "took 0",
+    "agree.amy_stop_writes_where_the_launcher_reads": "/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/tmp.mpirW0A6Yx/amy-home/supervisor/amy-every-claim.stopped",
+    "agree.a_long_post_is_split_in_order": "3 posts",
+    "agree.a_blank_workspace_root_is_refused": "@amykit/plugin-file-worktree.workspaceRoot is empty; name the directory the standing checkouts live in",
+    "agree.the_doctor_and_the_manager_name_one_checkout": "/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/tmp.mpirW0A6Yx/checkouts/widgets / /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/tmp.mpirW0A6Yx/checkouts/widgets",
+    "agree.a_meta_is_never_read_torn": "90802 reads, 0 torn",
+    "agree.a_child_speaks_in_its_unit_thread": "PROJ-1",
+    "assertions_run": 8,
+    "assertions_failed": 0
+  },
+  "assertions": [
+    {
+      "type": "agree.a_stale_update_claim_is_recovered_once",
+      "status": "passed"
+    },
+    {
+      "type": "agree.a_live_claim_is_not_taken",
+      "status": "passed"
+    },
+    {
+      "type": "agree.amy_stop_writes_where_the_launcher_reads",
+      "status": "passed"
+    },
+    {
+      "type": "agree.a_long_post_is_split_in_order",
+      "status": "passed"
+    },
+    {
+      "type": "agree.a_blank_workspace_root_is_refused",
+      "status": "passed"
+    },
+    {
+      "type": "agree.the_doctor_and_the_manager_name_one_checkout",
+      "status": "passed"
+    },
+    {
+      "type": "agree.a_meta_is_never_read_torn",
+      "status": "passed"
+    },
+    {
+      "type": "agree.a_child_speaks_in_its_unit_thread",
+      "status": "passed"
+    }
+  ]
+}

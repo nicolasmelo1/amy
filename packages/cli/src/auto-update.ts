@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
-import { processAlive } from "@amykit/core";
+import { createExclusively, processAlive, takeLock } from "@amykit/core";
+import type { HeldLock } from "@amykit/core";
 import { AmyConfig } from "./config.js";
 
 /** The per-profile count belongs beside the profile's other durable state. */
@@ -13,6 +13,9 @@ export function autoUpdatePath(home: string, profile: string): string {
 function daemonUpdatePath(home: string, profile: string): string {
   return path.join(home, "workflows", profile, "auto-update-daemon");
 }
+
+/** The claims this process is holding, by the file each one published. */
+const claims = new Map<string, HeldLock>();
 
 function readRuns(home: string, profile: string): number {
   try {
@@ -58,7 +61,7 @@ export function beginAutoUpdateInvocation(home: string, profile: string, config:
 export function markDaemonUpdate(home: string, profile: string): void {
   const file = daemonUpdatePath(home, profile);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, "due\n", "utf8");
+  writeDue(file);
 }
 
 /** Whether an exited daemon still has a reaper-owned update to run. */
@@ -67,62 +70,92 @@ export function hasDaemonUpdate(home: string, profile: string): boolean {
   return fs.existsSync(file) || fs.existsSync(`${file}.claiming`) || fs.existsSync(`${file}.claimed`);
 }
 
-/** Takes a due after-timed daemon update exactly once, retaining its claim while it runs. */
+/**
+ * Takes a due after-timed daemon update exactly once, retaining its claim
+ * while it runs.
+ *
+ * The claim is core's lock, so a starter that read a stale owner cannot act
+ * on it: the tombstone decides one recoverer, and a live owner keeps the
+ * claim whatever its pid looked like a moment earlier.
+ */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
-  recoverDaemonUpdateClaim(file);
-  const staging = `${file}.claiming`;
-  const prepared = `${staging}.${process.pid}.${randomUUID()}`;
-  try {
-    // Link a fully-written owner into place: another starter can never recover
-    // an empty staging file between its creation and its first write.
-    fs.writeFileSync(prepared, `${process.pid}\n`, "utf8");
-    fs.linkSync(prepared, staging);
-    fs.rmSync(prepared, { force: true });
-    // A claimant may arrive after the owner moved staging to claimed but before
-    // it consumed due. It must leave that owner and its due marker untouched.
-    if (!fs.existsSync(file) || fs.existsSync(`${file}.claimed`)) {
-      fs.rmSync(staging, { force: true });
+  if (stagingBlocks(file)) return false;
+  const claim = `${file}.claimed`;
+  // A claim standing before this take belonged to a process that is gone
+  // (a live one would have refused the lock), and it consumed the due marker.
+  const interrupted = fs.existsSync(claim);
+  const lock = takeLock(claim);
+  if (!lock) return false;
+  if (!fs.existsSync(file)) {
+    if (!interrupted) {
+      lock.release();
       return false;
     }
-    fs.renameSync(staging, `${file}.claimed`);
-    fs.unlinkSync(file);
-    return true;
-  } catch {
-    return false;
-  } finally {
-    fs.rmSync(prepared, { force: true });
+    writeDue(file);
   }
+  fs.rmSync(file, { force: true });
+  claims.set(claim, lock);
+  return true;
 }
 
 /** Returns an abandoned claim to due state without stealing a live updater. */
-function recoverDaemonUpdateClaim(file: string): void {
-  const claims = [`${file}.claimed`, `${file}.claiming`];
-  const claim = claims.find((candidate) => fs.existsSync(candidate));
-  if (!claim) return;
-  const owner = Number.parseInt(fs.readFileSync(claim, "utf8").trim(), 10);
-  if (processAlive(owner)) return;
+function stagingBlocks(file: string): boolean {
+  const staging = `${file}.claiming`;
+  if (!fs.existsSync(staging)) return false;
+  if (processAlive(legacyOwner(staging))) return true;
   try {
-    if (claim.endsWith(".claimed")) fs.renameSync(claim, file);
-    else fs.rmSync(claim, { force: true });
+    fs.rmSync(staging, { force: true });
   } catch {
-    // Another recovery settled the stale claim first.
+    // Another recovery settled the stale marker first.
+  }
+  return false;
+}
+
+/** A marker an older amy wrote names its pid on the first line; a lock names it in JSON. */
+function legacyOwner(marker: string): number {
+  try {
+    const text = fs.readFileSync(marker, "utf8").trim();
+    if (text.startsWith("{")) return Number((JSON.parse(text) as { pid?: unknown }).pid);
+    return Number.parseInt(text, 10);
+  } catch {
+    return Number.NaN;
   }
 }
 
 /** Releases the durable reaper claim only after the scheduled update settled. */
-export function finishDaemonUpdate(home: string, profile: string): void {
-  fs.rmSync(`${daemonUpdatePath(home, profile)}.claimed`, { force: true });
+function finishDaemonUpdate(home: string, profile: string): void {
+  releaseClaim(`${daemonUpdatePath(home, profile)}.claimed`);
 }
 
 /** Makes a claimed update due again when a shared daemon boundary blocked it. */
-export function retryDaemonUpdate(home: string, profile: string): void {
+function retryDaemonUpdate(home: string, profile: string): void {
   const file = daemonUpdatePath(home, profile);
-  try {
-    fs.renameSync(`${file}.claimed`, file);
-  } catch {
-    // Another recovery owner already settled it; either result is safe.
+  // Written while the claim is still held: no other starter can take the same
+  // due between this marker and the release.
+  writeDue(file);
+  releaseClaim(`${file}.claimed`);
+}
+
+/** Lets go of a claim this process holds, and only that one. */
+function releaseClaim(claim: string): void {
+  const lock = claims.get(claim);
+  claims.delete(claim);
+  lock?.release();
+}
+
+/** The one sequence a claimed update runs: update, then finish or retry. */
+export async function settleClaimedDaemonUpdate(
+  home: string,
+  profile: string,
+  update: () => Promise<number>,
+): Promise<boolean> {
+  if (await update() === 0) {
+    finishDaemonUpdate(home, profile);
+    return true;
   }
+  retryDaemonUpdate(home, profile);
+  return false;
 }
 
 /** Settles an interrupted after-daemon update before a new daemon starts. */
@@ -131,12 +164,12 @@ export async function settleDaemonUpdate(home: string, profile: string, update: 
   // A stale staging claim can be the last marker. Recovery removes it, so a
   // failed take is settled when no due or claim marker remains to be claimed.
   if (!takeDaemonUpdate(home, profile)) return !hasDaemonUpdate(home, profile);
-  if (await update() === 0) {
-    finishDaemonUpdate(home, profile);
-    return true;
-  }
-  retryDaemonUpdate(home, profile);
-  return false;
+  return settleClaimedDaemonUpdate(home, profile, update);
+}
+
+/** A due marker is created, never overwritten, so a second writer adds nothing. */
+function writeDue(file: string): void {
+  createExclusively(file, "due\n");
 }
 
 /**
