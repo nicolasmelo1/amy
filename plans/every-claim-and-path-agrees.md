@@ -1,5 +1,5 @@
 ---
-base: 102ae5087ec3b0817da80042c74232c6b60c4ece
+base: c0691195ab7f34282d2a568795b581f32762d3a2
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/auto-update.ts", symbol: "recoverDaemonUpdateClaim", said: "it reads the owner of a stale .claimed, then renames the path back to due without checking it is still that owner's; the take, update, finish or retry sequence is written four times" }
   - { id: S2, kind: reference, said: "probe 2026-11-15 at f804048e: two starters recovering one stale .claimed, the second acting on the pid it had read, both took the update; eight live takers on a fresh claim, one won every round" }
@@ -40,6 +40,8 @@ touches:
   - registry/plugin-file-worktree.json
   - registry/plugin-slack.json
   - docs/development/the-gate.md
+  - CONTRIBUTING.md
+  - scripts/duplication-baseline.json
 criteria:
   - { id: A1, statement: "for any starters, deaths and stale claims, the daemon's update is taken by at most one at a time and runs once per due; take, update, finish or retry is one function", proof: "deferred:property:packages/cli/tests/daemon-update-claim.property.test.ts#recover_acts_on_a_stale_read", sources: [S1, S2, S12, S13] }
   - { id: A2, statement: "for any interleaving of a meta write and a read in another process, the read sees a whole meta, through core's atomic write, and the meta's frozen key leaves the ratchet", proof: "deferred:property:plugins/file-worktree/tests/meta.property.test.ts#meta_written_in_place", sources: [S3, S4, S12] }
