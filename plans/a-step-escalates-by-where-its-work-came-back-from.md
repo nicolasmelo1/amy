@@ -32,6 +32,13 @@ sources:
   - { id: S29, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "findPullRequestMentioning", said: "a code host may find a pull request by the ticket id it mentions, beside findPullRequest by branch" }
   - { id: S30, kind: code, ref: "plugins/codex/src/CodexHarness.ts", symbol: "classify", said: "a codex turn that completed with a message is completed, however wrong its answer" }
   - { id: S31, kind: code, ref: "plugins/hermes-agent/src/HermesHarness.ts", symbol: "classify", said: "a hermes run its report calls completed is completed, however wrong its answer; hermes reports a rate limit only as failure_reason" }
+  - { id: S32, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", symbol: "requireTicket", said: "a work id with no repository suffix is worked in the tracker's repo, even when the ticket's labels name only other repositories" }
+  - { id: S33, kind: friction, said: "2026-11-11: a private project called ticket-to-qa with a bare ticket id; a ticket labelled for the frontend in a team whose repository is the backend was worked in the backend" }
+  - { id: S34, kind: decision, said: "a called work id that names no repository is worked where the ticket's labels put it, the first when several, when they leave out the team's; a work id of its own keeps today's retirement. Decided 2026-11-18" }
+  - { id: S35, kind: friction, said: "2026-11-11: a private project's tickets stack, one branch cut from another's, and ticket-to-qa always cuts from the repository's base" }
+  - { id: S36, kind: decision, said: "a ticket says its stack base in a `Stack base: <id>` description line, or config stackBases maps ticket to parent; the config is read first, and two lines are refused. Decided 2026-11-18" }
+  - { id: S37, kind: decision, said: "a stacked ticket is cut from its parent's open pull request branch, or the branch it merged into; it waits while the parent has none in its repository, and is cut from base when the parent is elsewhere. Decided 2026-11-18" }
+  - { id: S38, kind: decision, said: "config onlyTickets, a list of ticket ids, limits what is worked; empty is every ticket, and an entry that is not a ticket id is refused. Decided 2026-11-18" }
 touches:
   - packages/core/src/ports/Harness.ts
   - packages/core/src/ports/Agent.ts
@@ -83,6 +90,10 @@ touches:
   - examples/workflow-ticket-to-qa/tests/conformance.test.ts
   - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - examples/workflow-ticket-to-qa/README.md
+  - examples/workflow-ticket-to-qa/src/ticket.ts
+  - examples/workflow-ticket-to-qa/tests/repositories.test.ts
+  - examples/workflow-ticket-to-qa/tests/branch.test.ts
+  - examples/workflow-ticket-to-qa/tests/plugin.test.ts
 criteria:
   - { id: A1, statement: "on a claude, codex or hermes-agent rung alike, a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason, not 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S1, S2, S4, S10, S30, S31] }
   - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10] }
@@ -106,21 +117,28 @@ criteria:
   - { id: A20, statement: "a ticket at DISCOVERED or CLARIFYING whose pull request is open goes to HUMAN_REVIEW when reviewed, REVIEWER_ASSIGNED otherwise, found by branch or by the id it mentions", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S27, S29] }
   - { id: A21, statement: "a non-empty .amy-commit-body left by the implementing agent is the body of the commit amy makes, and the file is not committed", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S28] }
   - { id: A22, statement: "the owner's word in the work's thread, or the unit's thread a project announces in, since the last word acted on, is new work from origin owner", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S21, S23] }
+  - { id: A23, statement: "a called work id with no repository, for a ticket whose labels name repositories that leave out the team's, is worked in the first labelled one; a work id of its own is unchanged", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/repositories.test.ts", sources: [S32, S33, S34] }
+  - { id: A24, statement: "a ticket with one `Stack base:` line, or a stackBases entry, is cut from its parent's open pull request branch, or the branch it merged into", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S35, S36, S37] }
+  - { id: A25, statement: "a stacked ticket whose parent has no pull request in its repository waits, naming the parent; one whose parent lives only elsewhere is cut from base", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
+  - { id: A26, statement: "a branch the remote already holds, or holding commits beyond its base, is never re-pointed onto its stack", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
+  - { id: A27, statement: "with onlyTickets set, a ticket outside it is not worked; a stackBases or onlyTickets entry that is not a ticket id, or two `Stack base:` lines, is refused naming it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S36, S38] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A1, A2, A12" }
   - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A3, A5; a rate-limited run gives its attempt back as today and counts as no round" }
-  - { mechanism: record-migration, answer: refused, by: "a record in COPILOT_FIX or HUMAN_FIX is refused at load by name (A15); one without per-origin rounds reads every origin at zero" }
+  - { mechanism: record-migration, answer: refused, by: "a record in COPILOT_FIX or HUMAN_FIX is refused at load by name (A15); one without per-origin rounds reads every origin at zero; a stack and a labelled repository are read from the ticket at each look" }
   - { mechanism: calls, answer: n/a, why: "define-workflow gains the verify and origin declarations; how a workflow calls another is unchanged" }
   - { mechanism: hooks, answer: n/a, why: "before, after and interrupt run around every plan as today; no hook reads an escalation" }
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A18; resolving and re-requesting move from the fix states to publishing, and no new kind of write is added" }
   - { mechanism: diagram, answer: works, proof: "deferred:A11" }
-  - { mechanism: config, answer: works, proof: "deferred:A9, A10" }
+  - { mechanism: config, answer: works, proof: "deferred:A9, A10, A27" }
+  - { mechanism: checkouts-and-leases, answer: n/a, why: "the stack cut happens in ticket-to-qa before git.prepareBranch, which is unchanged" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A11; a mismatch is refused before any work is touched" }
 guarantee:
   - { holds: "a reply the step's own verify refuses is asked of the next rung, told why", not_against: "a wrong answer no verify was written to catch" }
   - { holds: "a step whose work keeps coming back from the same origin moves up one rung per configured threshold and stays there", not_against: "an origin that sends work back without saying how much it found: its default level applies" }
   - { holds: "every number behind an escalation is written in config.yaml, and a missing or extra one is red in amy doctor", not_against: "a threshold set to a value that makes no sense for the work" }
   - { holds: "no change reaches the pull request without GATE and SELF_REVIEW, and the proof when its slot is filled, holding on its head", not_against: "a push to the branch by a person" }
+  - { holds: "a stacked ticket's branch starts from its parent's work", not_against: "a parent whose pull request is rebased after the child was cut" }
   - { holds: "new work that contradicts the brief or the ticket is never built before the owner answers", not_against: "a contradiction the brief and the ticket do not state" }
 failures:
   - { step: verify, when: "a step's verify throws", goes_to: "the action fails as any thrown action does; the ladder does not climb on a broken verify" }
@@ -130,7 +148,7 @@ failures:
 cut:
   - "a verify answered by a decision model (Jev, Clef): on the Decider port, after plans/a-decision-is-asked-of-a-port.md"
   - "a private workflow's self-review checking every brief statement was judged: written in its own fork on this seam"
-exit: "ticket-to-qa changes code only in IMPLEMENTING, a review thread and a red gate count their own rounds and climb to opus, and amy doctor is red until config.yaml names every threshold"
+exit: "ticket-to-qa changes code only in IMPLEMENTING, rounds are counted per origin and climb to opus, config.yaml names every threshold, a labelled ticket is worked where its label puts it, and a stacked one is cut from its parent"
 ---
 # A step escalates by where its work came back from
 
@@ -139,3 +157,4 @@ COPILOT_FIX and HUMAN_FIX, outside the checks. IMPLEMENTING becomes the one
 place code changes: every kind of new work goes there, weighed against the
 brief first, and is counted by its origin. A step's `verify` judges a reply
 while the relay can still climb; every number is named in `config.yaml`.
+A ticket is worked in its label's repository and cut from its stack parent.
