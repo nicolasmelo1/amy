@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "gate": "plugin-agent-relay",
-  "implementation_sha256": "f1549706fa5b52a40da0b2a1f67aa462560be49744269a8383e1b321c8cf4f62",
+  "implementation_sha256": "864b60591c85c17557318e7b4b6760a478d724098a83ed094bdbeb0e33d4fcff",
   "runs": [
     {
       "scenario": "plugin-agent-relay",
