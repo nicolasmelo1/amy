@@ -64,13 +64,24 @@ function phase(fixture: string, directory: string, core: string = coreEntry): st
   });
   if (published.status !== 0) throw new Error(`publishing ${fixture} failed: ${published.stderr}`);
   const entry = path.join(directory, "index.js");
-  fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8").replaceAll(`from "@amykit/core"`, `from ${JSON.stringify(core)}`), "utf-8");
+  // A published phase is an ES module, as npm would ship one: without this a
+  // scratch directory's `.js` is read as CommonJS, and the resolver behind
+  // that reads the workspace core as a package with no `require` entry.
+  fs.writeFileSync(path.join(directory, "package.json"), JSON.stringify({ type: "module" }), "utf-8");
+  // A phase that calls a shipped workflow needs that workflow's diagram
+  // beside it: the package's own entry carries none under a scratch import.
+  fs.copyFileSync(path.join(repo, "examples", "workflow-ticket-to-qa", "workflow.mmd"), path.join(directory, "shipped.mmd"));
+  const shipped = pathToFileURL(fs.realpathSync(path.join(repo, "node_modules", "@amykit", "workflow-ticket-to-qa", "dist", "index.js"))).href;
+  fs.writeFileSync(entry, fs.readFileSync(entry, "utf-8")
+    .replaceAll(`from "@amykit/core"`, `from ${JSON.stringify(core)}`)
+    .replaceAll(`from "@amykit/workflow-ticket-to-qa"`, `from ${JSON.stringify(shipped)}`), "utf-8");
   return directory;
 }
 
-const mounts = (workflow: string): string[] => [
+const mounts = (workflow: string, ...beside: string[]): string[] => [
   "@amykit/plugin-file-queue", "@amykit/plugin-file-store", "@amykit/plugin-file-brief-store",
   workflow, "@amykit/plugin-notify-fanout", "@amykit/plugin-serial-engine",
+  ...beside,
 ];
 const configured = (workflows: Record<string, WorkflowProfile>): AmyConfig => ({
   ...DEFAULT_CONFIG,
@@ -168,14 +179,21 @@ await attempt("project.what_was_briefed_is_what_is_proven", async () => {
 });
 
 
-// 1a. A unit groomed under its own id: the brief the GROOMED gate judged
-// green is the brief the work phase's triage prompt is built from, not the
-// parent's feature-level one and not none at all.
+// 1a. A unit groomed under its own id, walked by the shipped workflow: the
+// brief the GROOMED gate judged green is the brief the real ticket-to-qa
+// reads at triage. The ticket names a parent brief through its `briefId`,
+// and both are stored, so the run proves the unit's own is read ahead of it.
 await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async () => {
   const briefed = path.join(work, "briefed");
   phase("phase-brief-declares", path.join(briefed, "brief"));
+  // The work half is the shipped package itself, not a stand-in.
   phase("phase-triage", path.join(briefed, "workflow"));
-  const config = configured({ briefed: { workflow: path.join(briefed, "workflow") } });
+  phase("plugin-project-world", path.join(briefed, "world"));
+  const config = configured({ briefed: { workflow: path.join(briefed, "workflow"), settings: { repos: ["acme/invoices"], qaStatusName: "In QA" } } });
+  config.workflows.briefed = {
+    ...config.workflows.briefed!,
+    plugins: mounts(path.join(briefed, "workflow"), path.join(briefed, "world"), "@amykit/plugin-file-worktree"),
+  };
   const profile = must(profiles(config, home).briefed, "briefed");
   const artifacts = must(profilePaths(home, profile).artifacts, "the project's artifact root");
   const store = new FileBriefStore(path.join(artifacts, "briefs"));
@@ -186,17 +204,56 @@ await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async
     explains: ["INVOICE-2"],
     at: new Date().toISOString(),
   });
+  // The feature-level brief the ticket's briefId names, beside it.
+  await store.write({
+    id: "invoice-currency",
+    sections: [{ name: "Goal", body: "The feature brief says one currency on every invoice line." }],
+    explains: ["INVOICE-2"],
+    at: new Date().toISOString(),
+  });
+
+  // The team the shipped workflow asks for before it looks at a ticket: a
+  // roster beside the project's records, confirmed today.
+  const profileDir = path.dirname(profilePaths(home, profile).records);
+  fs.mkdirSync(profileDir, { recursive: true });
+  const confirmedOn = new Date().toISOString().slice(0, 10);
+  fs.writeFileSync(path.join(profileDir, "roster.yaml"), [
+    `confirmedOn: "${confirmedOn}"`,
+    "reviewers:",
+    '  - host: "ada"',
+    '    tracker: "ada"',
+    "    available: in",
+    "qa:",
+    '  host: "ada"',
+    '  tracker: "ada"',
+    "  available: in",
+    "",
+  ].join("\n"), "utf-8");
+
+  // What the stand-in agent was asked at triage, as it was asked.
+  const triage = path.join(briefed, "triage.ndjson");
+  process.env.AMY_EVIDENCE_TRIAGE_LOG = triage;
 
   const assembled = await mountedAs(config, "briefed");
   if (!assembled.ok) throw new Error(assembled.problems.join("; "));
+  const engine = must(assembled.engine ?? undefined, "the walk's engine");
   const records = new FileStore<WorkRecord>(profilePaths(home, profile).records);
-  new FileQueue(profilePaths(home, profile).queue).enqueue({ workId: "INVOICE-2", reason: "groomed" }, new Date());
-  const walked = await walkUntilDone(assembled, records, "INVOICE-2");
+  const queue = new FileQueue(profilePaths(home, profile).queue);
+  queue.enqueue({ workId: "INVOICE-2", reason: "groomed" }, new Date());
+  for (let tick = 0; tick < 80 && !fs.existsSync(triage); tick++) {
+    // A look is one move, as the daemon's next poll would make it.
+    queue.enqueue({ workId: "INVOICE-2", reason: "look" }, new Date(Date.now() + tick));
+    await engine.tick();
+  }
 
-  const asked = (walked as WorkRecord & { workflow?: { prompt?: string } }).workflow;
-  if (walked.state !== "DONE") throw new Error(`the walk stopped at ${walked.state}`);
-  if (!asked?.prompt?.includes("Every invoice line is in the currency the customer pays in.")) {
-    throw new Error(`triage was asked ${JSON.stringify(asked?.prompt)}`);
+  const asked = fs.existsSync(triage) ? fs.readFileSync(triage, "utf-8") : "";
+  if (!asked.includes("Every invoice line is in the currency the customer pays in.")) {
+    const walked = records.load("INVOICE-2");
+    const child = (walked?.calls ?? {})["INVOICE-2/WORK#1"];
+    throw new Error(`triage was asked ${asked === "" ? `nothing (state ${walked?.state}, children ${JSON.stringify(Object.keys(walked?.calls ?? {}))}, work ${String(child?.state ?? "none")})` : asked}`);
+  }
+  if (asked.includes("The feature brief says one currency on every invoice line.")) {
+    throw new Error(`triage read the parent's brief: ${asked}`);
   }
   return true;
 });

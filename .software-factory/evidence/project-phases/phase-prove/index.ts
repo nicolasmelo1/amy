@@ -1,7 +1,8 @@
 // A proving phase as somebody writes one: it takes the criteria the brief
 // settled as its input, refuses the first round it runs (what it is asked
 // to show does not hold yet) and holds the second.
-import { defineWorkflow, WorkRecord } from "@amykit/core";
+import { defineWorkflow } from "@amykit/core";
+import type { WorkRecord } from "@amykit/core";
 
 let drove = 0;
 

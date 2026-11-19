@@ -1,7 +1,8 @@
 // The proving phase again, as a package that resolves a core of its own — a
 // phase folder with its own node_modules — and asks for a port the way every
 // shipped workflow does. The CLI mounting it holds another copy of the core.
-import { defineWorkflow, optional, WorkRecord } from "@amykit/core";
+import { defineWorkflow, optional } from "@amykit/core";
+import type { WorkRecord } from "@amykit/core";
 
 let drove = 0;
 

@@ -1,33 +1,20 @@
-// A work phase as one is written against a project's brief: triage resolves
-// the brief under the unit's own id, the one the GROOMED gate judged, and
-// records the prompt it built so a run can read what it was asked.
-import { briefOf, defineWorkflow, optional, renderBrief, unitOf } from "@amykit/core";
-import type { BriefStore } from "@amykit/core";
+// A work phase as a project calls one: the shipped ticket-to-qa, unchanged.
+// It resolves its own brief through the brief port the project mounts, so a
+// run of this phase proves the product's read rather than a stand-in's. Two
+// declarations are narrowed to this project: the brief section its GROOMED
+// gate judges, and the proving phase the project does not have. Its own
+// "no brief phase" note is about the walk it runs alone, and is dropped.
+import fs from "node:fs";
+import { withDiagram } from "@amykit/core";
+import { plugin as shipped } from "@amykit/workflow-ticket-to-qa";
 
-/** What the last look asked at triage: the prompt the run built. */
-let asked = "no triage ran";
+const diagram = fs.readFileSync(new URL("./shipped.mmd", import.meta.url), "utf-8");
+const phase = withDiagram(shipped, diagram, "the shipped workflow's own diagram") as unknown as {
+  brief?: { sections: readonly string[] };
+};
 
-export const plugin = defineWorkflow({
-  name: "invoices-briefed-triage",
-  pluginName: "workflow-invoices-briefed-triage",
-  configSchema: {},
-  policy: {},
-  needs: { brief: optional<BriefStore>() },
-  brief: { sections: ["Goal"] },
-  phases: { prove: "this fixture proves the prompt triage was asked with, and runs no proving phase" },
-  record: () => ({}),
-  discover: async () => [],
-  observe: async (scope, record) => {
-    const unit = unitOf(record);
-    const brief = await briefOf(scope.ports.brief, { workId: unit });
-    const statement = brief ? renderBrief(brief).text : "no brief";
-    asked = `Triage ${unit}: is the work clear against this brief?\n\n${statement}`;
-    return {};
-  },
-  actions: {},
-  output: { TRIAGED: () => ({ prompt: asked }) },
-  decide: {
-    TRIAGE: () => ({ kind: "advance", to: "TRIAGED", effects: [], why: "the prompt is built" }),
-    TRIAGED: () => ({ kind: "settled", why: "triage is done" }),
-  },
-});
+// The section this project's GROOMED gate judges. The workflow reads the brief
+// itself; naming the section is the project's declaration, not a stand-in's.
+phase.brief = { sections: ["Goal"] };
+
+export const plugin = phase;
