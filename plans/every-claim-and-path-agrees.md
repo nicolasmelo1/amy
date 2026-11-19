@@ -1,5 +1,5 @@
 ---
-base: cf59709404825a3eee4f500e249e7f292b4b505c
+base: 4fb25dd78e0175bea74eedee39d92ca5eaf976fd
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/auto-update.ts", symbol: "recoverDaemonUpdateClaim", said: "it reads the owner of a stale .claimed, then renames the path back to due without checking it is still that owner's; the take, update, finish or retry sequence is written four times" }
   - { id: S2, kind: reference, said: "probe 2026-11-15 at f804048e: two starters recovering one stale .claimed, the second acting on the pid it had read, both took the update; eight live takers on a fresh claim, one won every round" }
@@ -19,6 +19,11 @@ touches:
   - packages/cli/src/index.ts
   - packages/cli/tests/daemon-update-claim.property.test.ts
   - packages/cli/tests/auto-update.test.ts
+  - packages/cli/tests/daemon-update-take.test.ts
+  - packages/cli/tests/doctor-workspace-root.test.ts
+  - plugins/file-worktree/tests/workspace-root.test.ts
+  - plugins/slack/tests/long-text-paths.test.ts
+  - scripts/tests/every-claim-and-path-agrees-gate.test.ts
   - plugins/file-worktree/src/manager.ts
   - plugins/file-worktree/tests/meta.property.test.ts
   - plugins/slack/src/SlackConversation.ts
@@ -50,7 +55,7 @@ criteria:
   - { id: A4, statement: "for any AMY_HOME with any surrounding space, relative or absolute, the Windows supervisor's directory is amyHome's", proof: "deferred:property:packages/cli/tests/supervisor-home.property.test.ts#amy_home_taken_raw", sources: [S7, S8, S12] }
   - { id: A5, statement: "for any workspaceRoot and checkouts the schema accepts, the doctor checks the path the manager clones from, read by one parser; an empty workspaceRoot is refused at boot", proof: "deferred:property:packages/cli/tests/worktree-slice.property.test.ts#the_doctor_reads_its_own_slice", sources: [S9, S10, S12] }
   - { id: A6, statement: "for any record id, a child's included, sayToOperator and the fan-out notifier open the same one thread", proof: "deferred:property:packages/core/tests/operator.property.test.ts#a_raw_work_id", sources: [S11, S12] }
-  - { id: A7, statement: "the built amy, in separate processes, recovers a stale update claim once from two starters, and amy stop on Windows paths writes where the launcher reads", proof: "deferred:assertion:agree.a_stale_update_claim_is_recovered_once", sources: [S2, S8, S13] }
+  - { id: A7, statement: "the built amy, in separate processes, recovers a stale update claim once from two starters (assertion:agree.a_stale_update_claim_is_recovered_once), and amy stop on Windows paths writes where the launcher reads (assertion:agree.amy_stop_writes_where_the_launcher_reads)", proof: "deferred:assertion:agree.a_stale_update_claim_is_recovered_once", sources: [S2, S8, S13] }
 crosses:
   - { mechanism: install-and-update, answer: works, proof: "deferred:A1" }
   - { mechanism: process-locks, answer: works, proof: "deferred:A1" }
