@@ -1073,6 +1073,11 @@
           "slug": "nothing-a-process-writes-is-lost-to-another-and-no-call-waits-forever"
         },
         {
+          "depth": 3,
+          "title": "**The work phase reads its project's brief.**",
+          "slug": "the-work-phase-reads-its-projects-brief"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -11892,6 +11897,26 @@
           },
           {
             "package": "@amykit/workflow-note-to-plan",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-work-phase-reads-its-projects-brief",
+        "title": "**The work phase reads its project's brief.**",
+        "body": "A project's phase folders now decide which phases run, so a workflow that\ndeclares its own brief phase absent can still be the work phase of a project\nthat grooms one. Triage records the brief its prompt was built from and\nappends its question there, a unit's brief is read under its work id even when\nthe ticket spans repositories, prompts name the brief as the one the ticket is\nworked against, and `briefOf` names the id whose read failed.",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "patch"
           }
         ],
