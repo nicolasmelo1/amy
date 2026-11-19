@@ -12,6 +12,10 @@ sources:
   - { id: S10, kind: reference, ref: "plans/a-strong-model-reads-the-review-first.md", said: "its triage gets the record's memory in its prompt — per thread, what was last said and why — so already-settled is reached with evidence, not guessed" }
   - { id: S11, kind: decision, said: "deferred threads are listed alongside disagreements in whatever the workflow hands the owner, so a promise the machine made is visible to who collects it" }
   - { id: S12, kind: decision, said: "gate ticket-to-qa extended; it also asserts review.an_answered_thread_is_never_worked_twice and review.a_wontfix_position_is_stated_once_not_re_argued" }
+  - { id: S13, kind: reference, ref: "plans/a-step-escalates-by-where-its-work-came-back-from.md", said: "every kind of new work goes to IMPLEMENTING weighed against the brief and the ticket; what was settled on the work is not weighed yet" }
+  - { id: S14, kind: friction, said: "2026-11-17: in a private project's fork, an owner's decision from an earlier round was undone by a later thread, because only the brief was weighed" }
+  - { id: S15, kind: decision, said: "the record keeps a ledger of what was settled on the work, oldest first: every word acted on, every thread taken and its verdict, every escalation decided, each with its source. Decided 2026-11-18" }
+  - { id: S16, kind: decision, said: "new work is weighed against the ledger as against the brief: what contradicts an entry goes to the owner; implementing and the self-review read the ledger, and a change undoing an entry is CHANGES_ASKED. Decided 2026-11-18" }
 touches:
   - examples/workflow-ticket-to-qa/src/record.ts
   - examples/workflow-ticket-to-qa/src/machine.ts
@@ -27,6 +31,8 @@ touches:
   - examples/workflow-ticket-to-qa/tests/agent-steps.test.ts
   - .software-factory/evidence/ticket-to-qa-scenario.sh
   - .software-factory/policy.yaml
+  - examples/workflow-ticket-to-qa/src/lanes.ts
+  - examples/workflow-ticket-to-qa/tests/self-review.test.ts
 criteria:
   - { id: A1, statement: "the record stores deferred/answered/wont-fix verdicts with their note, and disagreements() still returns only disagreed", proof: "test:examples/workflow-ticket-to-qa/tests/record.test.ts", sources: [S1, S2, S5, S6, S7] }
   - { id: A2, statement: "a thread whose latest comment is new relative to judgedUpTo is outstanding again; one at or before it is settled", proof: "test:examples/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S3, S8, S9] }
@@ -34,6 +40,9 @@ criteria:
   - { id: A4, statement: "a thread replied to after an answered verdict is judged again, not skipped", proof: "assertion:review.a_reply_reopens_a_thread_the_record_had_settled", sources: [S4, S9, S12] }
   - { id: A5, statement: "the triage prompt carries the record's memory of each thread", proof: "test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts", sources: [S10] }
   - { id: A6, statement: "no existing state changes behaviour with the widened vocabulary", proof: "test:examples/workflow-ticket-to-qa/tests/walkthrough.test.ts", sources: [S7, S12] }
+  - { id: A7, statement: "the record's ledger gains one entry, with its source, for every word acted on, thread taken and escalation decided, in order, and keeps them across rounds and restarts", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/record.test.ts", sources: [S15] }
+  - { id: A8, statement: "new work contradicting a ledger entry goes to ESCALATED naming the entry, and is not implemented before the owner answers", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/machine.test.ts", sources: [S13, S14, S16] }
+  - { id: A9, statement: "the implementing and self-review prompts carry the ledger, and a self-review finding a change that undoes an entry answers CHANGES_ASKED naming it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/self-review.test.ts", sources: [S16] }
 crosses:
   - { mechanism: record-migration, answer: works, proof: "deferred:A6" }
   - { mechanism: agent-replies, answer: works, proof: "deferred:test:examples/workflow-ticket-to-qa/tests/agent-steps.test.ts; readVerdicts reads the five verdicts of S6, and disagreed still reaches the owner" }
@@ -41,11 +50,13 @@ crosses:
 guarantee:
   - { holds: "a thread is work again only when a comment newer than its judgedUpTo appears in it", not_against: "a comment edited in place, or deleted, upstream: only a new comment reopens a thread" }
   - { holds: "a verdict and its note outlive the round, the restart and the daemon that wrote them", not_against: "comments past the page of a thread the forge query returns: a reply beyond it is not seen" }
+  - { holds: "what the owner settled on a piece of work is not undone without asking them", not_against: "a contradiction the ledger's entries do not state" }
 cut:
   - "the follow-up on a deferred thread: workflow policy; whether deferred means next sprint or never is not amy's question"
-exit: "what a review settled, deferred or answered is remembered across rounds with the evidence it was settled on, and a thread only becomes work again when somebody says something new in it"
+exit: "what was settled on a piece of work is remembered across rounds with its evidence, a thread is work again only when somebody says something new, and nothing settled is undone unasked"
 ---
 # The review is remembered across rounds
 
 The record remembers only that a thread was looked at, keyed by thread id, so an
-objection answered rounds ago reads as new and is re-argued.
+objection answered rounds ago reads as new and is re-argued. A ledger keeps
+everything settled on the work, and new work that contradicts it asks the owner.
