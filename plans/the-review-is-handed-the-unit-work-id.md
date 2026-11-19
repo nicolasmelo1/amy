@@ -26,7 +26,7 @@ exit: "the review a project's phase runs reads the brief its triage read, under 
 ---
 # The review is handed the unit's work id
 
-The call's id is the project's, the unit's brief is not: the review now reads
+The call's id is the project's own; the unit's brief is not: the review now reads
 under the work id the unit is worked with, as triage and the project's gate do.
 
 The e2e proof walks the shipped workflow to the review, so a slash in the

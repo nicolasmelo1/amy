@@ -271,7 +271,14 @@ export const plugin = defineWorkflow({
       },
     }),
     SELF_REVIEW: call(selfReviewLane, {
-      input: (work: TicketRecord) => ({ ...checkInput(work), ticketId: splitWorkId(unitOf(work)).ticketId }),
+      // The unit's work id, never the call's: a project's phase record is
+      // named for the call (`PROJ-1239/WORKFLOW#1`), and the brief is the
+      // unit's, the same id triage and the project's gate read.
+      input: (work: TicketRecord) => ({
+        ...checkInput(work),
+        workId: unitOf(work),
+        ticketId: splitWorkId(unitOf(work)).ticketId,
+      }),
       revision: (work: TicketRecord) => work.implemented?.revision,
       output: {
         APPROVED: (work: TicketRecord, found: Finding) => ({ ...work, lastSelfReview: { ...found, verdict: "APPROVED" as const } }),
