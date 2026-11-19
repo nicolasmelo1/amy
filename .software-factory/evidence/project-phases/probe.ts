@@ -90,7 +90,15 @@ const configured = (workflows: Record<string, WorkflowProfile>): AmyConfig => ({
 });
 
 const services = {
-  runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+  // git runs for real — the phase's change has to be a commit — and every
+  // other command is the stand-in this scenario has always used.
+  runner: {
+    run: async (command: string, args: readonly string[], options: { cwd?: string } = {}) => {
+      if (command !== "git") return { ok: true, exitCode: 0, stdout: "", stderr: "" };
+      const ran = spawnSync(command, args, { cwd: options.cwd, encoding: "utf-8" });
+      return { ok: ran.status === 0, exitCode: ran.status, stdout: ran.stdout ?? "", stderr: ran.stderr ?? "" };
+    },
+  },
   load: (specs: readonly string[]) => {
     const fromHome = pluginsRootResolver(home, path.join(home, "plugins"), "");
     return load(specs, (spec) => isFilesystemWorkflow(spec) ? fromHome(spec) : spec);
@@ -179,10 +187,72 @@ await attempt("project.what_was_briefed_is_what_is_proven", async () => {
 });
 
 
+/** A standing checkout and a bare origin, so a phase can branch, commit and push. */
+function standingCheckout(briefed: string): { workspace: string; standing: string } {
+  const workspace = path.join(briefed, "workspace");
+  const standing = path.join(workspace, "acme", "invoices");
+  const origin = path.join(workspace, "acme", "invoices.git");
+  const gitIn = (cwd: string, args: readonly string[]): void => {
+    const ran = spawnSync("git", args, { cwd, encoding: "utf-8" });
+    if (ran.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${ran.stderr}`);
+  };
+  fs.mkdirSync(standing, { recursive: true });
+  gitIn(standing, ["init", "-b", "main"]);
+  fs.writeFileSync(path.join(standing, "README.md"), "invoices\n", "utf-8");
+  gitIn(standing, ["add", "."]);
+  gitIn(standing, ["-c", "user.email=evidence@amy.test", "-c", "user.name=amy", "commit", "-m", "start"]);
+  fs.mkdirSync(origin, { recursive: true });
+  gitIn(origin, ["init", "--bare", "-b", "main"]);
+  gitIn(standing, ["remote", "add", "origin", origin]);
+  gitIn(standing, ["push", "-u", "origin", "main"]);
+  return { workspace, standing };
+}
+
+/** The team the shipped workflow asks for before it looks at a ticket. */
+function writeRoster(records: string): void {
+  fs.mkdirSync(path.dirname(records), { recursive: true });
+  fs.writeFileSync(path.join(path.dirname(records), "roster.yaml"), [
+    `confirmedOn: "${new Date().toISOString().slice(0, 10)}"`,
+    "reviewers:",
+    '  - host: "ada"',
+    '    tracker: "ada"',
+    "    available: in",
+    "qa:",
+    '  host: "ada"',
+    '  tracker: "ada"',
+    "  available: in",
+    "",
+  ].join("\n"), "utf-8");
+}
+
+/** Every prompt the stand-in agent was asked, as it was asked. */
+function saidIn(file: string): { workId: string; step: string; prompt: string }[] {
+  const said = fs.existsSync(file) ? fs.readFileSync(file, "utf-8") : "";
+  return said.split("\n").filter(Boolean).map((line) => JSON.parse(line) as { workId: string; step: string; prompt: string });
+}
+
+/** One move per tick, as the daemon's next poll would make it. */
+async function walkToReview(engine: { tick(): Promise<unknown> }, queue: FileQueue, said: string): Promise<void> {
+  queue.enqueue({ workId: "INVOICE-2", reason: "groomed" }, new Date());
+  for (let tick = 0; tick < 120 && !(fs.existsSync(said) && fs.readFileSync(said, "utf-8").includes('"step":"self-review"')); tick++) {
+    queue.enqueue({ workId: "INVOICE-2", reason: "look" }, new Date());
+    await engine.tick();
+  }
+}
+
+/** What a project's walk says when it stops short of the step it was meant to reach. */
+function shortfall(records: FileStore<WorkRecord>, steps: string): string {
+  const walked = records.load("INVOICE-2");
+  const child = (walked?.calls ?? {})["INVOICE-2/WORK#1"];
+  return `state ${walked?.state}, work ${String(child?.state ?? "none")}, attempts ${JSON.stringify(child?.attempts ?? {})}, steps ${steps || "none"}`;
+}
+
 // 1a. A unit groomed under its own id, walked by the shipped workflow: the
 // brief the GROOMED gate judged green is the brief the real ticket-to-qa
-// reads at triage. The ticket names a parent brief through its `briefId`,
-// and both are stored, so the run proves the unit's own is read ahead of it.
+// reads at triage, and the one its review reads again. The ticket names a
+// parent brief through its `briefId`, and both are stored, so the run proves
+// the unit's own is read ahead of it — and that a project's phase, whose
+// record is named for the call, resolves the unit's brief rather than its own.
 await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async () => {
   const briefed = path.join(work, "briefed");
   phase("phase-brief-declares", path.join(briefed, "brief"));
@@ -194,17 +264,26 @@ await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async
     ...config.workflows.briefed!,
     plugins: mounts(path.join(briefed, "workflow"), path.join(briefed, "world"), "@amykit/plugin-file-worktree"),
   };
+  const { workspace, standing } = standingCheckout(briefed);
+  config.plugins["@amykit/plugin-file-worktree"] = {
+    workspaceRoot: workspace,
+    root: path.join(briefed, "trees"),
+    repos: ["acme/invoices"],
+    checkouts: { "acme/invoices": standing },
+  };
   const profile = must(profiles(config, home).briefed, "briefed");
   const artifacts = must(profilePaths(home, profile).artifacts, "the project's artifact root");
+  const records = new FileStore<WorkRecord>(profilePaths(home, profile).records);
+  writeRoster(profilePaths(home, profile).records);
   const store = new FileBriefStore(path.join(artifacts, "briefs"));
-  // The brief the project groomed: stored under the unit's own id.
+  // The brief the project groomed, under the unit's own id, and the
+  // feature-level brief the ticket's briefId names, beside it.
   await store.write({
     id: "INVOICE-2",
     sections: [{ name: "Goal", body: "Every invoice line is in the currency the customer pays in." }],
     explains: ["INVOICE-2"],
     at: new Date().toISOString(),
   });
-  // The feature-level brief the ticket's briefId names, beside it.
   await store.write({
     id: "invoice-currency",
     sections: [{ name: "Goal", body: "The feature brief says one currency on every invoice line." }],
@@ -212,49 +291,26 @@ await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async
     at: new Date().toISOString(),
   });
 
-  // The team the shipped workflow asks for before it looks at a ticket: a
-  // roster beside the project's records, confirmed today.
-  const profileDir = path.dirname(profilePaths(home, profile).records);
-  fs.mkdirSync(profileDir, { recursive: true });
-  const confirmedOn = new Date().toISOString().slice(0, 10);
-  fs.writeFileSync(path.join(profileDir, "roster.yaml"), [
-    `confirmedOn: "${confirmedOn}"`,
-    "reviewers:",
-    '  - host: "ada"',
-    '    tracker: "ada"',
-    "    available: in",
-    "qa:",
-    '  host: "ada"',
-    '  tracker: "ada"',
-    "  available: in",
-    "",
-  ].join("\n"), "utf-8");
-
-  // What the stand-in agent was asked at triage, as it was asked.
   const triage = path.join(briefed, "triage.ndjson");
   process.env.AMY_EVIDENCE_TRIAGE_LOG = triage;
-
   const assembled = await mountedAs(config, "briefed");
   if (!assembled.ok) throw new Error(assembled.problems.join("; "));
   const engine = must(assembled.engine ?? undefined, "the walk's engine");
-  const records = new FileStore<WorkRecord>(profilePaths(home, profile).records);
-  const queue = new FileQueue(profilePaths(home, profile).queue);
-  queue.enqueue({ workId: "INVOICE-2", reason: "groomed" }, new Date());
-  for (let tick = 0; tick < 80 && !fs.existsSync(triage); tick++) {
-    // A look is one move, as the daemon's next poll would make it.
-    queue.enqueue({ workId: "INVOICE-2", reason: "look" }, new Date(Date.now() + tick));
-    await engine.tick();
-  }
+  await walkToReview(engine, new FileQueue(profilePaths(home, profile).queue), triage);
 
-  const asked = fs.existsSync(triage) ? fs.readFileSync(triage, "utf-8") : "";
-  if (!asked.includes("Every invoice line is in the currency the customer pays in.")) {
-    const walked = records.load("INVOICE-2");
-    const child = (walked?.calls ?? {})["INVOICE-2/WORK#1"];
-    throw new Error(`triage was asked ${asked === "" ? `nothing (state ${walked?.state}, children ${JSON.stringify(Object.keys(walked?.calls ?? {}))}, work ${String(child?.state ?? "none")})` : asked}`);
-  }
-  if (asked.includes("The feature brief says one currency on every invoice line.")) {
-    throw new Error(`triage read the parent's brief: ${asked}`);
-  }
+  const entries = saidIn(triage);
+  const at = (step: string) => entries.find((entry) => entry.step === step);
+  const unit = "Every invoice line is in the currency the customer pays in.";
+  const parent = "The feature brief says one currency on every invoice line.";
+  const triageAsked = at("triage");
+  if (!triageAsked?.prompt.includes(unit)) throw new Error(`triage was asked ${shortfall(records, entries.map((entry) => entry.step).join(","))}`);
+  if (triageAsked.prompt.includes(parent)) throw new Error(`triage read the parent's brief: ${triageAsked.prompt}`);
+  // The review the project's own walk reached reads the same brief, under the
+  // unit's work id, and calls it the brief the ticket is worked against.
+  const reviewAsked = at("self-review");
+  if (!reviewAsked) throw new Error(`self-review was asked nothing (${shortfall(records, entries.map((entry) => entry.step).join(","))})`);
+  if (!reviewAsked.prompt.includes(unit) || reviewAsked.prompt.includes(parent)) throw new Error(`self-review read another brief: ${reviewAsked.prompt}`);
+  if (!reviewAsked.prompt.includes("The current brief this ticket is worked against:")) throw new Error(`self-review did not call the brief its own: ${reviewAsked.prompt}`);
   return true;
 });
 

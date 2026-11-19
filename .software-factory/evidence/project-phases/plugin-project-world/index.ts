@@ -43,12 +43,15 @@ export const plugin = definePlugin({
       reviewLoad: async () => ({}),
     });
     registry.port("agent", {
-      ask: async (prompt: string, _cwd: string, context?: AskContext) => {
-        if (context?.step === "triage") {
+      ask: async (prompt: string, cwd: string, context?: AskContext) => {
+        if (context?.step) {
           const file = process.env.AMY_EVIDENCE_TRIAGE_LOG;
-          if (file) fs.appendFileSync(file, `${JSON.stringify({ workId: context.workId, prompt })}\n`, "utf-8");
-          return { text: '{"clear": true}', run: RUN };
+          if (file) fs.appendFileSync(file, `${JSON.stringify({ workId: context.workId, step: context.step, cwd, prompt })}\n`, "utf-8");
         }
+        if (context?.step === "triage") return { text: '{"clear": true}', run: RUN };
+        // The change the project's phase commits: one file, as an agent leaves
+        // it, so the commit has something the review can be lent.
+        if (context?.step === "implement") fs.writeFileSync(`${cwd}/total.txt`, `${prompt.length} chars read\n`, "utf-8");
         return { text: "done", run: RUN };
       },
     });

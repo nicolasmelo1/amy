@@ -96,6 +96,16 @@ the same brief triage read and labels it as its own. A record triaged before
 triage kept the brief it read appends its question to the brief the current
 look resolved, instead of appending nowhere.
 
+### **The review is handed the unit's work id.**
+
+`patch` · `@amykit/workflow-ticket-to-qa`
+
+A project's phase record is named for the call (`PROJ-1239/WORKFLOW#1`), and
+the self-review lane was reading the brief under that id, which a brief store
+refuses for its slash. The lane now receives the unit's work id and resolves
+the brief there, so a project's review reads what triage read and labels it
+the brief the ticket is worked against.
+
 ### **The work phase reads its project's brief.**
 
 `patch` · `@amykit/cli`, `@amykit/core`, `@amykit/workflow-ticket-to-qa`

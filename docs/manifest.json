@@ -1079,6 +1079,11 @@
         },
         {
           "depth": 3,
+          "title": "**The review is handed the unit's work id.**",
+          "slug": "the-review-is-handed-the-units-work-id"
+        },
+        {
+          "depth": 3,
           "title": "**The work phase reads its project's brief.**",
           "slug": "the-work-phase-reads-its-projects-brief"
         },
@@ -11911,6 +11916,18 @@
         "id": "the-review-reads-the-brief-the-unit-was-worked-with",
         "title": "**The review and an in-flight question read the brief the unit was worked with.**",
         "body": "The self-review lane resolves the brief under the unit's work id, not the\nticket's, so a ticket worked in one of several repositories reviews against\nthe same brief triage read and labels it as its own. A record triaged before\ntriage kept the brief it read appends its question to the brief the current\nlook resolved, instead of appending nowhere.",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "the-review-reads-under-the-unit-work-id",
+        "title": "**The review is handed the unit's work id.**",
+        "body": "A project's phase record is named for the call (`PROJ-1239/WORKFLOW#1`), and\nthe self-review lane was reading the brief under that id, which a brief store\nrefuses for its slash. The lane now receives the unit's work id and resolves\nthe brief there, so a project's review reads what triage read and labels it\nthe brief the ticket is worked against.",
         "bumps": [
           {
             "package": "@amykit/workflow-ticket-to-qa",
