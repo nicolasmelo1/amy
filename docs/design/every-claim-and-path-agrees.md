@@ -77,7 +77,7 @@ exit: "the gate every-claim-and-path-agrees is green on the built amy and every 
 ---
 # Every claim and every path agrees
 
-The low findings left from 2026-11-15 are fixed, each proved by a property
+The low findings left from 2026-11-15 are fixed here, each proved by a property
 that fails when its falsifier plants the defect the probe measured: a stale
 update claim is recovered once, a worktree's meta is replaced whole, Slack
 splits long text at 4,000 characters, `AMY_HOME` is trimmed and resolved,
