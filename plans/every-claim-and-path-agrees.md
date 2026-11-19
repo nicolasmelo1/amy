@@ -1,5 +1,5 @@
 ---
-base: c0691195ab7f34282d2a568795b581f32762d3a2
+base: cf59709404825a3eee4f500e249e7f292b4b505c
 sources:
   - { id: S1, kind: code, ref: "packages/cli/src/auto-update.ts", symbol: "recoverDaemonUpdateClaim", said: "it reads the owner of a stale .claimed, then renames the path back to due without checking it is still that owner's; the take, update, finish or retry sequence is written four times" }
   - { id: S2, kind: reference, said: "probe 2026-11-15 at f804048e: two starters recovering one stale .claimed, the second acting on the pid it had read, both took the update; eight live takers on a fresh claim, one won every round" }
@@ -32,6 +32,7 @@ touches:
   - packages/core/src/operator.ts
   - packages/core/src/git.ts
   - packages/core/tests/operator.property.test.ts
+  - packages/core/tests/process-lock.property.test.ts
   - .software-factory/policy.yaml
   - .software-factory/evidence/every-claim-and-path-agrees-scenario.sh
   - .software-factory/evidence/every-claim-and-path-agrees/drive.ts
