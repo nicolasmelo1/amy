@@ -198,6 +198,10 @@ function standingCheckout(briefed: string): { workspace: string; standing: strin
   };
   fs.mkdirSync(standing, { recursive: true });
   gitIn(standing, ["init", "-b", "main"]);
+  // The identity every worktree cut from this checkout commits under: a CI
+  // runner may have none, and a phase that cannot commit never reaches its review.
+  gitIn(standing, ["config", "user.email", "evidence@amy.test"]);
+  gitIn(standing, ["config", "user.name", "amy"]);
   fs.writeFileSync(path.join(standing, "README.md"), "invoices\n", "utf-8");
   gitIn(standing, ["add", "."]);
   gitIn(standing, ["-c", "user.email=evidence@amy.test", "-c", "user.name=amy", "commit", "-m", "start"]);
@@ -241,10 +245,13 @@ async function walkToReview(engine: { tick(): Promise<unknown> }, queue: FileQue
 }
 
 /** What a project's walk says when it stops short of the step it was meant to reach. */
-function shortfall(records: FileStore<WorkRecord>, steps: string): string {
+function shortfall(records: FileStore<WorkRecord>, steps: string, log?: string): string {
+  const why = log && fs.existsSync(log)
+    ? fs.readFileSync(log, "utf-8").split("\n").filter((line) => /failed|error/i.test(line)).slice(-3).join("\n")
+    : "";
   const walked = records.load("INVOICE-2");
   const child = (walked?.calls ?? {})["INVOICE-2/WORK#1"];
-  return `state ${walked?.state}, work ${String(child?.state ?? "none")}, attempts ${JSON.stringify(child?.attempts ?? {})}, steps ${steps || "none"}`;
+  return `state ${walked?.state}, work ${String(child?.state ?? "none")}, attempts ${JSON.stringify(child?.attempts ?? {})}, steps ${steps || "none"}${why ? `\n${why}` : ""}`;
 }
 
 // 1a. A unit groomed under its own id, walked by the shipped workflow: the
@@ -303,12 +310,12 @@ await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async
   const unit = "Every invoice line is in the currency the customer pays in.";
   const parent = "The feature brief says one currency on every invoice line.";
   const triageAsked = at("triage");
-  if (!triageAsked?.prompt.includes(unit)) throw new Error(`triage was asked ${shortfall(records, entries.map((entry) => entry.step).join(","))}`);
+  if (!triageAsked?.prompt.includes(unit)) throw new Error(`triage was asked ${shortfall(records, entries.map((entry) => entry.step).join(","), profilePaths(home, profile).log)}`);
   if (triageAsked.prompt.includes(parent)) throw new Error(`triage read the parent's brief: ${triageAsked.prompt}`);
   // The review the project's own walk reached reads the same brief, under the
   // unit's work id, and calls it the brief the ticket is worked against.
   const reviewAsked = at("self-review");
-  if (!reviewAsked) throw new Error(`self-review was asked nothing (${shortfall(records, entries.map((entry) => entry.step).join(","))})`);
+  if (!reviewAsked) throw new Error(`self-review was asked nothing (${shortfall(records, entries.map((entry) => entry.step).join(","), profilePaths(home, profile).log)})`);
   if (!reviewAsked.prompt.includes(unit) || reviewAsked.prompt.includes(parent)) throw new Error(`self-review read another brief: ${reviewAsked.prompt}`);
   if (!reviewAsked.prompt.includes("The current brief this ticket is worked against:")) throw new Error(`self-review did not call the brief its own: ${reviewAsked.prompt}`);
   return true;
