@@ -121,3 +121,40 @@ describe("the brief a unit is worked against", () => {
     expect(seen[0]).not.toMatch(/brief for the feature this ticket belongs to/);
   });
 });
+
+describe("a ticket triaged before its triage kept the brief it read", () => {
+  it("still appends its question to the brief the ticket is read with, as before", async () => {
+    // A record mid-flight when this version arrives: triage ran and asked,
+    // and what it kept says nothing about which brief it read.
+    const held: Ticket = { ...ticket(), briefId: "invoice-currency" };
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-own-brief-inflight-"));
+    const briefs = await storeIn(root, { "invoice-currency": PARENT });
+    const agent = fakeAgent({
+      triage: vi.fn().mockResolvedValue({
+        value: { clear: false, questions: ["Which currency for the total?"], askedQuestions: ["Which currency for the total?"], at: clock.toISOString() },
+        run,
+      }),
+    });
+
+    const queueRoot = fs.mkdtempSync(path.join(os.tmpdir(), "amy-own-brief-inflight-queue-"));
+    const queue = new FileQueue(path.join(queueRoot, "queue"));
+    const records = new InMemoryStore();
+    queue.enqueue({ workId: "PROJ-1239", reason: "discovered" }, clock);
+    const worker = new Worker({
+      queue,
+      records,
+      ...(await ticketWorkerDeps({ tracker: trackerOf(held), agent, briefs, now: () => clock })),
+    });
+    await worker.tick();
+    const kept = records.records.get("PROJ-1239") as { triage?: Record<string, unknown> } | undefined;
+    expect(kept?.triage).toBeDefined();
+    if (kept?.triage) delete kept.triage.briefId;
+    await worker.tick();
+
+    const parent = await briefs.get("invoice-currency");
+    fs.rmSync(queueRoot, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
+
+    expect(parent?.questions.map((one) => one.question)).toEqual(["Which currency for the total?"]);
+  });
+});

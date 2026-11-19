@@ -189,6 +189,46 @@ describe("the self-review half-step", () => {
     expect(record?.lastSelfReview?.ok).toBe(true);
   });
 });
+describe("the self-review of a unit worked in one of several repositories", () => {
+  it("reads the brief stored under the unit's work id, the one triage read", async () => {
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    let at = clock.getTime();
+    const next = (): string => new Date((at += 1000)).toISOString();
+    const { agent } = recordingAgent(seen, next);
+
+    const workId = "PROJ-1239@acme%2Fapi";
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "amy-self-review-unit-brief-"));
+    const briefs = new FileBriefStore(path.join(root, "briefs"));
+    await briefs.write({
+      id: workId,
+      sections: [{ name: "Goal", body: "The total is the sum of the lines, in one currency." }],
+      explains: ["PROJ-1239"],
+      at: clock.toISOString(),
+    });
+    await briefs.write({
+      id: "invoice-currency",
+      sections: [{ name: "Goal", body: "One currency on every invoice line." }],
+      explains: ["PROJ-1239"],
+      at: clock.toISOString(),
+    });
+
+    const held = (): Ticket => ({ ...ticket(), briefId: "invoice-currency", repos: [ticket().repo, "acme/api"] });
+    const now = () => new Date(next());
+    const mounted = await mountedTicket(
+      { tracker: trackerFor(held), agent: agent as object, gate: { run: async () => ({ ok: true, output: "", at: next() }) } as object, brief: briefs },
+      now,
+    );
+    await drive(mounted, mounted.runtime.newRecord(workId, now()), now, (current) => current.lastSelfReview !== undefined);
+    fs.rmSync(root, { recursive: true, force: true });
+
+    const triage = seen.find((entry) => entry.context?.step === "triage");
+    const review = seen.find((entry) => entry.context?.step === "self-review");
+    expect(triage?.prompt).toContain("The total is the sum of the lines, in one currency.");
+    expect(review?.prompt).toContain("The total is the sum of the lines, in one currency.");
+    expect(review?.prompt).not.toContain("One currency on every invoice line.");
+    expect(review?.context?.brief).toContain("The total is the sum of the lines, in one currency.");
+  });
+});
 describe("the verdict a review ends on", () => {
   it.each([
     ["a line saying CHANGES_ASKED", "the total rounds twice\nCHANGES_ASKED: round once", "CHANGES_ASKED"],
