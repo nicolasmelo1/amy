@@ -138,7 +138,17 @@ export async function briefOf(
   unit: { readonly workId: string; readonly briefId?: string },
 ): Promise<BriefRecord | null> {
   if (!store) return null;
-  const own = await store.get(unit.workId);
+  const own = await readBrief(store, unit.workId);
   if (own) return own;
-  return unit.briefId ? store.get(unit.briefId) : null;
+  return unit.briefId ? readBrief(store, unit.briefId) : null;
+}
+
+/** One brief by id, or a failure naming that id: a store's own words may not. */
+async function readBrief(store: BriefStore, id: string): Promise<BriefRecord | null> {
+  try {
+    return await store.get(id);
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    throw new Error(`the brief \`${id}\` could not be read: ${why}`, { cause: error });
+  }
 }

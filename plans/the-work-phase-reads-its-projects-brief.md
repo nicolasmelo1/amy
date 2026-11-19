@@ -54,5 +54,5 @@ exit: "the shipped workflow works a unit against the brief its project judged, u
 
 The project-phases proof now walks the shipped ticket-to-qa as the work phase,
 with the unit's own brief and the parent's stored, so only the unit's own
-reaches triage; a present folder wins over a workflow's absence note, and
+reaches triage first; a present folder wins over a workflow's absence note, and
 triage records the brief its question belongs to.

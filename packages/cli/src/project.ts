@@ -134,13 +134,10 @@ export function resolvePhases(root: string, declared: ProjectPhases | undefined)
   for (const phase of PROJECT_PHASES) {
     const spec = path.join(root, phase);
     if (folders.has(phase)) {
-      if (declared?.[phase] !== undefined) {
-        problems.push(
-          `\`${phase}/\` is present at ${spec}, and the project's declaration says it is absent — one of the two is wrong`,
-        );
-      } else {
-        walking.push({ phase, spec });
-      }
+      // A folder is the project's own statement that the phase runs. A
+      // workflow declaring that phase absent says what its walk does alone,
+      // and a project that supplies the folder is the one that decides here.
+      walking.push({ phase, spec });
       continue;
     }
     if (declared?.[phase] !== undefined) {

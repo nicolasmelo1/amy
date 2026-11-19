@@ -89,7 +89,9 @@ export async function discover(scope: Scope): Promise<FoundWork[]> {
 
 export async function observe(scope: Scope, current: TicketRecord): Promise<Observation> {
   // The ticket is the unit's: called as a phase, the record's own id is the call's.
-  const ticket = await requireTicketWithBrief(scope, unitOf(current));
+  // The brief is read under that same work id: a ticket worked in more than one
+  // repository is a unit per repository, and its project judges its own.
+  const { ticket, briefId } = await requireTicketWithBrief(scope, unitOf(current));
   // A ticket whose tracker derived no branch is refused here, on its
   // first look, before any branch is prepared for it.
   const pullRequest = await pullRequestFor(scope, ticket, current.state);
@@ -103,6 +105,10 @@ export async function observe(scope: Scope, current: TicketRecord): Promise<Obse
 
   return {
     ticket,
+    // The brief this look resolved, recorded with what triage says so a
+    // question asked later lands where the prompt was built from — not where
+    // a brief that appeared mid-triage now says.
+    ...(briefId ? { briefId } : {}),
     pullRequest,
     reviewLoad,
     // Read when a look needs it, not at mount, so confirming the roster
@@ -165,19 +171,25 @@ export function actionsFor(policy: Policy): Partial<TicketActions> {
 /** The outcomes bag, typed at the one boundary that knows what is in it. */
 const outcomesOf = (work: Work): EffectOutcomes => work.outcomes as EffectOutcomes;
 
+/** Whether the brief this look read is the unit's own, the one its project judged. */
+const ownBrief = (work: Work): boolean => work.observation.briefId === unitOf(work.record);
+
 const ACTIONS: TicketActions = {
   "triage": async (scope, work, effect) => {
     const ticket = work.observation.ticket;
     const at = scope.ctx.now().toISOString();
     const { value, run } = await judgeStep(scope.ports.agent, {
-      prompt: triagePrompt(ticket, effect.conversation),
+      prompt: triagePrompt(ticket, effect.conversation, ownBrief(work)),
       cwd: await scope.checkouts.git.acquire(ticket.repo, work.record.id),
       context: { workId: work.record.id, step: "triage" },
       read: (answer) => readTriage(answer, at),
       fallback: unreadTriage(at),
     });
     refuseAnIncompleteRun("triage", run);
-    outcomesOf(work).triage = value;
+    outcomesOf(work).triage = {
+      ...value,
+      ...(work.observation.briefId ? { briefId: work.observation.briefId } : {}),
+    };
     if (effect.conversation?.length) outcomesOf(work).clarification = effect.conversation;
   },
 
@@ -205,16 +217,15 @@ const ACTIONS: TicketActions = {
     }
     await scope.announce(`${unitOf(work.record)} needs an answer before I can start.`);
 
-    // The same question, appended to the brief the ticket was read with,
-    // under its own id when it has one, with this ticket's id and the time —
-    // the one channel a later sibling reads. Nothing appends an answer:
-    // deciding the question is the owning workflow's revision, never this
-    // workflow's write.
-    const about = await briefOf(brief, { workId: work.observation.ticket.id, briefId: work.observation.ticket.briefId });
-    if (brief && about) {
+    // Appended to the brief the triage prompt was built from, recorded with
+    // what triage said: a brief that appeared while the agent was reading is
+    // not the one the question answers, and the store is not read again here.
+    // Nothing appends an answer; that is the owning workflow's revision.
+    const read = outcomesOf(work).triage ?? work.record.triage;
+    if (brief && read?.briefId) {
       for (const question of effect.questions) {
         await brief.appendQuestion({
-          id: about.id,
+          id: read.briefId,
           question: { workId: unitOf(work.record), question: questionText(question), at: scope.ctx.now().toISOString() },
           at: scope.ctx.now().toISOString(),
         });
@@ -234,6 +245,7 @@ const ACTIONS: TicketActions = {
         effect.continuationContext,
         effect.conversation,
         effect.discussion,
+        ownBrief(work),
       ),
       cwd: await git.acquire(ticket.repo, work.record.id),
       context: { workId: work.record.id, step: "implement" },
@@ -287,7 +299,7 @@ const ACTIONS: TicketActions = {
     const branch = work.observation.pullRequest?.headBranch ?? branchOf(ticket);
     await git.prepareBranch(ticket.repo, branch, work.record.id);
     const { value, run } = await judgeStep(scope.ports.agent, {
-      prompt: threadPrompt(ticket, threads, effect.from, scope.config.reviewerHints as ReviewerHints, effect.discussion),
+      prompt: threadPrompt(ticket, threads, effect.from, scope.config.reviewerHints as ReviewerHints, effect.discussion, ownBrief(work)),
       cwd: await git.acquire(ticket.repo, work.record.id),
       context: { workId: work.record.id, step: "address-threads" },
       read: (answer) => readVerdicts(answer, threads),
@@ -318,7 +330,7 @@ const ACTIONS: TicketActions = {
       discussPrompt(ticket, effect.about, effect.thread, effect.turns, {
         clarification: effect.clarification,
         threads: (work.observation.pullRequest?.threads ?? []).filter((thread) => effect.threadIds?.includes(thread.id)),
-      }),
+      }, ownBrief(work)),
       await git.acquire(ticket.repo, work.record.id),
       { workId: work.record.id, step: "discuss", brief: ticket.brief, readOnly: true },
     );
@@ -419,12 +431,12 @@ async function requireTicket(scope: Scope, workId: string): Promise<Ticket> {
  * or references one the store does not hold, is returned as it arrived —
  * an absent brief is a state, not an error.
  */
-async function requireTicketWithBrief(scope: Scope, workId: string): Promise<Ticket> {
+async function requireTicketWithBrief(scope: Scope, workId: string): Promise<{ ticket: Ticket; briefId?: string }> {
   const ticket = await requireTicket(scope, workId);
-  const record = await briefOf(scope.ports.brief, { workId: ticket.id, briefId: ticket.briefId });
-  if (!record) return ticket;
+  const record = await briefOf(scope.ports.brief, { workId, briefId: ticket.briefId });
+  if (!record) return { ticket };
 
-  return { ...ticket, brief: renderBrief(record).text };
+  return { ticket: { ...ticket, brief: renderBrief(record).text }, briefId: record.id };
 }
 
 async function requestReview(scope: Scope, work: Work, host: string): Promise<void> {

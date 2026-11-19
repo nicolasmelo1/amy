@@ -103,6 +103,8 @@ interface ReviewObservation {
   readonly title: string;
   /** The brief as it reads now, so a revision between looks reaches the review. */
   readonly brief?: string;
+  /** Whether that brief is the unit's own, the one its project judged. */
+  readonly unitOwn?: boolean;
 }
 
 type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> };
@@ -151,7 +153,11 @@ export const selfReviewLane = withDiagram(defineWorkflow({
     const ticket = await scope.ports.tracker.get(ticketId);
     if (!ticket) throw new Error(`${ticketId} is not in the tracker any more`);
     const brief = await briefOf(scope.ports.brief, { workId: ticket.id, briefId: ticket.briefId });
-    return { id: ticket.id, title: ticket.title, ...(brief ? { brief: renderBrief(brief).text } : {}) };
+    return {
+      id: ticket.id,
+      title: ticket.title,
+      ...(brief ? { brief: renderBrief(brief).text, unitOwn: brief.id === ticket.id } : {}),
+    };
   },
   actions: {
     // The work reads itself against the brief before a person is asked to,
@@ -168,7 +174,7 @@ export const selfReviewLane = withDiagram(defineWorkflow({
           `and say what a reviewer should look at first.`,
           `End with a line saying APPROVED if it is ready for a reviewer, or`,
           `CHANGES_ASKED and what has to change before it is.`,
-          ...(ticket.brief ? [``, `The current brief for the feature this ticket belongs to:`, ``, ticket.brief] : []),
+          ...(ticket.brief ? [``, ticket.unitOwn ? `The current brief this ticket is worked against:` : `The current brief for the feature this ticket belongs to:`, ``, ticket.brief] : []),
         ].join("\n"),
         tree.path,
         { workId: record.id, step: "self-review", brief: ticket.brief },
