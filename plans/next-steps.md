@@ -84,3 +84,4 @@ the rest.
 | 75 | [A wait fits inside its deadline](a-wait-fits-inside-its-deadline.md) |
 | 76 | [A records directory holds only records](a-records-directory-holds-only-records.md) |
 Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 stream to replace the stand-in fixture (S8 of "Claude says its limit while it runs"). It needs an authenticated `claude` on the machine that records it.
+| 77 | [The work phase reads its project's brief](the-work-phase-reads-its-projects-brief.md) |
