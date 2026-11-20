@@ -5,8 +5,8 @@ import { HarnessRelay } from "../src/HarnessRelay.js";
 import { oneLadder } from "../src/ladders.js";
 import { NamedHarness } from "../src/collection.js";
 
-/** A rung of a real relay that completes every time, remembering it was asked. */
-function rung(model: string, outcome: AgentRun["outcome"] = "completed"): NamedHarness & { asked: number } {
+/** A rung of a real relay that answers with `text`, remembering it was asked. */
+function rung(model: string, outcome: AgentRun["outcome"] = "completed", text = ""): NamedHarness & { asked: number } {
   const named = {
     name: `claude:${model}`,
     harness: "claude",
@@ -16,7 +16,7 @@ function rung(model: string, outcome: AgentRun["outcome"] = "completed"): NamedH
       name: "claude",
       ask: async (): Promise<HarnessReply> => {
         named.asked += 1;
-        return { text: "", run: { ...run(outcome), model } };
+        return { text, run: { ...run(outcome, text), model } };
       },
     },
   };
@@ -111,6 +111,72 @@ describe("implementStep over a relay", () => {
     expect(result.value.ok).toBe(false);
     expect(result.value.progress).toBeUndefined();
   });
+
+  it("climbs when a completed run changed no file and gave no reason", async () => {
+    const weak = rung("sonnet");
+    const strong = rung("opus");
+
+    const result = await implementStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "do it",
+      cwd: "/w",
+      commit: async () => false,
+      now: NOW,
+    });
+
+    // steps.ts:71 turns a silent changed-nothing run into failed, so the relay climbs.
+    expect([weak.asked, strong.asked]).toEqual([1, 1]);
+    expect(result.value.ok).toBe(false);
+    expect(result.run.outcome).toBe("failed");
+  });
+
+  it("does not climb past a rung that said why it changed nothing", async () => {
+    const weak = rung("sonnet", "completed", "NOTHING_TO_CHANGE: nothing to do");
+    const strong = rung("opus");
+
+    const result = await implementStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "do it",
+      cwd: "/w",
+      commit: async () => false,
+      now: NOW,
+    });
+
+    // steps.ts:68 reads the reason, so this rung answers and no stronger one is asked.
+    expect([weak.asked, strong.asked]).toEqual([1, 0]);
+    expect(result.value.ok).toBe(true);
+    expect(result.value.progress).toEqual({ kind: "unchanged", key: "implementation", detail: "nothing to do" });
+    expect(result.run.outcome).toBe("completed");
+  });
+
+  it("reads the reason from a marked line, and finds none in silence", async () => {
+    // steps.ts:37 accepts the marker however an agent marks the line it was
+    // asked for, and steps.ts:68 hands the reason to the outcome. Driven
+    // through implementStep so no internal of the module has to be exported.
+    const read = async (text: string) => implementStep(answering({ text, run: run() }), {
+      prompt: "p",
+      cwd: "/w",
+      commit: async () => false,
+      now: NOW,
+    });
+
+    const marked = await read("Work done.\n- NOTHING_TO_CHANGE: the docs already say it");
+    expect(marked.value.progress).toEqual({ kind: "unchanged", key: "implementation", detail: "the docs already say it" });
+
+    const headed = await read("## NOTHING_TO_CHANGE — the docs already say it");
+    expect(headed.value.progress).toEqual({ kind: "unchanged", key: "implementation", detail: "the docs already say it" });
+
+    for (const bare of ["**NOTHING_TO_CHANGE**", "NOTHING_TO_CHANGE"]) {
+      const silent = await read(bare);
+      expect(silent.value.progress).toEqual({
+        kind: "unchanged",
+        key: "implementation",
+        detail: "the agent said there was nothing to change",
+      });
+    }
+
+    const gaveUp = await read("I looked around and left it alone.");
+    expect(gaveUp.value.ok).toBe(false);
+    expect(gaveUp.value.progress).toEqual({ kind: "unchanged", key: "implementation", detail: "the agent finished without changing any file" });
+  });
 });
 
 describe("judgeStep", () => {
@@ -132,5 +198,22 @@ describe("judgeStep", () => {
 
     expect(read).not.toHaveBeenCalled();
     expect(result).toEqual({ value: "nothing", run: run("failed", "boom") });
+  });
+
+  it("yields the fallback as a refused, failed run when the answer holds no JSON object", async () => {
+    const read = vi.fn();
+
+    const result = await judgeStep(answering({ text: "It looks fine to me.", run: run() }), {
+      prompt: "p",
+      cwd: "/w",
+      read,
+      fallback: "nothing",
+    });
+
+    // steps.ts:121 turns a completed answer it cannot read from into a failed run.
+    expect(read).not.toHaveBeenCalled();
+    expect(result.value).toBe("nothing");
+    expect(result.run.outcome).toBe("failed");
+    expect(result.run.refused).toContain("no readable JSON object");
   });
 });

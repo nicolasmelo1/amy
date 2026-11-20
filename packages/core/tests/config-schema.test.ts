@@ -105,3 +105,54 @@ describe("validateConfig", () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe("a setting that must name another setting's key", () => {
+  // The dotted keys declare the group, and the oneOf setting may only name its leaves.
+  const ESCALATION: ConfigSchema = {
+    "escalation.scale.patient": { type: "number", required: true, description: "rounds a patient level allows" },
+    "escalation.scale.normal": { type: "number", required: true, description: "rounds a normal level allows" },
+    "escalation.scale.immediate": { type: "number", required: true, description: "rounds an immediate level allows" },
+    "escalation.origins.gate.level": {
+      type: "oneOf",
+      group: "escalation.scale",
+      required: true,
+      description: "the level the gate's rounds are counted at",
+    },
+  };
+
+  const scale = { patient: 3, normal: 2, immediate: 1 };
+
+  it("refuses a value outside the group, naming the setting and every name it accepts", () => {
+    // config-schema.ts:455 names the accepted keys; a misspelt level is a threshold nobody applies.
+    const result = validateConfig("@amykit/plugin-x", ESCALATION, {
+      escalation: { scale, origins: { gate: { level: "quickly" } } },
+    });
+
+    expect(result.ok).toBe(false);
+    const said = result.ok === false ? result.problems.join("; ") : "";
+    expect(said).toContain("`escalation.origins.gate.level` must be one of " + "`patient`, `normal`, `immediate`");
+    expect(said).toContain('got "quickly"');
+    expect(said).toContain("the level the gate's rounds are counted at");
+  });
+
+  it("accepts one of the names the group declares", () => {
+    const result = validateConfig("@amykit/plugin-x", ESCALATION, {
+      escalation: { scale, origins: { gate: { level: "patient" } } },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok === true && result.config).toEqual({
+      escalation: { scale, origins: { gate: { level: "patient" } } },
+    });
+  });
+
+  it("refuses a value that is not a name at all", () => {
+    const result = validateConfig("@amykit/plugin-x", ESCALATION, {
+      escalation: { scale, origins: { gate: { level: 3 } } },
+    });
+
+    expect(result.ok).toBe(false);
+    const said = result.ok === false ? result.problems.join("; ") : "";
+    expect(said).toContain("`escalation.origins.gate.level` must be a name, got number");
+  });
+});

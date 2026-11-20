@@ -578,6 +578,70 @@ void defineWorkflow({
   configSchema: {}, policy: {}, needs: {},
   record: () => ({}), decide: { NEW: () => settled("done") }, observe: async () => ({}), actions: {},
 });
+describe("a step whose own verify can refuse the reply", () => {
+  const HOST: HostServices = {
+    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    now: () => new Date("2026-11-20T12:00:00.000Z"),
+    paths: { state: "/state" },
+  };
+
+  // REVIEW's step declares a verify, so its answer may be refused and the work climb.
+  const VERIFYING = `stateDiagram-v2
+    [*] --> WORKING
+    WORKING --> REVIEW
+    REVIEW --> WORKING: the answer was refused
+    REVIEW --> DONE
+    DONE --> [*]
+    class REVIEW verified
+`;
+
+  function reviewing(verifies: readonly string[] | undefined, text = VERIFYING) {
+    return withDiagram(defineWorkflow({
+      name: "reviewing",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      ...(verifies ? { verifies } : {}),
+      decide: {
+        WORKING: () => settled("working"),
+        REVIEW: () => settled("review"),
+        DONE: () => settled("done"),
+      },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), text);
+  }
+
+  it("refuses a verified state verifies does not name, naming the state", async () => {
+    const outcome = await mount([reviewing(undefined)], {}, HOST);
+
+    // define-workflow.ts:573 refuses a mark no declared verify can back.
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "its diagram marks `REVIEW` verified, and `verifies` does not name it — its step declares a verify or the mark is wrong",
+    );
+  });
+
+  it("refuses a verifies entry the diagram does not mark verified, naming the state", async () => {
+    const unmarked = VERIFYING.replace("    class REVIEW verified\n", "");
+    const outcome = await mount([reviewing(["REVIEW"], unmarked)], {}, HOST);
+
+    // define-workflow.ts:578 refuses a verify drawn nowhere, which nothing could reach.
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "`verifies` names `REVIEW`, and its diagram does not mark it — add `class REVIEW verified`",
+    );
+  });
+
+  it("mounts a diagram whose verified states are exactly the ones verifies names", async () => {
+    const outcome = await mount([reviewing(["REVIEW"])], {}, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+
+    expect(outcome.mounted.workflow?.diagram?.verified).toEqual(["REVIEW"]);
+  });
+});
+
 describe("a decision nobody has written yet", () => {
   it("settles the record, naming its state, rather than guessing a move", () => {
     const stub = notWritten();
