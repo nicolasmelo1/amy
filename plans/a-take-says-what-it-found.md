@@ -8,6 +8,7 @@ sources:
 touches:
   - packages/cli/src/auto-update.ts
   - packages/cli/tests/daemon-update-take.test.ts
+  - packages/cli/tests/daemon-update-recovery.test.ts
   - packages/cli/tests/daemon-update-claim.property.test.ts
   - packages/core/src/process-lock.ts
   - packages/core/tests/process-lock.property.test.ts
