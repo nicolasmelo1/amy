@@ -46,6 +46,41 @@ function slack(warning?: string): { calls: Call[]; warned: string[]; conversatio
   return { calls, warned, conversation };
 }
 
+/**
+ * A Slack that keeps one thread's messages the way a reader sees them:
+ * posted, updated in place, or deleted, in the order they were posted.
+ */
+function slackThread(): { conversation: SlackConversation; visible: () => string[] } {
+  const messages = new Map<string, string>();
+  let clock = 0;
+  const transport = (request: HttpRequest): Promise<HttpResponse> => {
+    const method = request.url.split("/").pop() ?? "";
+    const params = Object.fromEntries(new URLSearchParams(request.body ?? ""));
+    let ts = params.ts ?? "";
+    if (method === "chat.postMessage") {
+      clock += 1;
+      ts = `17900002${String(clock).padStart(2, "0")}.000100`;
+      messages.set(ts, params.text ?? "");
+    } else if (method === "chat.update") {
+      messages.set(ts, params.text ?? "");
+    } else if (method === "chat.delete") {
+      messages.delete(ts);
+    }
+    const json = JSON.stringify({ ok: true, ts, channel: "C0WORK", messages: [] });
+    return Promise.resolve({ status: 200, headers: {}, body: new TextEncoder().encode(json) });
+  };
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "amy-slack-thread-"));
+  directories.push(directory);
+  const conversation = new SlackConversation(new SlackApi("xoxb-fixture", { transport }), {
+    channel: "C0WORK",
+    operator: "U0ADA",
+    directory,
+    warn: () => undefined,
+  });
+  const visible = () => [...messages.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, text]) => text);
+  return { conversation, visible };
+}
+
 describe("Slack's long text, on every path that sends it", () => {
   it("names the thread when Slack says it truncated a post", async () => {
     const { warned, conversation } = slack("message_truncated");
@@ -70,6 +105,19 @@ describe("Slack's long text, on every path that sends it", () => {
     expect(roots).toHaveLength(1);
     for (const post of posts.slice(1)) expect(post.params.thread_ts).toBe(thread.id);
     expect(posts.map((post) => post.params.text).join("")).toBe("t".repeat(9_001));
+  });
+
+  it.each([
+    ["a long message revised short", 9_001, 10],
+    ["a long message revised long", 9_001, 8_500],
+    ["a short message revised long", 10, 9_001],
+  ])("leaves the thread reading as the revision, for %s", async (_name, before, after) => {
+    const { conversation, visible } = slackThread();
+    const ts = await conversation.say(THREAD, "o".repeat(before));
+    await conversation.revise(THREAD, ts, "n".repeat(after));
+
+    expect(visible().join("")).toBe("n".repeat(after));
+    for (const text of visible()) expect(text.length).toBeLessThanOrEqual(LIMIT);
   });
 
   it("keeps a revised message within Slack's limit, and the revision whole", async () => {

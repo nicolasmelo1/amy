@@ -11,6 +11,9 @@ import type { HeldLock } from "@amykit/core";
  */
 const between: { before?: () => void } = {};
 
+/** Processes that have exited since the test began, whatever the system still says. */
+const exited = new Set<number>();
+
 vi.mock("@amykit/core", async (original) => {
   const core = await original<typeof import("@amykit/core")>();
   return {
@@ -21,6 +24,7 @@ vi.mock("@amykit/core", async (original) => {
       before?.();
       return core.takeLock(file, options);
     },
+    processAlive: (pid: number) => !exited.has(pid) && core.processAlive(pid),
   };
 });
 
@@ -32,6 +36,7 @@ const homes: string[] = [];
 
 afterEach(() => {
   between.before = undefined;
+  exited.clear();
   for (const home of homes.splice(0)) fs.rmSync(home, { recursive: true, force: true });
 });
 
@@ -52,6 +57,23 @@ describe("taking the daemon's update", () => {
     // The owner finishes, and releases, after this starter saw its claim and
     // before this starter takes the lock. Nothing is due any more.
     between.before = () => owner.release();
+
+    expect(takeDaemonUpdate(amy, PROFILE)).toBe(false);
+    expect(hasDaemonUpdate(amy, PROFILE)).toBe(false);
+  });
+
+  it("does not run an update its owner finished and then exited while this starter was looking", () => {
+    const { home: amy, claim } = home();
+    // A starter in another process holds the claim, as the reaper does.
+    const pid = process.pid + 100_000;
+    const owner = takeLock(claim, { pid }) as HeldLock;
+    expect(owner).toBeDefined();
+    // It settles its update, releases, and exits, all after this starter saw
+    // its claim and before this starter takes the lock. Nothing is due.
+    between.before = () => {
+      owner.release();
+      exited.add(pid);
+    };
 
     expect(takeDaemonUpdate(amy, PROFILE)).toBe(false);
     expect(hasDaemonUpdate(amy, PROFILE)).toBe(false);
