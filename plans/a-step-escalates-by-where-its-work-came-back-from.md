@@ -1,5 +1,5 @@
 ---
-base: 123265792909b6ec825959e5d1540a504bb5662b
+base: 7bd6ca58fc340455bfe544d957dd8c503f3dd1a0
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/envelope.ts", symbol: "classify", said: "a run is failed only when the envelope says is_error or the CLI exits non-zero; an answer that is wrong but well formed is completed, so the ladder never climbs on it" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "AskContext", said: "verify(reply) may turn a completed run to failed while a rung is left; only implementStep passes one (no file changed), so triage, address-threads, self-review and chat climb on a crash and on nothing else" }
@@ -114,6 +114,22 @@ touches:
   - docs/design/the-relay-is-proven-end-to-end.md
   - CONTRIBUTING.md
   - scripts/duplication-baseline.json
+  - examples/a-whole-project/tests/project.test.ts
+  - examples/workflow-ticket-to-qa/src/handover.ts
+  - examples/workflow-ticket-to-qa/tests/handover.test.ts
+  - examples/workflow-ticket-to-qa/tests/mounted.ts
+  - examples/workflow-ticket-to-qa/tests/usage-limit.claude.integration.test.ts
+  - examples/workflow-ticket-to-qa/tests/usage-limit.integration.test.ts
+  - examples/workflow-ticket-to-qa/tests/walkthrough.test.ts
+  - packages/cli/tests/assemble.test.ts
+  - packages/cli/tests/brief.test.ts
+  - packages/cli/tests/two-workflows.test.ts
+  - packages/core/src/git.ts
+  - packages/core/tests/mount.test.ts
+  - packages/test-fixtures/src/fakes.ts
+  - packages/test-fixtures/src/worker.ts
+  - plugins/command-gate/tests/CommandGate.test.ts
+  - plugins/serial-engine/tests/Worker.test.ts
 criteria:
   - { id: A1, statement: "on a claude, codex or hermes-agent rung alike, a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason, not 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S1, S2, S4, S10, S30, S31] }
   - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file and gave no NOTHING_TO_CHANGE reason; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10, S40, S41] }
