@@ -71,7 +71,7 @@ describe("checks failing on the pull request's head", () => {
     const reason = "the failing check is a flaky upstream job, nothing in this change touches it";
     const r = record("IMPLEMENTING", {
       pullRequestNumber: 4940,
-      lastImplementation: { ok: true, output: `NOTHING_TO_CHANGE: ${reason}`, at: WORKDAY.toISOString(), progress: { kind: "unchanged", key: "implementation", detail: reason } },
+      lastImplementation: { ok: true, output: reason, at: WORKDAY.toISOString(), progress: { kind: "unchanged", key: "implementation", detail: reason } },
     });
     const seen = observation({ pullRequest: pullRequest({ checks: { state: "failing", commitSha: pullRequest().headSha } }) });
 
@@ -84,12 +84,12 @@ describe("checks failing on the pull request's head", () => {
   });
 });
 
-describe("an implementation that reasoned there was nothing to change", () => {
+describe("an implementation that changed nothing", () => {
   it.each(["gate", "thread", "owner", "self-review"])("charges no round to the origin %s that sent the work", (origin) => {
     const reason = "the behaviour asked for is already what the code does";
     const r = record("IMPLEMENTING", {
       roundsByOrigin: { [origin]: 1 },
-      lastImplementation: { ok: true, output: `NOTHING_TO_CHANGE: ${reason}`, at: WORKDAY.toISOString(), progress: { kind: "unchanged", key: "implementation", detail: reason } },
+      lastImplementation: { ok: true, output: reason, at: WORKDAY.toISOString(), progress: { kind: "unchanged", key: "implementation", detail: reason } },
     });
 
     const { plan: decided, next } = look(r, observation());
