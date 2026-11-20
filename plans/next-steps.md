@@ -90,3 +90,4 @@ Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 s
 | 81 | [A diverged branch is merged, not refused](a-diverged-branch-is-merged-not-refused.md) |
 | 82 | [A run handed tools is held to them](a-run-handed-tools-is-held-to-them.md) |
 | 83 | [Linear is read through its MCP server](linear-is-read-through-its-mcp-server.md) |
+| 84 | [A take says what it found](a-take-says-what-it-found.md) |
