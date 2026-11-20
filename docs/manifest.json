@@ -1059,6 +1059,11 @@
         },
         {
           "depth": 3,
+          "title": "**An escalation knows where its work came back from.** @amykit/core gains escalation.ts: every origin of new work is configured the same way, with a named scale of rounds in config.yaml and a level that applies from a number of findings on, and an origin's rounds climb one rung and never come back down. A gate answers how many checks were red. A config field may be oneOf, typed as the union of the keys a dotted group declares and refused when it names anything else. A diagram marks a state verified or sendsBack, and a mount refuses one whose marks disagree with the workflow's own declarations. @amykit/agent-kit asks a step's rung directly instead of always starting at the first, tells the next rung why a completed reply was refused, and gives judgeStep and implementStep a verify of their own: an answer with no readable JSON climbs, and an implementing run that changes nothing and says NOTHING_TO_CHANGE completes with its reason instead of climbing to a stronger model.",
+          "slug": "an-escalation-knows-where-its-work-came-back-from-amykitcore-gains-escalationts-every-origin-of-new-work-is-configured-the-same-way-with-a-named-scale-of-rounds-in-configyaml-and-a-level-that-applies-from-a-number-of-findings-on-and-an-origins-rounds-climb-one-rung-and-never-come-back-down-a-gate-answers-how-many-checks-were-red-a-config-field-may-be-oneof-typed-as-the-union-of-the-keys-a-dotted-group-declares-and-refused-when-it-names-anything-else-a-diagram-marks-a-state-verified-or-sendsback-and-a-mount-refuses-one-whose-marks-disagree-with-the-workflows-own-declarations-amykitagent-kit-asks-a-steps-rung-directly-instead-of-always-starting-at-the-first-tells-the-next-rung-why-a-completed-reply-was-refused-and-gives-judgestep-and-implementstep-a-verify-of-their-own-an-answer-with-no-readable-json-climbs-and-an-implementing-run-that-changes-nothing-and-says-nothingtochange-completes-with-its-reason-instead-of-climbing-to-a-stronger-model"
+        },
+        {
+          "depth": 3,
           "title": "**A ticket reads the brief its project judged.**",
           "slug": "a-ticket-reads-the-brief-its-project-judged"
         },
@@ -1403,6 +1408,11 @@
           "depth": 3,
           "title": "After a rung does not work out",
           "slug": "after-a-rung-does-not-work-out"
+        },
+        {
+          "depth": 3,
+          "title": "A reply that completed and still does not hold",
+          "slug": "a-reply-that-completed-and-still-does-not-hold"
         },
         {
           "depth": 2,
@@ -11846,6 +11856,30 @@
           {
             "package": "@amykit/plugin-hermes-agent",
             "level": "minor"
+          }
+        ],
+        "level": "minor"
+      },
+      {
+        "id": "a-step-escalates-by-where-its-work-came-back-from",
+        "title": "**An escalation knows where its work came back from.** `@amykit/core` gains `escalation.ts`: every origin of new work is configured the same way, with a named scale of rounds in `config.yaml` and a level that applies from a number of findings on, and an origin's rounds climb one rung and never come back down. A gate answers how many checks were red. A config field may be `oneOf`, typed as the union of the keys a dotted group declares and refused when it names anything else. A diagram marks a state `verified` or `sendsBack`, and a mount refuses one whose marks disagree with the workflow's own declarations. `@amykit/agent-kit` asks a step's rung directly instead of always starting at the first, tells the next rung why a completed reply was refused, and gives `judgeStep` and `implementStep` a verify of their own: an answer with no readable JSON climbs, and an implementing run that changes nothing and says `NOTHING_TO_CHANGE` completes with its reason instead of climbing to a stronger model.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "minor"
+          },
+          {
+            "package": "@amykit/plugin-command-gate",
+            "level": "patch"
           }
         ],
         "level": "minor"

@@ -28,8 +28,15 @@ it is refused when it mounts, naming the workflow and the file it needs; so is a
 declaration that still passes `states`, `waiting` or `terminal`.
 
 `[*] --> S` names the initial state and `S --> [*]` a terminal one. Classes say
-what an arrow cannot: `waiting`, `attention`, `anywhere`, `returns` and `call`.
-Why, and the exact subset amy reads: [a workflow is a Mermaid
+what an arrow cannot: `waiting`, `attention`, `anywhere`, `returns`, `call`,
+`verified` and `sendsBack`.
+
+`verified` marks a state whose step declares a `verify`, so a reply that
+completed can still be refused while the relay has a rung left. `sendsBack`
+marks a state where new work arrives from outside, and the workflow declares
+the origins that state can raise in `origins`. A mount refuses a diagram whose
+`verified` or `sendsBack` states differ from those declarations, naming the
+state. Why, and the exact subset amy reads: [a workflow is a Mermaid
 diagram](../design/a-workflow-is-a-mermaid-diagram.md).
 
 ## One declaration
