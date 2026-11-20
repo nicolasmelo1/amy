@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { type Climb, type EscalationRules, climbOf, levelFor } from "../src/escalation.js";
+import { type Climb, type EscalationRules, climbFor, climbOf, counted, levelFor } from "../src/escalation.js";
+import type { WorkRecord } from "../src/work.js";
 
 const FALSIFIER = "one_rung_and_permanent";
 const planted = process.env.SF_FALSIFIER === FALSIFIER;
@@ -55,6 +56,47 @@ describe("a climb of one origin", () => {
           expect(one.rung).toBeGreaterThanOrEqual(climbed);
           expect(one.exhausted).toBe(one.rung >= all.rungs - 1);
           climbed = one.rung;
+        }
+      }),
+    );
+  });
+});
+
+describe("the rounds of one origin, kept on the record", () => {
+  it("moves at most one rung per round and never comes back down", () => {
+    fc.assert(
+      fc.property(scale, origin, fc.array(fc.integer({ min: 0, max: 8 }), { minLength: 1, maxLength: 16 }), (needs, rules, found) => {
+        const all: EscalationRules = { scale: needs, origins: { gate: rules }, rungs: 6 };
+        let seen: WorkRecord = { id: "T-1", state: "IMPLEMENTING", updatedAt: "2026-11-20T12:00:00.000Z", attempts: {}, history: [] };
+        let before = climbFor(all, seen, "gate", 0).rung;
+
+        for (const findings of found) {
+          seen = counted(seen, climbFor(all, seen, "gate", findings));
+          // The next round has not come back yet: whatever it will find, the
+          // rung it starts on is what the rounds so far earned.
+          const low = climbFor(all, seen, "gate", 0).rung;
+          const high = climbFor(all, seen, "gate", rules.findingsAt + 8).rung;
+          expect(low).toBe(high);
+          expect(low).toBeGreaterThanOrEqual(before);
+          expect(low - before).toBeLessThanOrEqual(1);
+          before = low;
+        }
+      }),
+    );
+  });
+
+  it("a round that reaches its level's number is the one that moves the next round up", () => {
+    fc.assert(
+      fc.property(scale, origin, fc.boolean(), (needs, rules, above) => {
+        const all: EscalationRules = { scale: needs, origins: { gate: rules }, rungs: 6 };
+        const findings = above ? rules.findingsAt : 0;
+        const { needed } = levelFor(all, "gate", findings);
+        let seen: WorkRecord = { id: "T-1", state: "IMPLEMENTING", updatedAt: "2026-11-20T12:00:00.000Z", attempts: {}, history: [] };
+
+        for (let round = 1; round <= needed; round += 1) {
+          seen = counted(seen, climbFor(all, seen, "gate", findings));
+          const next = climbFor(all, seen, "gate", 0).rung;
+          expect(next).toBe(round === needed ? 1 : 0);
         }
       }),
     );

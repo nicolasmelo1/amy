@@ -155,4 +155,25 @@ describe("a setting that must name another setting's key", () => {
     const said = result.ok === false ? result.problems.join("; ") : "";
     expect(said).toContain("`escalation.origins.gate.level` must be a name, got number");
   });
+
+  it("refuses a default that names nothing the group declares", () => {
+    const withDefault: ConfigSchema = {
+      ...ESCALATION,
+      "escalation.origins.thread.level": {
+        type: "oneOf",
+        group: "escalation.scale",
+        default: "quickly",
+        description: "the level a review thread's rounds are counted at",
+      },
+    };
+
+    const result = validateConfig("@amykit/plugin-x", withDefault, {
+      escalation: { scale, origins: { gate: { level: "patient" } } },
+    });
+
+    expect(result.ok).toBe(false);
+    const said = result.ok === false ? result.problems.join("; ") : "";
+    expect(said).toContain("escalation.origins.thread.level");
+    expect(said).toContain("quickly");
+  });
 });

@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { plugin as notifyHermes } from "@amykit/plugin-notify-hermes";
+import { plugin as ticketToQa } from "@amykit/workflow-ticket-to-qa";
 import { ScriptedRunner, whenArgsInclude } from "@amykit/test-fixtures";
 import { Check, DoctorDeps, diagnose } from "../src/doctor.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
@@ -396,6 +397,44 @@ describe("diagnose", () => {
     expect(labelled(checks, "auto update settings")).toMatchObject({ ok: false });
     expect(labelled(checks, "auto update settings")?.detail).toContain("timing");
     expect(labelled(checks, "auto update settings")?.detail).toContain("everyRuns");
+  });
+
+  describe("the numbers an escalation rests on", () => {
+    const TICKET = "@amykit/workflow-ticket-to-qa";
+    const SCALE = { patient: 3, normal: 2, immediate: 1 };
+    const withSlice = (escalation: Record<string, unknown> | undefined) => ({
+      ...DEFAULT_CONFIG,
+      plugins: { [TICKET]: { repos: ["acme/widgets"], qaStatusName: "In QA", ...(escalation ? { escalation } : {}) } },
+    });
+    const schemas = () => ({ [TICKET]: ticketToQa.configSchema! });
+
+    it("declares every scale value as required, with no default", () => {
+      const scale = Object.entries(ticketToQa.configSchema!).filter(([key]) => key.startsWith("escalation.scale."));
+
+      expect(scale.map(([key]) => key).sort()).toEqual(["escalation.scale.immediate", "escalation.scale.normal", "escalation.scale.patient"]);
+      for (const [, spec] of scale) {
+        expect(spec.required).toBe(true);
+        expect(spec.default).toBeUndefined();
+      }
+    });
+
+    it("is red when the config leaves a scale value out, naming the key", async () => {
+      const { normal: _left, ...partial } = SCALE;
+      const checks = await diagnose(deps({ config: withSlice({ scale: partial }), schemas: schemas() }));
+
+      const check = labelled(checks, `settings for ${TICKET}`);
+      expect(check?.ok).toBe(false);
+      expect(check?.detail).toContain("escalation.scale.normal");
+      expect(check?.detail).not.toContain("`escalation` is not a setting");
+    });
+
+    it("is red when the config carries a level the workflow does not name, naming the key", async () => {
+      const checks = await diagnose(deps({ config: withSlice({ scale: { ...SCALE, urgent: 1 } }), schemas: schemas() }));
+
+      const check = labelled(checks, `settings for ${TICKET}`);
+      expect(check?.ok).toBe(false);
+      expect(check?.detail).toContain("urgent");
+    });
   });
 
   it("fails a slice for a plugin nothing mounted", async () => {

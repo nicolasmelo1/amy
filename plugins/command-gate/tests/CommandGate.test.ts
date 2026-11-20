@@ -95,3 +95,33 @@ describe("CommandGate", () => {
     );
   });
 });
+
+describe("CommandGate counting what it found", () => {
+  const THREE = [
+    "npm run --workspace @northwind/api lint",
+    "npm run --workspace @northwind/api typecheck",
+    "npm run --workspace @northwind/api test",
+  ];
+
+  it("answers how many checks were red, not only that one was", async () => {
+    const { gate } = gateFor(
+      { "Northwind/northwind-backend": THREE },
+      [fails("lint", "3 problems"), fails("test", "2 failed")],
+    );
+
+    const outcome = await gate.run(workplace());
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.findings).toBe(2);
+    expect(outcome.output).toContain("3 problems");
+    expect(outcome.output).toContain("2 failed");
+  });
+
+  it("answers one when a single check was red among several", async () => {
+    const { gate } = gateFor({ "Northwind/northwind-backend": THREE }, [fails("typecheck", "error TS2345")]);
+
+    const outcome = await gate.run(workplace());
+
+    expect(outcome.findings).toBe(1);
+  });
+});

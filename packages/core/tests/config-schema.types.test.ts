@@ -108,3 +108,20 @@ describe("a oneOf setting is typed by the group it names", () => {
     });
   });
 });
+
+const optionalLevel = {
+  "escalation.scale.patient": { type: "number", required: true, description: "rounds a patient level allows" },
+  "escalation.scale.normal": { type: "number", required: true, description: "rounds a normal level allows" },
+  "escalation.origins.proof.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    description: "the level the proof's rounds are counted at, when one is set",
+  },
+} as const satisfies ConfigSchema;
+
+describe("a oneOf setting that is not required", () => {
+  it("may be absent, like any other setting with no default", () => {
+    expectTypeOf<ConfigOf<typeof optionalLevel>["escalation"]["origins"]["proof"]["level"]>()
+      .toEqualTypeOf<"patient" | "normal" | undefined>();
+  });
+});

@@ -1,9 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { Conversation, Plugin, ThreadRef, WORKFLOW_RUNTIME, WorkflowRuntime, mount } from "@amykit/core";
-import { fakeAgent, fakeGate, fakeHost, fakeTracker, fakeWorkspace, policy, ticket } from "@amykit/test-fixtures";
+import { describe, expect, it, vi } from "vitest";
+import { Conversation, Plugin, ThreadRef, WORKFLOW_RUNTIME, WorkflowRuntime, applyPlan, mount, movedBy } from "@amykit/core";
+import { fakeAgent, fakeGate, fakeHost, fakeTracker, fakeWorkspace, mountTicketToQa, observation, policy, pullRequest, record, thread, ticket, ticketWorkerDeps } from "@amykit/test-fixtures";
+import { plan } from "../src/machine.js";
+import { Observation } from "../src/observation.js";
+import { TicketRecord } from "../src/record.js";
+import { drive, mountedTicket } from "./mounted.js";
 import { actionsFor } from "../src/actions.js";
 import { newRecord, plugin } from "./drawn.js";
 
@@ -90,5 +94,139 @@ describe("a called ticket's thread", () => {
 
     expect(conversation.opened).toEqual([`${UNIT}: ${ticket().title}`]);
     expect(await conversation.known(UNIT)).toEqual({ id: `thread-${UNIT}` });
+  });
+});
+
+/** A git standing in for the checkouts that remembers every call, and commits always find a change. */
+function recordingGit(log: string[]) {
+  const tree = (_repo: string, workId?: string) => `/tmp/amy-fixture/${workId ?? "work"}`;
+  return {
+    pathFor: tree,
+    acquire: async (repo: string, workId: string) => tree(repo, workId),
+    prepareBranch: vi.fn(async () => { log.push("prepare"); }),
+    commit: vi.fn(async () => { log.push("commit"); return true; }),
+    push: vi.fn(async () => { log.push("push"); }),
+    commitAndPush: vi.fn(async () => { log.push("commit"); log.push("push"); return true; }),
+    headSha: async () => "0".repeat(40),
+  };
+}
+
+describe("where a change reaches the remote", () => {
+  it("is never the implementing step: it commits and does not push", async () => {
+    const log: string[] = [];
+    const git = recordingGit(log);
+    const runtime = await mountTicketToQa({ git: git as never, now: () => NOW });
+
+    await (runtime.actions["implement"] as (e: unknown, c: unknown) => Promise<void>)(
+      { type: "implement" },
+      { record: record("IMPLEMENTING"), observation: observation(), outcomes: {} },
+    );
+
+    expect(log).toContain("commit");
+    expect(log).not.toContain("push");
+  });
+
+  it("is publishing, after the gate has run on the commit, once per round", async () => {
+    const log: string[] = [];
+    const runner = {
+      run: async (_command: string, args: readonly string[]) => {
+        if (args.includes("push")) log.push("push");
+        return {
+          ok: true,
+          exitCode: 0,
+          stdout: args.includes("status") ? " M invoice.md\n" : args.includes("rev-parse") ? "c0ffee0000000000000000000000000000000000\n" : "",
+          stderr: "",
+        };
+      },
+    };
+    const gate = { run: async () => { log.push("gate"); return { ok: true, output: "", at: new Date().toISOString(), findings: 0 }; } };
+    let at = NOW.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ gate }, now, runner);
+
+    await drive(mounted, mounted.runtime.newRecord(UNIT, now()), now, (current) => current.state === "COPILOT_WAIT" || current.state === "REVIEWER_ASSIGNED");
+
+    expect(log.filter((one) => one === "push")).toHaveLength(1);
+    expect(log.indexOf("push")).toBeGreaterThan(log.indexOf("gate"));
+  });
+
+  it("pushes nothing in a round the gate refuses", async () => {
+    const log: string[] = [];
+    const runner = {
+      run: async (_command: string, args: readonly string[]) => {
+        if (args.includes("push")) log.push("push");
+        return {
+          ok: true,
+          exitCode: 0,
+          stdout: args.includes("status") ? " M invoice.md\n" : args.includes("rev-parse") ? "c0ffee0000000000000000000000000000000000\n" : "",
+          stderr: "",
+        };
+      },
+    };
+    const gate = { run: async () => ({ ok: false, output: "typecheck failed", at: new Date().toISOString(), findings: 1 }) };
+    let at = NOW.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ gate }, now, runner);
+
+    await drive(mounted, mounted.runtime.newRecord(UNIT, now()), now, (current) => current.state === "IMPLEMENTING" && current.lastGate !== undefined);
+
+    expect(log).not.toContain("push");
+  });
+});
+
+describe("publishing a change the review sent back", () => {
+  const green = (r: TicketRecord): TicketRecord => ({
+    ...r,
+    lastImplementation: { ok: true, output: "", at: "2026-09-03T11:00:00.000Z" },
+    lastGate: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z" },
+    lastSelfReview: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z", verdict: "APPROVED" },
+    lanes: { GATE: { call: `${UNIT}/GATE#2`, end: "GREEN" }, SELF_REVIEW: { call: `${UNIT}/SELF_REVIEW#2`, end: "APPROVED" } },
+  });
+
+  /** Looks from the verdict until the work waits on a reviewer, collecting every effect planned. */
+  async function effectsFromVerdict(start: TicketRecord, pr: ReturnType<typeof pullRequest>) {
+    const runtime = (await ticketWorkerDeps({ now: () => NOW })).runtime as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const seen = observation({ pullRequest: pr });
+    const effects: { type: string; [key: string]: unknown }[] = [];
+    let current = start;
+    for (let count = 0; count < 6 && current.state !== "HUMAN_REVIEW"; count += 1) {
+      const decided = plan(current, seen, policy);
+      if (decided.kind === "settled" || decided.kind === "wait") break;
+      effects.push(...(decided.effects as { type: string }[]));
+      current = runtime.apply(applyPlan(current, decided, NOW, {}), decided, {}, seen, NOW, movedBy(current, decided));
+    }
+    return effects;
+  }
+
+  const takenUp = (r: TicketRecord): TicketRecord => ({
+    ...r,
+    reviewer: "ada",
+    pullRequestNumber: 4940,
+    judged: [
+      { threadId: "T1", verdict: "fixed", note: "rounded once" },
+      { threadId: "T2", verdict: "answered" as never, note: "the brief keeps currency out of scope" },
+    ],
+  });
+
+  it("resolves every thread the work took up", async () => {
+    const pr = pullRequest({ threads: [thread({ id: "T1" }), thread({ id: "T2" })] });
+    const effects = await effectsFromVerdict(green(takenUp(record("verdict"))), pr);
+
+    const resolved = effects.filter((e) => /resolve/.test(e.type)).map((e) => e.threadId);
+    expect(resolved.sort()).toEqual(["T1", "T2"]);
+  });
+
+  it("replies on a thread it answered rather than built", async () => {
+    const pr = pullRequest({ threads: [thread({ id: "T1" }), thread({ id: "T2" })] });
+    const effects = await effectsFromVerdict(green(takenUp(record("verdict"))), pr);
+
+    expect(effects.some((e) => /reply|answer/.test(e.type) && JSON.stringify(e).includes("T2"))).toBe(true);
+  });
+
+  it("asks the recorded reviewer again", async () => {
+    const pr = pullRequest({ threads: [thread({ id: "T1" })] });
+    const effects = await effectsFromVerdict(green(takenUp(record("verdict"))), pr);
+
+    expect(effects.some((e) => /request/.test(e.type) && e.host === "ada")).toBe(true);
   });
 });

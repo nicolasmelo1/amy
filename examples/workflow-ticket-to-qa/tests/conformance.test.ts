@@ -1,4 +1,8 @@
-import { beforeAll, describe, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { readDiagram } from "@amykit/core";
+import { ticketWorkerDeps } from "@amykit/test-fixtures";
 import {
   Agent,
   AskContext,
@@ -288,5 +292,34 @@ describe("ticket-to-qa", () => {
     worlds: WORLDS,
     // Shipped, so every arrow its diagram draws is one some world walks.
     everyEdge: true,
+  });
+});
+
+describe("the review loop's own fix states", () => {
+  const source = fs.readFileSync(fileURLToPath(new URL("../workflow.mmd", import.meta.url)), "utf-8");
+
+  it.each(["COPILOT_FIX", "HUMAN_FIX"])("are not drawn: %s is gone from the diagram", (state) => {
+    const drawn = readDiagram(source);
+
+    expect(drawn.states).not.toContain(state);
+  });
+
+  it.each(["COPILOT_FIX", "HUMAN_FIX"])("refuse a record saved in %s when it is loaded, naming the record and the state", async (state) => {
+    const { runtime, workflow } = await ticketWorkerDeps({ now: () => new Date("2026-09-03T12:00:00.000Z") });
+    const saved = { ...newRecord("PROJ-1239", new Date("2026-09-03T12:00:00.000Z")), state } as unknown as TicketRecord;
+
+    const loaded = (async () => {
+      const seen = await runtime.observe(saved);
+      return workflow.plan(saved, seen, runtime.policy);
+    })();
+
+    await expect(loaded).rejects.toThrow(new RegExp(`PROJ-1239[\\s\\S]*${state}|${state}[\\s\\S]*PROJ-1239`));
+  });
+
+  it("marks where work comes back from and which steps verify a reply", () => {
+    const drawn = readDiagram(source);
+
+    expect([...drawn.sendsBack].sort()).toEqual(expect.arrayContaining(["GATE", "SELF_REVIEW"]));
+    expect(drawn.verified).toEqual(expect.arrayContaining(["IMPLEMENTING"]));
   });
 });

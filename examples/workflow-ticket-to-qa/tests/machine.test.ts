@@ -6,6 +6,8 @@ import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, d
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
 import { plan } from "../src/machine.js";
+import { configSchema } from "../src/plugin.js";
+import { validateConfig } from "@amykit/core";
 import { actionsFor } from "../src/actions.js";
 import {
   HEAD,
@@ -1634,5 +1636,62 @@ describe("a record an older version saved where the checks used to run", () => {
     expect(p.to).toBe("checks");
     expect(p.effects).toEqual([]);
     expect(p.why).toContain("before they ran as lanes");
+  });
+});
+
+describe("the attempt ceilings an escalation replaces", () => {
+  it.each(["policy.maxImplementAttempts", "policy.maxGateAttempts"])("leaves %s out of the schema", (key) => {
+    expect(Object.keys(configSchema)).not.toContain(key);
+  });
+
+  it.each(["maxImplementAttempts", "maxGateAttempts"])("refuses a config that still sets policy.%s, naming it", (key) => {
+    const result = validateConfig("@amykit/workflow-ticket-to-qa", configSchema, {
+      repos: ["acme/widgets"],
+      qaStatusName: "In QA",
+      policy: { [key]: 3 },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.problems.join("; ")).toContain(key);
+  });
+
+  it("does not escalate a change the checks sent back as many times as the old ceiling, while its origin's rounds have rungs left", () => {
+    const r = record("verdict", {
+      attempts: { verdict: 3, IMPLEMENTING: 3 },
+      roundsByOrigin: { gate: 0 },
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
+      lanes: { GATE: { call: "PROJ-1239/GATE#3", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#3", end: "APPROVED" } },
+    });
+
+    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("IMPLEMENTING");
+  });
+
+  it("does not escalate an implementation that failed as many times as the old ceiling, while its origin's rounds have rungs left", () => {
+    const r = record("IMPLEMENTING", {
+      attempts: { IMPLEMENTING: 3 },
+      roundsByOrigin: {},
+      lastImplementation: attempt(false, "2026-09-03T10:00:00.000Z", "broken"),
+    });
+
+    const p = plan(r, observation(), policy);
+
+    expect(p.kind === "advance" ? p.to : p.kind).not.toBe("ESCALATED");
+  });
+
+  it("escalates once an origin's rounds ran out on the ladder's top rung", () => {
+    const r = record("verdict", {
+      roundsByOrigin: { gate: 99 },
+      climbedByOrigin: { gate: 99 },
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
+      lanes: { GATE: { call: "PROJ-1239/GATE#1", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#1", end: "APPROVED" } },
+    });
+
+    const p = expectAdvance(plan(r, observation(), policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.why).toMatch(/gate/);
+    expect(p.why).not.toMatch(/across \d+ rounds/);
   });
 });

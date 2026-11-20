@@ -217,3 +217,90 @@ describe("judgeStep", () => {
     expect(result.run.refused).toContain("no readable JSON object");
   });
 });
+
+describe("a verify the step declares itself", () => {
+  /** Refuses any answer that does not name the ticket, the way a step's own check would. */
+  const namesTheTicket = async (reply: HarnessReply): Promise<HarnessReply> =>
+    reply.text.includes("T-1")
+      ? reply
+      : { ...reply, run: { ...reply.run, outcome: "failed" as const, refused: "the answer never names the ticket" } };
+
+  it("is the one a judging step climbs on, even when the answer is readable JSON", async () => {
+    const weak = rung("sonnet", "completed", '{"verdict":"ok"}');
+    const strong = rung("opus", "completed", '{"verdict":"ok","ticket":"T-1"}');
+
+    const result = await judgeStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "judge it",
+      cwd: "/w",
+      context: { step: "triage", verify: namesTheTicket },
+      read: (answer) => answer as { verdict: string; ticket?: string },
+      fallback: { verdict: "none" },
+    });
+
+    expect([weak.asked, strong.asked]).toEqual([1, 1]);
+    expect(result.value).toEqual({ verdict: "ok", ticket: "T-1" });
+  });
+
+  it("still climbs a judging step on an answer with no JSON object, after the step's own verify passed it", async () => {
+    const weak = rung("sonnet", "completed", "T-1 looks fine");
+    const strong = rung("opus", "completed", '{"ticket":"T-1"}');
+
+    const result = await judgeStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "judge it",
+      cwd: "/w",
+      context: { verify: namesTheTicket },
+      read: (answer) => answer as { ticket: string },
+      fallback: { ticket: "none" },
+    });
+
+    expect([weak.asked, strong.asked]).toEqual([1, 1]);
+    expect(result.value).toEqual({ ticket: "T-1" });
+  });
+
+  it("is the one an implementing step climbs on, even when the run changed files", async () => {
+    const weak = rung("sonnet", "completed", "done");
+    const strong = rung("opus", "completed", "done for T-1");
+
+    const result = await implementStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "do it",
+      cwd: "/w",
+      context: { verify: namesTheTicket },
+      commit: async () => true,
+      now: NOW,
+    });
+
+    expect([weak.asked, strong.asked]).toEqual([1, 1]);
+    expect(result.value.ok).toBe(true);
+  });
+});
+
+describe("judgeStep reading an answer", () => {
+  it("does not call a readable JSON answer unreadable when the step's own reader rejects it", async () => {
+    const result = await judgeStep(answering({ text: '{"verdict":"maybe"}', run: run() }), {
+      prompt: "p",
+      cwd: "/w",
+      read: () => {
+        throw new Error("verdict must be yes or no");
+      },
+      fallback: "nothing",
+    }).catch((error: Error) => ({ thrown: error.message }));
+
+    // Either the reader's failure fails the step, or the refusal says what was wrong.
+    if ("thrown" in result) expect(result.thrown).toContain("verdict must be yes or no");
+    else expect(result.run.refused ?? "").not.toContain("no readable JSON object");
+  });
+});
+
+describe("implementStep reading a reason for changing nothing", () => {
+  it("reads the marker only as a word of its own", async () => {
+    const result = await implementStep(answering({ text: "NOTHING_TO_CHANGES_DETECTED_YET, still looking", run: run() }), {
+      prompt: "p",
+      cwd: "/w",
+      commit: async () => false,
+      now: NOW,
+    });
+
+    expect(result.value.ok).toBe(false);
+    expect(result.run.outcome).toBe("failed");
+  });
+});

@@ -364,3 +364,36 @@ describe("a record an older version left where the checks used to run", () => {
     expect(seen.filter((entry) => entry.context?.step === "implement")).toEqual([]);
   });
 });
+
+describe("a self-review reply that says no verdict", () => {
+  /** Drives to the self-review, keeping the context it was asked with. */
+  async function selfReviewContext(): Promise<AskContext> {
+    const seen: { prompt: string; context?: AskContext }[] = [];
+    const { agent } = recordingAgent(seen, () => "");
+    await driveToSelfReview({ tracker: trackerFor(() => ticket()), agent });
+    const asked = seen.find((one) => one.context?.step === "self-review");
+    if (!asked?.context) throw new Error("the self-review was never asked");
+    return asked.context;
+  }
+
+  const completed = (text: string) => ({
+    text,
+    run: { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } as const,
+  });
+
+  it("is refused by the step's own verify, so a relay asks the next rung", async () => {
+    const context = await selfReviewContext();
+
+    expect(context.verify).toBeTypeOf("function");
+    const judged = await context.verify!(completed("look at the boundary first") as never);
+    expect(judged.run.outcome).toBe("failed");
+    expect(judged.run.refused).toMatch(/APPROVED|CHANGES_ASKED|verdict/);
+  });
+
+  it.each(["looks right\nAPPROVED", "the rounding is wrong\nCHANGES_ASKED: round once"])("passes a reply that ends on a verdict: %s", async (text) => {
+    const context = await selfReviewContext();
+
+    expect(context.verify).toBeTypeOf("function");
+    expect((await context.verify!(completed(text) as never)).run.outcome).toBe("completed");
+  });
+});
