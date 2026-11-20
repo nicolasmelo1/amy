@@ -16,6 +16,9 @@ sources:
   - { id: S14, kind: decision, ref: "packages/core/src/ports/Harness.ts", said: "AskContext gains the field, optional like its two existing ones: a relay acts on it, a single harness ignores it. Adapters map it to their CLI's name; a harness without it gets the question unchanged, not failing" }
   - { id: S15, kind: decision, said: "an unknown effort is refused at boot, the defect already refused for skills one key over; a silently dropped effort is harder to notice because the run still succeeds. That is why it belongs here" }
   - { id: S16, kind: decision, said: "gate plugin-agent-relay is extended with six relay.* assertions; its scenario already mounts a workflow written outside this repository, whose declared step keys the skill" }
+  - { id: S17, kind: friction, said: "2026-11-19: every per-step name in config.yaml is open; a step taken out of the workflow leaves its ladder, skills and effort keys behind, read by nothing and refused by nothing" }
+  - { id: S18, kind: code, ref: "packages/cli/src/config.ts", symbol: "chatSkills", said: "the chat's skills are read from skills.chat, beside the workflow's steps, as if chat were one of them" }
+  - { id: S19, kind: decision, said: "chat is the core's, not a workflow's step: no per-step map takes a chat key, which is refused naming chat.ladder, chat.skills or chat.effort, the chat section where it lives. Decided 2026-11-19" }
 touches:
   - plugins/agent-relay/src/skills.ts
   - plugins/agent-relay/src/plugin.ts
@@ -23,10 +26,11 @@ touches:
   - plugins/agent-relay/tests/skills.test.ts
   - packages/agent-kit/src/HarnessRelay.ts
   - packages/core/src/ports/Harness.ts
-  - plugins/claude/src/**
-  - plugins/codex/src/**
+  - plugins/claude/src/ClaudeHarness.ts
+  - plugins/claude/src/config.ts
+  - plugins/codex/src/CodexHarness.ts
   - packages/cli/src/config.ts
-  - .software-factory/evidence/plugin-agent-relay/**
+  - .software-factory/evidence/plugin-agent-relay/probe.ts
   - .software-factory/policy.yaml
 criteria:
   - { id: A1, statement: "a skill ladder keyed by a workflow's own action is accepted and fires", proof: "assertion:relay.a_workflows_own_step_can_have_a_skill", sources: [S1, S2, S4, S5, S16] }
@@ -38,6 +42,8 @@ criteria:
   - { id: A7, statement: "a step given an effort passes it to the harness, a step without one behaves exactly as today, and a harness with no such control receives the question unchanged rather than failing", proof: "assertion:relay.an_effort_reaches_the_harness_that_has_one", sources: [S10, S11, S12, S13, S14] }
   - { id: A8, statement: "an effort value no mounted harness accepts is refused at boot, naming the step and the value", proof: "assertion:relay.an_effort_no_harness_accepts_is_refused_at_boot", sources: [S15] }
   - { id: A9, statement: "the effort reaches a workflow-declared step through the relay, not only the core's own steps", proof: "test:plugins/agent-relay/tests/skills.test.ts", sources: [S10, S14] }
+  - { id: A10, statement: "a ladderByStep, skills or effortByStep key naming a step the mounted workflow no longer declares is refused at boot, naming the key, the map and the steps there are", proof: "test:plugins/agent-relay/tests/skills.test.ts", sources: [S17, S8, S9] }
+  - { id: A11, statement: "a chat key in ladderByStep, skills or effortByStep is refused at boot naming the chat section key that replaces it, even when a workflow declares a step called chat", proof: "test:plugins/agent-relay/tests/skills.test.ts", sources: [S18, S19] }
 crosses:
   - { mechanism: attempts-and-waits, answer: n/a, why: "the lookup changes which skill, model and effort a step asks with, not how attempts are charged or given back" }
   - { mechanism: agent-replies, answer: n/a, why: "only what is asked changes; a reply is read as today" }
