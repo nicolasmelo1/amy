@@ -10716,7 +10716,8 @@
         "evidence": ".software-factory/evidence/every-claim-and-path-agrees.json",
         "plan": "docs/design/every-claim-and-path-agrees.md",
         "assertions": [
-          "agree.a_stale_update_claim_is_recovered_once"
+          "agree.a_stale_update_claim_is_recovered_once",
+          "agree.amy_stop_writes_where_the_launcher_reads"
         ],
         "scenario": ".software-factory/evidence/every-claim-and-path-agrees-scenario.sh"
       },

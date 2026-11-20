@@ -178,7 +178,22 @@ function workspaceSlice(): void {
   } catch (error) {
     refused = (error as Error).message;
   }
-  record("agree.a_blank_workspace_root_is_refused", refused.includes("workspaceRoot"), refused);
+  // The mount, not only this command's parser: a plugin handed the same
+  // slice must refuse at boot instead of cutting from its own directory.
+  let mounted = "";
+  try {
+    new WorktreeManager(
+      { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+      { root: path.join(work, "trees"), workflow: "oncall", defaultBranch: "main", workspaceRoot: "  ", retentionDays: 7, record: () => null, terminalStates: [] },
+    );
+  } catch (error) {
+    mounted = (error as Error).message;
+  }
+  record(
+    "agree.a_blank_workspace_root_is_refused",
+    refused.includes("workspaceRoot") && mounted.includes("workspaceRoot"),
+    `${refused} | mounted: ${mounted}`,
+  );
 }
 
 async function oneCheckout(): Promise<void> {
@@ -230,7 +245,7 @@ import { WorktreeManager } from ${JSON.stringify(module)};
 const [root, rounds] = process.argv.slice(2);
 const manager = new WorktreeManager(
   { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
-  { root, workflow: "oncall", defaultBranch: "main", workspaceRoot: "", retentionDays: 7, record: () => null, terminalStates: [] },
+  { root, workflow: "oncall", defaultBranch: "main", workspaceRoot: root + "/checkouts", retentionDays: 7, record: () => null, terminalStates: [] },
 );
 for (let n = 0; n < Number(rounds); n += 1) manager.touch("PROJ-1", "acme/widgets");
 `, "utf-8");

@@ -82,11 +82,17 @@ export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
   if (stagingBlocks(file)) return false;
   const claim = `${file}.claimed`;
-  // A claim standing before this take belonged to a process that is gone
-  // (a live one would have refused the lock), and it consumed the due marker.
-  const interrupted = fs.existsSync(claim);
+  // Who held the claim a moment ago. What the holder's liveness means is
+  // decided after the lock is this process's (below), never before it: an
+  // owner that finished and released between this read and the take leaves
+  // no due for anyone, and re-running it would update twice for one due.
+  const seen = claimOwner(claim);
   const lock = takeLock(claim);
   if (!lock) return false;
+  // The lock refused nobody: either it was free (its owner finished and
+  // released, or there was none) or its owner was gone and was buried. Only
+  // a claim taken over from a gone owner consumed a due nobody has run.
+  const interrupted = seen.present && (seen.pid === undefined || !processAlive(seen.pid));
   if (!fs.existsSync(file)) {
     if (!interrupted) {
       lock.release();
@@ -110,6 +116,26 @@ function stagingBlocks(file: string): boolean {
     // Another recovery settled the stale marker first.
   }
   return false;
+}
+
+/**
+ * The claim as it stood before this process took it: whether there was one,
+ * and the pid it named. A claim that names no process is still a claim.
+ */
+function claimOwner(claim: string): { present: boolean; pid?: number } {
+  let text: string;
+  try {
+    text = fs.readFileSync(claim, "utf8").trim();
+  } catch {
+    return { present: false };
+  }
+  let pid: number;
+  try {
+    pid = text.startsWith("{") ? Number((JSON.parse(text) as { pid?: unknown }).pid) : Number.parseInt(text, 10);
+  } catch {
+    return { present: true };
+  }
+  return Number.isSafeInteger(pid) && pid > 0 ? { present: true, pid } : { present: true };
 }
 
 /** A marker an older amy wrote names its pid on the first line; a lock names it in JSON. */
@@ -150,7 +176,15 @@ export async function settleClaimedDaemonUpdate(
   profile: string,
   update: () => Promise<number>,
 ): Promise<boolean> {
-  if (await update() === 0) {
+  let code: number;
+  try {
+    code = await update();
+  } catch {
+    // An update that threw did not finish either: the claim must not stay
+    // held by a process whose child is gone, and the due must not be lost.
+    code = 1;
+  }
+  if (code === 0) {
     finishDaemonUpdate(home, profile);
     return true;
   }

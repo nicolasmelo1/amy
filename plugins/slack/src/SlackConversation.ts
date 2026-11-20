@@ -128,6 +128,8 @@ export class SlackConversation implements Conversation {
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   private botUser?: Promise<string>;
+  /** A root's later pieces, so replacing the root takes them with it. */
+  private readonly pieces = new Map<string, readonly string[]>();
   private prunedAt = Number.NEGATIVE_INFINITY;
 
   constructor(
@@ -322,8 +324,14 @@ export class SlackConversation implements Conversation {
     return this.postParts(place, text);
   }
 
-  async revise(_place: string, id: string, text: string): Promise<void> {
-    await this.api.call("chat.update", { channel: this.options.channel, ts: id, text });
+  async revise(place: string, id: string, text: string): Promise<void> {
+    // The revision is a post like any other: the first piece replaces the
+    // message, and the rest follow it in the thread, joined whole.
+    const [first, ...rest] = splitText(text);
+    await this.api.call("chat.update", { channel: this.options.channel, ts: id, text: first });
+    for (const part of rest) {
+      await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text: part });
+    }
   }
 
   /**
@@ -519,18 +527,29 @@ export class SlackConversation implements Conversation {
    */
   private async postParts(threadTs: string | undefined, text: string, extra: Record<string, unknown> = {}): Promise<string> {
     let first = "";
+    // A root split in pieces is one thread: the pieces after the first answer
+    // into the root's ts, or they would each open a conversation of their own.
+    let thread = threadTs;
+    const pieces: string[] = [];
     for (const [index, part] of splitText(text).entries()) {
       const { body } = await this.api.call("chat.postMessage", {
         channel: this.options.channel,
-        ...(threadTs === undefined ? {} : { thread_ts: threadTs }),
+        ...(thread === undefined ? {} : { thread_ts: thread }),
         text: part,
         ...(index === 0 ? extra : {}),
       });
-      if (body.warning === "message_truncated") {
-        this.warn(`slack: chat.postMessage answered message_truncated for a ${part.length}-character post`);
+      const ts = String(body.ts);
+      if (truncatedIn(body.warning)) {
+        this.warn(`slack: chat.postMessage answered message_truncated for a ${part.length}-character post in thread ${thread ?? ts}`);
       }
-      if (index === 0) first = String(body.ts);
+      if (index === 0) {
+        first = ts;
+        thread = threadTs ?? ts;
+      } else {
+        pieces.push(ts);
+      }
     }
+    if (pieces.length > 0) this.pieces.set(first, pieces);
     return first;
   }
 
@@ -746,8 +765,13 @@ export class SlackConversation implements Conversation {
       return { ts, posted: true };
     }, async (superseded) => {
       // Best effort: a root that cannot be deleted is a stray message in the
-      // channel, never a second thread this machine remembers.
-      await this.api.call("chat.delete", { channel, ts: superseded }).catch(() => undefined);
+      // channel, never a second thread this machine remembers. A root posted
+      // in pieces is deleted piece by piece: the pieces are its thread only
+      // while it stands.
+      for (const ts of [superseded, ...(this.pieces.get(superseded) ?? [])]) {
+        await this.api.call("chat.delete", { channel, ts }).catch(() => undefined);
+      }
+      this.pieces.delete(superseded);
     });
     return { id: ts };
   }
@@ -915,6 +939,14 @@ export class SlackConversation implements Conversation {
     }
     return target;
   }
+}
+
+/**
+ * Whether Slack reported a truncation, among any other warnings: `warning`
+ * is a comma-separated list in the Web API, not one value.
+ */
+function truncatedIn(warning: unknown): boolean {
+  return typeof warning === "string" && warning.split(",").map((one) => one.trim()).includes("message_truncated");
 }
 
 function askMetadata(event: string, ask: Ask): string {

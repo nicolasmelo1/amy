@@ -1149,6 +1149,7 @@ gates:
     plan: "docs/design/every-claim-and-path-agrees.md"
     required_assertions:
       - "agree.a_stale_update_claim_is_recovered_once"
+      - "agree.amy_stop_writes_where_the_launcher_reads"
 
 rules:
   # L0 — The host's source names no vocabulary a workflow owns; its one

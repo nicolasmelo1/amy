@@ -15,7 +15,7 @@ import { WorktreeManager } from ${MANAGER};
 const [root, workflow, workId, repo, rounds] = process.argv.slice(2);
 const manager = new WorktreeManager(
   { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
-  { root, workflow, defaultBranch: "main", workspaceRoot: "", retentionDays: 7, record: () => null, terminalStates: [] },
+  { root, workflow, defaultBranch: "main", workspaceRoot: root + "/checkouts", retentionDays: 7, record: () => null, terminalStates: [] },
 );
 for (let n = 0; n < Number(rounds); n += 1) manager.touch(workId, repo);
 `;

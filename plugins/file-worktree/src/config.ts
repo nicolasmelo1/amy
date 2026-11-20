@@ -8,6 +8,23 @@ import { BRANCH_SETTINGS, ConfigSchema } from "@amykit/core";
  * and the worktrees themselves all moved here out of the machine's top level,
  * so an install that drives no code carries none of it.
  */
+/**
+ * A root that was given must name a directory.
+ *
+ * `"."` is the schema's default — where the command was typed — but an empty
+ * or blank value names nothing, and a manager left to resolve one used to
+ * read a repository as relative to wherever the process stood. An omitted
+ * root is not this check's: a caller that names every checkout it needs has
+ * no root to give.
+ */
+export function assertWorkspaceRootNamesADirectory(value: string | undefined): void {
+  if (value !== undefined && value.trim() === "") {
+    throw new Error(
+      "workspaceRoot names no directory; name where the standing checkouts live, or omit it",
+    );
+  }
+}
+
 export const configSchema = {
   repos: {
     type: "string[]",

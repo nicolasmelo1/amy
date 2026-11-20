@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { baseBranchFor, checkoutFor, CommandRunner, EventLog, Worktree, WorktreeInfo, writeAtomically } from "@amykit/core";
+import { assertWorkspaceRootNamesADirectory } from "./config.js";
 
 export interface WorktreeManagerConfig {
   /** Where every tree lives, outside any repository. `~` is expanded. */
@@ -75,7 +76,11 @@ export class WorktreeManager implements Worktree {
   constructor(
     private readonly runner: CommandRunner,
     private readonly config: WorktreeManagerConfig,
-  ) {}
+  ) {
+    // Refused at the mount, which is the boot: a blank root is a setting that
+    // names nothing, not a request to cut from the process's directory.
+    assertWorkspaceRootNamesADirectory(config.workspaceRoot);
+  }
 
   async acquire(workId: string, repo: string): Promise<string> {
     const tree = this.pathFor(workId, repo);
