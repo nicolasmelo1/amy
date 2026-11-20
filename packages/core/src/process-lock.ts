@@ -12,8 +12,9 @@ import path from "node:path";
  * for a lock naming no process — once it has stood past a grace. An
  * abandoned lock is taken over by linking it to a tombstone named for what
  * was seen: only one process can create that name, so of everyone who saw
- * the same dead owner exactly one removes its lock, and nobody removes the
- * lock a new owner took meanwhile. A lock an earlier amy left — a pid line,
+ * the same dead owner exactly one replaces its lock — in one rename, so the
+ * path is never free in between — and nobody replaces the lock a new owner
+ * took meanwhile. A lock an earlier amy left — a pid line,
  * a `pid:token` line, a bare token, or a directory holding `owner.json` — is
  * read and recovered the same way, since an old and a new amy run side by
  * side right after an update. See plans/a-lock-is-taken-one-way.md.
@@ -76,18 +77,56 @@ export function processAlive(pid: number): boolean {
 export function takeLock(file: string, options: LockOptions = {}): HeldLock | undefined {
   const pid = options.pid ?? process.pid;
   const stamp = `${pid}:${randomUUID()}`;
+  const content = `${JSON.stringify({ pid, stamp })}\n`;
+  const at = () => options.now && new Date(options.now());
   let takeover = false;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (publish(file, `${JSON.stringify({ pid, stamp })}\n`, options.now && new Date(options.now()))) return held(file, stamp, options, takeover);
+    if (publish(file, content, at())) return held(file, stamp, options, takeover);
     const seen = look(file);
     // Released between the refused publish and this read: try again.
     if (seen === undefined) continue;
     if (!abandoned(seen, options)) return undefined;
+    // A file lock is handed over in one step: the path is never free between
+    // the abandoned owner and this one, so no starter arriving meanwhile can
+    // take it as a free lock and leave what the gone owner held unrecovered.
+    if (!seen.directory) return succeed(file, seen, content, at()) ? held(file, stamp, options, true) : undefined;
     if (!bury(file, seen)) return undefined;
-    // The path was an abandoned owner's, and this take removed it.
+    // An earlier amy's directory lock is moved aside, and the path published
+    // after it: a rename cannot replace a directory with a file.
     takeover = true;
   }
   return undefined;
+}
+
+/**
+ * Replaces the abandoned file lock that was seen with this owner's, in one
+ * rename, while holding its tombstone. Answers false when another process is
+ * burying it, already has, or the lock is no longer the one seen.
+ */
+function succeed(file: string, seen: Seen, content: string, at: Date | undefined): boolean {
+  sweep(file);
+  const tombstone = tombstoneOf(file, seen);
+  if (!entomb(file, tombstone, seen)) return false;
+  // The tombstone is a second name for the lock seen, held only while the
+  // handover is decided: a recoverer that comes late links this owner's lock
+  // instead, and `sameLock` refuses it.
+  try {
+    if (!sameLock(look(tombstone), seen) || look(file)?.ino !== seen.ino) return false;
+    const staged = `${file}.${randomUUID()}.staged`;
+    try {
+      stage(staged, content);
+      if (at) fs.utimesSync(staged, at, at);
+      fs.renameSync(staged, file);
+      return true;
+    } catch (error) {
+      if (changed(error)) return false;
+      throw error;
+    } finally {
+      fs.rmSync(staged, { force: true });
+    }
+  } finally {
+    fs.rmSync(tombstone, { force: true });
+  }
 }
 
 function held(file: string, stamp: string, options: LockOptions, takeover: boolean): HeldLock {
@@ -232,8 +271,7 @@ function abandoned(seen: Seen, options: LockOptions): boolean {
  */
 function bury(file: string, seen: Seen): boolean {
   sweep(file);
-  const identity = seen.owner?.stamp ?? `${seen.ino}:${seen.mtimeMs}`;
-  const tombstone = `${file}.dead-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`;
+  const tombstone = tombstoneOf(file, seen);
   // Refused: another process is burying it, or did. One that died doing so
   // leaves a tombstone swept within the hour, and the next attempt buries it.
   if (!entomb(file, tombstone, seen)) return false;
@@ -252,6 +290,12 @@ function bury(file: string, seen: Seen): boolean {
   // lock out of the way.
   if (!seen.directory) fs.rmSync(tombstone, { force: true });
   return true;
+}
+
+/** The one name everyone who saw the same abandoned lock races to create. */
+function tombstoneOf(file: string, seen: Seen): string {
+  const identity = seen.owner?.stamp ?? `${seen.ino}:${seen.mtimeMs}`;
+  return `${file}.dead-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`;
 }
 
 /**
