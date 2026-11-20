@@ -34,6 +34,18 @@ export interface WorkRecord {
    */
   looks?: Record<string, number>;
   /**
+   * Rounds of work each origin of new work has sent back, by the name the
+   * workflow calls that origin. A round sent back by a review thread never
+   * counts toward the gate's.
+   */
+  roundsByOrigin?: Record<string, number>;
+  /**
+   * The highest rung each origin has earned, by the same names. Kept so a
+   * round that finds less than the last one did never walks the work back
+   * down to a weaker model.
+   */
+  climbedByOrigin?: Record<string, number>;
+  /**
    * Set when the engine let this work go at its attempt ceiling. Kept on the
    * record rather than inferred from the queue, because queue history is
    * pruned and history is not: without it, a pruned item would be discovered

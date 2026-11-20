@@ -89,7 +89,10 @@ export class HarnessRelay implements Harness {
     // half way up would make "the next rung" mean nothing.
     const ladder = rungsFor(this.ladders, context.step);
 
-    let index = 0;
+    // A step that has come back from the same origin before is asked of the
+    // rung its rounds earned, not of the first one again.
+    const begin = Math.min(Math.max(0, Math.trunc(context.rung ?? 0)), ladder.length - 1);
+    let index = begin;
     let handoff: string | undefined;
     let last: HarnessReply | null = null;
     const handed = withSkill(context, skill, this.deps.locate);

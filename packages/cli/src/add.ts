@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CommandRunner, type ConfigSchema, Mounted, Plugin, mountedActions } from "@amykit/core";
+import { CommandRunner, type ConfigField, type ConfigSchema, Mounted, Plugin, mountedActions } from "@amykit/core";
 import { classify } from "./spec.js";
 import { PLUGINS_ROOT_FLAGS, packageManager, shellCommand } from "./install.js";
 import { drawn } from "./drawn.js";
@@ -258,11 +258,26 @@ export async function whatMountingSays(
  * the type asked for" and nothing more — the probe judges whether the
  * register works, not whether a setting's value does.
  */
+/**
+ * The first name a `oneOf` setting's group declares.
+ *
+ * The stand-in has to be a value the schema accepts, and the only such values
+ * are the ones the config itself names elsewhere.
+ */
+function firstNamed(schema: ConfigSchema, spec: ConfigField): string | undefined {
+  const group = (spec as { readonly group?: string }).group;
+  if (!group) return undefined;
+  const prefix = `${group}.`;
+  const leaf = Object.keys(schema).find((key) => key.startsWith(prefix) && !key.slice(prefix.length).includes("."));
+  return leaf?.slice(prefix.length);
+}
+
 function standInConfig(schema: ConfigSchema | undefined): Record<string, unknown> {
   if (schema === undefined) return {};
   const config: Record<string, unknown> = {};
   for (const [dotted, spec] of Object.entries(schema)) {
-    const value = spec.default !== undefined ? spec.default : spec.required ? standin[spec.type] : undefined;
+    const stub = spec.type === "oneOf" ? firstNamed(schema, spec) : standin[spec.type];
+    const value = spec.default !== undefined ? spec.default : spec.required ? stub : undefined;
     if (value === undefined) continue;
     const path = dotted.split(".");
     const leaf = path.pop()!;

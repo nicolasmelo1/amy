@@ -1,6 +1,15 @@
 import { CommandRunner, Git, AttemptOutcome, Gate, Workplace } from "@amykit/core";
 
 
+/** The refusal, once a command has been run and one of them was red. */
+function red(transcript: string[], command: string, exitCode: number | null, output: string): AttemptOutcome {
+  // One check, because it stops here: how many were red is what it saw, and a
+  // workflow weighing this round against a threshold is told the number it
+  // actually found rather than only that it failed.
+  transcript.push(`$ ${command}\nexited ${exitCode}\n\n${output}`);
+  return { ok: false, output: transcript.join("\n\n"), at: new Date().toISOString(), findings: 1 };
+}
+
 export interface CommandGateConfig {
   /**
    * The checks to run, per repository, falling back to the `default` entry.
@@ -35,6 +44,9 @@ export class CommandGate implements Gate {
         ok: false,
         output: `no gate is configured for ${workplace.repo}, so nothing can vouch for this change`,
         at,
+        // Nothing was run, so nothing was found red: the refusal is the
+        // configuration's, and charging it to the change would be a lie.
+        findings: 0,
       };
     }
 
@@ -50,14 +62,11 @@ export class CommandGate implements Gate {
 
       const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 
-      if (!result.ok) {
-        transcript.push(`$ ${command}\nexited ${result.exitCode}\n\n${output}`);
-        return { ok: false, output: transcript.join("\n\n"), at: new Date().toISOString() };
-      }
+      if (!result.ok) return red(transcript, command, result.exitCode, output);
 
       transcript.push(`$ ${command}\nok`);
     }
 
-    return { ok: true, output: transcript.join("\n"), at: new Date().toISOString() };
+    return { ok: true, output: transcript.join("\n"), at: new Date().toISOString(), findings: 0 };
   }
 }

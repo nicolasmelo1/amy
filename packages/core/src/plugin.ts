@@ -276,20 +276,28 @@ export interface Plugin {
   ready?(ctx: PluginContext): void | Promise<void>;
 }
 
+/** The supporting half a plugin brings, typed by the settings its schema validates. */
+export interface PluginPieces<S extends ConfigSchema = ConfigSchema> {
+  /** The checks `amy doctor` runs after its own, under this plugin's name. */
+  readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
+  /** The files `amy init` and `amy add` write into the profile's state, once. */
+  readonly files?: readonly PluginFile<ConfigOf<S>>[];
+  /** What `amy init` and `amy add` prepare outside amy's state, after the files. */
+  readonly setup?: readonly PluginSetup<ConfigOf<S>>[];
+  /** The operations this plugin brings to every door, each a command, a route and a method at once. */
+  readonly operations?: readonly DeclaredOperation[];
+}
+
 /**
  * Declares a plugin with the exact configuration shape its schema validates.
  *
  * `Plugin` remains available for third-party and legacy implementations that
  * intentionally receive an untyped configuration map.
  */
-export function definePlugin<const S extends ConfigSchema>(plugin: {
+export function definePlugin<const S extends ConfigSchema>(plugin: PluginPieces<S> & {
   readonly name: string;
   readonly configSchema: S;
   readonly environment?: readonly string[];
-  readonly operations?: readonly DeclaredOperation[];
-  readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
-  readonly files?: readonly PluginFile<ConfigOf<S>>[];
-  readonly setup?: readonly PluginSetup<ConfigOf<S>>[];
   register(r: Registry, ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
   ready?(ctx: PluginContext<ConfigOf<S>>): void | Promise<void>;
 }): Plugin {

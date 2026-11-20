@@ -1,11 +1,12 @@
-export type ConfigFieldType = "string" | "number" | "boolean" | "string[]" | "record";
+export type ConfigFieldType = "string" | "number" | "boolean" | "string[]" | "record" | "oneOf";
 
 type ConfigValueFor<T extends ConfigFieldType> =
   T extends "string" ? string
     : T extends "number" ? number
       : T extends "boolean" ? boolean
         : T extends "string[]" ? string[]
-          : Record<string, unknown>;
+          : T extends "record" ? Record<string, unknown>
+            : string;
 
 /** One field, coupled to the value type it promises at boot. */
 export type ConfigField = {
@@ -13,6 +14,14 @@ export type ConfigField = {
     readonly type: T;
     /** What the field is for. Printed when the field is missing or wrong. */
     readonly description: string;
+    /**
+     * The dotted group whose keys this value must name, for `type: "oneOf"`.
+     *
+     * A setting that says *which* level, repository or scale applies can only
+     * be right if it names something the config declares elsewhere, and a
+     * string that has to look right is a string nothing checks.
+     */
+    readonly group?: T extends "oneOf" ? string : never;
     readonly required?: boolean;
     readonly default?: ConfigValueFor<T>;
     /**
@@ -42,20 +51,28 @@ export type ConfigField = {
  */
 export type ConfigSchema = Record<string, ConfigField>;
 
+/** The keys a dotted group `G` declares, as the values a `oneOf` setting may name. */
+type GroupKeys<S extends ConfigSchema, G extends string> = {
+  [K in keyof S]: K extends `${G}.${infer Leaf}` ? (Leaf extends `${string}.${string}` ? never : Leaf) : never
+}[keyof S];
+
 /** The value one schema field promises after validation, by its required/default shape. */
-export type ValueFor<Field extends ConfigField> = ConfigValueFor<Field["type"]> extends infer Value
-  ? Field extends { readonly required: true }
-    ? Value
-    : Field extends { readonly default: infer Default }
-      ? undefined extends Default ? Value | undefined : Value
-      : Value | undefined
-  : never;
+export type ValueFor<Field extends ConfigField, S extends ConfigSchema = ConfigSchema> =
+  Field extends { readonly type: "oneOf"; readonly group: infer Group extends string }
+    ? ([GroupKeys<S, Group>] extends [never] ? string : GroupKeys<S, Group>)
+    : ConfigValueFor<Field["type"]> extends infer Value
+      ? Field extends { readonly required: true }
+        ? Value
+        : Field extends { readonly default: infer Default }
+          ? undefined extends Default ? Value | undefined : Value
+          : Value | undefined
+      : never;
 
 /** One intersection piece a dotted schema key contributes to the plugin's config. */
 type PieceOf<S extends ConfigSchema, K extends keyof S> = K extends `${infer Head}.${infer Rest}`
   ? Rest extends `${infer Inner}.${infer Tail}`
-    ? { [H in Head]: RestPieceOf<Tail, Inner, ValueFor<S[K]>> }
-    : { [H in Head]: { [L in Rest]: ValueFor<S[K]> } }
+    ? { [H in Head]: RestPieceOf<Tail, Inner, ValueFor<S[K], S>> }
+    : { [H in Head]: { [L in Rest]: ValueFor<S[K], S> } }
   : never;
 
 /** The inner segments of a path of three or more, folded into nested groups.
@@ -78,7 +95,7 @@ type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) exten
  * what it always produced.
  */
 export type ConfigOf<S extends ConfigSchema> = {
-  [K in keyof S as K extends `${string}.${string}` ? never : K]: ValueFor<S[K]>
+  [K in keyof S as K extends `${string}.${string}` ? never : K]: ValueFor<S[K], S>
 } & UnionToIntersection<{ [K in keyof S]: K extends `${string}.${string}` ? PieceOf<S, K> : never }[keyof S]>;
 
 export type ConfigResult =
@@ -102,9 +119,9 @@ export function validateConfig(
   }
 
   const given = value ?? {};
-  const { own, groups, problems, config } = splitSchema(plugin, schema);
+  const { own, groups, named, problems, config } = splitSchema(plugin, schema);
 
-  acceptOwn(plugin, own, given, config, problems);
+  acceptOwn(plugin, own, given, config, named, problems);
 
   for (const [head, leaves] of groups) {
     if (!Object.hasOwn(given, head)) {
@@ -135,7 +152,7 @@ export function validateConfig(
       continue;
     }
 
-    const problemsInGroup = validateInto(plugin, head, leaves, givenHead, (filled) => {
+    const problemsInGroup = validateInto(plugin, head, leaves, givenHead, named, (filled) => {
       config[head] = filled;
     });
     problems.push(...problemsInGroup);
@@ -153,6 +170,7 @@ function splitSchema(
 ): {
   own: { key: string; spec: ConfigField }[];
   groups: Map<string, Map<string, ConfigField>>;
+  named: Map<string, string[]>;
   problems: string[];
   config: Record<string, unknown>;
 } {
@@ -160,6 +178,7 @@ function splitSchema(
   const groups = new Map<string, Map<string, ConfigField>>();
   const problems: string[] = [];
   const config: Record<string, unknown> = {};
+  const named = namesDeclared(schema);
   for (const [key, spec] of Object.entries(schema)) {
     const [head, ...path] = key.split(".");
     if (path.length === 0) {
@@ -174,7 +193,31 @@ function splitSchema(
     if (!group) groups.set(head, (group = new Map()));
     group.set(path.join("."), spec);
   }
-  return { own, groups, problems, config };
+  return { own, groups, named, problems, config };
+}
+
+/**
+ * Every group a schema's dotted keys name, and the leaf names directly under
+ * it.
+ *
+ * `escalation.scale.patient` says `escalation` carries `scale` and
+ * `escalation.scale` carries `patient`, so a setting typed `oneOf` with
+ * `group: "escalation.scale"` may name any of the levels that key declares
+ * and nothing else.
+ */
+function namesDeclared(schema: ConfigSchema): Map<string, string[]> {
+  const named = new Map<string, string[]>();
+  for (const key of Object.keys(schema)) {
+    const path = key.split(".");
+    for (let at = 1; at < path.length; at += 1) {
+      const group = path.slice(0, at).join(".");
+      const leaf = path[at]!;
+      const keys = named.get(group) ?? [];
+      if (!keys.includes(leaf)) keys.push(leaf);
+      named.set(group, keys);
+    }
+  }
+  return named;
 }
 
 /** An empty mapping the validator hands the plugin where the schema promised a group. */
@@ -192,6 +235,7 @@ function acceptOwn(
   own: { key: string; spec: ConfigField }[],
   given: Record<string, unknown>,
   config: Record<string, unknown>,
+  named: ReadonlyMap<string, readonly string[]>,
   problems: string[],
 ): void {
   for (const { key, spec } of own) {
@@ -208,8 +252,14 @@ function acceptOwn(
     const supplied = given[key];
     if (!matches(spec.type, supplied)) {
       problems.push(
-        `${plugin}: \`${key}\` must be ${spec.type}, got ${describe(supplied)} — ${spec.description}`,
+        `${plugin}: \`${key}\` must be ${spec.type === "oneOf" ? "a name" : spec.type}, got ${describe(supplied)} — ${spec.description}`,
       );
+      continue;
+    }
+
+    const outside = namesNothing(plugin, key, spec, supplied, named);
+    if (outside) {
+      problems.push(outside);
       continue;
     }
 
@@ -295,6 +345,7 @@ function validateInto(
   head: string,
   leaves: ReadonlyMap<string, ConfigField>,
   given: Record<string, unknown>,
+  named: ReadonlyMap<string, readonly string[]>,
   emit: (filled: Record<string, unknown>) => void,
 ): string[] {
   const problems: string[] = [];
@@ -315,8 +366,9 @@ function validateInto(
     }
 
     if (present) {
-      if (!matches(spec.type, source)) {
-        problems.push(`${plugin}: \`${where}\` must be ${spec.type}, got ${describe(source)} — ${spec.description}`);
+      const problem = leafProblem(plugin, where, spec, source, named);
+      if (problem !== undefined) {
+        problems.push(problem);
         continue;
       }
       leafSet(filled, at, source);
@@ -371,7 +423,47 @@ function matches(type: ConfigFieldType, value: unknown): boolean {
       return Array.isArray(value) && value.every((item) => typeof item === "string");
     case "record":
       return isRecord(value);
+    case "oneOf":
+      return typeof value === "string";
   }
+}
+
+/** Why a leaf's value is refused: the type it is not, or the name its group does not declare. */
+function leafProblem(
+  plugin: string,
+  where: string,
+  spec: ConfigField,
+  value: unknown,
+  named: ReadonlyMap<string, readonly string[]>,
+): string | undefined {
+  if (!matches(spec.type, value)) {
+    const asked = spec.type === "oneOf" ? "a name" : spec.type;
+    return `${plugin}: \`${where}\` must be ${asked}, got ${describe(value)} — ${spec.description}`;
+  }
+  return namesNothing(plugin, where, spec, value, named);
+}
+
+/**
+ * Why a `oneOf` value is not one of the names its group declares, or nothing.
+ *
+ * Naming the accepted values is the whole point: a level misspelt into a
+ * setting that looks like every other string is a threshold nobody applies.
+ */
+function namesNothing(
+  plugin: string,
+  where: string,
+  spec: ConfigField,
+  value: unknown,
+  named: ReadonlyMap<string, readonly string[]>,
+): string | undefined {
+  if (spec.type !== "oneOf") return undefined;
+  const group = (spec as { readonly group?: string }).group ?? "";
+  const keys = named.get(group) ?? [];
+  if (keys.length === 0) {
+    return `${plugin}: \`${where}\` must name a value of \`${group}\`, which this schema declares no keys for — ${spec.description}`;
+  }
+  if (typeof value === "string" && keys.includes(value)) return undefined;
+  return `${plugin}: \`${where}\` must be one of ${keys.map((key) => `\`${key}\``).join(", ")}, got ${JSON.stringify(value)} — ${spec.description}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

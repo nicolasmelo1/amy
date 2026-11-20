@@ -5,7 +5,7 @@ import { Checkouts } from "./checkouts.js";
 import { ActionSpec, CORE_ACTIONS } from "./actions.js";
 import { ActionDuties, actionPorts } from "./action-ports.js";
 import { PluginCheck, PluginFile, PluginSetup } from "./commands.js";
-import { DeclaredOperation, OPERATIONS_COLLECTION, MountedOperation } from "./operation.js";
+import { OPERATIONS_COLLECTION, MountedOperation } from "./operation.js";
 import { DIAGRAM_FILE, Diagram, readDiagram } from "./diagram.js";
 import { ConfigOf, ConfigSchema, ValueFor, validateConfig } from "./config-schema.js";
 import { Call, CallSite, ForkSite, Signature, calledStore, composedRuntime, composedWorkflow, enterCall, isCall } from "./calls.js";
@@ -13,7 +13,7 @@ import type { Store } from "./ports/Store.js";
 import { BranchLeases, FileLeases } from "./leases.js";
 import { PortLookup, reaching } from "./dispatch.js";
 import { deferred } from "./deferred.js";
-import { Plugin, PluginContext, Registry, Workflow, ProjectPhases } from "./plugin.js";
+import { Plugin, PluginContext, PluginPieces, Registry, Workflow, ProjectPhases } from "./plugin.js";
 import { WorkflowRuntime } from "./runtime.js";
 import { Action, Moved, Plan, WorkRecord } from "./work.js";
 import { ActionContext, ActionImplementation, FoundWork, ProgressPolicy } from "./runtime.js";
@@ -244,7 +244,7 @@ interface DeclarationBase<
   R extends WorkRecord,
   In extends ConfigSchema = ConfigSchema,
   Out extends Outputs<R> = Outputs<R>,
-> {
+> extends PluginPieces<S> {
   readonly name: string;
   readonly pluginName?: string;
   /**
@@ -275,15 +275,13 @@ interface DeclarationBase<
   /** Each state the diagram marks \`call\`, bound to the workflow it calls. */
   readonly calls?: Readonly<Record<string, Call>>;
   /**
-   * The operations, checks and files this workflow brings, read beside
-   * `register` rather than through it: they have to answer when the machine
-   * does not mount, which is when a workflow's own `amy roster` matters most.
+   * Each state the diagram marks \`sendsBack\`, and the origins of new work
+   * it can raise. The two lists must name the same states.
    */
-  readonly operations?: readonly DeclaredOperation[];
-  readonly checks?: readonly PluginCheck<ConfigOf<S>>[];
-  readonly files?: readonly PluginFile<ConfigOf<S>>[];
+  readonly origins?: Readonly<Record<string, readonly string[]>>;
+  /** The states whose step declares a verify, so the diagram marks exactly those \`verified\`. */
+  readonly verifies?: readonly string[];
   /** What `amy init` prepares for this workflow, and the environment variables it reads: a plugin's own, carried as they are. */
-  readonly setup?: readonly PluginSetup<ConfigOf<S>>[];
   readonly environment?: readonly string[];
   runtimePolicy?(args: { readonly ports: PortsOf<N>; readonly config: ConfigOf<S>; readonly policy: P }): P;
   record(workId: string): Omit<R, keyof WorkRecord>;
@@ -486,6 +484,7 @@ function assemble(
   // Judged at mount, as it always was: a module's exported declaration is
   // read by suites that walk it to find exactly this kind of mistake.
   if (ctx) decisionsFit(declaration.name, shape.states, declaration.decide, [...sites.keys()], [...forks.keys()]);
+  originsFit(declaration.name, shape, declaration.origins, declaration.verifies);
   const own = (workId: string, now: Date, input?: unknown): WorkRecord => ({
     ...declaration.record(workId),
     ...(input === undefined ? {} : { input: input as Record<string, unknown> }),
@@ -530,6 +529,59 @@ interface PendingSite extends CallSite {
  * Each refusal names the call path, because in a tree of calls the workflow
  * that is wrong is not always the one being mounted.
  */
+/**
+ * The diagram's `sendsBack` and `verified` states, against what the workflow
+ * declares.
+ *
+ * A state drawn as where work comes back from is a state whose escalation
+ * somebody configured, and a state whose step verifies a reply is a state the
+ * relay can climb in. Drawing one without declaring it would leave a
+ * threshold nobody reads; declaring one without drawing it would leave a rule
+ * nothing can reach. Both are refused at mount, naming the state.
+ */
+function originsFit(
+  name: string,
+  shape: Shape,
+  origins: Readonly<Record<string, readonly string[]>> | undefined,
+  verifies: readonly string[] | undefined,
+): void {
+  const drawn = shape.diagram;
+  sendsBackFit(name, drawn?.sendsBack ?? [], origins ?? {});
+  verifiesFit(name, drawn?.verified ?? [], verifies ?? []);
+}
+
+/** Every state drawn as where work comes back from declares the origins it can raise, and the other way round. */
+function sendsBackFit(
+  name: string,
+  drawn: readonly string[],
+  declared: Readonly<Record<string, readonly string[]>>,
+): void {
+  for (const state of drawn) {
+    if ((declared[state] ?? []).length === 0) {
+      throw new Error(`${name}: its diagram marks \`${state}\` as where work comes back from, and it declares no origin for it — add \`origins.${state}\``);
+    }
+  }
+  for (const state of Object.keys(declared)) {
+    if (!drawn.includes(state)) {
+      throw new Error(`${name}: declares \`origins.${state}\`, and its diagram does not mark \`${state}\` as where work comes back from — add \`class ${state} sendsBack\``);
+    }
+  }
+}
+
+/** Every state drawn as verifying a reply names one, and every named one is drawn. */
+function verifiesFit(name: string, drawn: readonly string[], verifies: readonly string[]): void {
+  for (const state of drawn) {
+    if (!verifies.includes(state)) {
+      throw new Error(`${name}: its diagram marks \`${state}\` verified, and \`verifies\` does not name it — its step declares a verify or the mark is wrong`);
+    }
+  }
+  for (const state of verifies) {
+    if (!drawn.includes(state)) {
+      throw new Error(`${name}: \`verifies\` names \`${state}\`, and its diagram does not mark it — add \`class ${state} verified\``);
+    }
+  }
+}
+
 function callSites(
   declaration: AnyDeclaration,
   shape: Shape,

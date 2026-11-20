@@ -23,6 +23,28 @@ export interface ImplementInput extends StepInput {
 }
 
 const NO_CHANGE = "the agent finished without changing any file";
+const NO_JSON = "the answer held no readable JSON object";
+const NOTHING_TO_CHANGE = "NOTHING_TO_CHANGE";
+
+/**
+ * The reason an implementing run gave for changing nothing, when it gave one.
+ *
+ * Read from a line of its own, marked the way an agent marks the line it was
+ * asked for: a bullet, a heading, bold or code around it. Silence is no
+ * reason at all, and a run that is silent about changing nothing is a run that
+ * gave up.
+ */
+function nothingToChange(text: string): string | undefined {
+  for (const line of text.split("\n")) {
+    // An agent marks the line the way it marks any other: a bullet, a
+    // heading, bold or code around it, and the mark at both ends.
+    const said = line.replace(/^[\s>*_`#-]+/, "").replace(/[\s*_`]+$/, "").trim();
+    if (!said.toUpperCase().startsWith(NOTHING_TO_CHANGE)) continue;
+    const reason = said.slice(NOTHING_TO_CHANGE.length).replace(/^[\s:.—-]+/, "").trim();
+    return reason === "" ? "the agent said there was nothing to change" : reason;
+  }
+  return undefined;
+}
 
 /**
  * Asks for a change, commits it through the caller, and says whether it moved.
@@ -42,7 +64,13 @@ export async function implementStep(agent: Agent, input: ImplementInput): Promis
   let judged: { reply: HarnessReply; changed: boolean } | undefined;
   const verify = async (reply: HarnessReply): Promise<HarnessReply> => {
     const changed = await input.commit();
-    const verdict = changed ? reply : { ...reply, run: { ...reply.run, outcome: "failed" as const, output: `${NO_CHANGE}\n\n${reply.run.output}` } };
+    // A run that says why it changed nothing is an answer, on this rung: the
+    // stronger model would reach the same conclusion for more money. One that
+    // says nothing is a run that gave up, and climbs.
+    const reason = changed ? undefined : nothingToChange(reply.text);
+    const verdict: HarnessReply = changed || reason !== undefined
+      ? reply
+      : { ...reply, run: { ...reply.run, outcome: "failed" as const, refused: NO_CHANGE, output: `${NO_CHANGE}\n\n${reply.run.output}` } };
     judged = { reply: verdict, changed };
     return verdict;
   };
@@ -53,6 +81,10 @@ export async function implementStep(agent: Agent, input: ImplementInput): Promis
   const at = (input.now ?? (() => new Date()))().toISOString();
   const key = input.key ?? "implementation";
 
+  const nothing = judged?.reply === reply && !judged.changed ? nothingToChange(reply.text) : undefined;
+  if (nothing !== undefined) {
+    return { value: { ok: true, output: reply.run.output, at, progress: { kind: "unchanged", key, detail: nothing } }, run: reply.run };
+  }
   if (judged?.reply === reply && !judged.changed) {
     return {
       value: { ok: false, output: reply.run.output, at, progress: { kind: "unchanged", key, detail: NO_CHANGE } },
@@ -79,7 +111,24 @@ export interface JudgeInput<T> extends StepInput {
  * account, for the same reason `implementStep` returns rather than throws.
  */
 export async function judgeStep<T>(agent: Agent, input: JudgeInput<T>): Promise<AgentResult<T>> {
-  const reply = await agent.ask(input.prompt, input.cwd, input.context);
+  // The shape the answer is read in is the step's own check: an answer with no
+  // JSON object in it is a run that did not answer, and a relay still has a
+  // rung to climb rather than a reply nobody can read.
+  const verify = async (reply: HarnessReply): Promise<HarnessReply> => {
+    if (reply.run.outcome !== "completed") return reply;
+    try {
+      extractJson<unknown>(reply.text);
+      return reply;
+    } catch {
+      return { ...reply, run: { ...reply.run, outcome: "failed" as const, refused: NO_JSON, output: `${NO_JSON}\n\n${reply.run.output}` } };
+    }
+  };
+
+  const reply = await agent.ask(input.prompt, input.cwd, { ...input.context, verify });
   if (reply.run.outcome !== "completed") return { value: input.fallback, run: reply.run };
-  return { value: input.read(extractJson<unknown>(reply.text)), run: reply.run };
+  try {
+    return { value: input.read(extractJson<unknown>(reply.text)), run: reply.run };
+  } catch {
+    return { value: input.fallback, run: { ...reply.run, outcome: "failed", refused: NO_JSON } };
+  }
 }

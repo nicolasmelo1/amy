@@ -39,6 +39,14 @@ export interface AskContext {
    */
   verify?: (reply: HarnessReply) => Promise<HarnessReply>;
   /**
+   * The rung this ask should begin at, counted from the first.
+   *
+   * A step whose work keeps coming back from the same origin is asked of the
+   * stronger rung at once instead of paying for the same answer again. A
+   * relay clamps it to a rung it has, and the climbs from there are its own.
+   */
+  rung?: number;
+  /**
    * The run may read the checkout and must change nothing in it. A harness
    * that can enforce this does, through its own sandbox; one that cannot
    * refuses the run rather than relying on the prompt asking nicely.

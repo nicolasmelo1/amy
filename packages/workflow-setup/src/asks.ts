@@ -82,10 +82,7 @@ export function settingsPost(plugin: string, field: string, spec: ConfigField, c
 export function parseSetting(spec: ConfigField, line: string, current: unknown): SettingValue | undefined {
   if (spec.type === "record") return undefined; // never asked: the plugin was refused for it
   const trimmed = line.trim();
-  if (trimmed === "") {
-    if (holds(spec, current)) return current as SettingValue;
-    return spec.type === "string[]" ? [] : undefined;
-  }
+  if (trimmed === "") return emptyAnswer(spec, current);
   switch (spec.type) {
     case "string":
       return line;
@@ -97,7 +94,16 @@ export function parseSetting(spec: ConfigField, line: string, current: unknown):
       return trimmed === "true" ? true : trimmed === "false" ? false : undefined;
     case "string[]":
       return trimmed.split(",").map((item) => item.trim()).filter((item) => item !== "");
+    case "oneOf":
+      // A name is typed like any other word; the schema judges which names.
+      return trimmed;
   }
+}
+
+/** What an empty line answers: the current value, or the empty list a `string[]` can spell. */
+function emptyAnswer(spec: ConfigField, current: unknown): SettingValue | undefined {
+  if (holds(spec, current)) return current as SettingValue;
+  return spec.type === "string[]" ? [] : undefined;
 }
 
 /** Whether a current value is one the field's type accepts, so offering it is honest. */
@@ -113,6 +119,8 @@ function holds(spec: ConfigField, current: unknown): boolean {
       return Array.isArray(current) && current.every((item) => typeof item === "string");
     case "record":
       return false;
+    case "oneOf":
+      return typeof current === "string";
   }
 }
 
