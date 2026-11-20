@@ -79,6 +79,9 @@ touches:
   - examples/workflow-ticket-to-qa/tests/self-review.test.ts
   - packages/cli/src/doctor.ts
   - packages/cli/src/config-template.ts
+  - packages/cli/src/add.ts
+  - packages/workflow-setup/src/asks.ts
+  - registry/workflow-setup.json
   - packages/cli/tests/doctor.test.ts
   - docs/concepts/workflows.md
   - docs/concepts/harnesses.md
@@ -153,6 +156,7 @@ crosses:
   - { mechanism: config, answer: works, proof: "deferred:A9, A10, A27" }
   - { mechanism: checkouts-and-leases, answer: works, proof: "deferred:A30; the stack cut happens before git.prepareBranch, which is unchanged, and commits held locally until publishing are the case git.ts's onBranch already keeps" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A11; a mismatch is refused before any work is touched" }
+  - { mechanism: install-and-update, answer: n/a, why: "`amy add` only needs a value for a required setting it has no default for, and a oneOf now asks for the first name its group declares; nothing is installed, updated or removed differently" }
 guarantee:
   - { holds: "a reply the step's own verify refuses is asked of the next rung, told why", not_against: "a wrong answer no verify was written to catch" }
   - { holds: "a reasoned NOTHING_TO_CHANGE never climbs the ladder", not_against: "an agent that answers it wrongly: the reason is recorded for the owner, not checked" }
