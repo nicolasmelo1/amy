@@ -159,7 +159,7 @@ Counted from the policy on every build:
 
 This repository runs [software factory](https://github.com/nicolasmelo1/software-factory) on itself: **64 rules**, and `sf verify` proves every one fires against a broken fixture.
 
-**31 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
+**32 gates** each pin a claim to a scenario that drives the built artifact from another process, with the evidence sealed by digest. Touching covered code expires its proof, because the last run proved something that no longer exists.
 
 <!-- amy:end factory-counts -->
 
@@ -192,6 +192,7 @@ digest. A gate's `plan` in the policy names the design note that argues for it.
 | `bare-install` | `packages/cli/package.json`<br>`packages/cli/src/profiles.ts`<br>`packages/cli/src/config.ts`<br>`packages/cli/src/doctor.ts` | 12 |
 | `claude-limits` | `plugins/claude/src/**`<br>`plugins/claude/tests/fixtures/**` | 1 |
 | `errand` | `examples/workflow-errand/src/**`<br>`examples/workflow-errand/workflow.mmd`<br>`plugins/file-tasks/src/**`<br>`packages/agent-kit/src/**`<br>`packages/cli/src/**`<br>`packages/core/src/git.ts`<br>`plugins/claude/src/**`<br>`plugins/file-worktree/src/**`<br>`plugins/github/src/**`<br>`plugins/notify-fanout/src/**`<br>`plugins/notify-inbox/src/**`<br>`plugins/serial-engine/src/**`<br>`examples/workflow-pull-request/src/**`<br>`examples/workflow-pull-request/workflow.mmd`<br>`packages/core/src/calls.ts` | 15 |
+| `every-claim-and-path-agrees` | `packages/cli/src/auto-update.ts`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/daemon.ts`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/doctor.ts`<br>`packages/cli/src/supervisor/**`<br>`plugins/file-worktree/src/**`<br>`plugins/slack/src/**`<br>`packages/core/src/operator.ts`<br>`packages/core/src/git.ts`<br>`packages/core/src/process-lock.ts`<br>`.software-factory/evidence/every-claim-and-path-agrees/**`<br>`.software-factory/evidence/every-claim-and-path-agrees-scenario.sh` | 2 |
 | `feature-grooming` | `examples/workflow-feature-grooming/src/**`<br>`examples/workflow-feature-grooming/workflow.mmd`<br>`packages/core/src/ports/BaseSource.ts`<br>`packages/core/src/ports/Ticketing.ts`<br>`plugins/linear/src/**`<br>`packages/cli/src/slices.ts`<br>`packages/cli/src/profiles.ts` | 7 |
 | `harness-usage` | `packages/agent-kit/src/**`<br>`plugins/claude/src/**`<br>`plugins/codex/src/**`<br>`plugins/hermes-agent/src/**`<br>`packages/cli/src/index.ts`<br>`packages/cli/src/status-page.tsx`<br>`packages/cli/src/budget.ts`<br>`plugins/claude/tests/fixtures/get-usage-*.jsonl` | 6 |
 | `installed-binary` | `packages/cli/src/stamp.ts`<br>`packages/cli/src/home.ts`<br>`packages/core/src/build.ts`<br>`scripts/**` | 7 |

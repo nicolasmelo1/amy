@@ -8,6 +8,7 @@ sources:
 touches:
   - packages/cli/src/auto-update.ts
   - packages/cli/tests/daemon-update-take.test.ts
+  - packages/cli/tests/daemon-update-recovery.test.ts
   - packages/cli/tests/daemon-update-claim.property.test.ts
   - packages/core/src/process-lock.ts
   - packages/core/tests/process-lock.property.test.ts
@@ -29,5 +30,5 @@ exit: "process-lock.property proves a take says what it found, and daemon-update
 
 A starter decided a claim was abandoned from a liveness read taken before the
 lock, so an owner that settled, released and exited in between made it run the
-same update twice for one due. The take now says whether it buried an owner or
-found the path free, and only a buried claim is an update to recover.
+same update twice for one due. The take now answers whether it buried an owner
+or found the path free, and only a buried claim is an update to recover.

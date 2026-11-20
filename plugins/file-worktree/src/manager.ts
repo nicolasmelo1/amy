@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { baseBranchFor, CommandRunner, EventLog, Worktree, WorktreeInfo } from "@amykit/core";
+import { baseBranchFor, checkoutFor, CommandRunner, EventLog, Worktree, WorktreeInfo, writeAtomically } from "@amykit/core";
+import { assertWorkspaceRootNamesADirectory } from "./config.js";
 
 export interface WorktreeManagerConfig {
   /** Where every tree lives, outside any repository. `~` is expanded. */
@@ -52,6 +53,17 @@ interface TreeMeta {
 }
 
 /**
+ * Replaces a tree's meta whole, never in place.
+ *
+ * Exported so the property that proves a reader never sees half a meta can
+ * import the writer the manager itself calls, and plant the one it rejects.
+ */
+function writeTreeMeta(file: string, meta: TreeMeta): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeAtomically(file, `${JSON.stringify(meta, null, 2)}\n`);
+}
+
+/**
  * One tree per item, under one root.
  *
  * Layout: `<root>/<workflow>/<workId>/<repo>` — predictable from the things
@@ -64,7 +76,11 @@ export class WorktreeManager implements Worktree {
   constructor(
     private readonly runner: CommandRunner,
     private readonly config: WorktreeManagerConfig,
-  ) {}
+  ) {
+    // Refused at the mount, which is the boot: a blank root is a setting that
+    // names nothing, not a request to cut from the process's directory.
+    assertWorkspaceRootNamesADirectory(config.workspaceRoot);
+  }
 
   async acquire(workId: string, repo: string): Promise<string> {
     const tree = this.pathFor(workId, repo);
@@ -269,9 +285,7 @@ export class WorktreeManager implements Worktree {
   private writeMeta(workId: string, repo: string): void {
     const now = new Date().toISOString();
     const meta: TreeMeta = { workId, repo, acquiredAt: now, updatedAt: now };
-    const file = this.metaFileFor(workId, repo);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, `${JSON.stringify(meta, null, 2)}\n`, "utf-8");
+    writeTreeMeta(this.metaFileFor(workId, repo), meta);
   }
 
   private readMeta(workId: string, repo: string): TreeMeta | null {
@@ -285,11 +299,7 @@ export class WorktreeManager implements Worktree {
   private touch(workId: string, repo: string): void {
     const meta = this.readMeta(workId, repo);
     if (!meta) return;
-    fs.writeFileSync(
-      this.metaFileFor(workId, repo),
-      `${JSON.stringify({ ...meta, updatedAt: new Date().toISOString() }, null, 2)}\n`,
-      "utf-8",
-    );
+    writeTreeMeta(this.metaFileFor(workId, repo), { ...meta, updatedAt: new Date().toISOString() });
   }
 
   private dropEmptyWorkDirectories(): void {
@@ -318,8 +328,7 @@ export class WorktreeManager implements Worktree {
     const named = this.config.checkouts?.[repo];
     if (named !== undefined) return named;
     if (!this.config.workspaceRoot) return repo;
-    const name = repo.includes("/") ? repo.slice(repo.indexOf("/") + 1) : repo;
-    return path.join(this.config.workspaceRoot, name);
+    return checkoutFor({ workspaceRoot: this.config.workspaceRoot, defaultBranch: this.config.defaultBranch, checkouts: this.config.checkouts }, repo);
   }
 }
 

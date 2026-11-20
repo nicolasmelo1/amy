@@ -6,11 +6,10 @@ import { DEFAULT_CONFIG, type AmyConfig } from "../src/config.js";
 import {
   autoUpdatePath,
   beginAutoUpdateInvocation,
-  finishDaemonUpdate,
   hasDaemonUpdate,
   markDaemonUpdate,
-  retryDaemonUpdate,
   runWithAutoUpdate,
+  settleClaimedDaemonUpdate,
   settleDaemonUpdate,
   takeDaemonUpdate,
 } from "../src/auto-update.js";
@@ -92,7 +91,7 @@ describe("runWithAutoUpdate", () => {
     expect(updates).toBe(0);
   });
 
-  it("holds an after-timed daemon update until its child has ended", () => {
+  it("holds an after-timed daemon update until its child has ended", async () => {
     const root = home();
     const schedule = beginAutoUpdateInvocation(root, "oncall", config({ everyRuns: 1, timing: "after" }));
 
@@ -100,12 +99,13 @@ describe("runWithAutoUpdate", () => {
     markDaemonUpdate(root, "oncall");
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
     expect(fs.existsSync(path.join(root, "workflows", "oncall", "auto-update-daemon"))).toBe(false);
-    expect(fs.readFileSync(path.join(root, "workflows", "oncall", "auto-update-daemon.claimed"), "utf8")).toBe(`${process.pid}\n`);
+    const claim = JSON.parse(fs.readFileSync(path.join(root, "workflows", "oncall", "auto-update-daemon.claimed"), "utf8")) as { pid: number };
+    expect(claim.pid).toBe(process.pid);
     // The claim stays visible while the detached reaper runs, so a new start
     // cannot clear the dead daemon record and lose this due update.
     expect(hasDaemonUpdate(root, "oncall")).toBe(true);
     expect(takeDaemonUpdate(root, "oncall")).toBe(false);
-    finishDaemonUpdate(root, "oncall");
+    await settleClaimedDaemonUpdate(root, "oncall", async () => 0);
     expect(hasDaemonUpdate(root, "oncall")).toBe(false);
     // A delayed reaper that observed the old due marker must not manufacture
     // another claim after the first owner has settled it.
@@ -133,12 +133,12 @@ describe("runWithAutoUpdate", () => {
     expect(fs.readFileSync(staging, "utf8")).toBe(`${process.pid}\n`);
   });
 
-  it("keeps a blocked after-update due for a later retry", () => {
+  it("keeps a blocked after-update due for a later retry", async () => {
     const root = home();
     markDaemonUpdate(root, "oncall");
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
 
-    retryDaemonUpdate(root, "oncall");
+    await settleClaimedDaemonUpdate(root, "oncall", async () => 1);
 
     expect(hasDaemonUpdate(root, "oncall")).toBe(true);
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
@@ -152,7 +152,7 @@ describe("runWithAutoUpdate", () => {
     fs.writeFileSync(claim, "0\n", "utf8");
 
     expect(takeDaemonUpdate(root, "oncall")).toBe(true);
-    expect(fs.readFileSync(claim, "utf8")).toBe(`${process.pid}\n`);
+    expect((JSON.parse(fs.readFileSync(claim, "utf8")) as { pid: number }).pid).toBe(process.pid);
   });
 
   it("keeps an update claimed by an owner it cannot signal", () => {
@@ -171,13 +171,13 @@ describe("runWithAutoUpdate", () => {
     }
   });
 
-  it("does not recover a claim when its owner cannot be read", () => {
+  it("leaves a claim it cannot read where it is, and does not take the due", () => {
     const root = home();
     markDaemonUpdate(root, "oncall");
     const claim = path.join(root, "workflows", "oncall", "auto-update-daemon.claimed");
     fs.mkdirSync(claim);
 
-    expect(() => takeDaemonUpdate(root, "oncall")).toThrow("EISDIR");
+    expect(takeDaemonUpdate(root, "oncall")).toBe(false);
     expect(fs.existsSync(claim)).toBe(true);
     expect(fs.existsSync(path.join(root, "workflows", "oncall", "auto-update-daemon"))).toBe(true);
   });

@@ -32,7 +32,12 @@ export interface SlackConversationOptions {
   /** Inspection reads existing state but never creates or changes it. */
   readOnly?: boolean;
   now?: () => Date;
+  /** Where a truncated post is reported; stderr when nobody says. */
+  warn?: (line: string) => void;
 }
+
+/** Slack asks text be kept to 4,000 characters; past 40,000 it truncates. */
+const SLACK_TEXT_LIMIT = 4000;
 
 /** What `amy doctor` prints for this plugin, one line per question. */
 export interface SlackCheck {
@@ -183,13 +188,9 @@ export class SlackConversation implements Conversation {
     if (ask.form !== "approval" && ask.answers.length > KEYCAPS.length) {
       return this.postAskFallback(thread.id, message.text, ask);
     }
-    const { body } = await this.api.call("chat.postMessage", {
-      channel: this.options.channel,
-      thread_ts: thread.id,
-      text: renderAsk(message.text, ask, false),
+    const ts = await this.postParts(thread.id, renderAsk(message.text, ask, false), {
       metadata: askMetadata(ASK_EVENT, ask),
     });
-    const ts = String(body.ts);
     this.rememberAskedFrom(thread.id, ts);
     try {
       for (const name of reactionsFor(ask)) {
@@ -318,12 +319,52 @@ export class SlackConversation implements Conversation {
 
   /** Says something in a conversation's thread. */
   async say(place: string, text: string): Promise<string> {
-    const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text });
-    return String(body.ts);
+    return this.postParts(place, text);
   }
 
-  async revise(_place: string, id: string, text: string): Promise<void> {
-    await this.api.call("chat.update", { channel: this.options.channel, ts: id, text });
+  /**
+   * Replaces what one message said, in whatever pieces it was said in: the
+   * pieces the thread already shows are edited in place, the ones left over
+   * are removed, and only the pieces it does not have are posted. The
+   * thread then reads as the revision, in order, none over Slack's limit.
+   */
+  async revise(place: string, id: string, text: string): Promise<void> {
+    const parts = splitText(text);
+    const existing = [id, ...this.piecesOf(id)];
+    for (const [index, ts] of existing.entries()) {
+      const part = parts[index];
+      if (part === undefined) await this.api.call("chat.delete", { channel: this.options.channel, ts });
+      else await this.api.call("chat.update", { channel: this.options.channel, ts, text: part });
+    }
+    const kept = existing.slice(1, parts.length);
+    for (const part of parts.slice(existing.length)) {
+      const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text: part });
+      kept.push(String(body.ts));
+    }
+    this.rememberPieces(id, kept);
+  }
+
+  /**
+   * The pieces one message was said in after its first, as the state
+   * directory records them. Kept there, not in this process: a revision
+   * after a restart replaces pieces this process never posted.
+   */
+  private piecesOf(first: string): string[] {
+    const kept = readJson<{ pieces?: unknown }>(this.piecesFile(first))?.pieces;
+    return Array.isArray(kept) && kept.every((ts) => typeof ts === "string") ? kept : [];
+  }
+
+  /** Records the pieces a message is said in; an empty list forgets the record. */
+  private rememberPieces(first: string, pieces: readonly string[]): void {
+    if (pieces.length === 0) {
+      fs.rmSync(this.piecesFile(first), { force: true });
+      return;
+    }
+    writeJsonFile(this.piecesFile(first), { pieces });
+  }
+
+  private piecesFile(first: string): string {
+    return path.join(this.options.directory, "pieces", `${safeName(first)}.json`);
   }
 
   /**
@@ -501,18 +542,52 @@ export class SlackConversation implements Conversation {
   }
 
   private async postText(threadTs: string, text: string): Promise<string> {
-    const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: threadTs, text });
-    return String(body.ts);
+    return this.postParts(threadTs, text);
   }
 
   private async postAskFallback(threadTs: string, text: string, ask: Ask): Promise<string> {
-    const { body } = await this.api.call("chat.postMessage", {
-      channel: this.options.channel,
-      thread_ts: threadTs,
-      text: renderAsk(text, ask, true),
+    return this.postParts(threadTs, renderAsk(text, ask, true), {
       metadata: askMetadata(ASK_FALLBACK_EVENT, ask),
     });
-    return String(body.ts);
+  }
+
+  /**
+   * Posts text in Slack-sized pieces, in order.
+   *
+   * A long post used to go in one call: Slack truncated it past 40,000 and
+   * warned, so the operator lost the end of what a workflow said. Each piece
+   * is its own message, and the pieces joined are the text exactly.
+   */
+  private async postParts(threadTs: string | undefined, text: string, extra: Record<string, unknown> = {}): Promise<string> {
+    let first = "";
+    // A root split in pieces is one thread: the pieces after the first answer
+    // into the root's ts, or they would each open a conversation of their own.
+    let thread = threadTs;
+    const pieces: string[] = [];
+    for (const [index, part] of splitText(text).entries()) {
+      const { body } = await this.api.call("chat.postMessage", {
+        channel: this.options.channel,
+        ...(thread === undefined ? {} : { thread_ts: thread }),
+        text: part,
+        ...(index === 0 ? extra : {}),
+      });
+      const ts = String(body.ts);
+      if (truncatedIn(body.warning)) {
+        this.warn(`slack: chat.postMessage answered message_truncated for a ${part.length}-character post in thread ${thread ?? ts}`);
+      }
+      if (index === 0) {
+        first = ts;
+        thread = threadTs ?? ts;
+      } else {
+        pieces.push(ts);
+      }
+    }
+    if (pieces.length > 0) this.rememberPieces(first, pieces);
+    return first;
+  }
+
+  private warn(line: string): void {
+    (this.options.warn ?? ((said) => console.warn(said)))(line);
   }
 
   /** Reconstruct answers from Slack every time; no accepted-answer cache survives a process. */
@@ -717,16 +792,19 @@ export class SlackConversation implements Conversation {
     const ts = await this.threadMap.open(workId, channel, async (recoverSince) => {
       const recovered = recoverSince === undefined ? undefined : await this.findRoot(workId, recoverSince);
       if (recovered) return { ts: recovered, posted: false };
-      const { body } = await this.api.call("chat.postMessage", {
-        channel,
-        text: title,
+      const ts = await this.postParts(undefined, title, {
         metadata: JSON.stringify({ event_type: ROOT_EVENT, event_payload: { work_id: workId } }),
       });
-      return { ts: String(body.ts), posted: true };
+      return { ts, posted: true };
     }, async (superseded) => {
       // Best effort: a root that cannot be deleted is a stray message in the
-      // channel, never a second thread this machine remembers.
-      await this.api.call("chat.delete", { channel, ts: superseded }).catch(() => undefined);
+      // channel, never a second thread this machine remembers. A root posted
+      // in pieces is deleted piece by piece: the pieces are its thread only
+      // while it stands.
+      for (const ts of [superseded, ...this.piecesOf(superseded)]) {
+        await this.api.call("chat.delete", { channel, ts }).catch(() => undefined);
+      }
+      this.rememberPieces(superseded, []);
     });
     return { id: ts };
   }
@@ -894,6 +972,14 @@ export class SlackConversation implements Conversation {
     }
     return target;
   }
+}
+
+/**
+ * Whether Slack reported a truncation, among any other warnings: `warning`
+ * is a comma-separated list in the Web API, not one value.
+ */
+function truncatedIn(warning: unknown): boolean {
+  return typeof warning === "string" && warning.split(",").map((one) => one.trim()).includes("message_truncated");
 }
 
 function askMetadata(event: string, ask: Ask): string {
@@ -1121,4 +1207,23 @@ function safeName(name: string): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The pieces one said text is sent in, in order, each a post's worth.
+ *
+ * A piece never ends between the two halves of a surrogate pair, so an emoji
+ * survives the split; joining the pieces back gives the text unchanged.
+ */
+function splitText(text: string, limit = SLACK_TEXT_LIMIT): string[] {
+  if (text.length <= limit) return [text];
+  const parts: string[] = [];
+  for (let at = 0; at < text.length;) {
+    let end = Math.min(at + limit, text.length);
+    const last = text.charCodeAt(end - 1);
+    if (end < text.length && end - at > 1 && last >= 0xd800 && last <= 0xdbff) end -= 1;
+    parts.push(text.slice(at, end));
+    at = end;
+  }
+  return parts;
 }

@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 import { AmyConfig } from "./config.js";
 import { Profile, directoriesFor, projectStateKey, recommendedFor } from "./profiles.js";
@@ -556,17 +557,70 @@ export function hostPaths(stateDir: string, profile?: Profile) {
  * is handed on exactly as it was.
  */
 function workspaceSlice(config: AmyConfig): Record<string, unknown> {
-  const slice = config.plugins["@amykit/plugin-file-worktree"];
-  const given = isRecord(slice) ? slice : {};
+  const workspace = readWorktreeSlice(config.plugins["@amykit/plugin-file-worktree"]);
   return {
     repos: workspaceSettings(config).repos,
-    workspaceRoot: typeof given.workspaceRoot === "string" ? given.workspaceRoot : ".",
-    checkouts: isRecord(given.checkouts) ? given.checkouts : {},
-    root: typeof given.root === "string" ? given.root : "",
-    retentionDays: typeof given.retentionDays === "number" ? given.retentionDays : 7,
+    workspaceRoot: workspace.workspaceRoot,
+    checkouts: workspace.checkouts,
+    root: workspace.root,
+    retentionDays: workspace.retentionDays,
     defaultBranch: workspaceSettings(config).defaultBranch,
     baseBranch: workspaceSettings(config).baseBranch,
   };
+}
+
+/**
+ * The workspace as one parser reads it, for the mount and for the doctor.
+ *
+ * A doctor that read its own slice could check a path the manager never
+ * clones from — an empty `workspaceRoot` was `"."` to one and no root at all
+ * to the other — so an empty root is refused here, at boot, rather than
+ * silently choosing a directory.
+ */
+export function readWorktreeSlice(slice: unknown): {
+  readonly repos: readonly string[];
+  readonly workspaceRoot: string;
+  readonly checkouts: Readonly<Record<string, string>>;
+  readonly root: string;
+  readonly retentionDays: number;
+} {
+  const given = isRecord(slice) ? slice : {};
+  const repos = Array.isArray(given.repos)
+    ? given.repos.filter((one): one is string => typeof one === "string")
+    : [];
+  const checkouts = isRecord(given.checkouts)
+    ? (Object.fromEntries(
+        Object.entries(given.checkouts)
+          .filter(([, one]) => typeof one === "string")
+          .map(([repo, one]) => [repo, expandHome(one as string)]),
+      ) as Record<string, string>)
+    : {};
+  return {
+    repos,
+    workspaceRoot: workspaceRootOf(given.workspaceRoot),
+    checkouts,
+    root: typeof given.root === "string" ? expandHome(given.root) : "",
+    retentionDays: typeof given.retentionDays === "number" ? given.retentionDays : 7,
+  };
+}
+
+/** An empty root names nothing, and `"."` was one reader's silent answer. */
+function workspaceRootOf(value: unknown): string {
+  if (value === undefined) return ".";
+  if (typeof value !== "string") {
+    throw new Error("@amykit/plugin-file-worktree.workspaceRoot must be a string");
+  }
+  const named = value.trim();
+  if (named === "") {
+    throw new Error("@amykit/plugin-file-worktree.workspaceRoot is empty; name the directory the standing checkouts live in");
+  }
+  return expandHome(named);
+}
+
+/** `~/checkouts` becomes an absolute path, as the plugin's mount expands it. */
+/** `~/checkouts` becomes an absolute path, as the plugin's mount expands it. */
+function expandHome(value: string): string {
+  return value === "~" || value.startsWith("~/") ? path.join(os.homedir(), value.slice(1)) : value;
 }
 
 function engineSlice(config: AmyConfig): Record<string, unknown> {

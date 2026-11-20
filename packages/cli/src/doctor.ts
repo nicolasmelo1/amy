@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { Check, checkoutFor, CommandRunner, ConfigSchema, Workflow, validateConfig } from "@amykit/core";
 import { AmyConfig, configuredAutoUpdateProblems, configuredChatProblems } from "./config.js";
 import { strayState } from "./home.js";
+import { readWorktreeSlice } from "./slices.js";
 import { LEGACY_DIRECTORIES } from "./profiles.js";
 import { paths, profileConfig, profileEnv } from "./paths.js";
 import { type PhaseBrief, uncheckedBrief } from "./project.js";
@@ -98,6 +98,7 @@ export async function diagnose(deps: DoctorDeps): Promise<Check[]> {
   return [
     ...configLayers(deps),
     ...configContents(deps),
+    ...workspaceRootCheck(deps),
     autoUpdateSettings(deps.config),
     chatSettings(deps.config),
     ...pluginSettings(deps),
@@ -472,7 +473,9 @@ async function conversation({ conversationPort }: DoctorDeps): Promise<Check[]> 
 
 function checkouts({ config, workspacePort }: DoctorDeps): Check[] {
   if (!workspacePort) return [];
-  const { repos, workspaceRoot, checkouts: perRepo } = workspacePaths(config);
+  const parsed = parsedWorkspace(config);
+  if (parsed === undefined) return [];
+  const { repos, workspaceRoot, checkouts: perRepo } = parsed;
   // The same function the machine resolves through, so what the doctor names
   // is the root that was actually asked rather than a second derivation.
   return repos.map((repo) => {
@@ -488,49 +491,51 @@ function checkouts({ config, workspacePort }: DoctorDeps): Check[] {
 
 function worktrees({ config, workspacePort, home }: DoctorDeps): Check[] {
   if (!workspacePort) return [];
-  const root = workspaceSlice(config).root || path.join(home, "worktrees");
+  const parsed = parsedWorkspace(config);
+  if (parsed === undefined) return [];
+  const root = parsed.root || path.join(home, "worktrees");
   return [
     {
       label: "worktrees root",
       ok: true,
-      detail: `${root} (checkouts stay in ${workspacePaths(config).workspaceRoot})`,
+      detail: `${root} (checkouts stay in ${parsed.workspaceRoot})`,
     },
   ];
 }
 
-/** The workspace slice, read the way the provider's schema spells it. */
-function workspaceSlice(config: AmyConfig): { root: string; workspaceRoot: string; repos: string[]; checkouts: Record<string, string> } {
-  const given = config.plugins["@amykit/plugin-file-worktree"];
-  const slice = typeof given === "object" && given !== null && !Array.isArray(given)
-    ? (given as Record<string, unknown>)
-    : {};
-  const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((one): one is string => typeof one === "string") : []);
-  const map = (value: unknown): Record<string, string> => {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).filter(([, one]) => typeof one === "string") as [string, string][],
-    );
-  };
-  const repos = strings(slice.repos);
-  const checkouts = map(slice.checkouts);
-  return {
-    root: typeof slice.root === "string" ? slice.root : "",
-    workspaceRoot: expandHome(typeof slice.workspaceRoot === "string" && slice.workspaceRoot !== "" ? slice.workspaceRoot : "."),
-    repos,
-    checkouts: Object.fromEntries(Object.entries(checkouts).map(([repo, one]) => [repo, expandHome(one)])),
-  };
+/**
+ * A workspace setting that names nothing is a red check, not a diagnosis
+ * that ends in an exception: the operator asked what is wrong, and the
+ * answer is the setting's name.
+ */
+function workspaceRootCheck({ config, workspacePort }: DoctorDeps): Check[] {
+  if (!workspacePort) return [];
+  try {
+    readWorktreeSlice(config.plugins["@amykit/plugin-file-worktree"]);
+    return [];
+  } catch (error) {
+    return [{ label: "workspaceRoot", ok: false, detail: error instanceof Error ? error.message : String(error) }];
+  }
+}
+
+/**
+ * The workspace slice, read the way the manager reads it, or nothing when
+ * the slice itself is the finding: `workspaceRootCheck` already said why,
+ * and the checks that read paths have none to read.
+ */
+function parsedWorkspace(config: AmyConfig): { root: string; workspaceRoot: string; repos: readonly string[]; checkouts: Readonly<Record<string, string>> } | undefined {
+  try {
+    return readWorktreeSlice(config.plugins["@amykit/plugin-file-worktree"]);
+  } catch {
+    return undefined;
+  }
 }
 
 /** The workspace's repositories, as the doctor prints them. */
-function workspaceRepos(config: AmyConfig): string[] {
-  return workspaceSlice(config).repos;
+function workspaceRepos(config: AmyConfig): readonly string[] {
+  return parsedWorkspace(config)?.repos ?? [];
 }
 
-/** The workspace's paths, expanded the way the provider expands them. */
-function workspacePaths(config: AmyConfig): { workspaceRoot: string; checkouts: Record<string, string>; repos: string[] } {
-  const { workspaceRoot, checkouts, repos } = workspaceSlice(config);
-  return { workspaceRoot, checkouts, repos };
-}
 
 /** The gate commands, read from the plugin whose slice carries them. */
 function gateCommands(config: AmyConfig): Record<string, string[]> {
@@ -541,13 +546,6 @@ function gateCommands(config: AmyConfig): Record<string, string[]> {
   const gate = slice.gate;
   if (typeof gate !== "object" || gate === null || Array.isArray(gate)) return {};
   return gate as Record<string, string[]>;
-}
-
-/** `~/workspaces/northwind` becomes an absolute path. */
-function expandHome(value: string): string {
-  if (value === "~") return os.homedir();
-  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
-  return value;
 }
 
 /**

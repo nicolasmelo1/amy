@@ -97,6 +97,13 @@ Some of it is worth understanding rather than obeying:
   to a server that never answers, and a pass of `amy run` over work sitting in the world.
   Why each fix exists, and the falsifier that replants it:
   [nothing is lost and nothing waits forever](docs/design/nothing-is-lost-and-nothing-waits-forever.md).
+- **`every-claim-and-path-agrees`** proves that one claim about a piece of work
+  names one path: a stale daemon update is recovered once, a tree's meta is
+  never read half-written, a long Slack post arrives whole, `AMY_HOME` means
+  the same to the Windows launcher and to `amy stop`, and the doctor and the
+  manager read one workspace parser. Why each fix exists, and the falsifier
+  that replants it:
+  [every claim and every path agrees](docs/design/every-claim-and-path-agrees.md).
 - **`briefOf`** resolves the brief a unit is worked against: the one its
   project groomed under the unit's own id first, the tracker's parent
   `briefId` after. The GROOMED gate, `amy brief` and every ticket step read

@@ -49,21 +49,21 @@ touches:
   - CONTRIBUTING.md
   - scripts/duplication-baseline.json
 criteria:
-  - { id: A1, statement: "for any starters, deaths and stale claims, the daemon's update is taken by at most one at a time and runs once per due; take, update, finish or retry is one function", proof: "deferred:property:packages/cli/tests/daemon-update-claim.property.test.ts#recover_acts_on_a_stale_read", sources: [S1, S2, S12, S13] }
-  - { id: A2, statement: "for any interleaving of a meta write and a read in another process, the read sees a whole meta, through core's atomic write, and the meta's frozen key leaves the ratchet", proof: "deferred:property:plugins/file-worktree/tests/meta.property.test.ts#meta_written_in_place", sources: [S3, S4, S12] }
-  - { id: A3, statement: "for any text, Slack's posts each hold at most 4,000 characters, in order, and joined give the text back; a message_truncated warning is logged", proof: "deferred:property:plugins/slack/tests/long-text.property.test.ts#one_post_for_any_length", sources: [S5, S6, S12] }
-  - { id: A4, statement: "for any AMY_HOME with any surrounding space, relative or absolute, the Windows supervisor's directory is amyHome's", proof: "deferred:property:packages/cli/tests/supervisor-home.property.test.ts#amy_home_taken_raw", sources: [S7, S8, S12] }
-  - { id: A5, statement: "for any workspaceRoot and checkouts the schema accepts, the doctor checks the path the manager clones from, read by one parser; an empty workspaceRoot is refused at boot", proof: "deferred:property:packages/cli/tests/worktree-slice.property.test.ts#the_doctor_reads_its_own_slice", sources: [S9, S10, S12] }
-  - { id: A6, statement: "for any record id, a child's included, sayToOperator and the fan-out notifier open the same one thread", proof: "deferred:property:packages/core/tests/operator.property.test.ts#a_raw_work_id", sources: [S11, S12] }
-  - { id: A7, statement: "the built amy, in separate processes, recovers a stale update claim once from two starters (assertion:agree.a_stale_update_claim_is_recovered_once), and amy stop on Windows paths writes where the launcher reads (assertion:agree.amy_stop_writes_where_the_launcher_reads)", proof: "deferred:assertion:agree.a_stale_update_claim_is_recovered_once", sources: [S2, S8, S13] }
+  - { id: A1, statement: "for any starters, deaths and stale claims, the daemon's update is taken by at most one at a time and runs once per due; take, update, finish or retry is one function", proof: "property:packages/cli/tests/daemon-update-claim.property.test.ts#recover_acts_on_a_stale_read", done: true, sources: [S1, S2, S12, S13] }
+  - { id: A2, statement: "for any interleaving of a meta write and a read in another process, the read sees a whole meta, through core's atomic write, and the meta's frozen key leaves the ratchet", proof: "property:plugins/file-worktree/tests/meta.property.test.ts#meta_written_in_place", done: true, sources: [S3, S4, S12] }
+  - { id: A3, statement: "for any text, Slack's posts each hold at most 4,000 characters, in order, and joined give the text back; a message_truncated warning is logged", proof: "property:plugins/slack/tests/long-text.property.test.ts#one_post_for_any_length", done: true, sources: [S5, S6, S12] }
+  - { id: A4, statement: "for any AMY_HOME with any surrounding space, relative or absolute, the Windows supervisor's directory is amyHome's", proof: "property:packages/cli/tests/supervisor-home.property.test.ts#amy_home_taken_raw", done: true, sources: [S7, S8, S12] }
+  - { id: A5, statement: "for any workspaceRoot and checkouts the schema accepts, the doctor checks the path the manager clones from, read by one parser; an empty workspaceRoot is refused at boot", proof: "property:packages/cli/tests/worktree-slice.property.test.ts#the_doctor_reads_its_own_slice", done: true, sources: [S9, S10, S12] }
+  - { id: A6, statement: "for any record id, a child's included, sayToOperator and the fan-out notifier open the same one thread", proof: "property:packages/core/tests/operator.property.test.ts#a_raw_work_id", done: true, sources: [S11, S12] }
+  - { id: A7, statement: "the built amy, in separate processes, recovers a stale update claim once from two starters (assertion:agree.a_stale_update_claim_is_recovered_once), and amy stop on Windows paths writes where the launcher reads (assertion:agree.amy_stop_writes_where_the_launcher_reads)", proof: "assertion:agree.a_stale_update_claim_is_recovered_once", done: true, sources: [S2, S8, S13] }
 crosses:
-  - { mechanism: install-and-update, answer: works, proof: "deferred:A1" }
-  - { mechanism: process-locks, answer: works, proof: "deferred:A1" }
-  - { mechanism: profiles-and-state, answer: works, proof: "deferred:A4" }
-  - { mechanism: checkouts-and-leases, answer: works, proof: "deferred:A5" }
-  - { mechanism: config, answer: works, proof: "deferred:A5" }
-  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A6" }
-  - { mechanism: status, answer: works, proof: "deferred:A5" }
+  - { mechanism: install-and-update, answer: works, proof: "A1" }
+  - { mechanism: process-locks, answer: works, proof: "A1" }
+  - { mechanism: profiles-and-state, answer: works, proof: "A4" }
+  - { mechanism: checkouts-and-leases, answer: works, proof: "A5" }
+  - { mechanism: config, answer: works, proof: "A5" }
+  - { mechanism: events-and-notifications, answer: works, proof: "A6" }
+  - { mechanism: status, answer: works, proof: "A5" }
   - { mechanism: tracker-and-host-writes, answer: n/a, why: "sayToOperator only chooses which thread it opens; nothing new is written to a tracker or a host" }
 guarantee:
   - { holds: "each defect the 2026-11-15 probes measured here is reproduced by its falsifier and refused by its property", not_against: "an interleaving the generator never schedules; the scenario runs the built amy for the update claim" }
@@ -77,8 +77,9 @@ exit: "the gate every-claim-and-path-agrees is green on the built amy and every 
 ---
 # Every claim and every path agrees
 
-These are the low findings left from 2026-11-15. A stale update claim can be
-taken twice. A worktree's meta is written in place. Slack does not split long
-text. On Windows, `AMY_HOME` is taken raw, the doctor reads a different slice
-from the one the manager uses, and the operator's thread is opened by an id it
-does not normalize.
+The low findings left from 2026-11-15 are fixed here, each proved by a property
+that fails when its falsifier plants the defect the probe measured: a stale
+update claim is recovered once, a worktree's meta is replaced whole, Slack
+splits long text at 4,000 characters, `AMY_HOME` is trimmed and resolved,
+the doctor reads the manager's parser, and a child record speaks in its
+unit's thread.

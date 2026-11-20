@@ -1124,6 +1124,33 @@ gates:
       - "chat.a_restart_lets_only_a_booting_mount_through"
       - "chat.the_chat_outlives_a_broken_mount"
 
+  # Every claim and every path agrees: one update is taken at a time and
+  # recovered once; a tree's meta is never read half-written; a long Slack
+  # post arrives whole and in order; AMY_HOME means the same to the Windows
+  # launcher and to `amy stop`; the doctor and the manager name one checkout;
+  # and a child record speaks in its unit's thread. Driven off the built
+  # modules, in processes of their own.
+  every-claim-and-path-agrees:
+    activation:
+      - "packages/cli/src/auto-update.ts"
+      - "packages/cli/src/index.ts"
+      - "packages/cli/src/daemon.ts"
+      - "packages/cli/src/slices.ts"
+      - "packages/cli/src/doctor.ts"
+      - "packages/cli/src/supervisor/**"
+      - "plugins/file-worktree/src/**"
+      - "plugins/slack/src/**"
+      - "packages/core/src/operator.ts"
+      - "packages/core/src/git.ts"
+      - "packages/core/src/process-lock.ts"
+      - ".software-factory/evidence/every-claim-and-path-agrees/**"
+      - ".software-factory/evidence/every-claim-and-path-agrees-scenario.sh"
+    evidence: ".software-factory/evidence/every-claim-and-path-agrees.json"
+    plan: "docs/design/every-claim-and-path-agrees.md"
+    required_assertions:
+      - "agree.a_stale_update_claim_is_recovered_once"
+      - "agree.amy_stop_writes_where_the_launcher_reads"
+
 rules:
   # L0 — The host's source names no vocabulary a workflow owns; its one
   # carried ceiling (`rosterBackoffMs`) is the config plan's to remove
