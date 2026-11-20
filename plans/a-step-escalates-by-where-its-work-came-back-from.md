@@ -10,7 +10,7 @@ sources:
   - { id: S7, kind: code, ref: "packages/core/src/ports/Gate.ts", symbol: "Gate", said: "a gate answers ok and its output; how many checks were red is not said" }
   - { id: S8, kind: code, ref: "packages/core/src/diagram.ts", symbol: "DrawnTransition", said: "an edge label is prose amy does not interpret; classes (waiting, attention, anywhere, returns, call) are what amy reads" }
   - { id: S9, kind: code, ref: "packages/core/src/config-schema.ts", symbol: "ConfigOf", said: "dotted schema keys type the workflow's config and validateConfig refuses missing, mistyped and unknown keys; amy doctor runs it. A value that must name another setting's key has no type" }
-  - { id: S10, kind: decision, said: "each agent step may declare its own verify in code; the core gives a default and the field is optional for whoever builds the workflow. Decided 2026-11-17" }
+  - { id: S10, kind: decision, said: "each agent step may declare its own verify in code; the field is optional for whoever builds the workflow. Decided 2026-11-17; the default the core was to give is cut by S46" }
   - { id: S11, kind: decision, said: "two mechanisms, not one: verify judges a reply while the relay can still climb; a round that comes back later (red gate, changes asked, review threads) is decide()'s, keyed by where the work came back from. Decided 2026-11-17" }
   - { id: S12, kind: decision, said: "no origin is special: every state that sends work back says how many findings it brought, and every origin is configured the same way: rounds by default, another level from a number of findings on. Decided 2026-11-17" }
   - { id: S13, kind: decision, said: "no number in workflow code: config.yaml holds a named scale (patient 3 > normal 2 > immediate 1) and every threshold; code picks a name. Each is required with no default; amy doctor names any divergence. Decided 2026-11-17" }
@@ -41,10 +41,13 @@ sources:
   - { id: S38, kind: decision, said: "config onlyTickets, a list of ticket ids, limits what is worked; empty is every ticket, and an entry that is not a ticket id is refused. Decided 2026-11-18" }
   - { id: S39, kind: friction, said: "2026-11-19: a private project's implementing run reasoned there was nothing to change; implementStep read it as failed, the relay climbed to opus, and opus spent about thirty minutes reaching the same answer, twice that day" }
   - { id: S40, kind: code, ref: "packages/agent-kit/src/steps.ts", symbol: "implementStep", said: "verify turns every run that committed nothing into failed with NO_CHANGE, so a reasoned 'nothing to change' climbs the ladder exactly like a run that gave up" }
-  - { id: S41, kind: decision, said: "an implementing run that changes no file and gives its reason in a NOTHING_TO_CHANGE line is completed, not climbed; decide() reads the reason as S26 reads failing checks. Silence still climbs. Decided 2026-11-19" }
+  - { id: S41, kind: decision, said: "an implementing run that changes no file and gives its reason in a NOTHING_TO_CHANGE line is completed, not climbed; decide() reads the reason as S26 reads failing checks. Silence still climbs. Decided 2026-11-19; cut by S46" }
   - { id: S42, kind: friction, said: "2026-11-19: a private project's fork pushed every step's commit as it was made, so a change GATE then refused was already on the pull request and its reviewers saw it" }
   - { id: S43, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", said: "IMPLEMENTING and the thread fix call git.commitAndPush, so every commit reaches the remote before GATE and SELF_REVIEW have read it" }
   - { id: S44, kind: code, ref: "packages/core/src/git.ts", symbol: "commit", said: "Git already commits without pushing (commit) and pushes on its own (push), as a fast-forward or not at all" }
+  - { id: S46, kind: decision, said: "no step verifies by default: judgeStep and implementStep pass every run that completed; a step that wants to climb declares its own verify. The NOTHING_TO_CHANGE marker goes. Decided 2026-11-20" }
+  - { id: S47, kind: decision, said: "an unreadable JSON answer fails the action as today and the engine tries again, on no stronger rung: no friction ever recorded one, and A2 came from reading S3 alone. Decided 2026-11-20" }
+  - { id: S48, kind: decision, said: "a run that changes nothing completes and its answer is the reason: every recorded case was nothing to change or a problem outside the code, which a bigger model does not fix; budget.progress.maxUnchanged stops repeats. Decided 2026-11-20" }
   - { id: S45, kind: decision, said: "every step commits locally; publishing pushes the branch once per round, when GATE and SELF_REVIEW are green, before it resolves threads and asks the reviewer. Decided 2026-11-19, in the private project's fork" }
 touches:
   - packages/core/src/ports/Harness.ts
@@ -116,7 +119,7 @@ touches:
   - scripts/duplication-baseline.json
 criteria:
   - { id: A1, statement: "on a claude, codex or hermes-agent rung alike, a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason, not 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S1, S2, S4, S10, S30, S31] }
-  - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file and gave no NOTHING_TO_CHANGE reason; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10, S40, S41] }
+  - { id: A2, statement: "with no verify declared, no step climbs a completed run: an answer with no readable JSON object fails judgeStep's action on its rung, and implementStep completes a run that changed no file", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10, S40, S46, S47, S48] }
   - { id: A3, statement: "an ask that names a starting rung begins there, and rate-limited, failed and abandoned move from it exactly as from the first", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S5] }
   - { id: A4, statement: "a gate answers how many checks were red, and every sendsBack state's outcome carries a findings count", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/escalating.test.ts", sources: [S7, S12] }
   - { id: A5, statement: "for any origin, findings and rounds: below the origin's findings threshold its default level applies, at or above it its beyond level; once the rounds reach the level's number the next round starts one rung higher, and never lower afterwards", proof: "deferred:property:packages/core/tests/escalation.property.test.ts#one_rung_and_permanent", sources: [S12, S14] }
@@ -142,8 +145,8 @@ criteria:
   - { id: A25, statement: "a stacked ticket whose parent has no pull request in its repository waits, naming the parent; one whose parent lives only elsewhere is cut from base", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
   - { id: A26, statement: "a branch the remote already holds, or holding commits beyond its base, is never re-pointed onto its stack", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
   - { id: A27, statement: "with onlyTickets set, a ticket outside it is not worked; a stackBases or onlyTickets entry that is not a ticket id, or two `Stack base:` lines, is refused naming it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S36, S38] }
-  - { id: A28, statement: "on a claude, codex or hermes-agent rung alike, an implementing run that changes no file and answers NOTHING_TO_CHANGE completes on that rung, no stronger rung is asked, and the outcome carries the reason", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S30, S31, S39, S40, S41] }
-  - { id: A29, statement: "a NOTHING_TO_CHANGE outcome leaves the head standing with the reason recorded and charges no round, whatever origin sent the work, as A19 does for failing checks", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S26, S41] }
+  - { id: A28, statement: "on a claude, codex or hermes-agent rung alike, an implementing run that changes no file completes on that rung, no stronger rung is asked, the outcome carries the agent's answer as its reason, and no marker is read from it", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S30, S31, S39, S40, S46, S48] }
+  - { id: A29, statement: "an implementing outcome that changed nothing leaves the head standing with the agent's answer recorded as the reason and charges no round, whatever origin sent the work, as A19 does for failing checks", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S26, S41, S48] }
   - { id: A30, statement: "IMPLEMENTING commits without pushing; the remote branch moves only when publishing runs after GATE and SELF_REVIEW are green, once per round, and a round GATE refuses pushes nothing", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/threads.test.ts", sources: [S42, S43, S44, S45] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A1, A2, A12" }
@@ -159,22 +162,24 @@ crosses:
   - { mechanism: install-and-update, answer: n/a, why: "`amy add` only needs a value for a required setting it has no default for, and a oneOf now asks for the first name its group declares; nothing is installed, updated or removed differently" }
 guarantee:
   - { holds: "a reply the step's own verify refuses is asked of the next rung, told why", not_against: "a wrong answer no verify was written to catch" }
-  - { holds: "a reasoned NOTHING_TO_CHANGE never climbs the ladder", not_against: "an agent that answers it wrongly: the reason is recorded for the owner, not checked" }
+  - { holds: "a run that changed nothing never climbs the ladder unless its step declared a verify that refuses it", not_against: "an agent that stopped without doing the work: its answer is recorded for the owner, and budget.progress.maxUnchanged stops the repeats" }
   - { holds: "a step whose work keeps coming back from the same origin moves up one rung per configured threshold and stays there", not_against: "an origin that sends work back without saying how much it found: its default level applies" }
   - { holds: "every number behind an escalation is written in config.yaml, and a missing or extra one is red in amy doctor", not_against: "a threshold set to a value that makes no sense for the work" }
   - { holds: "no change reaches the pull request without GATE and SELF_REVIEW, and the proof when its slot is filled, holding on its head", not_against: "a push to the branch by a person" }
   - { holds: "a stacked ticket's branch starts from its parent's work", not_against: "a parent whose pull request is rebased after the child was cut" }
   - { holds: "new work that contradicts the brief or the ticket is never built before the owner answers", not_against: "a contradiction the brief and the ticket do not state" }
 failures:
+  - { step: judge, when: "an answer holds no readable JSON object", goes_to: "the action fails as any thrown action does and the engine tries again; no stronger rung is asked (S47)" }
   - { step: verify, when: "a step's verify throws", goes_to: "the action fails as any thrown action does; the ladder does not climb on a broken verify" }
   - { step: escalate, when: "the next round would start past the top rung", goes_to: "the origin's top-rung rounds count down, then the work escalates to a person (A8)" }
   - { step: new-work, when: "new work contradicts the brief or the ticket", goes_to: "ESCALATED, asked once; the answer is the next IMPLEMENTING's work" }
   - { step: publish, when: "a thread cannot be resolved or the reviewer cannot be asked", goes_to: "the write fails as any host write does, and the next look tries again" }
   - { step: publish, when: "the push is refused because somebody pushed to the branch", goes_to: "the action fails naming the branch, as git.push does today, and plans/a-diverged-branch-is-merged-not-refused.md joins the two sides" }
 cut:
+  - "a verify the core gives every step by default (judgeStep on unreadable JSON, implementStep on no change) and the NOTHING_TO_CHANGE marker: no friction asked for them, and a bigger model fixes neither cause (S46, S47, S48)"
   - "a verify answered by a decision model (Jev, Clef): on the Decider port, after plans/a-decision-is-asked-of-a-port.md"
   - "a private workflow's self-review checking every brief statement was judged: written in its own fork on this seam"
-exit: "ticket-to-qa changes code only in IMPLEMENTING and pushes it once green, a reasoned nothing to change never climbs, rounds climb per origin to opus, config.yaml names every threshold, and labelled or stacked tickets are cut where they belong"
+exit: "ticket-to-qa changes code only in IMPLEMENTING and pushes it once green, a run that changed nothing never climbs, rounds climb per origin to opus, config.yaml names every threshold, and labelled or stacked tickets are cut where they belong"
 ---
 # A step escalates by where its work came back from
 
@@ -182,5 +187,5 @@ The ladder climbed only when the CLI errored, and review fixes changed code
 outside the checks. IMPLEMENTING becomes the one place code changes, every
 kind of new work counted by its origin and weighed against the brief; the
 branch is pushed once per round, green. A `verify` judges a reply while the
-relay can climb, a reasoned "nothing to change" does not, and every number is
+relay can climb, a run that changed nothing does not, and every number is
 in `config.yaml`. A ticket is cut where its label and stack put it.
