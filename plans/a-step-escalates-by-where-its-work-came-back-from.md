@@ -39,6 +39,13 @@ sources:
   - { id: S36, kind: decision, said: "a ticket says its stack base in a `Stack base: <id>` description line, or config stackBases maps ticket to parent; the config is read first, and two lines are refused. Decided 2026-11-18" }
   - { id: S37, kind: decision, said: "a stacked ticket is cut from its parent's open pull request branch, or the branch it merged into; it waits while the parent has none in its repository, and is cut from base when the parent is elsewhere. Decided 2026-11-18" }
   - { id: S38, kind: decision, said: "config onlyTickets, a list of ticket ids, limits what is worked; empty is every ticket, and an entry that is not a ticket id is refused. Decided 2026-11-18" }
+  - { id: S39, kind: friction, said: "2026-11-19: a private project's implementing run reasoned there was nothing to change; implementStep read it as failed, the relay climbed to opus, and opus spent about thirty minutes reaching the same answer, twice that day" }
+  - { id: S40, kind: code, ref: "packages/agent-kit/src/steps.ts", symbol: "implementStep", said: "verify turns every run that committed nothing into failed with NO_CHANGE, so a reasoned 'nothing to change' climbs the ladder exactly like a run that gave up" }
+  - { id: S41, kind: decision, said: "an implementing run that changes no file and gives its reason in a NOTHING_TO_CHANGE line is completed, not climbed; decide() reads the reason as S26 reads failing checks. Silence still climbs. Decided 2026-11-19" }
+  - { id: S42, kind: friction, said: "2026-11-19: a private project's fork pushed every step's commit as it was made, so a change GATE then refused was already on the pull request and its reviewers saw it" }
+  - { id: S43, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", said: "IMPLEMENTING and the thread fix call git.commitAndPush, so every commit reaches the remote before GATE and SELF_REVIEW have read it" }
+  - { id: S44, kind: code, ref: "packages/core/src/git.ts", symbol: "commit", said: "Git already commits without pushing (commit) and pushes on its own (push), as a fast-forward or not at all" }
+  - { id: S45, kind: decision, said: "every step commits locally; publishing pushes the branch once per round, when GATE and SELF_REVIEW are green, before it resolves threads and asks the reviewer. Decided 2026-11-19, in the private project's fork" }
 touches:
   - packages/core/src/ports/Harness.ts
   - packages/core/src/ports/Agent.ts
@@ -96,7 +103,7 @@ touches:
   - examples/workflow-ticket-to-qa/tests/plugin.test.ts
 criteria:
   - { id: A1, statement: "on a claude, codex or hermes-agent rung alike, a step's verify that answers escalate turns a completed run to failed with its reason, the relay asks the next rung, and the handoff note carries that reason, not 'did not succeed'", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S1, S2, S4, S10, S30, S31] }
-  - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10] }
+  - { id: A2, statement: "with no verify declared, judgeStep escalates an answer with no readable JSON object and implementStep escalates a run that changed no file and gave no NOTHING_TO_CHANGE reason; every other step passes what completed", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S3, S10, S40, S41] }
   - { id: A3, statement: "an ask that names a starting rung begins there, and rate-limited, failed and abandoned move from it exactly as from the first", proof: "deferred:test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S5] }
   - { id: A4, statement: "a gate answers how many checks were red, and every sendsBack state's outcome carries a findings count", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/escalating.test.ts", sources: [S7, S12] }
   - { id: A5, statement: "for any origin, findings and rounds: below the origin's findings threshold its default level applies, at or above it its beyond level; once the rounds reach the level's number the next round starts one rung higher, and never lower afterwards", proof: "deferred:property:packages/core/tests/escalation.property.test.ts#one_rung_and_permanent", sources: [S12, S14] }
@@ -122,6 +129,9 @@ criteria:
   - { id: A25, statement: "a stacked ticket whose parent has no pull request in its repository waits, naming the parent; one whose parent lives only elsewhere is cut from base", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
   - { id: A26, statement: "a branch the remote already holds, or holding commits beyond its base, is never re-pointed onto its stack", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/branch.test.ts", sources: [S37] }
   - { id: A27, statement: "with onlyTickets set, a ticket outside it is not worked; a stackBases or onlyTickets entry that is not a ticket id, or two `Stack base:` lines, is refused naming it", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S36, S38] }
+  - { id: A28, statement: "on a claude, codex or hermes-agent rung alike, an implementing run that changes no file and answers NOTHING_TO_CHANGE completes on that rung, no stronger rung is asked, and the outcome carries the reason", proof: "deferred:test:packages/agent-kit/tests/steps.test.ts", sources: [S30, S31, S39, S40, S41] }
+  - { id: A29, statement: "a NOTHING_TO_CHANGE outcome leaves the head standing with the reason recorded and charges no round, whatever origin sent the work, as A19 does for failing checks", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S26, S41] }
+  - { id: A30, statement: "IMPLEMENTING commits without pushing; the remote branch moves only when publishing runs after GATE and SELF_REVIEW are green, once per round, and a round GATE refuses pushes nothing", proof: "deferred:test:examples/workflow-ticket-to-qa/tests/threads.test.ts", sources: [S42, S43, S44, S45] }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "deferred:A1, A2, A12" }
   - { mechanism: attempts-and-waits, answer: works, proof: "deferred:A3, A5; a rate-limited run gives its attempt back as today and counts as no round" }
@@ -131,10 +141,11 @@ crosses:
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A18; resolving and re-requesting move from the fix states to publishing, and no new kind of write is added" }
   - { mechanism: diagram, answer: works, proof: "deferred:A11" }
   - { mechanism: config, answer: works, proof: "deferred:A9, A10, A27" }
-  - { mechanism: checkouts-and-leases, answer: n/a, why: "the stack cut happens in ticket-to-qa before git.prepareBranch, which is unchanged" }
+  - { mechanism: checkouts-and-leases, answer: works, proof: "deferred:A30; the stack cut happens before git.prepareBranch, which is unchanged, and commits held locally until publishing are the case git.ts's onBranch already keeps" }
   - { mechanism: mount-and-capabilities, answer: works, proof: "deferred:A11; a mismatch is refused before any work is touched" }
 guarantee:
   - { holds: "a reply the step's own verify refuses is asked of the next rung, told why", not_against: "a wrong answer no verify was written to catch" }
+  - { holds: "a reasoned NOTHING_TO_CHANGE never climbs the ladder", not_against: "an agent that answers it wrongly: the reason is recorded for the owner, not checked" }
   - { holds: "a step whose work keeps coming back from the same origin moves up one rung per configured threshold and stays there", not_against: "an origin that sends work back without saying how much it found: its default level applies" }
   - { holds: "every number behind an escalation is written in config.yaml, and a missing or extra one is red in amy doctor", not_against: "a threshold set to a value that makes no sense for the work" }
   - { holds: "no change reaches the pull request without GATE and SELF_REVIEW, and the proof when its slot is filled, holding on its head", not_against: "a push to the branch by a person" }
@@ -145,16 +156,17 @@ failures:
   - { step: escalate, when: "the next round would start past the top rung", goes_to: "the origin's top-rung rounds count down, then the work escalates to a person (A8)" }
   - { step: new-work, when: "new work contradicts the brief or the ticket", goes_to: "ESCALATED, asked once; the answer is the next IMPLEMENTING's work" }
   - { step: publish, when: "a thread cannot be resolved or the reviewer cannot be asked", goes_to: "the write fails as any host write does, and the next look tries again" }
+  - { step: publish, when: "the push is refused because somebody pushed to the branch", goes_to: "the action fails naming the branch, as git.push does today, and plans/a-diverged-branch-is-merged-not-refused.md joins the two sides" }
 cut:
   - "a verify answered by a decision model (Jev, Clef): on the Decider port, after plans/a-decision-is-asked-of-a-port.md"
   - "a private workflow's self-review checking every brief statement was judged: written in its own fork on this seam"
-exit: "ticket-to-qa changes code only in IMPLEMENTING, rounds are counted per origin and climb to opus, config.yaml names every threshold, a labelled ticket is worked where its label puts it, and a stacked one is cut from its parent"
+exit: "ticket-to-qa changes code only in IMPLEMENTING and pushes it once green, a reasoned nothing to change never climbs, rounds climb per origin to opus, config.yaml names every threshold, and labelled or stacked tickets are cut where they belong"
 ---
 # A step escalates by where its work came back from
 
-The ladder climbs only when the CLI errors, and review fixes change code in
-COPILOT_FIX and HUMAN_FIX, outside the checks. IMPLEMENTING becomes the one
-place code changes: every kind of new work goes there, weighed against the
-brief first, and is counted by its origin. A step's `verify` judges a reply
-while the relay can still climb; every number is named in `config.yaml`.
-A ticket is worked in its label's repository and cut from its stack parent.
+The ladder climbed only when the CLI errored, and review fixes changed code
+outside the checks. IMPLEMENTING becomes the one place code changes, every
+kind of new work counted by its origin and weighed against the brief; the
+branch is pushed once per round, green. A `verify` judges a reply while the
+relay can climb, a reasoned "nothing to change" does not, and every number is
+in `config.yaml`. A ticket is cut where its label and stack put it.

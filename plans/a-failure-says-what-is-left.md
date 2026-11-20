@@ -18,6 +18,10 @@ sources:
   - { id: S15, kind: decision, said: "a read is a gh api call with no --method that is not graphql, or a graphql call whose document starts with query; everything else, every mutation included, is a write and is never retried. Decided 2026-11-08" }
   - { id: S16, kind: decision, said: "transient is a non-zero exit with HTTP 5xx or a network error on stderr, or exit 0 from a JSON read whose body JSON.parse refuses; 429, 403 or a 200 with GraphQL errors is thrown once. Decided 2026-11-08" }
   - { id: S17, kind: code, ref: "plugins/github/src/GitHubCodeHost.ts", symbol: "graphql", said: "queries and mutations (threadMutation) both go through gh api graphql, so the command alone does not say whether a call writes" }
+  - { id: S18, kind: friction, said: "2026-11-19: a private project's branch could not be joined with what somebody pushed; the engine retried the same failure maxItemAttempts times, five minutes apart, and the owner heard only at the ceiling" }
+  - { id: S19, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "CodeHostRefusal", said: "a host's final answer is told from an outage by a symbol brand that holds across copies of the core; nothing does the same for a failure only a person can clear" }
+  - { id: S20, kind: code, ref: "plugins/serial-engine/src/Worker.ts", symbol: "recordFailure", said: "every thrown look counts one attempt toward maxItemAttempts, whatever it threw" }
+  - { id: S21, kind: decision, said: "core exports NeedsPerson, branded like CodeHostRefusal, whose message says what the person does; the engine gives the work up on the first one, announcing it at once with that message and amy look <id>, instead of retrying. Decided 2026-11-19" }
 touches:
   - plugins/serial-engine/src/Worker.ts
   - plugins/serial-engine/src/config.ts
@@ -27,6 +31,9 @@ touches:
   - plugins/github/src/GitHubCodeHost.ts
   - plugins/github/tests/GitHubCodeHost.test.ts
   - plugins/github/tests/gh-retry.property.test.ts
+  - packages/core/src/errors.ts
+  - packages/core/src/index.ts
+  - packages/core/tests/errors.test.ts
 criteria:
   - { id: A1, statement: "the first failure's message says it is retrying, how many tries are left of maxItemAttempts and the time of the next look", proof: "deferred:test:plugins/serial-engine/tests/Worker.announcements.test.ts", sources: [S1, S2, S3, S4, S5] }
   - { id: A2, statement: "under failureNotice: ceiling, failures below the ceiling announce nothing and the ceiling announces once", proof: "deferred:test:plugins/serial-engine/tests/Worker.announcements.test.ts", sources: [S6] }
@@ -35,29 +42,34 @@ criteria:
   - { id: A5, statement: "a process stopped between the ceiling notice and the save announces the ceiling again if the next look fails, and the recovery if the dependency came back between processes", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S11, S12, S13, S14] }
   - { id: A6, statement: "a graphql call whose document starts with mutation, and any call with --method, is tried once whatever it fails with; a graphql query failing transiently is retried", proof: "deferred:property:plugins/github/tests/gh-retry.property.test.ts#a_mutation_is_retried", sources: [S10, S15, S17] }
   - { id: A7, statement: "an exit 0 from a JSON read whose body is empty or cut is retried as transient, a --jq text read is not; 429, 403 and a 200 with GraphQL errors are thrown on the first try", proof: "deferred:test:plugins/github/tests/GitHubCodeHost.test.ts", sources: [S1, S16] }
+  - { id: A8, statement: "a look that throws NeedsPerson is given up on its first failure, whatever maxItemAttempts and failureNotice say: the notice is announced once with the error's message and amy look <id>, and no retry is queued", proof: "deferred:test:plugins/serial-engine/tests/Worker.failures.test.ts", sources: [S18, S20, S21] }
+  - { id: A9, statement: "isNeedsPerson answers true for a NeedsPerson made by another copy of the core, and false for every other error, a CodeHostRefusal included", proof: "deferred:test:packages/core/tests/errors.test.ts", sources: [S19, S21] }
 crosses:
   - { mechanism: budget-and-evidence, answer: n/a, why: "only the wording and timing of the failure notice change; no budget check or evidence count is touched" }
-  - { mechanism: engines, answer: works, proof: "deferred:A1, A2; the concurrent engine is the serial engine's Worker" }
-  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A1, A2, A3" }
+  - { mechanism: engines, answer: works, proof: "deferred:A1, A2, A8; the concurrent engine is the serial engine's Worker" }
+  - { mechanism: events-and-notifications, answer: works, proof: "deferred:A1, A2, A3, A8" }
   - { mechanism: tracker-and-host-writes, answer: works, proof: "deferred:A4; writes are never retried by the wrapper" }
   - { mechanism: config, answer: works, proof: "deferred:A2; failureNotice is a typed key of serial-engine's slice" }
 guarantee:
   - { holds: "a failure below the ceiling is announced at most once per fall, and the ceiling at least once, attempted before the work is given up", not_against: "a channel that rejects the message, logged as notify.failed and not resent; or two engines sharing a queue" }
   - { holds: "the attempt count and gaveUp hold across looks in one running process", not_against: "a process exit between a failure notice and the queue save: the count may restart, a notice may repeat, and discovery may resume the work without amy look" }
   - { holds: "no gh write is ever sent twice by the retry", not_against: "a write gh itself retried before returning" }
+  - { holds: "a failure that says it needs a person is never retried before somebody runs amy look", not_against: "a plugin that throws a plain error for a failure only a person can clear: it is retried as today" }
   - { holds: "only a read failing in one of the named transient ways is retried", not_against: "a graphql document that starts with a comment or whitespace before query: it is read as a write and tried once" }
 failures:
   - { step: ceiling, when: "the process exits after the notice and before gaveUp is saved", goes_to: "the next look fails and announces again, or succeeds and announces moving again after N failed attempts" }
   - { step: gh, when: "the third transient failure in a row", goes_to: "throws as today, and the look is retried after retryDelayMs" }
   - { step: gh, when: "a 429, a 403, a 200 with GraphQL errors, or any failure not named transient", goes_to: "thrown on the first try, as today" }
+  - { step: ceiling, when: "a look throws NeedsPerson", goes_to: "given up at once, announced with its message and amy look <id>; the next look waits for that command" }
 cut:
   - "backoff or jitter on retryDelayMs: refused (S4)"
   - "classifying errors so a transient one spends no engine attempt"
   - "the private workflow's own gh wrapper: its owner changes it there"
-exit: "a ticket whose status check fails once says it is retrying with four tries left and when, failureNotice: ceiling stays silent until the fifth, and a blank gh read never reaches the queue"
+exit: "a status check failing once says it is retrying with four tries left and when, failureNotice: ceiling stays silent until the fifth, a blank gh read never reaches the queue, and NeedsPerson reaches the owner at once"
 ---
 # A failure says what is left
 
 "Failing and retrying" reads as broken for good. The message says how many tries
 are left, an operator can hear only the last one, and a blank read from GitHub is
-asked again before it counts as a failure.
+asked again before it counts as a failure. A failure only a person can clear
+says so, and reaches the owner on the first try instead of the fifth.

@@ -87,3 +87,6 @@ Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 s
 | 78 | [The review is handed the unit's work id](the-review-is-handed-the-unit-work-id.md) |
 | 79 | [A failed update does not hold the daemon](a-failed-update-does-not-hold-the-daemon.md) |
 | 80 | [The chat climbs its own ladder](the-chat-climbs-its-own-ladder.md) |
+| 81 | [A diverged branch is merged, not refused](a-diverged-branch-is-merged-not-refused.md) |
+| 82 | [A run handed tools is held to them](a-run-handed-tools-is-held-to-them.md) |
+| 83 | [Linear is read through its MCP server](linear-is-read-through-its-mcp-server.md) |
