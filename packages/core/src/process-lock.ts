@@ -33,6 +33,13 @@ export interface LockOptions {
 export interface HeldLock {
   /** What this holding is told apart by; no other holding ever shares it. */
   readonly stamp: string;
+  /**
+   * Whether taking it buried an abandoned owner's lock, rather than finding
+   * the path free. A caller deciding what a gone owner left behind reads
+   * this, never the path before the take: an owner can finish and release
+   * in between, and then nothing it held is left to recover.
+   */
+  readonly takeover: boolean;
   /** Whether the lock is still this holding's. */
   holds(): boolean;
   /** Renews a lease, answering false once the lock is no longer this holding's. */
@@ -69,18 +76,21 @@ export function processAlive(pid: number): boolean {
 export function takeLock(file: string, options: LockOptions = {}): HeldLock | undefined {
   const pid = options.pid ?? process.pid;
   const stamp = `${pid}:${randomUUID()}`;
+  let takeover = false;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (publish(file, `${JSON.stringify({ pid, stamp })}\n`, options.now && new Date(options.now()))) return held(file, stamp, options);
+    if (publish(file, `${JSON.stringify({ pid, stamp })}\n`, options.now && new Date(options.now()))) return held(file, stamp, options, takeover);
     const seen = look(file);
     // Released between the refused publish and this read: try again.
     if (seen === undefined) continue;
     if (!abandoned(seen, options)) return undefined;
     if (!bury(file, seen)) return undefined;
+    // The path was an abandoned owner's, and this take removed it.
+    takeover = true;
   }
   return undefined;
 }
 
-function held(file: string, stamp: string, options: LockOptions): HeldLock {
+function held(file: string, stamp: string, options: LockOptions, takeover: boolean): HeldLock {
   const now = options.now ?? Date.now;
   // Read straight, without the stat a takeover needs: a lock this holding
   // published is a file, and only its owner's stamp is asked.
@@ -90,6 +100,7 @@ function held(file: string, stamp: string, options: LockOptions): HeldLock {
   };
   return {
     stamp,
+    takeover,
     holds,
     renew: () => {
       if (!holds()) return false;

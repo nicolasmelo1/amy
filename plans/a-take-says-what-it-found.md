@@ -30,5 +30,5 @@ exit: "process-lock.property proves a take says what it found, and daemon-update
 
 A starter decided a claim was abandoned from a liveness read taken before the
 lock, so an owner that settled, released and exited in between made it run the
-same update twice for one due. The take now says whether it buried an owner or
-found the path free, and only a buried claim is an update to recover.
+same update twice for one due. The take now answers whether it buried an owner
+or found the path free, and only a buried claim is an update to recover.

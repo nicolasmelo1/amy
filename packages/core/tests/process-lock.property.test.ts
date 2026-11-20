@@ -75,4 +75,20 @@ describe("a lock", () => {
     // The property makes a temporary file per move and runs inside the whole
     // suite: the default five seconds is a load ceiling, not a behaviour.
   }, 30_000);
+
+  it("says whether a take buried an abandoned owner or found the path free", () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "amy-lock-takeover-")), "thing.lock");
+    const free = takeLock(file);
+    expect(free?.takeover).toBe(false);
+    free?.release();
+    // An owner that exits without releasing leaves the path to be buried.
+    expect(takeLock(file, { pid: DEAD })?.takeover).toBe(false);
+
+    const recovered = takeLock(file);
+    expect(recovered?.takeover).toBe(true);
+    recovered?.release();
+    // A path released before the take was never taken over, however its
+    // owner looked a moment earlier.
+    expect(takeLock(file)?.takeover).toBe(false);
+  });
 });

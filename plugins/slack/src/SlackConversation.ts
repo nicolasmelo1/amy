@@ -128,8 +128,6 @@ export class SlackConversation implements Conversation {
   private readonly filesDirectory: string;
   private readonly opening = new Map<string, Promise<ThreadRef>>();
   private botUser?: Promise<string>;
-  /** A root's later pieces, so replacing the root takes them with it. */
-  private readonly pieces = new Map<string, readonly string[]>();
   private prunedAt = Number.NEGATIVE_INFINITY;
 
   constructor(
@@ -324,14 +322,49 @@ export class SlackConversation implements Conversation {
     return this.postParts(place, text);
   }
 
+  /**
+   * Replaces what one message said, in whatever pieces it was said in: the
+   * pieces the thread already shows are edited in place, the ones left over
+   * are removed, and only the pieces it does not have are posted. The
+   * thread then reads as the revision, in order, none over Slack's limit.
+   */
   async revise(place: string, id: string, text: string): Promise<void> {
-    // The revision is a post like any other: the first piece replaces the
-    // message, and the rest follow it in the thread, joined whole.
-    const [first, ...rest] = splitText(text);
-    await this.api.call("chat.update", { channel: this.options.channel, ts: id, text: first });
-    for (const part of rest) {
-      await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text: part });
+    const parts = splitText(text);
+    const existing = [id, ...this.piecesOf(id)];
+    for (const [index, ts] of existing.entries()) {
+      const part = parts[index];
+      if (part === undefined) await this.api.call("chat.delete", { channel: this.options.channel, ts });
+      else await this.api.call("chat.update", { channel: this.options.channel, ts, text: part });
     }
+    const kept = existing.slice(1, parts.length);
+    for (const part of parts.slice(existing.length)) {
+      const { body } = await this.api.call("chat.postMessage", { channel: this.options.channel, thread_ts: place, text: part });
+      kept.push(String(body.ts));
+    }
+    this.rememberPieces(id, kept);
+  }
+
+  /**
+   * The pieces one message was said in after its first, as the state
+   * directory records them. Kept there, not in this process: a revision
+   * after a restart replaces pieces this process never posted.
+   */
+  private piecesOf(first: string): string[] {
+    const kept = readJson<{ pieces?: unknown }>(this.piecesFile(first))?.pieces;
+    return Array.isArray(kept) && kept.every((ts) => typeof ts === "string") ? kept : [];
+  }
+
+  /** Records the pieces a message is said in; an empty list forgets the record. */
+  private rememberPieces(first: string, pieces: readonly string[]): void {
+    if (pieces.length === 0) {
+      fs.rmSync(this.piecesFile(first), { force: true });
+      return;
+    }
+    writeJsonFile(this.piecesFile(first), { pieces });
+  }
+
+  private piecesFile(first: string): string {
+    return path.join(this.options.directory, "pieces", `${safeName(first)}.json`);
   }
 
   /**
@@ -549,7 +582,7 @@ export class SlackConversation implements Conversation {
         pieces.push(ts);
       }
     }
-    if (pieces.length > 0) this.pieces.set(first, pieces);
+    if (pieces.length > 0) this.rememberPieces(first, pieces);
     return first;
   }
 
@@ -768,10 +801,10 @@ export class SlackConversation implements Conversation {
       // channel, never a second thread this machine remembers. A root posted
       // in pieces is deleted piece by piece: the pieces are its thread only
       // while it stands.
-      for (const ts of [superseded, ...(this.pieces.get(superseded) ?? [])]) {
+      for (const ts of [superseded, ...this.piecesOf(superseded)]) {
         await this.api.call("chat.delete", { channel, ts }).catch(() => undefined);
       }
-      this.pieces.delete(superseded);
+      this.rememberPieces(superseded, []);
     });
     return { id: ts };
   }

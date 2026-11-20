@@ -75,26 +75,22 @@ export function hasDaemonUpdate(home: string, profile: string): boolean {
  * while it runs.
  *
  * The claim is core's lock, so a starter that read a stale owner cannot act
- * on it: the tombstone decides one recoverer, and a live owner keeps the
- * claim whatever its pid looked like a moment earlier.
+ * on it: the tombstone decides one recoverer, and what an owner left behind
+ * is read from the take itself. A take that buried an abandoned claim
+ * recovered a due its owner consumed and never ran; a take that found the
+ * claim free has nothing to recover, whatever the claim said a moment
+ * earlier, because that owner finished, released and left no due behind.
  */
 export function takeDaemonUpdate(home: string, profile: string): boolean {
   const file = daemonUpdatePath(home, profile);
   if (stagingBlocks(file)) return false;
   const claim = `${file}.claimed`;
-  // Who held the claim a moment ago. What the holder's liveness means is
-  // decided after the lock is this process's (below), never before it: an
-  // owner that finished and released between this read and the take leaves
-  // no due for anyone, and re-running it would update twice for one due.
-  const seen = claimOwner(claim);
   const lock = takeLock(claim);
   if (!lock) return false;
-  // The lock refused nobody: either it was free (its owner finished and
-  // released, or there was none) or its owner was gone and was buried. Only
-  // a claim taken over from a gone owner consumed a due nobody has run.
-  const interrupted = seen.present && (seen.pid === undefined || !processAlive(seen.pid));
   if (!fs.existsSync(file)) {
-    if (!interrupted) {
+    // Nothing is due. Only a claim taken over from a gone owner consumed one
+    // nobody ran; a claim found free was released by an owner that finished.
+    if (!lock.takeover) {
       lock.release();
       return false;
     }
@@ -116,26 +112,6 @@ function stagingBlocks(file: string): boolean {
     // Another recovery settled the stale marker first.
   }
   return false;
-}
-
-/**
- * The claim as it stood before this process took it: whether there was one,
- * and the pid it named. A claim that names no process is still a claim.
- */
-function claimOwner(claim: string): { present: boolean; pid?: number } {
-  let text: string;
-  try {
-    text = fs.readFileSync(claim, "utf8").trim();
-  } catch {
-    return { present: false };
-  }
-  let pid: number;
-  try {
-    pid = text.startsWith("{") ? Number((JSON.parse(text) as { pid?: unknown }).pid) : Number.parseInt(text, 10);
-  } catch {
-    return { present: true };
-  }
-  return Number.isSafeInteger(pid) && pid > 0 ? { present: true, pid } : { present: true };
 }
 
 /** A marker an older amy wrote names its pid on the first line; a lock names it in JSON. */
