@@ -14,6 +14,8 @@ export type {
 
 export { actionsOf, applyPlan, attemptsIn, looksIn, movedBy, notATryIn } from "./work.js";
 export type { Action, Lane, Moved, NotATry, Plan, Transition, WorkRecord } from "./work.js";
+export { climbFor, climbOf, counted, levelFor, startRung, strictest } from "./escalation.js";
+export type { Climb, EscalationRules, OriginRules } from "./escalation.js";
 export { DIAGRAM_CLASSES, DIAGRAM_FILE, cameFrom, connects, markState, readDiagram } from "./diagram.js";
 export { DiagramError } from "./errors.js";
 export type { Diagram, DrawnTransition, Fork } from "./diagram.js";

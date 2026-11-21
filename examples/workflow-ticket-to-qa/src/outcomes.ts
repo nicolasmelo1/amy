@@ -1,4 +1,6 @@
-import { Moved, Plan, applyPlan, movedBy } from "@amykit/core";
+import { Moved, Plan, applyPlan, climbFor, counted, movedBy, strictest } from "@amykit/core";
+import { TicketPlan } from "./effects.js";
+import { DEFAULT_POLICY, Policy } from "./observation.js";
 import {
   AttemptOutcome,
   Discussion,
@@ -34,6 +36,8 @@ export interface EffectOutcomes {
   escalationDecision?: string[];
   /** The turns a discussion answered this look, and the answer. */
   discussed?: Discussion;
+  /** The threads this look answered in words, so none is answered twice. */
+  answered?: string[];
   /** The keys of the writes this look handed to the operator. */
   handedOver?: string[];
   /** When this look said them. */
@@ -51,38 +55,55 @@ export interface EffectOutcomes {
 export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): TicketRecord {
   const next: TicketRecord = { ...record, judged: [...record.judged] };
 
-  if (outcomes.triage) next.triage = outcomes.triage;
-  if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
-  if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
-  applyContinuation(next, outcomes.continuationContext);
-  if (outcomes.implemented) next.implemented = outcomes.implemented;
-  if (outcomes.pullRequestNumber !== undefined) {
-    next.pullRequestNumber = outcomes.pullRequestNumber;
-  }
-  if (outcomes.reviewer) next.reviewer = outcomes.reviewer;
-
+  applyFacts(next, outcomes);
   mergeVerdicts(next, outcomes.verdicts);
-
+  applyAnswered(next, record, outcomes);
   mergeHandedOver(next, outcomes);
-
-  if (outcomes.escalation) next.escalation = outcomes.escalation;
-
+  applyTheEscalation(next, outcomes);
   mergeDiscussion(next, outcomes.discussed);
-
-  if (outcomes.escalationResolvedAt && next.escalation) {
-    next.escalation = {
-      ...next.escalation,
-      resolvedAt: outcomes.escalationResolvedAt,
-      ...(outcomes.escalationDecision?.length ? { decision: outcomes.escalationDecision } : {}),
-    };
-
-    // The owner's answer changes the judgement, so every comment that was
-    // parked as a disagreement has to be looked at again rather than staying
-    // parked forever.
-    next.judged = next.judged.filter((j) => j.verdict !== "disagreed");
-  }
+  applyTheOwnersAnswer(next, outcomes);
 
   return next;
+}
+
+/** What the look found out about the work itself, each fact on its own. */
+function applyFacts(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (outcomes.triage) record.triage = outcomes.triage;
+  if (outcomes.clarification?.length) record.clarification = outcomes.clarification;
+  if (outcomes.implementation) record.lastImplementation = outcomes.implementation;
+  applyContinuation(record, outcomes.continuationContext);
+  if (outcomes.implemented) record.implemented = outcomes.implemented;
+  if (outcomes.pullRequestNumber !== undefined) {
+    record.pullRequestNumber = outcomes.pullRequestNumber;
+  }
+  if (outcomes.reviewer) record.reviewer = outcomes.reviewer;
+}
+
+/** The threads this look answered in words, so none of them is answered twice. */
+function applyAnswered(record: TicketRecord, before: TicketRecord, outcomes: EffectOutcomes): void {
+  if (!outcomes.answered?.length) return;
+  record.answered = [...new Set([...(before.answered ?? []), ...outcomes.answered])];
+}
+
+/** The owner has been asked about this work, and when. */
+function applyTheEscalation(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (outcomes.escalation) record.escalation = outcomes.escalation;
+}
+
+/**
+ * The owner's answer, and what it changes.
+ *
+ * It changes the judgement, so every comment that was parked as a disagreement
+ * has to be looked at again rather than staying parked forever.
+ */
+function applyTheOwnersAnswer(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (!outcomes.escalationResolvedAt || !record.escalation) return;
+  record.escalation = {
+    ...record.escalation,
+    resolvedAt: outcomes.escalationResolvedAt,
+    ...(outcomes.escalationDecision?.length ? { decision: outcomes.escalationDecision } : {}),
+  };
+  record.judged = record.judged.filter((one) => one.verdict !== "disagreed");
 }
 
 function applyContinuation(
@@ -157,16 +178,108 @@ function mergeVerdicts(record: TicketRecord, verdicts: ThreadVerdict[] | undefin
  * this workflow knows how to do.
  *
  * The two touch disjoint fields, so the order is a readability choice rather
- * than a correctness one.
+ * than a correctness one. `policy` is the escalation the round was counted on;
+ * left out, it is the one an install that named nothing runs.
  */
 export function applyTicketPlan(
   record: TicketRecord,
   plan: Plan,
   outcomes: EffectOutcomes,
   now: Date,
+  policy: Policy = DEFAULT_POLICY,
 ): TicketRecord {
-  return applyTransition(
-    applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes),
-    movedBy(record, plan),
-  );
+  const moved = movedBy(record, plan);
+  const applied = applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes);
+  return applyWork(applyTransition(applied, moved), record.state, plan, now, policy, outcomes.verdicts ?? []);
+}
+
+/**
+ * The round one move spent, and what the move took up.
+ *
+ * A gate and a self-review that both refused the same commit are two origins
+ * and two rounds: each is counted at its own level, and the one that escalates
+ * sooner is what the next ask starts from. A review's open comments count
+ * toward the review's origin, never the gate's, and the owner's word toward
+ * the owner's. A move that is not a round — a first implementation, a check
+ * that found nothing — counts nothing.
+ *
+ * A change that leaves the implementation for the checks answers every comment
+ * it took up: the one it changed code for is fixed, and the one it found
+ * nothing to change for is answered in the agent's own words. Either way the
+ * comment is judged, so the review that raised it does not raise it again.
+ *
+ * The work the round was made of travels on the plan (`rounds`, `taking`,
+ * `ownerWord`), so this reads the same with or without an observation to hand:
+ * an engine's fold and a caller's fold write one record.
+ */
+export function applyWork(
+  record: TicketRecord,
+  from: string,
+  plan: Plan,
+  now: Date,
+  policy: Policy = DEFAULT_POLICY,
+  said: readonly ThreadVerdict[] = [],
+): TicketRecord {
+  const carried = plan as TicketPlan;
+  if (plan.kind !== "advance") return record;
+  if (plan.to === "checks") return answered(record, said);
+  if (plan.to === "ESCALATED" && from !== "ESCALATED" && !record.escalation) {
+    return { ...record, escalation: { reason: plan.why, askedAt: now.toISOString() } };
+  }
+  if (plan.to !== "IMPLEMENTING") return record;
+
+  const rounds = carried.rounds ?? [];
+  let counted = record;
+  for (const one of rounds) {
+    counted = countedRound(counted, one.origin, one.findings, policy);
+  }
+  const climbs = rounds.map((one) => climbFor(policy.escalation, counted, one.origin, one.findings));
+  const worst = strictest(climbs);
+  return {
+    ...counted,
+    ...(carried.taking?.length ? { taking: [...carried.taking] } : {}),
+    ...(carried.ownerWord ? { ownerWord: carried.ownerWord } : {}),
+    ...(worst ? { lastOrigin: worst.origin } : {}),
+  };
+}
+
+/** One origin's round, counted on the record. */
+function countedRound(record: TicketRecord, origin: string, findings: number, policy: Policy): TicketRecord {
+  return counted(record, climbFor(policy.escalation, record, origin, findings));
+}
+
+/**
+ * The change answers every thread it took up.
+ *
+ * A step that read the threads may have said something else about one — that it
+ * is out of the brief's scope, or that it undoes the brief — and what it said is
+ * what the record keeps: the machine does not overrule the reader of the code.
+ */
+function answered(record: TicketRecord, said: readonly ThreadVerdict[]): TicketRecord {
+  if (!record.taking?.length) return record;
+  const progress = record.lastImplementation?.progress;
+  // What the step said wins, whether it came with this fold's outcomes or was
+  // already written on the record by them; the machine's own reading is the
+  // last word only for a thread nobody spoke about.
+  const spoken = new Map([...record.judged, ...said].map((one) => [one.threadId, one]));
+  const answers = record.taking.map((threadId): ThreadVerdict => {
+    const voice = spoken.get(threadId);
+    if (voice) return voice;
+    return progress?.kind === "unchanged"
+      ? { threadId, verdict: "answered", note: progress.detail }
+      : { threadId, verdict: "fixed", note: "the change answers it" };
+  });
+  const { taking: _done, ...rest } = record;
+  return { ...rest, judged: mergeJudged(rest.judged, answers) };
+}
+
+/** The record's judgements with these answers in them, one per thread. */
+function mergeJudged(judged: readonly ThreadVerdict[], answers: readonly ThreadVerdict[]): ThreadVerdict[] {
+  const next = [...judged];
+  for (const answer of answers) {
+    const at = next.findIndex((one) => one.threadId === answer.threadId);
+    if (at === -1) next.push(answer);
+    else next[at] = answer;
+  }
+  return next;
 }

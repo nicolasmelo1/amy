@@ -12,6 +12,14 @@ export interface AttemptOutcome {
   /** Whatever the agent or the gate said, verbatim, for the next prompt. */
   output: string;
   at: string;
+  /**
+   * How many findings the round brought back: checks red at a gate, review
+   * threads left open, a proof's failing assertions.
+   *
+   * Absent is "nobody said", and a round that says nothing is weighed at the
+   * origin's patient level rather than guessed at.
+   */
+  findings?: number;
   /** Absent keeps older agents and workflows behaving exactly as they did. */
   progress?: Progress;
 }

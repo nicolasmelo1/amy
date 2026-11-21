@@ -1,4 +1,4 @@
-import { planning } from "@amykit/core";
+import { Action, Plan, planning } from "@amykit/core";
 import { TriageQuestion } from "./agent-steps.js";
 import { TicketState } from "./state.js";
 
@@ -16,7 +16,15 @@ export type Effect =
   | { type: "ask-question"; questions: TriageQuestion[] }
   | { type: "implement"; retryContext?: string; continuationContext?: string; conversation?: string[]; discussion?: string[] }
   | { type: "open-pull-request" }
+  /** Put the round's commit on the remote, once the checks have read it. */
+  | { type: "push" }
   | { type: "resolve-review-thread"; threadId: string }
+  /**
+   * Answer a review thread on the thread itself, for a comment the work
+   * answered rather than built: a sentence where the reviewer wrote, so they
+   * read it where they asked.
+   */
+  | { type: "reply-thread"; threadId: string; text: string }
   | { type: "address-threads"; threadIds: string[]; from: "automated" | "human"; discussion?: string[] }
   /**
    * Answer the turns somebody took in the work's thread while it waits, and
@@ -55,6 +63,7 @@ export type WriteEffect = Extract<
       | "escalate"
       | "open-pull-request"
       | "resolve-review-thread"
+      | "reply-thread"
       | "assign-reviewer"
       | "request-rereview"
       | "hand-off-to-qa";
@@ -78,6 +87,7 @@ export const WRITE_EFFECTS: readonly WriteEffect["type"][] = [
   "escalate",
   "open-pull-request",
   "resolve-review-thread",
+  "reply-thread",
   "assign-reviewer",
   "request-rereview",
   "hand-off-to-qa",
@@ -88,3 +98,31 @@ export function isWrite(effect: Effect): effect is WriteEffect {
 }
 
 export const { act, advance, wait, settled } = planning<TicketState, Effect>();
+
+/** One origin that sent a round back, and how much it found. */
+interface RoundOrigin {
+  readonly origin: string;
+  readonly findings: number;
+}
+
+/**
+ * What a move carries beside its state: the round it spent and what it took
+ * up.
+ *
+ * A plan is the decision, and the fold that writes a record is this workflow's
+ * own — so the decision says here what the round was made of, and every fold,
+ * with or without an engine's observation, writes the same record from it.
+ */
+export type TicketPlan = Plan & {
+  readonly rounds?: readonly RoundOrigin[];
+  readonly taking?: readonly string[];
+  readonly ownerWord?: { author: string; body: string; at: string };
+};
+
+/** The move with the work it was made of. */
+export function carrying<State extends string, E extends Action>(
+  plan: Plan<State, E>,
+  work: Omit<TicketPlan, keyof Plan>,
+): TicketPlan {
+  return { ...plan, ...work } as TicketPlan;
+}

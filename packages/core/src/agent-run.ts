@@ -66,6 +66,15 @@ export interface AgentRun {
   durationMs: number;
   /** How long the provider says a quota wait lasts, when it says. */
   retryAfterMs?: number;
+  /**
+   * Why a reply that completed was refused, when the step's own verify turned
+   * it into a failure.
+   *
+   * The next rung is told this rather than "did not succeed": a second rung
+   * that is not told what was wrong with the first repeats it on a bigger
+   * model.
+   */
+  refused?: string;
   /** Whatever the harness said, verbatim, because it is the next prompt. */
   output: string;
 }

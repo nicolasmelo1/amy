@@ -150,6 +150,22 @@ class FakeWorld {
           break;
         case "implement":
           outcomes.implementation = { ok: true, output: "", at: this.now().toISOString() };
+          // What the step says about the threads it was handed: the machine
+          // records the reader's word, not its own guess at it.
+          if (record.taking?.length) {
+            outcomes.verdicts = record.taking.map((id) => ({
+              threadId: id,
+              verdict: this.disagreeWith.includes(id) ? ("contradicts-brief" as const) : ("fixed" as const),
+              note: "n",
+            }));
+          }
+          break;
+        case "push":
+          // Publishing moves the head, so the reviewers see a commit they have
+          // not answered yet.
+          if (this.pullRequest) {
+            this.pullRequest = { ...this.pullRequest, headSha: this.nextHead() };
+          }
           break;
         case "open-pull-request": {
           const head = this.nextHead();
@@ -335,8 +351,8 @@ describe("driving a ticket end to end", () => {
     const { record, states } = drive(world);
 
     expect(record.state).toBe("DONE");
-    expect(states).toContain("COPILOT_FIX");
-    expect(states.indexOf("COPILOT_FIX")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
+    expect(states).toContain("IMPLEMENTING");
+    expect(states.indexOf("IMPLEMENTING")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
     expect(record.judged).toEqual([{ threadId: "B1", verdict: "fixed", note: "n" }]);
   });
 
@@ -375,8 +391,8 @@ describe("driving a ticket end to end", () => {
     // The machine pressed the button itself, once, for the thread it fixed.
     expect(world.closed).toEqual(new Set(["B1"]));
     expect(record.state).toBe("DONE");
-    expect(states).toContain("COPILOT_FIX");
-    expect(states.indexOf("COPILOT_FIX")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
+    expect(states).toContain("IMPLEMENTING");
+    expect(states.indexOf("IMPLEMENTING")).toBeLessThan(states.indexOf("REVIEWER_ASSIGNED"));
   });
 
   it("survives a round of requested changes and comes back for approval", () => {
@@ -409,8 +425,11 @@ describe("driving a ticket end to end", () => {
     const { record, states } = drive(world);
 
     expect(record.state).toBe("DONE");
-    expect(states).toContain("HUMAN_FIX");
-    expect(states).toContain("RE_REVIEW");
+    // The round came back: the change was made a second time, and the human's
+    // second word came after the first. (The re-request is made by the round's
+    // own publish, so a reviewer who answers promptly is read again at the
+    // next HUMAN_REVIEW without the separate RE_REVIEW hop.)
+    expect(states.filter((s) => s === "IMPLEMENTING")).toHaveLength(2);
     expect(states.filter((s) => s === "HUMAN_REVIEW")).toHaveLength(2);
   });
 

@@ -161,6 +161,85 @@ describe("what the diagram connects", () => {
   });
 });
 
+describe("where work comes back from, and where a reply can be refused", () => {
+  const HOST: HostServices = {
+    runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
+    now: () => new Date("2026-11-20T12:00:00.000Z"),
+    paths: { state: "/state" },
+  };
+
+  // REVIEW sends work back, so its rounds are counted; WORKING is where it lands.
+  const RETURNING = `stateDiagram-v2
+    [*] --> WORKING
+    WORKING --> REVIEW
+    REVIEW --> WORKING: changes asked
+    REVIEW --> DONE
+    DONE --> [*]
+    class REVIEW sendsBack
+`;
+
+  const declaring = (declaration: { origins?: Readonly<Record<string, readonly string[]>> }) =>
+    withDiagram(defineWorkflow({
+      name: "returning",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      decide: {
+        WORKING: () => settled("working"),
+        REVIEW: () => settled("review"),
+        DONE: () => settled("done"),
+      },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+      ...declaration,
+    }), RETURNING);
+
+  it("reads the sendsBack state as where work comes back from", () => {
+    const diagram = readDiagram(RETURNING);
+
+    // diagram.ts:324 filters the states carrying the class, in drawn order.
+    expect(diagram.sendsBack).toEqual(["REVIEW"]);
+    expect(diagram.verified).toEqual([]);
+  });
+
+  it("refuses a sendsBack state with no origins entry, naming the state", async () => {
+    const outcome = await mount([declaring({})], {}, HOST);
+
+    // define-workflow.ts:563 refuses the drawing that no threshold can read.
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "its diagram marks `REVIEW` as where work comes back from, and it declares no origin for it — add `origins.REVIEW`",
+    );
+  });
+
+  it("refuses an origins entry the diagram does not mark sendsBack, naming the state", async () => {
+    const unmarked = RETURNING.replace("    class REVIEW sendsBack\n", "");
+    const plugin = withDiagram(defineWorkflow({
+      name: "returning",
+      configSchema: {},
+      policy: {},
+      needs: {},
+      origins: { REVIEW: ["thread"] },
+      decide: {
+        WORKING: () => settled("working"),
+        REVIEW: () => settled("review"),
+        DONE: () => settled("done"),
+      },
+      record: () => ({}),
+      observe: async () => ({}),
+      actions: {},
+    }), unmarked);
+    const outcome = await mount([plugin], {}, HOST);
+
+    // define-workflow.ts:568 refuses an origin no drawn state can reach.
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok === false && outcome.problems.join("; ")).toContain(
+      "declares `origins.REVIEW`, and its diagram does not mark `REVIEW` as where work comes back from — add `class REVIEW sendsBack`",
+    );
+  });
+});
+
 describe("a fork of lanes", () => {
   const HOST: HostServices = {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },

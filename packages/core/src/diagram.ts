@@ -34,6 +34,10 @@ export interface Diagram {
   readonly returns: readonly string[];
   /** It calls another workflow, and its edges out are named for where that one ends. */
   readonly calls: readonly string[];
+  /** Its step declares a verify, so a reply that completed can still climb. */
+  readonly verified: readonly string[];
+  /** Work that comes back from here is counted against its own origins. */
+  readonly sendsBack: readonly string[];
   /**
    * Every `<<fork>>`, with the lanes drawn out of it and the `<<join>>` they
    * all lead to. A record waits in the fork while its lanes run, each lane a
@@ -53,8 +57,8 @@ export interface Fork {
   readonly join: string;
 }
 
-/** The five classes amy reads. Any other class is left for whoever renders the file. */
-export const DIAGRAM_CLASSES = ["waiting", "attention", "anywhere", "returns", "call"] as const;
+/** The classes amy reads. Any other class is left for whoever renders the file. */
+export const DIAGRAM_CLASSES = ["waiting", "attention", "anywhere", "returns", "call", "verified", "sendsBack"] as const;
 type DiagramClass = (typeof DIAGRAM_CLASSES)[number];
 
 const START = "[*]";
@@ -316,6 +320,8 @@ function settle(reading: Reading, text: string, source: string): Diagram {
     anywhere: of("anywhere"),
     returns: of("returns"),
     calls: of("call"),
+    verified: of("verified"),
+    sendsBack: of("sendsBack"),
     forks: forksOf(reading, source),
     labels: reading.labels,
     transitions: reading.transitions,

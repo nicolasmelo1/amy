@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Plan, WorkflowRuntime, applyPlan, movedBy } from "@amykit/core";
 import { plan } from "../src/machine.js";
+import { drive, mountedTicket } from "./mounted.js";
 import { Observation } from "../src/observation.js";
 import { TicketRecord } from "../src/record.js";
 import { TicketState } from "../src/state.js";
@@ -111,5 +112,43 @@ describe("an escalation remembers the state it interrupted", () => {
     });
 
     expect(look(waiting, observation()).next.resumeAt).toBe("verdict");
+  });
+});
+
+describe("a round the checks send back", () => {
+  const clock = new Date("2026-09-03T12:00:00.000Z");
+
+  /** An agent that implements, and reviews the change by asking for changes with two findings. */
+  const asking = {
+    ask: async (_prompt: string, _cwd: string, context?: { step?: string }) => {
+      const run = { outcome: "completed", harness: "fake", model: "fake-1", durationMs: 1, costSource: "unknown", output: "" } as const;
+      if (context?.step === "triage") return { text: '{"clear": true}', run };
+      if (context?.step === "self-review") return { text: "- the total rounds twice\n- the currency is not named\nCHANGES_ASKED", run };
+      return { text: "done", run };
+    },
+  };
+
+  async function oneRound(gate: object): Promise<TicketRecord> {
+    let at = clock.getTime();
+    const now = () => new Date((at += 1000));
+    const mounted = await mountedTicket({ agent: asking, gate }, now);
+    return drive(mounted, mounted.runtime.newRecord("PROJ-1239", now()), now, (current) => current.state === "IMPLEMENTING" && current.lastGate !== undefined);
+  }
+
+  const redGate = { run: async () => ({ ok: false, output: "2 checks red", at: new Date().toISOString(), findings: 2 }) };
+
+  it("keeps how many findings the self-review brought back", async () => {
+    const back = await oneRound(redGate);
+
+    expect(back.lastSelfReview?.verdict).toBe("CHANGES_ASKED");
+    expect(typeof back.lastSelfReview?.findings).toBe("number");
+    expect(back.lastSelfReview?.findings).toBeGreaterThan(0);
+  });
+
+  it("counts the round toward each origin that sent it back, and toward no other", async () => {
+    const back = await oneRound(redGate);
+
+    expect(Object.values(back.roundsByOrigin ?? {}).reduce((sum, n) => sum + n, 0)).toBe(2);
+    expect(Object.keys(back.roundsByOrigin ?? {}).sort()).toHaveLength(2);
   });
 });

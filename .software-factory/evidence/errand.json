@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "errand",
-  "implementation_sha256": "7832869d53778064e0f9341f0feabb44e0062df5ba816d20fa4c85f9ba9a7881",
+  "implementation_sha256": "805724dd7a3ef2139373a4090c6bfe3fea98c092281ecd10a3b95ed822498edb",
   "runs": [
     {
       "scenario": "errand",
       "status": "passed",
       "actor": "Claude (agent), driving the installed executable through six errands — a change, a committed change, a question, a refusal, a repository it does not work in and a change the code host refuses — against stand-in services on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/errand-run.json",
-      "report_sha256": "733718fa57c223e9cb00e018eee47741ba90f9386e49c41405008821bc184d70",
+      "report_sha256": "b12287228f9af54e644196faf1739631b40c2efa1f4bd929833d10466604282e",
       "required_assertions": []
     }
   ]

@@ -107,6 +107,27 @@ The relay does not retry blindly. Each outcome moves differently:
 `amy doctor` catches a missing binary before any work is touched. Every move
 up the ladder is logged as `agent.handoff`, saying which axis moved.
 
+### A reply that completed and still does not hold
+
+A run can finish and still not be the answer: a review that ended without
+saying whether it approved, an implementation that names nothing it would
+change. A step hands the relay a `verify`, which judges the reply while there
+is a rung above the one that answered; a reply it turns to `failed` climbs, and
+the note the next rung receives carries the reason rather than "did not
+succeed".
+
+No step verifies by default. A run that completed is the answer of the rung
+that gave it, and `@amykit/agent-kit`'s `judgeStep` and `implementStep` take it
+as it comes: an answer without the JSON object the step asked for fails the
+action where it is read, and a run that changed no file completes with the
+agent's own words as its reason. A step that wants a climb on either declares
+the `verify` that says so, and that one is the verdict.
+
+A step whose work has come back from the same origin before begins higher: the
+ask carries `rung`, and the relay starts there instead of paying for the first
+answer again. Every origin of new work is configured the same way, and the
+numbers live in `config.yaml`.
+
 When the whole ladder is rate-limited, the workflow's action can report that
 it did not try. The engine then waits for the provider's reset without
 charging an attempt. Why:

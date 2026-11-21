@@ -71,6 +71,23 @@ export interface TicketRecord extends WorkRecord {
   reviewer?: string;
   /** Threads already judged, so the same comment is never worked twice. */
   judged: ThreadVerdict[];
+  /**
+   * The threads the implementation that follows is asked to address: what a
+   * review's open comments were taken up as, on the move to `IMPLEMENTING`.
+   * Cleared when the change leaves for the checks, so a later round never
+   * carries a comment it did not take up.
+   */
+  taking?: string[];
+  /**
+   * The owner's word this work acted on, and where it was said. The machine
+   * takes the newest thing the owner wrote since this one, so a sentence it
+   * already built is never built twice.
+   */
+  ownerWord?: { author: string; body: string; at: string };
+  /** The origin whose round sent the work back last, so its ask starts where that origin's climb stands. */
+  lastOrigin?: string;
+  /** Threads already answered in words on the pull request, so an answer is said once. */
+  answered?: string[];
   escalation?: Escalation;
   /** The discussion in the current wait, when anybody started one. */
   discussion?: Discussion;

@@ -715,12 +715,17 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // file even when nothing moved from place to place, so it is answered
   // before deciding that no migration is needed at all.
   const materialized = materializeTicketStatus(top, said);
+  // The ladder an update's own mount now demands, and the ceilings it replaced:
+  // a machine that kept its settings from an older release would otherwise move
+  // nothing — or move into a config the boot check refuses.
+  const escalated = materializeEscalationScale(top, said);
+  const ceilings = dropRetiredCeilings(top, said);
   // A command-gate slice an older install wrote is put right whether or not
   // a top-level key moved into it: its `commands` and `checkouts` were valid
   // there, and the slice's schema now refuses both by name at boot.
   const normalized = normalizeCommandGateSlice(document, top, said);
 
-  if (dropped.length === 0 && !materialized && !converged && !normalized) return { ok: true, said: [] };
+  if (dropped.length === 0 && !materialized && !escalated && !ceilings && !converged && !normalized) return { ok: true, said: [] };
 
   const movedTo = `${place}.moved`;
   // The kept file is the machine's config before its first move, a byte the
@@ -785,14 +790,96 @@ function moveRetiredKeys(
  * without a value the mount will refuse. The ticket's profile gains what
  * init would have written, said the way a move is said.
  */
-function materializeTicketStatus(top: yaml.YAMLMap, said: string[]): boolean {
+/** Every profile whose workflow is the ticket one, in the order the file names them. */
+function* ticketProfiles(top: yaml.YAMLMap): Generator<yaml.YAMLMap> {
   const workflowsMap = entryOf(top, "workflows");
-  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return false;
-  let wrote = false;
+  if (workflowsMap === undefined || !yaml.isMap(workflowsMap.value)) return;
   for (const item of workflowsMap.value.items) {
     const profile = item.value;
     if (!yaml.isMap(profile) || unwrap(profile.get("workflow")) !== "@amykit/workflow-ticket-to-qa") continue;
-    if (entryOf(top, "qaStatusName") !== undefined) continue;
+    yield profile;
+  }
+}
+
+/**
+ * The ceilings an escalation replaced, dropped from the settings an update
+ * moved them into.
+ *
+ * An older release capped a ticket at N implement attempts and N gate attempts;
+ * this one counts rounds per origin against `escalation.scale`, and a slice it
+ * has no field for is refused at mount. Both go by name, in the same move that
+ * writes the scale, so the machine the update just moved still boots.
+ */
+function dropRetiredCeilings(top: yaml.YAMLMap, said: string[]): boolean {
+  let dropped = false;
+  // Where the move has not reached the key yet, or where an operator put it
+  // back: a ceiling is retired wherever it lives, and the boot check runs over
+  // the whole file.
+  const topPolicy = entryOf(top, "policy");
+  if (topPolicy !== undefined) dropped = dropCeilingsFrom(topPolicy.value, said) || dropped;
+
+  for (const profile of ticketProfiles(top)) {
+    const settingsMap = profile.get("settings");
+    if (!yaml.isMap(settingsMap)) continue;
+    if (dropCeilingsFrom(settingsMap.get("policy"), said)) dropped = true;
+  }
+  return dropped;
+}
+
+/** Drops both retired ceilings from one policy, in either shape it is held in. */
+function dropCeilingsFrom(policy: unknown, said: string[]): boolean {
+  const retired = ["maxImplementAttempts", "maxGateAttempts"];
+  // A setting the move placed is a plain object on the node until the document
+  // is written, so the walk reaches both shapes.
+  const held = yaml.isMap(policy)
+    ? { has: (key: string) => policy.has(key), drop: (key: string) => policy.delete(key) }
+    : policy !== null && typeof policy === "object" && !Array.isArray(policy)
+      ? {
+          has: (key: string) => key in (policy as Record<string, unknown>),
+          drop: (key: string) => delete (policy as Record<string, unknown>)[key],
+        }
+      : undefined;
+  if (held === undefined) return false;
+  let dropped = false;
+  for (const key of retired) {
+    if (!held.has(key)) continue;
+    held.drop(key);
+    said.push(`policy.${key}: dropped; an escalation counts rounds per origin against escalation.scale now`);
+    dropped = true;
+  }
+  return dropped;
+}
+
+/**
+ * The numbers an escalation rests on, written into every ticket profile that
+ * predates them.
+ *
+ * A v1 machine's config names no scale, and this release refuses to mount a
+ * ticket workflow that leaves one out: without this the first update of such a
+ * machine would move nothing and leave it unable to boot. The values written
+ * are the patient ladder init now writes, placed in the file so an operator can
+ * edit them — not a default the loader supplies behind their back.
+ */
+function materializeEscalationScale(top: yaml.YAMLMap, said: string[]): boolean {
+  let wrote = false;
+  for (const profile of ticketProfiles(top)) {
+    const settingsMap = profile.get("settings");
+    if (yaml.isMap(settingsMap) && settingsMap.has("escalation")) continue;
+    if (yaml.isMap(settingsMap)) {
+      settingsMap.add(new yaml.Pair("escalation", toMap({ scale: { patient: 3, normal: 2, immediate: 1 } })));
+    } else {
+      profile.add(new yaml.Pair("settings", toMap({ escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } })));
+    }
+    said.push("escalation.scale: set to patient 3, normal 2, immediate 1, the ladder init writes, which the ticket workflow now requires");
+    wrote = true;
+  }
+  return wrote;
+}
+
+function materializeTicketStatus(top: yaml.YAMLMap, said: string[]): boolean {
+  if (entryOf(top, "qaStatusName") !== undefined) return false;
+  let wrote = false;
+  for (const profile of ticketProfiles(top)) {
     const settingsMap = profile.get("settings");
     // A profile that already names the status was placed by the move above,
     // not left behind by init: saying so again would rewrite a file that did

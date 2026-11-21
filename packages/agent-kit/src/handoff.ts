@@ -18,7 +18,9 @@ export function handoffNote(from: Rung, run: AgentRun): string {
   const because =
     run.outcome === "rate-limited"
       ? `ran out of quota partway through`
-      : `did not succeed`;
+      : run.refused
+        ? `answered, and that answer was refused: ${run.refused}`
+        : `did not succeed`;
 
   return [
     `A previous attempt by ${from.harness} (${from.model}) ${because}.`,

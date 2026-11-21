@@ -40,7 +40,7 @@ describe("CommandGate", () => {
     expect(runner.calls[0]?.options?.cwd).toBe("/w/northwind/northwind-backend");
   });
 
-  it("stops at the first failure so the agent gets one thing to fix", async () => {
+  it("runs every check, so a red one is not hidden behind the first", async () => {
     const { runner, gate } = gateFor(
       { "Northwind/northwind-backend": BACKEND_GATE },
       [fails("lint", "3 problems")],
@@ -49,7 +49,7 @@ describe("CommandGate", () => {
     const outcome = await gate.run(workplace());
 
     expect(outcome.ok).toBe(false);
-    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls).toHaveLength(BACKEND_GATE.length);
     expect(outcome.output).toContain("3 problems");
     expect(outcome.output).toContain("exited 1");
   });
@@ -93,5 +93,35 @@ describe("CommandGate", () => {
     expect(outcome.output).toBe(
       "$ npm run --workspace @northwind/api lint\nok\n$ npm run --workspace @northwind/api typecheck\nok",
     );
+  });
+});
+
+describe("CommandGate counting what it found", () => {
+  const THREE = [
+    "npm run --workspace @northwind/api lint",
+    "npm run --workspace @northwind/api typecheck",
+    "npm run --workspace @northwind/api test",
+  ];
+
+  it("answers how many checks were red, not only that one was", async () => {
+    const { gate } = gateFor(
+      { "Northwind/northwind-backend": THREE },
+      [fails("lint", "3 problems"), fails("test", "2 failed")],
+    );
+
+    const outcome = await gate.run(workplace());
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.findings).toBe(2);
+    expect(outcome.output).toContain("3 problems");
+    expect(outcome.output).toContain("2 failed");
+  });
+
+  it("answers one when a single check was red among several", async () => {
+    const { gate } = gateFor({ "Northwind/northwind-backend": THREE }, [fails("typecheck", "error TS2345")]);
+
+    const outcome = await gate.run(workplace());
+
+    expect(outcome.findings).toBe(1);
   });
 });

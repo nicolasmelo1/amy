@@ -261,10 +261,6 @@
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
-    "jscpd:plugins/command-gate/src/CommandGate.ts<->plugins/plan-check/src/PlanCommandCheck.ts#131:f54a1d998635": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
     "jscpd:plugins/codex/src/CodexHarness.ts<->plugins/codex/src/CodexHarness.ts#53:ab7f8ef78c4b": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
@@ -294,10 +290,6 @@
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },
     "jscpd:plugins/codex/src/CodexHarness.ts<->plugins/codex/src/CodexHarness.ts#58:ceaa19af936c": {
-      "review_by": "2027-03-03",
-      "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
-    },
-    "jscpd:packages/core/src/define-workflow.ts<->packages/core/src/plugin.ts#55:649adfb3552d": {
       "review_by": "2027-03-03",
       "note": "The same block in two places: fold it into one helper, or say here why the copy has to stay"
     },

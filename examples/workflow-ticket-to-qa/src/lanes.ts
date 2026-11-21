@@ -110,13 +110,43 @@ interface ReviewObservation {
 type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): Promise<HarnessReply> };
 
 /**
+ * The verdict a review ends on, or nothing when it ends on no verdict at all.
+ *
+ * A line of its own saying `CHANGES_ASKED` sends the work back; a line saying
+ * `APPROVED` is the review passing. Anything else — a review that stops
+ * mid-sentence, or one that answered a different question — is no verdict,
+ * which is what the step's own `verify` refuses.
+ */
+function verdictLine(text: string): "APPROVED" | "CHANGES_ASKED" | undefined {
+  const lines = text.split("\n").reverse();
+  for (const line of lines) {
+    const said = verdictWord(line);
+    if (said.startsWith("CHANGES_ASKED")) return "CHANGES_ASKED";
+    if (said.startsWith("APPROVED")) return "APPROVED";
+  }
+  return undefined;
+}
+
+/**
+ * How many things a review found: its bulleted lines, the verdict itself not
+ * among them. A review that found something and wrote one paragraph is one.
+ */
+function findingsIn(text: string): number {
+  const found = text
+    .split("\n")
+    .map((line) => line.replace(/^[\s>*_`#-]+/, "").trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !/^CHANGES_ASKED|^APPROVED/i.test(line));
+  return Math.max(1, found.length);
+}
+
+/**
  * The verdict a review ends on: a line of its own saying `CHANGES_ASKED`
  * sends the work back; anything else is a review that found nothing to stop
  * it, which is what every review was before it could say so.
  */
 export function reviewVerdict(text: string): "APPROVED" | "CHANGES_ASKED" {
-  const asked = text.split("\n").some((line) => verdictWord(line).startsWith("CHANGES_ASKED"));
-  return asked ? "CHANGES_ASKED" : "APPROVED";
+  return verdictLine(text) ?? "APPROVED";
 }
 
 /**
@@ -179,7 +209,26 @@ export const selfReviewLane = withDiagram(defineWorkflow({
           ...(ticket.brief ? [``, ticket.unitOwn ? `The current brief this ticket is worked against:` : `The current brief for the feature this ticket belongs to:`, ``, ticket.brief] : []),
         ].join("\n"),
         tree.path,
-        { workId: record.id, step: "self-review", brief: ticket.brief },
+        {
+          workId: record.id,
+          step: "self-review",
+          brief: ticket.brief,
+          // A review that ends on neither verdict answered a different
+          // question. The step's own check turns that into a refused run, so a
+          // relay asks the next rung rather than reading silence as approval.
+          verify: async (answer: HarnessReply): Promise<HarnessReply> => {
+            if (answer.run.outcome !== "completed" || verdictLine(answer.text) !== undefined) return answer;
+            return {
+              ...answer,
+              run: {
+                ...answer.run,
+                outcome: "failed" as const,
+                refused: "the review ended on no verdict: end it with a line saying APPROVED or CHANGES_ASKED",
+                output: `the review ended on no verdict\n\n${answer.run.output}`,
+              },
+            };
+          },
+        },
       );
       // A review that did not finish found nothing either way, so it never
       // ends the lane. Out of quota, it was not a try and waits; anything
@@ -196,6 +245,7 @@ export const selfReviewLane = withDiagram(defineWorkflow({
         output: reply.text,
         at: scope.ctx.now().toISOString(),
         verdict: reviewVerdict(reply.text),
+        findings: findingsIn(reply.text),
         ...(record.input.revision ? { revision: record.input.revision } : {}),
       };
     },

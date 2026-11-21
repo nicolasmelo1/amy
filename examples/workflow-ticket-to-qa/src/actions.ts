@@ -1,9 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   ActionContext,
   AgentRun,
+  Plan,
   Ask,
   baseBranchFor,
   briefOf,
+  Climb,
+  climbFor,
   Conversation,
   FoundWork,
   Moved,
@@ -11,13 +16,15 @@ import {
   sayToOperator,
   ProgressPolicy,
   PullRequestView,
+  startRung,
+  strictest,
   WorkflowActionScope,
   WorkflowPieceContext,
   parseBudget,
   unitOf,
 } from "@amykit/core";
 import type { Git } from "@amykit/core";
-import { implementStep, judgeStep } from "@amykit/agent-kit";
+import { extractJson, implementStep, judgeStep } from "@amykit/agent-kit";
 import {
   ReviewerHints,
   branchOf,
@@ -31,13 +38,15 @@ import {
   questionText,
 } from "./agent-steps.js";
 import { Effect, WRITE_EFFECTS, WriteEffect } from "./effects.js";
-import { Observation, Policy, Said } from "./observation.js";
+import { Observation, Policy, Said, StackBase } from "./observation.js";
 import { decided, decisionLines } from "./discussion.js";
-import { EffectOutcomes, applyOutcomes, applyTransition } from "./outcomes.js";
+import { EffectOutcomes, applyOutcomes, applyTransition, applyWork } from "./outcomes.js";
 import type { configSchema, needs } from "./plugin.js";
 import { loadRoster } from "./roster.js";
 import { TicketRecord } from "./record.js";
-import { Ticket, pullRequestTitle } from "./ticket.js";
+import { Ticket, pullRequestTitle, stackBasesIn } from "./ticket.js";
+import { refuseARemovedState } from "./machine.js";
+import { isAutomatedReviewer } from "./review.js";
 
 /**
  * How this workflow's work is found and looked at, what each action does, and
@@ -53,8 +62,14 @@ type Scope = WorkflowPieceContext<typeof configSchema, Policy, typeof needs>;
 type ActionScope = WorkflowActionScope<typeof configSchema, Policy, typeof needs>;
 type Work = ActionContext<TicketRecord, Observation>;
 
-/** The part of `Git` this workflow drives, for a test that hands a fake rather than a git. */
-export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commitAndPush" | "headSha">;
+/**
+ * The part of `Git` this workflow drives, for a test that hands a fake rather
+ * than a git. `commit` and `push` are apart on purpose, because the whole
+ * point of the move is that a change is committed before anybody reads it and
+ * pushed only after they have; a git from before that split still offers
+ * `commitAndPush` alone, and is driven that way.
+ */
+export type TicketGit = Pick<Git, "pathFor" | "acquire" | "prepareBranch" | "commit" | "push" | "commitAndPush" | "headSha">;
 
 /** Exhaustive over this workflow's actions, checked at compile time. */
 type TicketActions = {
@@ -77,7 +92,11 @@ export function progress(scope: Scope): ProgressPolicy | undefined {
  * never say they had all merged.
  */
 export async function discover(scope: Scope): Promise<FoundWork[]> {
+  const only = (scope.config.onlyTickets ?? []) as readonly string[];
   return (await scope.ports.tracker.inProgress()).flatMap((ticket) => {
+    // An install may limit itself to the tickets it was asked about; an empty
+    // list is every ticket, which is what an install that named none means.
+    if (only.length > 0 && !only.includes(ticket.id)) return [];
     const priority = ticket.priority === undefined ? {} : { priority: ticket.priority };
     if ((ticket.repos?.length ?? 0) > 1) requireMergeLookup(scope, ticket);
     return (ticket.repos ?? [ticket.repo]).map((repo) => ({
@@ -88,13 +107,21 @@ export async function discover(scope: Scope): Promise<FoundWork[]> {
 }
 
 export async function observe(scope: Scope, current: TicketRecord): Promise<Observation> {
-  // The ticket is the unit's: called as a phase, the record's own id is the call's.
-  // The brief is read under that same work id: a ticket worked in more than one
-  // repository is a unit per repository, and its project judges its own.
-  const { ticket, briefId } = await requireTicketWithBrief(scope, unitOf(current));
+  // A record an older version saved where the review loop changed code is
+  // refused here, at the load, naming the record and the state: nothing below
+  // can read a change nobody checked, and picking a state for it would decide
+  // silently what the person whose ticket it is has to read.
+  refuseARemovedState(current);
+  // The ticket is the unit's: called as a phase, the record's own id is the
+  // call's, and a called id with no repository of its own is worked where the
+  // ticket's labels put it. The brief is read under the unit's work id: a
+  // ticket worked in more than one repository is a unit per repository, and
+  // its project judges its own.
+  const { ticket, briefId } = await requireTicketWithBrief(scope, current.id);
   // A ticket whose tracker derived no branch is refused here, on its
   // first look, before any branch is prepared for it.
   const pullRequest = await pullRequestFor(scope, ticket, current.state);
+  const stack = await stackFor(scope, ticket);
 
   // Only fetched where it is used, so a poll that is only waiting for a
   // review does not hammer the code host counting everybody's workload.
@@ -110,6 +137,7 @@ export async function observe(scope: Scope, current: TicketRecord): Promise<Obse
     // a brief that appeared mid-triage now says.
     ...(briefId ? { briefId } : {}),
     pullRequest,
+    ...(stack ? { stack } : {}),
     reviewLoad,
     // Read when a look needs it, not at mount, so confirming the roster
     // takes effect without a restart. With the recovery root named: the
@@ -120,6 +148,36 @@ export async function observe(scope: Scope, current: TicketRecord): Promise<Obse
     ...(await whereItStands(scope, ticket, current.state)),
     now: scope.ctx.now(),
   };
+}
+
+/**
+ * Where a stacked ticket's branch starts: the parent's pull request branch
+ * while it is open, the branch it merged into once it landed, and a hold that
+ * names the parent while its repository has no pull request for it.
+ *
+ * The install's `stackBases` is read first, and the ticket's own
+ * `Stack base:` line after it. Two lines are two answers, which is refused by
+ * name rather than guessed between.
+ */
+async function stackFor(scope: Scope, ticket: Ticket): Promise<StackBase | undefined> {
+  const lines = stackBasesIn(ticket.body);
+  if (lines.length > 1) {
+    throw new Error(
+      `${ticket.id} says two \`Stack base\` lines (${lines.join(", ")}); a ticket stacks on one parent — keep one, or name it under stackBases`,
+    );
+  }
+  const configured = (scope.config.stackBases ?? {}) as Readonly<Record<string, string>>;
+  const parent = configured[ticket.id] ?? lines[0];
+  if (!parent) return undefined;
+
+  const host = scope.ports["code-host"];
+  const parentTicket = await scope.ports.tracker.get(parent);
+  const byId = (await host.findPullRequestMentioning?.(ticket.repo, parent)) ?? null;
+  const found = byId ?? (parentTicket?.branchName ? await host.findPullRequest(ticket.repo, parentTicket.branchName) : null);
+  if (!found) return { parent, waiting: true };
+
+  const base = found.merged ? found.base : found.headBranch ?? parentTicket?.branchName;
+  return base ? { parent, base } : { parent, waiting: true };
 }
 
 /**
@@ -137,7 +195,7 @@ export function remember(
   outcomes: Record<string, unknown>,
   observation: Observation,
   moved: Moved | null,
-  _decision: unknown,
+  decision: unknown,
   now: Date,
 ): TicketRecord {
   const folded = outcomes as EffectOutcomes;
@@ -154,7 +212,12 @@ export function remember(
         }
       : folded;
 
-  return toTheChecks(applyTransition(applyOutcomes(current, settled), moved), observation, moved);
+  const applied = applyOutcomes(current, settled);
+  const transitioned = applyTransition(applied, moved);
+  // The engine has already advanced the record it hands the fold, so the state
+  // the move left is the move's, not the record's.
+  const from = moved?.from ?? current.state;
+  return toTheChecks(applyWork(transitioned, from, decision as Plan, now, scope.policy), observation, moved);
 }
 
 /**
@@ -162,6 +225,25 @@ export function remember(
  * not a single action that writes is declared, so the mount can hold the
  * empty claim to its word: nothing here could reach a write even by mistake.
  */
+/**
+ * The branch this move's work sits on, ready to be committed to.
+ *
+ * A stacked ticket is cut from its parent's branch; anything else from the
+ * repository's base. The extra argument is left off entirely when there is no
+ * stack, so a git that never heard of one sees the call it always saw.
+ */
+async function prepareTheWorkBranch(
+  git: Pick<Git, "prepareBranch">,
+  ticket: Ticket,
+  branch: string,
+  workId: string,
+  stack: StackBase | undefined,
+): Promise<void> {
+  const from = stack && "base" in stack ? stack.base : undefined;
+  if (from) await git.prepareBranch(ticket.repo, branch, workId, from);
+  else await git.prepareBranch(ticket.repo, branch, workId);
+}
+
 export function actionsFor(policy: Policy): Partial<TicketActions> {
   return Object.fromEntries(Object.entries(ACTIONS).filter(([name]) => policy.writes === "operator"
     ? !(WRITE_EFFECTS as readonly string[]).includes(name)
@@ -239,8 +321,14 @@ const ACTIONS: TicketActions = {
   "implement": async (scope, work, effect) => {
     const { git } = scope.checkouts;
     const ticket = work.observation.ticket;
-    const branch = branchOf(ticket);
-    await git.prepareBranch(ticket.repo, branch, work.record.id);
+    const branch = await theBranchTheWorkIsOn(scope, ticket);
+    await prepareTheWorkBranch(git, ticket, branch, work.record.id, work.observation.stack);
+    const cwd = await git.acquire(ticket.repo, work.record.id);
+    // The round's own comments, and nobody else's: the threads this move took
+    // up are what the step is asked to answer.
+    const taken = (work.observation.pullRequest?.threads ?? []).filter((thread) =>
+      (work.record.taking ?? []).includes(thread.id),
+    );
     const { value, run } = await implementStep(scope.ports.agent, {
       prompt: implementPrompt(
         ticket,
@@ -249,12 +337,30 @@ const ACTIONS: TicketActions = {
         effect.conversation,
         effect.discussion,
         ownBrief(work),
+        taken,
+        taken.every((thread) => isAutomatedReviewer(thread.author)) ? "automated" : "human",
       ),
-      cwd: await git.acquire(ticket.repo, work.record.id),
-      context: { workId: work.record.id, step: "implement" },
-      commit: () => git.commitAndPush(ticket.repo, branch, `${ticket.id}: ${ticket.title}`, work.record.id),
+      cwd,
+      context: {
+        workId: work.record.id,
+        step: "implement",
+        // The rung this round starts on: the climb the origin that sent the
+        // work back has already earned, never the person at the top.
+        ...implementingRung(work, scope.policy),
+      },
+      // The change is committed and goes no further: what reaches the remote
+      // is what the gate and the review have read, and publishing is what
+      // sends it.
+      commit: () => commitTheChange(git, cwd, ticket.repo, `${ticket.id}: ${ticket.title}`, work.record.id),
       now: scope.ctx.now,
     });
+    // What the step said about the comments it was handed, if it was handed
+    // any: the record keeps the reader's word, and an unanswered comment is the
+    // one thing that goes to the owner rather than being quietly fixed.
+    if (taken.length > 0 && run.outcome === "completed" && value.output) {
+      outcomesOf(work).verdicts = readVerdicts(extractJson<unknown>(value.output), taken);
+    }
+
     if (run.outcome === "rate-limited") {
       outcomesOf(work).waited = { notATry: true, retryAfterMs: run.retryAfterMs ?? scope.policy.pollBackoffMs };
       outcomesOf(work).continuationContext = [
@@ -268,6 +374,37 @@ const ACTIONS: TicketActions = {
     outcomesOf(work).implementation = value;
     // The commit both checks are lent: what this attempt left on the branch.
     outcomesOf(work).implemented = { repo: ticket.repo, revision: await git.headSha(ticket.repo, work.record.id) };
+  },
+
+  /**
+   * Puts the round on the remote, once, after the gate and the self-review
+   * have read the commit. A round the checks refused never reaches here.
+   */
+  "push": async (scope, work) => {
+    const { git } = scope.checkouts;
+    const ticket = work.observation.ticket;
+    const branch = work.observation.pullRequest?.headBranch ?? branchOf(ticket);
+    await git.push(ticket.repo, branch, work.record.id);
+  },
+
+  /**
+   * Answers a review comment on its thread, for work the brief answers rather
+   * than builds. The answer goes where the person wrote it: the work's own
+   * thread when a conversation is mounted, and the ticket when it is not.
+   */
+  "reply-thread": async (scope, work, effect) => {
+    const text = effect.text?.trim();
+    if (!text) return;
+    const ticket = work.observation.ticket;
+    const answer = `${effect.threadId}: ${text}`;
+    const { conversation } = scope.ports;
+    if (conversation) {
+      const thread = await conversation.open(unitOf(work.record), ticket.title);
+      await conversation.post(thread, { text: answer });
+      return;
+    }
+    await scope.ports.tracker.comment(ticket.id, answer);
+    outcomesOf(work).answered = [effect.threadId];
   },
 
   "open-pull-request": async (scope, work) => {
@@ -406,14 +543,37 @@ const ACTIONS: TicketActions = {
 };
 
 /**
+ * The branch this round commits to.
+ *
+ * The tracker's branch until there is a pull request; the pull request's own
+ * afterwards, which is not always the same one — an operator opening it by
+ * hand names the branch themselves, and a fix pushed to the tracker's branch
+ * would never reach the pull request the review is reading. A round after the
+ * review has a pull request the observation does not read (a look while
+ * implementing asks the forge nothing), so the branch is asked of the forge
+ * here, once, by the ticket the pull request is titled with.
+ */
+async function theBranchTheWorkIsOn(scope: Scope, ticket: Ticket): Promise<string> {
+  const pull = await scope.ports["code-host"].findPullRequestMentioning?.(ticket.repo, ticket.id);
+  return pull?.headBranch ?? branchOf(ticket);
+}
+
+/**
  * The ticket a work id stands for, in the repository the id names.
  *
- * A ticket in several repositories is one work item per repository, and
- * the id says which: `PROJ-1@owner/name`. Every tracker call still uses the
+ * A ticket in several repositories is one work item per repository, and the
+ * id says which: `PROJ-1@owner/name`. Every tracker call still uses the
  * ticket's own id; only the repository the work happens in changes.
+ *
+ * A called work id — `PROJ-1239/WORK#1` — names no repository of its own. It
+ * is worked where the ticket's labels put it, the first one when they name
+ * several and leave out the team's: the ticket was labelled for the
+ * repository somebody meant, and falling back to the team's would work the
+ * frontend ticket in the backend.
  */
 async function requireTicket(scope: Scope, workId: string): Promise<Ticket> {
-  const { ticketId, repo } = splitWorkId(workId);
+  const unit = unitOf({ id: workId });
+  const { ticketId, repo } = splitWorkId(unit);
   const found = await scope.ports.tracker.get(ticketId);
   if (!found) {
     throw new Error(`${ticketId} is not in the tracker any more`);
@@ -421,7 +581,12 @@ async function requireTicket(scope: Scope, workId: string): Promise<Ticket> {
   // The tracker's membership is kept before the repository is overridden:
   // a ticket whose last label went is back in its team's repository alone,
   // and an item for another repository must still see that it left.
-  return repo ? { ...found, repo, repos: found.repos ?? [found.repo] } : found;
+  if (repo) return { ...found, repo, repos: found.repos ?? [found.repo] };
+
+  const labelled = found.repos ?? [];
+  const called = unit !== workId;
+  const where = called && labelled.length > 0 && !labelled.includes(found.repo) ? labelled[0]! : found.repo;
+  return where === found.repo ? found : { ...found, repo: where };
 }
 
 /**
@@ -436,7 +601,9 @@ async function requireTicket(scope: Scope, workId: string): Promise<Ticket> {
  */
 async function requireTicketWithBrief(scope: Scope, workId: string): Promise<{ ticket: Ticket; briefId?: string }> {
   const ticket = await requireTicket(scope, workId);
-  const record = await briefOf(scope.ports.brief, { workId, briefId: ticket.briefId });
+  // The brief is the unit's: a call's record is named for the call, and its
+  // brief is the one the unit's project judged.
+  const record = await briefOf(scope.ports.brief, { workId: unitOf({ id: workId }), briefId: ticket.briefId });
   if (!record) return { ticket };
 
   return { ticket: { ...ticket, brief: renderBrief(record).text }, briefId: record.id };
@@ -482,7 +649,14 @@ async function answersFor(
   const { tracker } = scope.ports;
   const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
   const awaitingOwner = Boolean(current.escalation && !current.escalation.resolvedAt);
-  if (!awaitingAnswer && !awaitingOwner) return { conversation: [], escalationAnswered: false };
+  // A review is where the owner's own word is new work too: the ticket's
+  // comments are read for it, from the last word acted on rather than from the
+  // beginning of time.
+  const listening = REVIEWING_STATES.includes(current.state);
+  if (!awaitingAnswer && !awaitingOwner) {
+    if (!listening) return { conversation: [], escalationAnswered: false };
+    return { conversation: await tracker.comments(ticket.id, current.ownerWord?.at), escalationAnswered: false };
+  }
 
   const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
   const said = await saidSince(scope, unitOf(current), ticket, since);
@@ -496,6 +670,64 @@ async function answersFor(
     conversation: relevant ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
     escalationAnswered,
   };
+}
+
+/** The states after the change exists, where the owner's word is new work. */
+const REVIEWING_STATES: readonly TicketRecord["state"][] = [
+  "COPILOT_WAIT",
+  "REVIEWER_ASSIGNED",
+  "HUMAN_REVIEW",
+  "RE_REVIEW",
+];
+
+/**
+ * Commits what the agent left behind, under this machine's own subject.
+ *
+ * An agent that wrote `.amy-commit-body` has said why the change is what it
+ * is — a justification a check may read — and the file becomes the body of
+ * the commit. The file is deleted before the commit, so it is never part of
+ * the change it explains. Nothing is pushed: the remote waits for the checks.
+ */
+async function commitTheChange(
+  git: TicketGit,
+  cwd: string,
+  repo: string,
+  subject: string,
+  workId: string,
+): Promise<boolean> {
+  return git.commit(repo, takeCommitBody(cwd, subject), workId);
+}
+
+/** Where an implementing agent leaves the body of the commit it wants. */
+const COMMIT_BODY_FILE = ".amy-commit-body";
+
+/**
+ * The commit message, with the agent's body when it left one, and the body
+ * file gone.
+ *
+ * The file is the agent's way of justifying the change where a check reads
+ * it: amy owns the subject, and the body is the agent's words verbatim. It is
+ * removed whatever happens, so it is never committed and never leaks into the
+ * next round's tree.
+ */
+function takeCommitBody(cwd: string, subject: string): string {
+  const file = path.join(cwd, COMMIT_BODY_FILE);
+  if (!fs.existsSync(file)) return subject;
+  const body = fs.readFileSync(file, "utf-8").trim();
+  fs.rmSync(file, { force: true });
+  return body.length > 0 ? `${subject}\n\n${body}` : subject;
+}
+
+/**
+ * The rung this implementation starts on: where the origin that last sent the
+ * work back stands, never the person at the top of the ladder.
+ */
+function implementingRung(work: Work, policy: Policy): { rung?: number } {
+  const origin = work.record.lastOrigin;
+  if (!origin) return {};
+  const findings = origin === "gate" ? work.record.lastGate?.findings ?? 1 : origin === "self-review" ? work.record.lastSelfReview?.findings ?? 1 : 1;
+  const climb: Climb | undefined = strictest([climbFor(policy.escalation, work.record, origin, findings)]);
+  return climb ? { rung: startRung(climb, policy.escalation) } : {};
 }
 
 /**
@@ -585,25 +817,36 @@ const WRITE_WORDS: { [K in WriteEffect["type"]]: (write: Extract<WriteEffect, { 
   "escalate": (write, { ticket, where }) => `${ticket.id} needs your call, answer ${where}: ${write.reason}`,
   "open-pull-request": (_write, { ticket, base }) =>
     `Open a pull request for ${ticket.id} in ${ticket.repo}, from ${branchOf(ticket)} into ${base}, titled "${pullRequestTitle(ticket)}". I carry on once I see it.`,
+  "reply-thread": (write, { where }) =>
+    `Answer review thread ${write.threadId} ${where}: ${write.text}`,
   "resolve-review-thread": (write, { ticket, pr }) => {
     const thread = pr?.threads.find((candidate) => candidate.id === write.threadId);
-    const on = thread?.path ? `on ${thread.path} ` : "";
+    const on = thread?.path ? ` on ${thread.path}` : "";
     const about = thread ? ` (${thread.body.split("\n")[0]})` : "";
-    return `Resolve the review thread ${on}in ${pr?.url ?? ticket.repo}: the change answered it.${about}`;
+    // The id is what the operator closes it by, and the one thing that names
+    // the thread even when the forge's view of the pull request is not to hand.
+    return `Resolve the review thread ${write.threadId}${on} in ${pr?.url ?? ticket.repo}: the change answered it.${about}`;
   },
   "assign-reviewer": (write, { ticket, pr }) => `Request a review of ${pr?.url ?? ticket.id} from ${write.host}.`,
   "request-rereview": (write, { ticket, pr }) => `Ask ${write.host} to review ${pr?.url ?? ticket.id} again: every comment is addressed.`,
   "hand-off-to-qa": (write, { ticket, qaStatusName }) => `Move ${ticket.id} to ${qaStatusName} and assign it to ${write.tracker}: ${ticket.url}`,
 };
 
-/** The states before a pull request is expected, where none is found by title either. */
+/**
+ * The states where no pull request is looked for by title.
+ *
+ * The tracker's own branch is still read: a machine that opened the pull
+ * request itself finds it there. `verdict` is not one of these — its first
+ * round runs before there is a pull request, but every later one runs after a
+ * round the review sent back, and that round publishes to a pull request that
+ * already exists.
+ */
 const BEFORE_A_PULL_REQUEST: readonly TicketRecord["state"][] = [
   "DISCOVERED",
   "CLARIFYING",
   "READY",
   "IMPLEMENTING",
   "checks",
-  "verdict",
 ];
 
 /**

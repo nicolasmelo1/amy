@@ -1,4 +1,4 @@
-import { PullRequestView } from "@amykit/core";
+import { EscalationRules, PullRequestView } from "@amykit/core";
 import { Comment, ReplyAnswer, ReplyKind } from "@amykit/core";
 import { Roster } from "./roster.js";
 import { Ticket } from "./ticket.js";
@@ -20,6 +20,12 @@ export interface Observation {
   briefId?: string;
   /** Null until a pull request exists for the ticket's branch. */
   pullRequest: PullRequestView | null;
+  /**
+   * The parent this ticket is stacked on, as its description or the install
+   * named it, and where its branch is cut from — or that the parent has no
+   * pull request yet, which the work waits on.
+   */
+  stack?: StackBase;
   /**
    * Open reviews per host login, counted across every repository the team
    * uses. Counting one repository would send every review to whoever happens
@@ -64,13 +70,39 @@ export interface Observation {
 }
 
 /**
- * One thing said back, and what it is when the medium let the person say.
- * Unmarked is the common case, and `policy.conversation` reads it.
+ * Where a stacked ticket's branch starts.
+ *
+ * `base` is the parent's own head branch while it is open, and the branch it
+ * merged into once it landed. `waiting` names the parent whose pull request
+ * the repository does not hold yet: the work holds rather than cutting from
+ * a base the parent never asked for.
  */
+export type StackBase =
+  | { readonly parent: string; readonly base: string }
+  | { readonly parent: string; readonly waiting: true };
+
+/** One thing said back, and what it is when the medium let the person say. Unmarked is the common case, and `policy.conversation` reads it. */
 export type Said = Comment & { kind?: ReplyKind; answer?: ReplyAnswer };
 
+/**
+ * The levels an origin's rounds are counted at, and the ladder's length.
+ *
+ * Every number here is a setting: a level is how many rounds it allows before
+ * the work climbs one rung, and the last rung is a person, which is what an
+ * origin that runs out of rounds on the rung below it escalates to. The
+ * values are in `config.yaml` under `escalation`, and `amy doctor` names any
+ * divergence from what this schema declares.
+ */
+export type { EscalationRules };
+
 export interface Policy {
+  /**
+   * How many attempts a record saved before this workflow counted rounds per
+   * origin is read as having: the ceiling the ladder replaced, kept so an
+   * older record is read the way it was written.
+   */
   maxImplementAttempts: number;
+  /** The gate's half of that same legacy ceiling. */
   maxGateAttempts: number;
   /** How long to hold in a waiting state before looking again. */
   pollBackoffMs: number;
@@ -111,16 +143,50 @@ export interface Policy {
    * under either.
    */
   conversation: "answer" | "discuss";
+  /** The levels, the origins and the ladder every escalation is counted on. */
+  escalation: EscalationRules;
 }
 
-export const DEFAULT_POLICY: Policy = {
-  maxImplementAttempts: 3,
-  maxGateAttempts: 3,
-  pollBackoffMs: 5 * 60 * 1000,
-  rosterBackoffMs: 30 * 60 * 1000,
-  maxOpenReviewsPerReviewer: 2,
-  maxPullRequestFiles: 60,
-  maxPullRequestLines: 2000,
-  writes: "machine",
-  conversation: "answer",
+/**
+ * The numbers an escalation rests on when an install names none, and the one
+ * object the schema defaults and the decision read: the same reference, so
+ * the mount's check that the two agree is a fact rather than a copy.
+ */
+export const ESCALATION: EscalationRules = {
+  scale: { patient: 3, normal: 2, immediate: 1 },
+  origins: {
+    gate: { level: "normal", beyond: "immediate", findingsAt: 3 },
+    thread: { level: "normal", beyond: "immediate", findingsAt: 3 },
+    owner: { level: "immediate" },
+    "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 },
+  },
+  rungs: 3,
 };
+
+/**
+ * The policy a decision reads, and the two ceilings it no longer treats as
+ * settings.
+ *
+ * `maxImplementAttempts` and `maxGateAttempts` are read by a record saved
+ * before rounds were counted per origin: its failed attempts were weighed
+ * against them, and a look at such a record still is. They are not settings
+ * any more, so they are carried here as readings a record can be held to and
+ * are not enumerable: a policy handed to a mount as configuration names only
+ * what the schema declares, and `amy config explain` lists exactly that.
+ */
+export const DEFAULT_POLICY: Policy = Object.defineProperties(
+  {
+    pollBackoffMs: 5 * 60 * 1000,
+    rosterBackoffMs: 30 * 60 * 1000,
+    maxOpenReviewsPerReviewer: 2,
+    maxPullRequestFiles: 60,
+    maxPullRequestLines: 2000,
+    writes: "machine",
+    conversation: "answer",
+    escalation: ESCALATION,
+  } as Policy,
+  {
+    maxImplementAttempts: { value: 3, enumerable: false },
+    maxGateAttempts: { value: 3, enumerable: false },
+  },
+);

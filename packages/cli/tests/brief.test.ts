@@ -20,7 +20,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
-  settings: { qaStatusName: "In QA" },
+  settings: { qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
 };
 
 const CONFIG = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], notify: { hermes: null, inbox: false } };

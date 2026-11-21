@@ -1598,12 +1598,26 @@ function anyPort(): object {
 /** Every port a shipped workflow needs, stood in for, plus the workplace its checkouts read. */
 const STOOD_IN = ["tracker", "code-host", "agent", "gate", "notifier", "conversation", "brief", "commands", "tasks", "store", "harnesses", "catalog", "installer", "config", "checks", "notes", "plan-check"];
 
-/** A setting for every required key a schema gives no default, so a mount gets as far as building the runtime. */
+/**
+ * A setting for every required key a schema gives no default, so a mount gets
+ * as far as building the runtime. A dotted key is written into its group, the
+ * way an operator's config.yaml nests it.
+ */
 function required(schema: Plugin["configSchema"]): Record<string, unknown> {
   const settings: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(schema ?? {})) {
-    if (!entry.required || entry.default !== undefined || key.includes(".")) continue;
-    settings[key] = entry.type === "string[]" ? ["acme/shop"] : entry.type === "number" ? 1 : entry.type === "boolean" ? false : entry.type === "record" ? {} : "x";
+    if (!entry.required || entry.default !== undefined) continue;
+    const stand =
+      entry.type === "string[]" ? ["acme/shop"] : entry.type === "number" ? 1 : entry.type === "boolean" ? false : entry.type === "record" ? {} : "x";
+    const path = key.split(".");
+    const leaf = path.pop()!;
+    let into = settings;
+    for (const segment of path) {
+      const existing = into[segment];
+      if (typeof existing !== "object" || existing === null) into[segment] = {};
+      into = into[segment] as Record<string, unknown>;
+    }
+    into[leaf] = stand;
   }
   return settings;
 }

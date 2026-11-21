@@ -186,7 +186,9 @@ describe("ticket-to-qa with its writes handed to the operator", () => {
 
     expect(walked.states).toEqual(quick.states);
     expect(slow.said).toHaveLength(4);
-    for (const state of ["PR_OPEN", "COPILOT_FIX", "REVIEWER_ASSIGNED", "QA_HANDOFF"] as const) {
+    // The resolve is handed over where the round is published — the verdict —
+    // and the rest where they are first said.
+    for (const state of ["PR_OPEN", "verdict", "REVIEWER_ASSIGNED", "QA_HANDOFF"] as const) {
       expect(walked.stillWhileWaiting.filter((waited) => waited === state).length).toBeGreaterThanOrEqual(4);
     }
   });
@@ -299,7 +301,9 @@ describe("review 2 of the composed workflow", () => {
   it("does not let a review the operator requested carry red checks past the gate", () => {
     const decision = pending({ requestedReviewers: ["edsger"], checks: { state: "failing", commitSha: HEAD } });
 
-    expect(decision).toMatchObject({ kind: "advance", to: "ESCALATED" });
+    // The red checks are work for the implementation, which is where the gate
+    // reads them — a person is never asked to read them.
+    expect(decision).toMatchObject({ kind: "advance", to: "IMPLEMENTING" });
   });
 
   it("does not let it carry a conflict past either", () => {

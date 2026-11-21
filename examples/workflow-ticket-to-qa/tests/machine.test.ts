@@ -6,6 +6,8 @@ import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, d
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
 import { plan } from "../src/machine.js";
+import { configSchema } from "../src/plugin.js";
+import { validateConfig } from "@amykit/core";
 import { actionsFor } from "../src/actions.js";
 import {
   HEAD,
@@ -428,12 +430,12 @@ describe("COPILOT_WAIT", () => {
     );
   });
 
-  it("goes to fix when the bot left an unresolved thread", () => {
+  it("sends the work to IMPLEMENTING when the bot left an unresolved thread", () => {
     const obs = observation({
       pullRequest: pullRequest({ reviews: [botReview()], threads: [botThread()] }),
     });
 
-    expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe("COPILOT_FIX");
+    expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe("IMPLEMENTING");
   });
 
   it("ignores a resolved bot thread", () => {
@@ -465,8 +467,10 @@ describe("COPILOT_WAIT", () => {
       pullRequest: pullRequest({ reviews: [botReview()], threads: [thread()] }),
     });
 
+    // A human's thread is work from the review too, and the one place code
+    // changes takes it up like any other.
     expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe(
-      "REVIEWER_ASSIGNED",
+      "IMPLEMENTING",
     );
   });
 
@@ -874,7 +878,7 @@ describe("HUMAN_REVIEW", () => {
     );
   });
 
-  it("goes to fix when they leave an open thread", () => {
+  it("sends the work back to IMPLEMENTING when they leave an open thread", () => {
     const obs = observation({
       pullRequest: pullRequest({
         reviewDecision: "CHANGES_REQUESTED",
@@ -884,7 +888,7 @@ describe("HUMAN_REVIEW", () => {
     });
 
     expect(expectAdvance(plan(record("HUMAN_REVIEW", assigned), obs, policy)).to).toBe(
-      "HUMAN_FIX",
+      "IMPLEMENTING",
     );
   });
 
@@ -1039,12 +1043,12 @@ describe("what the forge says, before a person is asked", () => {
     );
   });
 
-  it("hands red checks to the owner instead of assigning anybody", () => {
+  it("works the red checks rather than assigning anybody", () => {
     const obs = observation({ pullRequest: at("failing"), reviewLoad: {} });
 
     const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
 
-    expect(p.to).toBe("ESCALATED");
+    expect(p.to).toBe("IMPLEMENTING");
     expect(p.why).toContain("are red");
   });
 
@@ -1102,9 +1106,11 @@ describe("what the forge says, before a person is asked", () => {
       escalation: { reason: "the checks are red", askedAt: WORKDAY.toISOString() },
     });
 
-    expect(expectWait(plan(r, observation({ pullRequest: at("failing") }), policy)).why).toContain(
-      "waiting on the owner",
-    );
+    // The red checks are work, but the owner already has the decision: nothing
+    // is built behind their back, and they are not asked twice.
+    const p = expectWait(plan(r, observation({ pullRequest: at("failing") }), policy));
+    expect(p.why).toContain("waiting on the owner");
+    expect(p.effects).toEqual([]);
   });
 
   it("does not read a verdict as a merge state, or the other way round", () => {
@@ -1634,5 +1640,63 @@ describe("a record an older version saved where the checks used to run", () => {
     expect(p.to).toBe("checks");
     expect(p.effects).toEqual([]);
     expect(p.why).toContain("before they ran as lanes");
+  });
+});
+
+describe("the attempt ceilings an escalation replaces", () => {
+  it.each(["policy.maxImplementAttempts", "policy.maxGateAttempts"])("leaves %s out of the schema", (key) => {
+    expect(Object.keys(configSchema)).not.toContain(key);
+  });
+
+  it.each(["maxImplementAttempts", "maxGateAttempts"])("refuses a config that still sets policy.%s, naming it", (key) => {
+    const result = validateConfig("@amykit/workflow-ticket-to-qa", configSchema, {
+      repos: ["acme/widgets"],
+      qaStatusName: "In QA",
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      policy: { [key]: 3 },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.problems.join("; ")).toContain(key);
+  });
+
+  it("does not escalate a change the checks sent back as many times as the old ceiling, while its origin's rounds have rungs left", () => {
+    const r = record("verdict", {
+      attempts: { verdict: 3, IMPLEMENTING: 3 },
+      roundsByOrigin: { gate: 0 },
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
+      lanes: { GATE: { call: "PROJ-1239/GATE#3", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#3", end: "APPROVED" } },
+    });
+
+    expect(expectAdvance(plan(r, observation(), policy)).to).toBe("IMPLEMENTING");
+  });
+
+  it("does not escalate an implementation that failed as many times as the old ceiling, while its origin's rounds have rungs left", () => {
+    const r = record("IMPLEMENTING", {
+      attempts: { IMPLEMENTING: 3 },
+      roundsByOrigin: {},
+      lastImplementation: attempt(false, "2026-09-03T10:00:00.000Z", "broken"),
+    });
+
+    const p = plan(r, observation(), policy);
+
+    expect(p.kind === "advance" ? p.to : p.kind).not.toBe("ESCALATED");
+  });
+
+  it("escalates once an origin's rounds ran out on the ladder's top rung", () => {
+    const r = record("verdict", {
+      roundsByOrigin: { gate: 99 },
+      climbedByOrigin: { gate: 99 },
+      lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
+      lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
+      lanes: { GATE: { call: "PROJ-1239/GATE#1", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#1", end: "APPROVED" } },
+    });
+
+    const p = expectAdvance(plan(r, observation(), policy));
+
+    expect(p.to).toBe("ESCALATED");
+    expect(p.why).toMatch(/gate/);
+    expect(p.why).not.toMatch(/across \d+ rounds/);
   });
 });

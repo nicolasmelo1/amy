@@ -35,11 +35,18 @@ export interface TriageOutcome {
 /** A triage question may offer a closed, single-choice answer set. */
 export type TriageQuestion = string | { prompt: string; answers: string[] };
 
-/** What one judged review comment concluded. */
+/**
+ * What one judged review comment concluded.
+ *
+ * `fixed` means the code changed, and `disagreed` means it needs the owner.
+ * `answered` is a comment the work answered in words rather than in code, and
+ * `out-of-scope` one the brief cuts: both are replied to on the thread rather
+ * than built. `contradicts-brief` is new work that would undo what the brief
+ * asks for, which is the owner's to settle.
+ */
 export interface ThreadVerdict {
   threadId: string;
-  /** `fixed` means the code changed. `disagreed` means it needs the owner. */
-  verdict: "fixed" | "disagreed";
+  verdict: "fixed" | "disagreed" | "answered" | "out-of-scope" | "contradicts-brief";
   note: string;
 }
 
@@ -121,6 +128,15 @@ export function unreadTriage(at: string): TriageOutcome {
   return { clear: false, questions: [], askedQuestions: [], at };
 }
 
+/**
+ * The step that implements a ticket, and — when a round came back from the
+ * review — the comments it is this round's work to answer.
+ *
+ * The comments are the *only* ones named: a thread the machine did not take up
+ * is one it was not asked about, and a step that read it anyway would answer
+ * somebody else's round. `from` is who left them, because the same two lines
+ * head a review's comments in every prompt that carries them.
+ */
 export function implementPrompt(
   ticket: Ticket,
   retryContext?: string,
@@ -128,9 +144,14 @@ export function implementPrompt(
   conversation?: readonly string[],
   discussion?: readonly string[],
   unitOwn = false,
+  comments: readonly ReviewThread[] = [],
+  from: "automated" | "human" = "human",
 ): string {
   return withOutsideNotice([
     `Implement this ticket in the current repository.`,
+    ...(comments.length > 0
+      ? [``, `This round also answers the review comments on its pull request.`]
+      : []),
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
@@ -139,6 +160,7 @@ export function implementPrompt(
     ...labelLines(ticket),
     ...conversationLines(conversation),
     ...decisionLines(discussion),
+    ...commentLines(comments, from),
     ...(continuationContext
       ? [
           ``,
@@ -157,6 +179,7 @@ export function implementPrompt(
           `Fix the underlying cause. Do not discard work that was already correct.`,
         ]
       : []),
+    ...answerLines(comments),
     ``,
     `Follow the conventions already in this repository. Do not commit: that is`,
     `handled for you.`,
@@ -180,16 +203,12 @@ export function threadPrompt(
   ];
 
   return withOutsideNotice([
-    from === "automated"
-      ? `An automated reviewer left comments on the pull request for this ticket.`
-      : `A human reviewer left comments on the pull request for this ticket.`,
+    ...commentLines(threads, from),
     ``,
     ...titleLines(ticket),
     ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
-    `Comments:`,
-    ...threads.flatMap(threadLines),
     ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
     ...decisionLines(discussion),
     ``,
@@ -253,6 +272,43 @@ export function discussPrompt(
  * the last one says who is being waited on. Every voice is outside text, so
  * each speaks from inside its own envelope.
  */
+/**
+ * What a step that was handed comments must say about each of them.
+ *
+ * One JSON object, the same shape every thread step answers with, because an
+ * answer the machine cannot read is an answer it has to guess at — and the one
+ * guess it must never make is that the change it just made is what a person
+ * asked for.
+ */
+function answerLines(comments: readonly ReviewThread[]): string[] {
+  if (comments.length === 0) return [];
+  return [
+    ``,
+    `For each comment, either change the code or say why you disagree. Do not`,
+    `argue on the pull request.`,
+    ``,
+    `Then answer with a single JSON object and nothing else:`,
+    ``,
+    `{"verdicts": [{"threadId": "...", "verdict": "fixed", "note": "what you changed"}]}`,
+    ``,
+    `Use "disagreed" only when you did not change the code, and say why in the`,
+    `note. A disagreement goes to the ticket owner to settle, so be specific.`,
+  ];
+}
+
+/** The comments a step is asked about, headed by who left them. */
+function commentLines(threads: readonly ReviewThread[], from: "automated" | "human"): string[] {
+  if (threads.length === 0) return [];
+  return [
+    from === "automated"
+      ? `An automated reviewer left comments on the pull request for this ticket.`
+      : `A human reviewer left comments on the pull request for this ticket.`,
+    ``,
+    `Comments:`,
+    ...threads.flatMap(threadLines),
+  ];
+}
+
 function threadLines(thread: ReviewThread): string[] {
   return [
     outsideText(`[${thread.id}] ${thread.author} said:\n${thread.body}`, { source: "review comment" }),

@@ -235,7 +235,9 @@ describe("Worker", () => {
   it("opens a follow-up ticket when a review comment needs the owner", async () => {
     records.save({
       ...newRecord("PROJ-1239", clock),
-      state: "HUMAN_FIX",
+      // A review the work was waiting on, carrying the one thing the machine
+      // will not decide for itself: a disagreement with the reviewer.
+      state: "HUMAN_REVIEW",
       reviewer: "edsger",
       judged: [{ threadId: "T1", verdict: "disagreed", note: "the types already prove this" }],
     });
@@ -255,7 +257,7 @@ describe("Worker", () => {
   });
 
   it("gives the agent only the threads it was asked to judge", async () => {
-    records.save({ ...newRecord("PROJ-1239", clock), state: "COPILOT_FIX" });
+    records.save({ ...newRecord("PROJ-1239", clock), state: "COPILOT_WAIT" });
     queue.enqueue({ workId: "PROJ-1239", reason: "bot found things" }, clock);
     const agent = fakeAgent();
     const host = fakeHost(
@@ -268,10 +270,13 @@ describe("Worker", () => {
       }),
     );
 
-    await (await build({ agent, host })).tick();
+    // One look moves the work to IMPLEMENTING with those comments taken up;
+    // the next asks the agent about them, and nobody's comment but those.
+    const worker = await build({ agent, host });
+    await worker.tick();
+    await worker.tick();
 
-    // The review prompt names the threads it asks about, and who left them.
-    const [prompt] = agent.addressThreads.mock.calls[0]!;
+    const [prompt] = agent.implement.mock.calls[0]!;
     expect(prompt).toContain("[B1]");
     expect(prompt).not.toContain("[H1]");
     expect(prompt).toContain("An automated reviewer left comments");

@@ -59,7 +59,14 @@ const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
 const MAX_TICKS = 80;
 const WAITING = ["CLARIFYING", "COPILOT_WAIT", "HUMAN_REVIEW", "ESCALATED"];
 
-/** Every move the ticket makes, in the order it has to make them. */
+/**
+ * Every move the ticket makes, in the order it has to make them.
+ *
+ * One place changes code — `IMPLEMENTING` — and everything that sends work
+ * back goes there: a red gate, the bot's comment, the reviewer's, and the
+ * comment the owner's answer put back in play. A green round publishes, and
+ * only a round the gate and the review both read cleanly reaches the remote.
+ */
 const EXPECTED = [
   "DISCOVERED>CLARIFYING",
   "CLARIFYING>READY",
@@ -71,15 +78,27 @@ const EXPECTED = [
   "checks>verdict",
   "verdict>PR_OPEN",
   "PR_OPEN>COPILOT_WAIT",
-  "COPILOT_WAIT>COPILOT_FIX",
-  "COPILOT_FIX>COPILOT_WAIT",
+  "COPILOT_WAIT>IMPLEMENTING",
+  "IMPLEMENTING>checks",
+  "checks>verdict",
+  "verdict>PR_OPEN",
+  "PR_OPEN>COPILOT_WAIT",
   "COPILOT_WAIT>REVIEWER_ASSIGNED",
   "REVIEWER_ASSIGNED>HUMAN_REVIEW",
-  "HUMAN_REVIEW>HUMAN_FIX",
-  "HUMAN_FIX>ESCALATED",
-  "ESCALATED>HUMAN_FIX",
-  "HUMAN_FIX>RE_REVIEW",
-  "RE_REVIEW>HUMAN_REVIEW",
+  "HUMAN_REVIEW>IMPLEMENTING",
+  "IMPLEMENTING>checks",
+  "checks>verdict",
+  "verdict>PR_OPEN",
+  "PR_OPEN>COPILOT_WAIT",
+  "COPILOT_WAIT>ESCALATED",
+  "ESCALATED>COPILOT_WAIT",
+  "COPILOT_WAIT>IMPLEMENTING",
+  "IMPLEMENTING>checks",
+  "checks>verdict",
+  "verdict>PR_OPEN",
+  "PR_OPEN>COPILOT_WAIT",
+  "COPILOT_WAIT>REVIEWER_ASSIGNED",
+  "REVIEWER_ASSIGNED>HUMAN_REVIEW",
   "HUMAN_REVIEW>APPROVED",
   "APPROVED>QA_HANDOFF",
   "QA_HANDOFF>DONE",
@@ -102,7 +121,7 @@ interface TicketRecord {
   lastImplementation?: unknown;
   judged: { verdict: string }[];
   lanes?: Record<string, { call: string; end?: string }>;
-  calls?: Record<string, { id: string; state: string; revision?: string; attempts: Record<string, number>; history: { from: string; to: string }[] }>;
+  calls?: Record<string, { id: string; state: string; revision?: string; attempts: Record<string, number>; history: { at?: string; from: string; to: string }[] }>;
 }
 
 /** One `amy tick`: the state either side of it, and what it printed. */
@@ -293,7 +312,6 @@ const BOT_THREAD = {
  * question that was actually asked.
  */
 function reactions(): Record<string, Reaction> {
-  let ceilingRelieved = false;
   let humanReviews = 0;
 
   const sawHead = (pull: Pull, author: string, head: string): boolean =>
@@ -369,16 +387,20 @@ function reactions(): Record<string, Reaction> {
 
     // Somebody else's review lands, which is the only thing that can make
     // room on a reviewer's pile.
+    // Somebody else's review lands, which is the only thing that can make room
+    // on a reviewer's pile. One per wait: a walk that comes back to this state
+    // after a round needs the room made again, and closing the same pull
+    // request twice would be a world that never moves.
     REVIEWER_ASSIGNED(root) {
-      if (ceilingRelieved) return null;
-      ceilingRelieved = true;
-
       const state = read<CodeHost>(hostFile(root));
-      const done = found(state.repos[REPO]?.pulls.find((pull) => pull.number === 12), "pull request 12");
-      done.state = "closed";
+      const other = state.repos[REPO]?.pulls.find(
+        (pull) => pull.state === "open" && pull.head !== BRANCH && (pull.requestedReviewers ?? []).length > 0,
+      );
+      if (!other) return null;
+      other.state = "closed";
       write(hostFile(root), state);
 
-      return "one of ada's other reviews was merged, so she is carrying one";
+      return `one of ${other.requestedReviewers![0]}'s other reviews was merged, so they are carrying one fewer`;
     },
 
     HUMAN_REVIEW(root, record) {
@@ -1051,7 +1073,9 @@ function oneRoundCarriesBoth(first: World): boolean {
   const next = agentCallsFor(first, "implement")[1]?.prompt ?? "";
   const rounds = first.record.calls ?? {};
   const moves = transitions(first);
-  return moves.filter((move) => move === "verdict>IMPLEMENTING").length === 1 &&
+  // The first round the verdict sent back is the gate's: the review would have
+  // approved it, and the implementation after it was told both.
+  return moves[moves.indexOf("verdict>IMPLEMENTING") - 1] === "checks>verdict" &&
     moves.includes("verdict>PR_OPEN") &&
     rounds[`${TICKET}/GATE#1`]?.state === "RED" &&
     rounds[`${TICKET}/SELF_REVIEW#1`]?.state === "APPROVED" &&
@@ -1070,7 +1094,7 @@ function bothCheckedTheCommit(first: World): boolean {
   const laneTree = (tree: string, lane: string) => tree !== ownTree && path.basename(path.dirname(tree)).startsWith(`${TICKET}-${lane}-`);
   const rounds = first.record.calls ?? {};
   const lent = (round: number) => [rounds[`${TICKET}/GATE#${round + 1}`]?.revision, rounds[`${TICKET}/SELF_REVIEW#${round + 1}`]?.revision];
-  return gates.length === 2 && reviews.length === 2 &&
+  return gates.length >= 2 && gates.length === reviews.length &&
     gates[0]!.head !== gates[1]!.head &&
     gates.every((run, round) =>
       run.head === reviews[round]?.head &&
@@ -1229,17 +1253,64 @@ function clarifyingChecks(first: World): Check[] {
   ];
 }
 
+/** The first round: the gate said red, and the work went back to the step that changes code. */
+function redGateSentItBack(first: World, implementCalls: AgentCall[]): Check {
+  return [
+    "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
+    transitions(first).includes("verdict>IMPLEMENTING") &&
+      first.record.calls?.[`${TICKET}/GATE#1`]?.state === "RED" &&
+      implementCalls.length >= 2 &&
+      Boolean(implementCalls[1]?.at),
+  ];
+}
+
+/** The pull request, opened only once the gate had gone green on the head it read. */
+function nothingReachedThePullRequestEarly(
+  first: World,
+  seen: {
+    readonly pullsOpened: readonly GhCall[];
+    readonly green: TicketRecord["calls"] extends Record<string, infer C> | undefined ? C | undefined : undefined;
+    readonly greenAt: string | undefined;
+  },
+): Check {
+  const { pullsOpened, green, greenAt } = seen;
+  return [
+    "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
+    Boolean(
+      pullsOpened.length === 1 &&
+        pullsOpened[0] !== undefined &&
+        green?.state === "GREEN" &&
+        greenAt !== undefined &&
+        new Date(pullsOpened[0].at) > new Date(greenAt) &&
+        first.record.calls?.[`${TICKET}/GATE#1`]?.state === "RED",
+    ),
+  ];
+}
+
+/** The automated reviewer's comment, taken up before anybody was asked to look. */
+function botAnsweredBeforeAHuman(
+  threads: readonly AgentCall[],
+  reviewRequests: readonly GhCall[],
+): Check {
+  return [
+    "lifecycle.the_bot_is_answered_before_a_human_is_asked",
+    Boolean(
+      threads[0]?.prompt.includes("BOT-1") &&
+        reviewRequests[0] &&
+        new Date(threads[0].at) < new Date(reviewRequests[0].at),
+    ),
+  ];
+}
+
 function gateChecks(first: World): Check[] {
-  const gateRuns = first.record.lastGate;
+  const green = first.record.calls?.[`${TICKET}/GATE#2`];
+  const greenAt = green?.history.at(-1)?.at;
   const implementCalls = agentCallsFor(first, "implement");
   const pullsOpened = ghApiCalls(first, "POST", /^\/repos\/[^/]+\/[^/]+\/pulls$/);
 
   return [
     // The gate, which is the only thing that lets work out of the door.
-    [
-      "lifecycle.a_red_gate_sends_the_work_back_to_the_agent",
-      transitions(first).includes("verdict>IMPLEMENTING") && implementCalls.length === 2,
-    ],
+    redGateSentItBack(first, implementCalls),
     [
       "lifecycle.the_agent_is_told_what_the_gate_said",
       Boolean(
@@ -1248,14 +1319,7 @@ function gateChecks(first: World): Check[] {
           implementCalls[1].prompt.includes("exited 1"),
       ),
     ],
-    [
-      "lifecycle.nothing_reaches_a_pull_request_until_the_gate_is_green",
-      Boolean(
-        gateRuns?.ok &&
-          pullsOpened.length === 1 &&
-          pullsOpened[0] !== undefined && new Date(pullsOpened[0].at) > new Date(gateRuns.at),
-      ),
-    ],
+    nothingReachedThePullRequestEarly(first, { pullsOpened, green, greenAt }),
 
     // The repository, which is where the claim "implemented" is settled.
     [
@@ -1272,8 +1336,19 @@ function gateChecks(first: World): Check[] {
   ];
 }
 
+/**
+ * The implementation calls a review comment was handed to, in order.
+ *
+ * Judging a comment is the implementation's now: `IMPLEMENTING` is the one
+ * place code changes, and the step that changes it is the step that says what
+ * it did about each comment it was asked to answer.
+ */
+function threadCalls(first: World): AgentCall[] {
+  return agentCallsFor(first, "implement").filter((call) => /^\[[^\]]+\] .* said:/m.test(call.prompt));
+}
+
 function reviewChecks(first: World): Check[] {
-  const threadCalls = agentCallsFor(first, "address-threads");
+  const threads = threadCalls(first);
   const reviewRequests = ghApiCalls(first, "POST", /\/requested_reviewers$/);
   const ceilingHold = first.trail.find(
     (look) => look.after === "REVIEWER_ASSIGNED" && look.before === "REVIEWER_ASSIGNED",
@@ -1281,14 +1356,7 @@ function reviewChecks(first: World): Check[] {
 
   return [
     // Review, and the two currencies it spends.
-    [
-      "lifecycle.the_bot_is_answered_before_a_human_is_asked",
-      Boolean(
-        threadCalls[0]?.prompt.includes("BOT-1") &&
-          reviewRequests[0] &&
-          new Date(threadCalls[0].at) < new Date(reviewRequests[0].at),
-      ),
-    ],
+    botAnsweredBeforeAHuman(threads, reviewRequests),
     [
       // The write the lifecycle was missing: the machine fixed BOT-1 and
       // pushed, the forge kept the conversation open, and the machine closed
@@ -1302,7 +1370,9 @@ function reviewChecks(first: World): Check[] {
         ) &&
           ghCallsMatching(first, "graphql", "resolveReviewThread(input: {threadId: $id})", "id=BOT-1")
             .length === 1 &&
-          !ghCallsMatching(first, "graphql", "id=HUM-1").length,
+          first.pull?.threads.some((thread) => thread.id === "HUM-1" && thread.isResolved) &&
+          ghCallsMatching(first, "graphql", "resolveReviewThread(input: {threadId: $id})", "id=HUM-1")
+            .length === 1,
       ),
     ],
     [
@@ -1326,15 +1396,24 @@ function reviewChecks(first: World): Check[] {
       heldIn(first).filter((state) => state === "HUMAN_REVIEW").length === 2,
     ],
     [
+      // The round that answers a reviewer's comments publishes and asks them
+      // to look again: every changes-requested review is followed by a request
+      // of its own, and the one reviewer the work records is who it is asked of.
       "lifecycle.a_second_review_is_requested_after_changes",
-      reviewRequests.length === 2 && first.record.reviewer === "ada",
+      first.record.reviewer === "ada" &&
+        reviewRequests.length >= 2 &&
+        (first.pull?.reviews ?? [])
+          .filter((review) => review.state === "CHANGES_REQUESTED")
+          .every((review) =>
+            reviewRequests.some((request) => new Date(request.at) > new Date(review.submittedAt)),
+          ),
     ],
 
   ];
 }
 
 function disagreementChecks(first: World): Check[] {
-  const threadCalls = agentCallsFor(first, "address-threads");
+  const threads = threadCalls(first);
   const followUp = first.tracker.issues.find((issue) => issue.parentId === "uuid-BILL-4021");
 
   return [
@@ -1348,12 +1427,12 @@ function disagreementChecks(first: World): Check[] {
       // already ESCALATED by the time the fold sees it — and the answer sends
       // the work back to the state that raised the escalation, then forgets it.
       "escalating.remembers_the_state_it_interrupted",
-      first.trail.some((look) => look.before === "HUMAN_FIX" && look.after === "ESCALATED" && look.resumeAt === "HUMAN_FIX") &&
-        first.trail.some((look) => look.before === "ESCALATED" && look.after === "HUMAN_FIX" && look.resumeAt === undefined),
+      first.trail.some((look) => look.before === "COPILOT_WAIT" && look.after === "ESCALATED" && look.resumeAt === "COPILOT_WAIT") &&
+        first.trail.some((look) => look.before === "ESCALATED" && look.after === "COPILOT_WAIT" && look.resumeAt === undefined),
     ],
     [
       "lifecycle.the_owners_answer_reopens_the_judgement",
-      threadCalls.filter((call) => call.prompt.includes("HUM-2")).length === 2 &&
+      threads.filter((call) => call.prompt.includes("HUM-2")).length === 2 &&
         first.record.judged.every((verdict) => verdict.verdict === "fixed"),
     ],
 

@@ -14,7 +14,7 @@ const HOST: HostServices = {
 };
 
 const SETTINGS = {
-  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
+  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
 };
 
 /** Everything this workflow reaches for, mounted by somebody else. */
@@ -252,5 +252,75 @@ describe("confirming the roster, as an operation", () => {
       fs.chmodSync(file, 0o644);
       fs.rmSync(state, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the tickets an install limits itself to", () => {
+  const settingsWith = (extra: Record<string, unknown>) => ({
+    "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], ...extra },
+  });
+
+  it("does not work a ticket outside onlyTickets", async () => {
+    const tickets = [ticket({ id: "PROJ-1" }), ticket({ id: "PROJ-2" })];
+    const listing: Plugin = {
+      name: "@amykit/plugin-world",
+      register: (registry) => {
+        registry.port("tracker", fakeTracker({ inProgress: async () => tickets }));
+        registry.port("code-host", fakeHost());
+        registry.port("agent", fakeAgent());
+        registry.port("gate", fakeGate());
+        registry.port("notifier", { announce: async () => {} });
+      },
+    };
+    const outcome = await mount([fakeWorkspace(), plugin, listing], settingsWith({ onlyTickets: ["PROJ-2"] }), HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(outcome.mounted.workflow!.name) as WorkflowRuntime;
+
+    const found = (await runtime.found()).map((one) => (typeof one === "string" ? one : one.workId));
+
+    expect(found).toEqual(["PROJ-2"]);
+  });
+
+  it("refuses an onlyTickets entry that is not a ticket id, naming it", async () => {
+    const outcome = await mount([fakeWorkspace(), plugin, world], settingsWith({ onlyTickets: ["PROJ-2", "the invoice one"] }), HOST);
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.problems.join("; ")).toContain("the invoice one");
+  });
+
+  it("refuses a stackBases entry that is not a ticket id, naming it", async () => {
+    const outcome = await mount([fakeWorkspace(), plugin, world], settingsWith({ stackBases: { "PROJ-2": "main branch" } }), HOST);
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.problems.join("; ")).toContain("main branch");
+    expect(outcome.problems.join("; ")).not.toContain("is not a setting this plugin has");
+  });
+
+  it("refuses a ticket that says two Stack base lines, naming the ticket", async () => {
+    const twice = ticket({ body: "Stack base: PROJ-1000\nStack base: PROJ-1001" });
+    const listing: Plugin = {
+      name: "@amykit/plugin-world",
+      register: (registry) => {
+        registry.port("tracker", fakeTracker({ get: async () => twice, inProgress: async () => [twice] }));
+        registry.port("code-host", fakeHost());
+        registry.port("agent", fakeAgent());
+        registry.port("gate", fakeGate());
+        registry.port("notifier", { announce: async () => {} });
+      },
+    };
+    const outcome = await mount([fakeWorkspace(), plugin, listing], SETTINGS, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(outcome.mounted.workflow!.name) as WorkflowRuntime;
+
+    const refused = await runtime
+      .observe({ ...plugin.newRecord(twice.id, new Date("2026-09-03T12:00:00.000Z")), state: "READY" })
+      .then(
+        () => "",
+        (error: Error) => error.message,
+      );
+    expect(refused).toContain(twice.id);
+    expect(refused).toContain("Stack base");
   });
 });

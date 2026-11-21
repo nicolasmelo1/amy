@@ -238,6 +238,7 @@ async function host({ channels = [channelPlugin("recorder")], extra = [], log, o
       "@amykit/workflow-ticket-to-qa": {
         repos: ["acme/widgets"],
         qaStatusName: "In QA",
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
         ...overrides["@amykit/workflow-ticket-to-qa"],
       },
     },
@@ -614,6 +615,7 @@ const kindsOf = (kind: string) => linesIn(logDir).filter((event) => event.kind =
       "@amykit/workflow-ticket-to-qa": {
         repos: [UNMAPPED, MAPPED],
         qaStatusName: "In QA",
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
         defaultBranch: "main",
         baseBranch: { [MAPPED]: "trunk" },
       },

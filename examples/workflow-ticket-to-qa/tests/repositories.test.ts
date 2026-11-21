@@ -298,7 +298,9 @@ describe("a repository that leaves the ticket", () => {
   });
 
   it("resumes from where it stopped when the repository's label comes back", async () => {
-    const stopped = record("HUMAN_FIX", { reviewer: "edsger" });
+    // A review the work was waiting on: the state it stopped in, not one the
+    // machine used to change code in, which is refused at load.
+    const stopped = record("HUMAN_REVIEW", { reviewer: "edsger" });
     const removed = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND] })) }) })).observe(stopped);
     expect(plan(stopped, removed, policy).kind).toBe("settled");
 
@@ -361,5 +363,29 @@ describe("a ticket whose last repository label is taken off", () => {
 
     expect(seen.ticket.repo).toBe(FRONTEND);
     expect(seen.retired).toBe(true);
+  });
+});
+
+describe("a called ticket whose labels leave out the team's repository", () => {
+  const CALLED = "PROJ-1239/WORK#1";
+  const labelled = ticket({ repo: BACKEND, repos: [FRONTEND], labels: ["repo:northwind-frontend"] });
+
+  it("is worked in the repository its labels name, not the tracker's", async () => {
+    const built = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(labelled) }) });
+
+    const seen = await built.observe({ ...record("READY"), id: CALLED });
+
+    expect(seen.ticket.repo).toBe(FRONTEND);
+    expect(seen.retired ?? false).toBe(false);
+  });
+
+  it("is worked in the first labelled repository when the labels name several", async () => {
+    const OTHER = "Northwind/northwind-mobile";
+    const several = ticket({ repo: BACKEND, repos: [OTHER, FRONTEND] });
+    const built = await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(several) }) });
+
+    const seen = await built.observe({ ...record("READY"), id: CALLED });
+
+    expect(seen.ticket.repo).toBe(OTHER);
   });
 });

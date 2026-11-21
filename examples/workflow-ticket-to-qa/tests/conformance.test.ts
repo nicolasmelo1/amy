@@ -1,4 +1,8 @@
-import { beforeAll, describe, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { readDiagram } from "@amykit/core";
+import { ticketWorkerDeps } from "@amykit/test-fixtures";
 import {
   Agent,
   AskContext,
@@ -249,12 +253,22 @@ class TicketWorld implements World {
 const WORLDS: TicketWorld[] = [
       new TicketWorld("a ticket that takes the long road to QA"),
       new TicketWorld("a ticket clear as written", { clear: true }),
-      new TicketWorld("an implementation the agent never finishes", { clear: true, implementFails: true, moves: 0 }),
-      new TicketWorld("a gate that never goes green", { clear: true, gateRed: true, moves: 0 }),
+      // One move each: the escalation these raise is answered by the person
+      // whose ticket it is, which is the only way out of it.
+      new TicketWorld("an implementation the agent never finishes", { clear: true, implementFails: true, moves: 1 }),
+      new TicketWorld("a gate that never goes green", { clear: true, gateRed: true, moves: 1 }),
       new TicketWorld("a pull request too large to hand an agent", { clear: true, opens: { changedFiles: 400 }, moves: 1 }),
       new TicketWorld("a branch the forge says is broken", { clear: true, opens: { checks: { state: "failing", commitSha: "0".repeat(40) } }, moves: 2 }),
-      ...(["COPILOT_WAIT", "COPILOT_FIX", "REVIEWER_ASSIGNED", "HUMAN_REVIEW", "HUMAN_FIX"] as const).map((state) =>
+      // The two states the review loop used to change code in are gone with no
+      // legacy path, so no world starts in them: a record saved in one is
+      // refused at load, which is what the suite below proves.
+      ...(["COPILOT_WAIT", "REVIEWER_ASSIGNED", "HUMAN_REVIEW"] as const).map((state) =>
         new TicketWorld(`a pull request that is gone in ${state}`, { start: (now) => ({ ...newRecord(ticket().id, now), state }), moves: 0 })),
+      new TicketWorld("a pull request nobody was asked to review, with a red check", {
+        start: (now) => ({ ...newRecord(ticket().id, now), state: "REVIEWER_ASSIGNED", pullRequestNumber: 4940 }),
+        pr: pullRequest({ headSha: "0".repeat(40), checks: { state: "failing", commitSha: "0".repeat(40) } }),
+        moves: 0,
+      }),
       new TicketWorld("a review whose reviewer was never recorded", {
         start: (now) => ({ ...newRecord(ticket().id, now), state: "HUMAN_REVIEW" }),
         pr: pullRequest({ headSha: "0".repeat(40) }),
@@ -288,5 +302,39 @@ describe("ticket-to-qa", () => {
     worlds: WORLDS,
     // Shipped, so every arrow its diagram draws is one some world walks.
     everyEdge: true,
+  });
+});
+
+describe("the review loop's own fix states", () => {
+  const source = fs.readFileSync(fileURLToPath(new URL("../workflow.mmd", import.meta.url)), "utf-8");
+
+  it.each(["COPILOT_FIX", "HUMAN_FIX"])("are not drawn: %s is gone from the diagram", (state) => {
+    const drawn = readDiagram(source);
+
+    expect(drawn.states).not.toContain(state);
+  });
+
+  it.each(["COPILOT_FIX", "HUMAN_FIX"])("refuse a record saved in %s when it is loaded, naming the record and the state", async (state) => {
+    const { runtime, workflow } = await ticketWorkerDeps({ now: () => new Date("2026-09-03T12:00:00.000Z") });
+    const saved = { ...newRecord("PROJ-1239", new Date("2026-09-03T12:00:00.000Z")), state } as unknown as TicketRecord;
+
+    const loaded = (async () => {
+      const seen = await runtime.observe(saved);
+      return workflow.plan(saved, seen, runtime.policy);
+    })();
+
+    const refused = await loaded.then(
+      () => "",
+      (error: Error) => error.message,
+    );
+    expect(refused).toContain("PROJ-1239");
+    expect(refused).toContain(state);
+  });
+
+  it("marks where work comes back from and which steps verify a reply", () => {
+    const drawn = readDiagram(source);
+
+    expect([...drawn.sendsBack].sort()).toEqual(expect.arrayContaining(["GATE", "SELF_REVIEW"]));
+    expect(drawn.verified).toEqual(expect.arrayContaining(["IMPLEMENTING"]));
   });
 });

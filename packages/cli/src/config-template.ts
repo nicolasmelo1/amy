@@ -122,6 +122,11 @@ const EXAMPLE_WORKFLOW = {
    */
   settings: {
     qaStatusName: "In QA",
+    // The numbers an escalation rests on: each is required, and none has a
+    // default in code, so the template an install starts from carries them.
+    escalation: {
+      scale: { patient: 3, normal: 2, immediate: 1 },
+    },
   },
 } as const;
 

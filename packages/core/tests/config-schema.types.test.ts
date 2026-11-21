@@ -64,3 +64,65 @@ describe("a config is typed by its schema", () => {
     void badDefault;
   });
 });
+
+const escalation = {
+  "escalation.scale.patient": { type: "number", required: true, description: "rounds a patient level allows" },
+  "escalation.scale.normal": { type: "number", required: true, description: "rounds a normal level allows" },
+  "escalation.scale.immediate": { type: "number", required: true, description: "rounds an immediate level allows" },
+  "escalation.origins.gate.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    required: true,
+    description: "the level the gate's rounds are counted at",
+  },
+} as const satisfies ConfigSchema;
+
+describe("a oneOf setting is typed by the group it names", () => {
+  it("types the setting as the union of the group's keys", () => {
+    // config-schema.ts:61 makes ValueFor read GroupKeys of the named group.
+    expectTypeOf<ConfigOf<typeof escalation>["escalation"]["origins"]["gate"]["level"]>()
+      .toEqualTypeOf<"patient" | "normal" | "immediate">();
+    expectTypeOf<ConfigOf<typeof escalation>>().branded.toEqualTypeOf<{
+      escalation: {
+        scale: { patient: number; normal: number; immediate: number };
+        origins: { gate: { level: "patient" | "normal" | "immediate" } };
+      };
+    }>();
+  });
+
+  it("refuses a value outside the union", () => {
+    // @ts-expect-error `quickly` names no key of escalation.scale.
+    const outside: ConfigOf<typeof escalation>["escalation"]["origins"]["gate"]["level"] = "quickly";
+    void outside;
+  });
+
+  it("hands definePlugin the union, so a level is compared by the name it is", () => {
+    definePlugin({
+      name: "escalation-test-plugin",
+      configSchema: escalation,
+      register(_, ctx) {
+        expectTypeOf(ctx.config.escalation.origins.gate.level)
+          .toEqualTypeOf<"patient" | "normal" | "immediate">();
+        expectTypeOf(ctx.config.escalation.scale.patient).toEqualTypeOf<number>();
+      },
+    });
+  });
+});
+
+const optionalLevelSchema = {
+  "escalation.scale.patient": { type: "number", required: true, description: "rounds a patient level allows" },
+  "escalation.scale.normal": { type: "number", required: true, description: "rounds a normal level allows" },
+  "escalation.origins.proof.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    description: "the level the proof's rounds are counted at, when one is set",
+  },
+} as const satisfies ConfigSchema;
+void optionalLevelSchema;
+
+describe("a oneOf setting that is not required", () => {
+  it("may be absent, like any other setting with no default", () => {
+    expectTypeOf<ConfigOf<typeof optionalLevelSchema>["escalation"]["origins"]["proof"]["level"]>()
+      .toEqualTypeOf<"patient" | "normal" | undefined>();
+  });
+});

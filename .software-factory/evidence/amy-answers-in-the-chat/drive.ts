@@ -119,6 +119,9 @@ try {
   // comment the run does not need makes room for the line.
   fs.writeFileSync(configFile, fs.readFileSync(configFile, "utf-8")
     .replace(/^# The question the machine asks the person[\s\S]*?\n(?=notify:)/m, "")
+    // The escalation block's own working-out, which this install's numbers do
+    // not need read back to it: the block below it is what the schema asks for.
+    .replace(/^ {8}# This install has one usable model:[\s\S]*?\n(?= {8}scale:)/m, "")
     .replace(/^defaultWorkflow: (.*)\n/m, "defaultWorkflow: $1\nharnessSkills: { claude: true }\n"));
   installPlugins();
   editRoster(root);
@@ -208,7 +211,8 @@ try {
   // A restart lets only a booting mount through.
   await quiet();
   const running = loop.pids.at(-1)!;
-  const broken = config.replace(/workflow: "@amykit\/workflow-ticket-to-qa"/, 'workflow: "@amykit/workflow-not-installed"');
+  const broken = config.replace(/workflow: "?@amykit\/workflow-ticket-to-qa"?/, 'workflow: "@amykit/workflow-not-installed"');
+  if (broken === config) throw new Error(`the config the chat applied names no workflow to break:\n${config.split("\n").filter((line) => line.includes("workflow:")).join("\n")}`);
   fs.writeFileSync(configFile, broken);
   await say("/action restart please");
   const refused = await answered("restart: not restarted");

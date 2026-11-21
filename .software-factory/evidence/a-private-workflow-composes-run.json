@@ -107,7 +107,7 @@
     {
       "type": "compose.a_push_that_is_not_a_fast_forward_is_refused_naming_the_branch",
       "status": "passed",
-      "detail": "Error: refusing to push amy/item-1 from /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-compose-MsapDh/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
+      "detail": "Error: refusing to push amy/item-1 from /var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-compose-GCNOi3/git/checkouts/widgets: origin/amy/item-1 holds commits this branch does not, so the push is not a fast-forward. Fetch, and bring amy/item-1 forward onto it before pushing again."
     },
     {
       "type": "compose.a_refused_push_keeps_the_local_commit",
@@ -119,8 +119,8 @@
       "detail": {
         "published": true,
         "again": false,
-        "tip": "dc52de539c8a451b5ea2f89de8e64a532a2be299",
-        "cut": "dc52de539c8a451b5ea2f89de8e64a532a2be299"
+        "tip": "c88358b283a6610323c59a14f402ed0770d7d3e8",
+        "cut": "c88358b283a6610323c59a14f402ed0770d7d3e8"
       }
     },
     {
@@ -255,7 +255,7 @@
       "type": "compose.a_requested_review_still_answers_to_the_forges_checks",
       "status": "passed",
       "detail": {
-        "red": "ESCALATED",
+        "red": "IMPLEMENTING",
         "conflicting": "ESCALATED"
       }
     },
@@ -332,7 +332,7 @@
           "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n1. Should the invoice total use BRL?\n   1. approve\n   2. reject",
           "Open a pull request for BILL-4021 in acme/widgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: Show the currency on the invoice total\". I carry on once I see it.",
           "BILL-4021 needs an answer before I can start. Answer on https://tracker.test/issue/BILL-4021:\n- Which currency should the credit note total be shown in?",
-          "Resolve the review thread on invoice.md in acme/widgets: the change answered it. (This file has no trailing newline.)",
+          "Resolve the review thread BOT-1 on invoice.md in acme/widgets: the change answered it. (This file has no trailing newline.)",
           "Request a review of BILL-4021 from ada.",
           "Open a pull request for BILL-4021 in acme/gadgets, from amy/bill-4021-show-the-currency-on-the-invoice-total into main, titled \"BILL-4021: Show the currency on the invoice total\". I carry on once I see it.",
           "Request a review of BILL-4021 from ada.",
@@ -353,7 +353,7 @@
           "BILL-4021 CLARIFYING: answered on the ticket",
           "BILL-4021 PR_OPEN: opened the pull request",
           "BILL-4021@acme%2Fgadgets CLARIFYING: answered on the ticket",
-          "BILL-4021 COPILOT_FIX: resolved the thread",
+          "BILL-4021 verdict: resolved the thread",
           "BILL-4021 REVIEWER_ASSIGNED: requested a review from ada",
           "BILL-4021@acme%2Fgadgets PR_OPEN: opened the pull request",
           "BILL-4021@acme%2Fgadgets REVIEWER_ASSIGNED: requested a review from ada",
@@ -411,18 +411,18 @@
       "detail": [
         {
           "repo": "acme/widgets",
-          "head": "f6145c9e907afcbf26a660822b109064133ef66c"
+          "head": "c297211b6e4d865d40d1033582452eeb72c628fa"
         },
         {
           "repo": "acme/gadgets",
-          "head": "b8b3e4a550063218e140aa3d77461ade20d933cc"
+          "head": "fe7ea57838cbc5dc9becc052e187d32d97e55be4"
         }
       ]
     },
     {
       "type": "compose.qa_waits_while_one_repository_is_unmerged",
       "status": "passed",
-      "detail": 10
+      "detail": 3
     },
     {
       "type": "compose.qa_receives_the_ticket_once_when_every_repository_is_merged",

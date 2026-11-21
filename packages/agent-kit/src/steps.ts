@@ -22,47 +22,49 @@ export interface ImplementInput extends StepInput {
   now?: () => Date;
 }
 
-const NO_CHANGE = "the agent finished without changing any file";
-
 /**
  * Asks for a change, commits it through the caller, and says whether it moved.
  *
- * The commit runs as the context's `verify`, so a relay commits after each
- * rung that completed and climbs on one that changed nothing, exactly as it
- * climbs on a failure. Over an agent that never calls `verify` the commit
- * runs once the answer is back. A run that completed and changed no file is
- * a failure with `unchanged` progress, so a retry policy can tell an attempt
- * that added nothing from one that did. A run that did not complete is
- * returned rather than thrown, with its account.
+ * The commit is the step's business and not a verdict: it runs for the rung
+ * that comes back, and what it says is the account of whether the attempt
+ * moved anything. A run that ended without changing a file is still an
+ * answer, with `unchanged` progress and the agent's own words as the reason,
+ * so a retry policy can tell work that added nothing from work that failed. A
+ * step that declared a `verify` of its own keeps it, and that one alone
+ * decides whether the relay climbs. A run that did not complete is returned
+ * rather than thrown, with its account.
  */
 export async function implementStep(agent: Agent, input: ImplementInput): Promise<AgentResult<AttemptOutcome>> {
-  // The last run `verify` judged, and whether it changed anything. Only the
-  // run that comes back is the attempt's, so an earlier rung's verdict never
-  // speaks for a later rung that failed for another reason.
-  let judged: { reply: HarnessReply; changed: boolean } | undefined;
+  // The commit is the step's business, not a verdict: it runs once for every
+  // rung that comes back, and what it says about the last one is the whole
+  // account of whether this attempt moved anything. A step that declared a
+  // verify of its own keeps it: that one, and only that one, decides a climb.
+  let changed = false;
+  let asked = false;
+  const declares = input.context?.verify;
   const verify = async (reply: HarnessReply): Promise<HarnessReply> => {
-    const changed = await input.commit();
-    const verdict = changed ? reply : { ...reply, run: { ...reply.run, outcome: "failed" as const, output: `${NO_CHANGE}\n\n${reply.run.output}` } };
-    judged = { reply: verdict, changed };
-    return verdict;
+    asked = true;
+    changed = await input.commit();
+    return declares ? declares(reply) : reply;
   };
 
   let reply = await agent.ask(input.prompt, input.cwd, { ...input.context, verify });
-  if (reply.run.outcome === "completed" && judged?.reply !== reply) reply = await verify(reply);
+  // An agent that never calls `verify`, as one harness on its own does, still
+  // has its work committed and weighed once.
+  if (!asked && reply.run.outcome === "completed") reply = await verify(reply);
 
   const at = (input.now ?? (() => new Date()))().toISOString();
   const key = input.key ?? "implementation";
-
-  if (judged?.reply === reply && !judged.changed) {
-    return {
-      value: { ok: false, output: reply.run.output, at, progress: { kind: "unchanged", key, detail: NO_CHANGE } },
-      run: reply.run,
-    };
-  }
   if (reply.run.outcome !== "completed") {
     return { value: { ok: false, output: reply.run.output, at }, run: reply.run };
   }
-  return { value: { ok: true, output: reply.run.output, at, progress: { kind: "advanced", key } }, run: reply.run };
+  // A run that ended without changing a file is an answer, on the rung that
+  // gave it. The agent's own words are the reason, because a stronger model
+  // does not know something this one did not.
+  const progress = changed
+    ? ({ kind: "advanced", key } as const)
+    : ({ kind: "unchanged", key, detail: reply.text } as const);
+  return { value: { ok: true, output: reply.run.output, at, progress }, run: reply.run };
 }
 
 export interface JudgeInput<T> extends StepInput {
@@ -77,6 +79,10 @@ export interface JudgeInput<T> extends StepInput {
  *
  * A run that did not complete yields the caller's fallback with the run's
  * account, for the same reason `implementStep` returns rather than throws.
+ * An answer with no object in it, or one the caller's reader refuses, is the
+ * action's failure: the reply is read and the error it raises is the answer,
+ * so a reader's own words reach the operator and no stronger rung is bought
+ * for a shape this one already gave.
  */
 export async function judgeStep<T>(agent: Agent, input: JudgeInput<T>): Promise<AgentResult<T>> {
   const reply = await agent.ask(input.prompt, input.cwd, input.context);

@@ -199,6 +199,69 @@ describe("one harness made of several", () => {
   });
 });
 
+describe("a reply the step's own verify refuses", () => {
+  it("asks the next rung, and tells it why the answer was refused", async () => {
+    const first = rung("claude", "sonnet", ["completed"]);
+    const second = rung("claude", "opus", ["completed"]);
+    const why = "the answer held no JSON object";
+
+    const reply = await new HarnessRelay(oneLadder([first, second])).ask("read the ticket", "/x", {
+      step: "triage",
+      // HarnessRelay.ts:113 climbs on what verify answers, not on the CLI's verdict.
+      verify: async (answer) => ({ ...answer, run: { ...answer.run, outcome: "failed" as const, refused: why } }),
+    });
+
+    expect(first.asked).toHaveLength(1);
+    expect(second.asked).toHaveLength(1);
+    // handoff.ts:21 carries the reason rather than "did not succeed".
+    expect(second.asked[0]).toContain(`answered, and that answer was refused: ${why}`);
+    expect(second.asked[0]).not.toContain("did not succeed");
+    expect(reply.run.refused).toBe(why);
+    expect(reply.run.outcome).toBe("failed");
+  });
+});
+
+describe("an ask told which rung to begin on", () => {
+  it("starts at the rung it names and never asks the ones below it", async () => {
+    const first = rung("claude", "haiku", ["completed"]);
+    const second = rung("claude", "sonnet", ["completed"]);
+
+    await new HarnessRelay(oneLadder([first, second])).ask("write a plan", "/x", { step: "draft-plan", rung: 1 });
+
+    // HarnessRelay.ts:94 begins at the rung the context names.
+    expect(first.asked).toEqual([]);
+    expect(second.asked).toHaveLength(1);
+  });
+
+  it("still skips the rest of that harness when the rung it began on was rate-limited", async () => {
+    const below = rung("claude", "haiku", ["completed"]);
+    const at = rung("claude", "sonnet", ["rate-limited"]);
+    const above = rung("claude", "opus", ["completed"]);
+    const other = rung("codex", "gpt-5", ["completed"]);
+
+    await new HarnessRelay(oneLadder([below, at, above, other])).ask("write a plan", "/x", { rung: 1 });
+
+    expect(below.asked).toEqual([]);
+    expect(at.asked).toHaveLength(1);
+    expect(above.asked).toEqual([]);
+    expect(other.asked).toHaveLength(1);
+  });
+
+  it("climbs in order from that rung when its run failed", async () => {
+    const below = rung("claude", "haiku", ["completed"]);
+    const at = rung("claude", "sonnet", ["failed"]);
+    const above = rung("claude", "opus", ["completed"]);
+    const other = rung("codex", "gpt-5", ["completed"]);
+
+    await new HarnessRelay(oneLadder([below, at, above, other])).ask("write a plan", "/x", { rung: 1 });
+
+    expect(below.asked).toEqual([]);
+    expect(at.asked).toHaveLength(1);
+    expect(above.asked).toHaveLength(1);
+    expect(other.asked).toEqual([]);
+  });
+});
+
 describe("handing the step to a skill", () => {
   it("hands the harness the skill it addressed the prompt to, with the directory it is installed in", async () => {
     const contexts: AskContext[] = [];

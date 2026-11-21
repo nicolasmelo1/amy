@@ -159,9 +159,15 @@ export function fakeAgent(steps: Partial<Pick<ScriptedAgent, "triage" | "impleme
   return { ask, triage, implement, addressThreads } as ScriptedAgent;
 }
 
-/** A tree for every item and a branch that always commits, with every call recorded. */
+/**
+ * A tree for every item and a branch that always commits, with every call
+ * recorded. `commit` and `push` are apart, as the core's are: a step commits
+ * and publishing is what makes the branch reach the remote.
+ */
 export function fakeGit(changed = true): TicketGit & {
   prepareBranch: Mock<TicketGit["prepareBranch"]>;
+  commit: Mock<TicketGit["commit"]>;
+  push: Mock<TicketGit["push"]>;
   commitAndPush: Mock<TicketGit["commitAndPush"]>;
 } {
   const tree = (repo: string, workId?: string): string => `/tmp/amy-fixture/${workId ?? repo}`;
@@ -169,6 +175,8 @@ export function fakeGit(changed = true): TicketGit & {
     pathFor: tree,
     acquire: async (repo, workId) => tree(repo, workId),
     prepareBranch: vi.fn<TicketGit["prepareBranch"]>().mockResolvedValue(undefined),
+    commit: vi.fn<TicketGit["commit"]>().mockResolvedValue(changed),
+    push: vi.fn<TicketGit["push"]>().mockResolvedValue(true),
     commitAndPush: vi.fn<TicketGit["commitAndPush"]>().mockResolvedValue(changed),
     headSha: async () => "0".repeat(40),
   };

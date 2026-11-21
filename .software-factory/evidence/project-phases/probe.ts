@@ -266,7 +266,7 @@ await attempt("project.the_brief_the_gate_judged_reaches_the_work_triage", async
   // The work half is the shipped package itself, not a stand-in.
   phase("phase-triage", path.join(briefed, "workflow"));
   phase("plugin-project-world", path.join(briefed, "world"));
-  const config = configured({ briefed: { workflow: path.join(briefed, "workflow"), settings: { repos: ["acme/invoices"], qaStatusName: "In QA" } } });
+  const config = configured({ briefed: { workflow: path.join(briefed, "workflow"), settings: { repos: ["acme/invoices"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } } } });
   config.workflows.briefed = {
     ...config.workflows.briefed!,
     plugins: mounts(path.join(briefed, "workflow"), path.join(briefed, "world"), "@amykit/plugin-file-worktree"),
