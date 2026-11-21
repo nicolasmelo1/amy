@@ -141,3 +141,18 @@ describe("a stacked ticket whose parent lives in another repository", () => {
     expect(world.commands.some((command) => command.includes(PARENT_BRANCH))).toBe(false);
   });
 });
+
+describe("a stacked ticket whose own Stack base line and the config's stackBases disagree", () => {
+  it("is cut from the parent its own line names, over the config's", async () => {
+    const world = await stacked(
+      [child(), parent(), ticket({ id: "PROJ-2000", title: "Another parent", branchName: "ada/proj-2000-another", repo: REPO })],
+      hostWith(pullRequest({ headBranch: PARENT_BRANCH })),
+      { stackBases: { "PROJ-1239": "PROJ-2000" } },
+    );
+
+    const decided = await cut(world);
+
+    expect(decided.kind).not.toBe("wait");
+    expect(world.commands.some((command) => command.includes(PARENT_BRANCH))).toBe(true);
+  });
+});

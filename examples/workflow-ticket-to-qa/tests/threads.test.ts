@@ -290,21 +290,26 @@ describe("publishing a round to a reviewer already on the pull request", () => {
   });
 });
 
-describe("an answer said on a thread while a conversation is mounted", () => {
-  it("is remembered as said, so it is not said again on the next look", async () => {
+describe("an answer said on a review thread", () => {
+  it("is said on that thread on the pull request, not in the chat or on the ticket, and remembered as said", async () => {
     const conversation = threads();
+    const comment = vi.fn(async () => {});
+    const replyToReviewThread = vi.fn(async () => {});
     const outcomes: Record<string, unknown> = {};
 
     await actionsFor(policy)["reply-thread"]!({
-      ports: { conversation, tracker: { comment: vi.fn(async () => {}) } },
+      ports: { conversation, tracker: { comment }, "code-host": fakeHost(pullRequest(), { replyToReviewThread } as never) },
       ctx: { now: () => NOW },
       announce: async () => {},
     } as never, {
       record: { id: UNIT },
-      observation: { ticket: ticket() },
+      observation: { ticket: ticket(), pullRequest: pullRequest({ threads: [thread({ id: "T2" })] }) },
       outcomes,
     } as never, { type: "reply-thread", threadId: "T2", text: "the brief keeps currency out of scope" });
 
+    expect(replyToReviewThread).toHaveBeenCalledWith("T2", expect.stringContaining("the brief keeps currency out of scope"));
+    expect(comment).not.toHaveBeenCalled();
+    expect(conversation.opened).toEqual([]);
     expect(outcomes.answered).toEqual(["T2"]);
   });
 });

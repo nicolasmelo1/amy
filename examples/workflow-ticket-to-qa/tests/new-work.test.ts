@@ -278,3 +278,72 @@ describe("checks failing on the head that the agent finds nothing to change for"
     expect(next.roundsByOrigin ?? {}).toEqual({});
   });
 });
+
+describe("a record saved before rounds were counted per origin", () => {
+  const legacy = (state: TicketRecord["state"], over: Partial<TicketRecord>): TicketRecord => {
+    const { roundsByOrigin: _rounds, climbedByOrigin: _climbed, ...rest } = record(state, over) as TicketRecord & { climbedByOrigin?: unknown };
+    return rest as TicketRecord;
+  };
+
+  it("is worked again from IMPLEMENTING however many attempts it once failed, every origin read at zero", () => {
+    const r = legacy("IMPLEMENTING", {
+      attempts: { IMPLEMENTING: 3 },
+      lastImplementation: { ok: false, at: "2026-09-03T10:00:00.000Z", output: "broken" },
+    });
+
+    const decided = plan(r, observation(), policy);
+
+    expect(destination(decided)).not.toBe("ESCALATED");
+    expect(decided.kind).toBe("act");
+  });
+
+  it("sends a red gate back to IMPLEMENTING as the gate's first round, however many verdicts it once had", () => {
+    const r = legacy("verdict", {
+      attempts: { verdict: 3, IMPLEMENTING: 3 },
+      lastImplementation: { ok: true, at: "2026-09-03T10:00:00.000Z", output: "" },
+      lastGate: { ok: false, at: "2026-09-03T10:05:00.000Z", output: "typecheck failed" },
+      lanes: { GATE: { call: "PROJ-1239/GATE#3", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#3", end: "APPROVED" } },
+    } as Partial<TicketRecord>);
+
+    const { plan: decided, next } = look(r, observation());
+
+    expect(destination(decided)).toBe("IMPLEMENTING");
+    expect(next.roundsByOrigin).toEqual({ gate: 1 });
+  });
+});
+
+describe("an implementing run that changed nothing", () => {
+  it("is decided on, not held in IMPLEMENTING, and the work it answered is not sent back to it", () => {
+    const failing = observation({ pullRequest: pullRequest({ reviews: [botReview(), review()], checks: { state: "failing", commitSha: pullRequest().headSha } }) });
+    const taken = look(record("REVIEWER_ASSIGNED", { pullRequestNumber: 4940 }), failing);
+    expect(taken.next.state).toBe("IMPLEMENTING");
+
+    const reason = "the failing check is a flaky upstream job, nothing in this change touches it";
+    const ran = look(taken.next, failing, {
+      implementation: { ok: true, output: reason, at: "2026-09-03T12:30:00.000Z", progress: { kind: "unchanged", key: "implementation", detail: reason } },
+    });
+    const after = look(ran.next, failing);
+
+    expect(after.plan.kind).not.toBe("wait");
+    expect(after.next.state).not.toBe("IMPLEMENTING");
+
+    const later = look(after.next, failing);
+    expect(destination(later.plan)).not.toBe("IMPLEMENTING");
+  });
+});
+
+describe("implementing runs that keep failing on a record that counts rounds per origin", () => {
+  it("stop at ESCALATED rather than running again for ever", () => {
+    let current = record("IMPLEMENTING", { roundsByOrigin: { gate: 1 } } as Partial<TicketRecord>);
+    let minute = 0;
+    for (let look_ = 0; look_ < 100 && current.state === "IMPLEMENTING"; look_ += 1) {
+      minute += 1;
+      const at = new Date(Date.UTC(2026, 8, 3, 13, minute)).toISOString();
+      const decided = plan(current, observation(), policy);
+      const outcomes = decided.kind === "act" ? { implementation: { ok: false, output: "the agent failed", at } } : {};
+      current = runtime.apply(applyPlan(current, decided, WORKDAY, outcomes), decided, outcomes, observation(), WORKDAY, movedBy(current, decided));
+    }
+
+    expect(current.state).toBe("ESCALATED");
+  });
+});
