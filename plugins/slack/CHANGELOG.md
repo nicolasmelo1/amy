@@ -1,5 +1,41 @@
 # @amykit/plugin-slack
 
+## 0.9.0
+
+### Patch Changes
+
+- 1232657: **Every claim and every path agrees.** A stale daemon update claim is taken
+  through the one lock and recovered once, and an update its owner finished and
+  released is not run again. A worktree's meta is replaced whole, never edited
+  in place. A long Slack post is split at 4,000 characters and arrives in order,
+  and a revision replaces every piece it was said in. `AMY_HOME` means the same
+  to the Windows launcher and to `amy stop`. The doctor and the manager read one
+  workspace parser, an empty `workspaceRoot` is refused at boot, and a child
+  record speaks in its unit's thread.
+- f4282ca: **Nothing a process writes is lost to another, and no call waits forever.**
+  
+  `amy run` now discovers before it ticks, through the same pass `amy tick` and the
+  daemon use, so a ticket sitting in the world is picked up on the first pass. One
+  transport in core gives every request a deadline and counts the body as it
+  arrives; Slack, Linear, Telegram and the models.dev refresh go through it. One
+  atomic write stages under a name only its writer holds, and notes, tasks and
+  records use it: two writers at one instant both survive, and `amy look` changes
+  a record under its own lock instead of overwriting the engine's move. The
+  Telegram bot takes core's lock, so a stale one is buried through a tombstone
+  rather than renamed aside by two processes at once. `config explain`, `workflow
+  check` and `workflow export` build their resolver with the profile they act for,
+  so a fork is what they read. Three repo-local rules keep each class out: a bare
+  `fetch`, a hand-built `.tmp` name and a resolver without its profile.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+
 ## 0.8.0
 
 ### Minor Changes

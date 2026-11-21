@@ -1,5 +1,43 @@
 # @amykit/plugin-claude
 
+## 0.9.0
+
+### Minor Changes
+
+- 2bbe192: **Claude says its limit while it runs.** The harness spotted a quota only from a
+  429 in the final envelope, and never knew when it reset. It now reads Claude
+  Code's stream: a rejected `rate_limit_event` makes the run `rate-limited` with
+  the reset it reported, so the workflow waits for that reset instead of charging
+  an attempt.
+- e339d07: **Claude's usage is read without its token.** The usage reader took Claude
+  Code's OAuth token from the environment, `~/.claude/.credentials.json` or the
+  macOS Keychain and called an undocumented endpoint. It now asks Claude Code
+  itself for `get_usage` over a short-lived print-mode child: no model call, no
+  credential of the operator's, and a runner without a managed spawn reads as
+  unavailable.
+
+### Patch Changes
+
+- 1198a21: **The gate notices code nothing reaches, and code written twice.** `tsc` now
+  runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both
+  detectors through one step: `knip --production`, where a test no longer counts
+  as a caller, and `jscpd` over packages, plugins and examples. What the tree
+  already carried is frozen by name in a ratchet with a date it comes due, so the
+  next unused export or copied block fails instead of joining the pile. The
+  unused parameters and the one unread private field this change exposed are
+  gone.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+  - @amykit/agent-kit@0.9.0
+  - @amykit/model-specs@0.9.0
+
 ## 0.8.0
 
 ### Minor Changes

@@ -1,5 +1,19 @@
 # @amykit/services
 
+## 0.9.0
+
+### Patch Changes
+
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes

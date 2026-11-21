@@ -1,5 +1,96 @@
 # @amykit/core
 
+## 0.9.0
+
+### Minor Changes
+
+- 96edd4a: **An escalation knows where its work came back from.** `@amykit/core` gains
+  `escalation.ts`: every origin of new work is configured the same way, with a
+  named scale of rounds in `config.yaml` and a level that applies from a number
+  of findings on. Rounds are counted per origin from the rung the work reached,
+  so a round buys one rung and never several, and a rung never comes down when the
+  next round finds less. A gate answers how many checks were red. A config field
+  may be `oneOf`, typed as the union of the keys a dotted group declares and
+  refused when it names anything else. A diagram marks a state `verified` or
+  `sendsBack`, and a mount refuses one whose marks disagree with the workflow's
+  own declarations.
+  
+  `@amykit/agent-kit` asks a step's rung directly instead of always starting at
+  the first, and tells the next rung why a completed reply was refused. No step
+  verifies by default: `judgeStep` and `implementStep` take the reply they are
+  given, and a step that wants a climb declares its own `verify`, which is the one
+  that decides. A run that ended without changing a file is an answer on the rung
+  that gave it, with the agent's own words as the reason.
+  
+  The ticket-to-QA workflow keeps one place that changes code. A reviewer's
+  thread, an automated thread, failing checks and the owner's word all send the
+  work to `IMPLEMENTING`, and a change reaches the remote once per round through
+  publishing, after the gate has run on it. What a round found is counted against
+  the origin that sent it back, an origin that spends its ladder escalates to the
+  owner, and the two attempt ceilings it used to carry are gone.
+- fde989b: **A ticket reads the brief its project judged.**
+  
+  `briefOf` resolves the brief a unit is worked against: the one stored under
+  the unit's own id first, the tracker's `briefId` after. Triage, self-review,
+  the question triage appends and a project's GROOMED gate read that one brief,
+  so a unit groomed for itself is worked against what the gate judged.
+
+### Patch Changes
+
+- e7a5a2e: The examples in the docs, the tests and the prove plugin's help name tickets
+  `PROJ-`, the placeholder the rest of the suite already used. A private term
+  can now be denied as a whole word, so a three-letter key is caught in
+  `XYZ-12` without also firing on every identifier that contains those letters.
+- a169c23: **A skill reaches every harness.**
+  
+  A step's skill was lent only to Claude; Codex received `/name` with nothing
+  behind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that
+  holds only the lent skill, and names it explicitly on `turn/start`; Hermes
+  passes `-s <name>` with amy's skill root named in the profile's
+  `skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a
+  skill's name to a rung it did not hand the skill to, a ladder that could reach
+  such a harness is refused at boot, and the conformance suite fails a harness
+  that answers a skill turn without declaring it. Codex and Hermes are held to
+  their pinned CLI contracts, vendored beside the doubles.
+- 1198a21: **The gate notices code nothing reaches, and code written twice.** `tsc` now
+  runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both
+  detectors through one step: `knip --production`, where a test no longer counts
+  as a caller, and `jscpd` over packages, plugins and examples. What the tree
+  already carried is frozen by name in a ratchet with a date it comes due, so the
+  next unused export or copied block fails instead of joining the pile. The
+  unused parameters and the one unread private field this change exposed are
+  gone.
+- 1232657: **Every claim and every path agrees.** A stale daemon update claim is taken
+  through the one lock and recovered once, and an update its owner finished and
+  released is not run again. A worktree's meta is replaced whole, never edited
+  in place. A long Slack post is split at 4,000 characters and arrives in order,
+  and a revision replaces every piece it was said in. `AMY_HOME` means the same
+  to the Windows launcher and to `amy stop`. The doctor and the manager read one
+  workspace parser, an empty `workspaceRoot` is refused at boot, and a child
+  record speaks in its unit's thread.
+- f4282ca: **Nothing a process writes is lost to another, and no call waits forever.**
+  
+  `amy run` now discovers before it ticks, through the same pass `amy tick` and the
+  daemon use, so a ticket sitting in the world is picked up on the first pass. One
+  transport in core gives every request a deadline and counts the body as it
+  arrives; Slack, Linear, Telegram and the models.dev refresh go through it. One
+  atomic write stages under a name only its writer holds, and notes, tasks and
+  records use it: two writers at one instant both survive, and `amy look` changes
+  a record under its own lock instead of overwriting the engine's move. The
+  Telegram bot takes core's lock, so a stale one is buried through a tombstone
+  rather than renamed aside by two processes at once. `config explain`, `workflow
+  check` and `workflow export` build their resolver with the profile they act for,
+  so a fork is what they read. Three repo-local rules keep each class out: a bare
+  `fetch`, a hand-built `.tmp` name and a resolver without its profile.
+- fde989b: **The work phase reads its project's brief.**
+  
+  A project's phase folders now decide which phases run, so a workflow that
+  declares its own brief phase absent can still be the work phase of a project
+  that grooms one. Triage records the brief its prompt was built from and
+  appends its question there, a unit's brief is read under its work id even when
+  the ticket spans repositories, prompts name the brief as the one the ticket is
+  worked against, and `briefOf` names the id whose read failed.
+
 ## 0.8.0
 
 ### Minor Changes

@@ -1,5 +1,35 @@
 # @amykit/plugin-file-worktree
 
+## 0.9.0
+
+### Patch Changes
+
+- 1198a21: **The gate notices code nothing reaches, and code written twice.** `tsc` now
+  runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both
+  detectors through one step: `knip --production`, where a test no longer counts
+  as a caller, and `jscpd` over packages, plugins and examples. What the tree
+  already carried is frozen by name in a ratchet with a date it comes due, so the
+  next unused export or copied block fails instead of joining the pile. The
+  unused parameters and the one unread private field this change exposed are
+  gone.
+- 1232657: **Every claim and every path agrees.** A stale daemon update claim is taken
+  through the one lock and recovered once, and an update its owner finished and
+  released is not run again. A worktree's meta is replaced whole, never edited
+  in place. A long Slack post is split at 4,000 characters and arrives in order,
+  and a revision replaces every piece it was said in. `AMY_HOME` means the same
+  to the Windows launcher and to `amy stop`. The doctor and the manager read one
+  workspace parser, an empty `workspaceRoot` is refused at boot, and a child
+  record speaks in its unit's thread.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes

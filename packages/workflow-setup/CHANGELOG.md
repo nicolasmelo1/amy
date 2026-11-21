@@ -1,5 +1,27 @@
 # @amykit/workflow-setup
 
+## 0.9.0
+
+### Patch Changes
+
+- 1198a21: **The gate notices code nothing reaches, and code written twice.** `tsc` now
+  runs with `noUnusedLocals` and `noUnusedParameters`, and the gate reads both
+  detectors through one step: `knip --production`, where a test no longer counts
+  as a caller, and `jscpd` over packages, plugins and examples. What the tree
+  already carried is frozen by name in a ratchet with a date it comes due, so the
+  next unused export or copied block fails instead of joining the pile. The
+  unused parameters and the one unread private field this change exposed are
+  gone.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes

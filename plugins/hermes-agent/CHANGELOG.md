@@ -1,5 +1,35 @@
 # @amykit/plugin-hermes-agent
 
+## 0.9.0
+
+### Minor Changes
+
+- a169c23: **A skill reaches every harness.**
+  
+  A step's skill was lent only to Claude; Codex received `/name` with nothing
+  behind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that
+  holds only the lent skill, and names it explicitly on `turn/start`; Hermes
+  passes `-s <name>` with amy's skill root named in the profile's
+  `skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a
+  skill's name to a rung it did not hand the skill to, a ladder that could reach
+  such a harness is refused at boot, and the conformance suite fails a harness
+  that answers a skill turn without declaring it. Codex and Hermes are held to
+  their pinned CLI contracts, vendored beside the doubles.
+
+### Patch Changes
+
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+  - @amykit/agent-kit@0.9.0
+  - @amykit/model-specs@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes
