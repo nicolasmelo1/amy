@@ -201,8 +201,8 @@ exit: "ticket-to-qa changes code only in IMPLEMENTING and pushes it once green, 
 
 # A step escalates by where its work came back from
 
-The ladder climbed only when the CLI errored, and review fixes changed code
-outside the checks. IMPLEMENTING is now the one place code changes; every kind
+The ladder climbed only when the CLI errored, and a review's own fix changed
+code outside the checks. IMPLEMENTING is now the one place code changes; every kind
 of new work is counted by its origin, and every number behind a climb is in
 `config.yaml`. A reply its own step refuses climbs, a reasoned "nothing to
 change" does not, and a ticket is cut where its label and stack put it.
