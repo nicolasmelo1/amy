@@ -351,3 +351,31 @@ describe("a ticket already under way when the install limits itself", () => {
     expect(decided.kind).toBe("settled");
   });
 });
+
+describe("where replies are said and read", () => {
+  const withReplies = (repliesOn: unknown) => mount([fakeWorkspace(), plugin, world], {
+    "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], repliesOn },
+  }, HOST);
+
+  it("is a setting the config must name, with no default", async () => {
+    const outcome = await mountWith([plugin, world]);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toContain("repliesOn");
+  });
+
+  it("accepts the ports replies can be said on and read from, by their names", async () => {
+    const outcome = await withReplies(["conversation", "code-host", "tracker"]);
+
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toBe("");
+  });
+
+  it("refuses a name that is not one of those ports, naming it and the names it accepts", async () => {
+    const outcome = await withReplies(["slack"]);
+
+    expect(outcome.ok).toBe(false);
+    const said = outcome.ok ? "" : outcome.problems.join("; ");
+    expect(said).toContain("slack");
+    for (const name of ["conversation", "code-host", "tracker"]) expect(said).toContain(name);
+  });
+});
