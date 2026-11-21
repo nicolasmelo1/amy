@@ -425,6 +425,11 @@
           "description": ""
         },
         {
+          "title": "A step escalates by where its work came back from",
+          "path": "/design/a-step-escalates-by-where-its-work-came-back-from",
+          "description": ""
+        },
+        {
           "title": "A testkit proves the machine",
           "path": "/design/a-testkit-proves-the-machine",
           "description": ""
@@ -2494,6 +2499,17 @@
           "slug": "acceptance-criteria"
         }
       ]
+    },
+    {
+      "path": "/design/a-step-escalates-by-where-its-work-came-back-from",
+      "file": "docs/design/a-step-escalates-by-where-its-work-came-back-from.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-step-escalates-by-where-its-work-came-back-from.md",
+      "title": "A step escalates by where its work came back from",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/a-testkit-proves-the-machine",
