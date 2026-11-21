@@ -237,3 +237,74 @@ describe("publishing a change the review sent back", () => {
     expect(effects.some((e) => /request/.test(e.type) && e.host === "ada")).toBe(true);
   });
 });
+
+describe("publishing a round to a reviewer already on the pull request", () => {
+  const greenWith = (overrides: Partial<TicketRecord>): TicketRecord => ({
+    ...record("verdict"),
+    lastImplementation: { ok: true, output: "", at: "2026-09-03T11:00:00.000Z" },
+    lastGate: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z" },
+    lastSelfReview: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z", verdict: "APPROVED" },
+    lanes: { GATE: { call: `${UNIT}/GATE#2`, end: "GREEN" }, SELF_REVIEW: { call: `${UNIT}/SELF_REVIEW#2`, end: "APPROVED" } },
+    pullRequestNumber: 4940,
+    ...overrides,
+  });
+
+  /** Every effect planned from the verdict until the work waits on a person's review, or stops. */
+  async function effectsUntilReview(start: TicketRecord, seen: Observation) {
+    const runtime = (await ticketWorkerDeps({ now: () => NOW })).runtime as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const effects: { type: string; [key: string]: unknown }[] = [];
+    let current = start;
+    for (let count = 0; count < 8 && current.state !== "HUMAN_REVIEW"; count += 1) {
+      const decided = plan(current, seen, policy);
+      if (decided.kind === "settled" || decided.kind === "wait") break;
+      effects.push(...(decided.effects as { type: string }[]));
+      current = runtime.apply(applyPlan(current, decided, NOW, {}), decided, {}, seen, NOW, movedBy(current, decided));
+    }
+    return { effects, reached: current };
+  }
+
+  it("asks the recorded reviewer again and assigns nobody else", async () => {
+    const pr = pullRequest({ reviews: [{ author: "copilot-pull-request-reviewer[bot]", state: "COMMENTED", commitSha: pullRequest().headSha, submittedAt: "2026-09-03T11:30:00.000Z" }] });
+    const { effects, reached } = await effectsUntilReview(greenWith({ reviewer: "edsger" }), observation({ pullRequest: pr }));
+
+    const asked = effects
+      .filter((effect) => effect.type === "request-rereview" || effect.type === "assign-reviewer")
+      .map((effect) => effect.host);
+    expect(asked).toEqual(["edsger"]);
+    expect(reached.reviewer).toBe("edsger");
+  });
+
+  it("does not say again an answer it already said on the thread", async () => {
+    const pr = pullRequest({ threads: [thread({ id: "T2" })] });
+    const start = greenWith({
+      reviewer: "ada",
+      judged: [{ threadId: "T2", verdict: "out-of-scope", note: "the brief keeps currency out of scope" }],
+      answered: ["T2"],
+    });
+
+    const decided = plan(start, observation({ pullRequest: pr }), policy);
+
+    const replies = (decided.kind === "settled" || decided.kind === "wait" ? [] : decided.effects as { type: string; threadId?: string }[])
+      .filter((effect) => effect.type === "reply-thread" && effect.threadId === "T2");
+    expect(replies).toHaveLength(0);
+  });
+});
+
+describe("an answer said on a thread while a conversation is mounted", () => {
+  it("is remembered as said, so it is not said again on the next look", async () => {
+    const conversation = threads();
+    const outcomes: Record<string, unknown> = {};
+
+    await actionsFor(policy)["reply-thread"]!({
+      ports: { conversation, tracker: { comment: vi.fn(async () => {}) } },
+      ctx: { now: () => NOW },
+      announce: async () => {},
+    } as never, {
+      record: { id: UNIT },
+      observation: { ticket: ticket() },
+      outcomes,
+    } as never, { type: "reply-thread", threadId: "T2", text: "the brief keeps currency out of scope" });
+
+    expect(outcomes.answered).toEqual(["T2"]);
+  });
+});

@@ -324,3 +324,30 @@ describe("the tickets an install limits itself to", () => {
     expect(refused).toContain("Stack base");
   });
 });
+
+describe("a ticket already under way when the install limits itself", () => {
+  it("is not worked further once onlyTickets leaves it out", async () => {
+    const outside = ticket({ id: "PROJ-1" });
+    const listing: Plugin = {
+      name: "@amykit/plugin-world",
+      register: (registry) => {
+        registry.port("tracker", fakeTracker({ get: async () => outside, inProgress: async () => [outside] }));
+        registry.port("code-host", fakeHost());
+        registry.port("agent", fakeAgent());
+        registry.port("gate", fakeGate());
+        registry.port("notifier", { announce: async () => {} });
+      },
+    };
+    const outcome = await mount([fakeWorkspace(), plugin, listing], {
+      "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], onlyTickets: ["PROJ-2"] },
+    }, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const workflow = outcome.mounted.workflow!;
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime;
+    const ready = { ...(plugin.newRecord(outside.id, new Date("2026-09-03T12:00:00.000Z")) as object), state: "READY" } as never;
+
+    const decided = workflow.plan(ready, (await runtime.observe(ready)) as never, runtime.policy as never);
+
+    expect(decided.kind).toBe("settled");
+  });
+});

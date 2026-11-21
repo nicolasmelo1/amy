@@ -129,3 +129,15 @@ describe("a stacked ticket", () => {
     expect(decided.why).toContain(PARENT);
   });
 });
+
+describe("a stacked ticket whose parent lives in another repository", () => {
+  it("is cut from its repository's base rather than waiting on the parent", async () => {
+    const world = await stacked([child(), parent({ repo: "Northwind/northwind-frontend" })], hostWith(null));
+
+    const decided = await cut(world);
+
+    expect(decided.kind).toBe("act");
+    expect(world.commands.some((command) => command.startsWith("git checkout"))).toBe(true);
+    expect(world.commands.some((command) => command.includes(PARENT_BRANCH))).toBe(false);
+  });
+});
