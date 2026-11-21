@@ -51,7 +51,14 @@ async function mounted(conversation: Conversation): Promise<WorkflowRuntime> {
   };
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "amy-threads-"));
   fs.writeFileSync(path.join(profile, "roster.yaml"), 'confirmedOn: "2026-09-03"\nreviewers:\n  - { tracker: ada@example.test, host: ada, available: true }\nqa: { tracker: grace@example.test, host: grace, available: true }\n');
-  const outcome = await mount([fakeWorkspace(), plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" } }, {
+  const outcome = await mount([fakeWorkspace(), plugin, world], {
+    "@amykit/workflow-ticket-to-qa": {
+      repos: ["acme/widgets"],
+      qaStatusName: "In QA",
+      // The levels an escalation is counted at are settings with no default.
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+    },
+  }, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: () => NOW,
     paths: { state: profile, profile },

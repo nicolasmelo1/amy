@@ -14,7 +14,7 @@ const HOST: HostServices = {
 };
 
 const SETTINGS = {
-  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" },
+  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
 };
 
 /** Everything this workflow reaches for, mounted by somebody else. */
@@ -314,8 +314,13 @@ describe("the tickets an install limits itself to", () => {
     if (!outcome.ok) throw new Error(outcome.problems.join("; "));
     const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(outcome.mounted.workflow!.name) as WorkflowRuntime;
 
-    await expect(runtime.observe({ ...plugin.newRecord(twice.id, new Date("2026-09-03T12:00:00.000Z")), state: "READY" })).rejects.toThrow(
-      new RegExp(`${twice.id}[\\s\\S]*Stack base|Stack base[\\s\\S]*${twice.id}`),
-    );
+    const refused = await runtime
+      .observe({ ...plugin.newRecord(twice.id, new Date("2026-09-03T12:00:00.000Z")), state: "READY" })
+      .then(
+        () => "",
+        (error: Error) => error.message,
+      );
+    expect(refused).toContain(twice.id);
+    expect(refused).toContain("Stack base");
   });
 });

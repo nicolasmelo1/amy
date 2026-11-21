@@ -350,7 +350,7 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | Starts in | `DISCOVERED` |
 | Terminal | `DONE` |
 | Waits in | `CLARIFYING`, `COPILOT_WAIT`, `HUMAN_REVIEW`, `ESCALATED` |
-| Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `discuss`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `request-rereview`, `resolve-review-thread`, `run-gate`, `self-review`, `triage` |
+| Actions it emits | `address-threads`, `announce`, `ask-question`, `assign-reviewer`, `discuss`, `escalate`, `hand-off-to-qa`, `implement`, `open-pull-request`, `push`, `reply-thread`, `request-rereview`, `resolve-review-thread`, `run-gate`, `self-review`, `triage` |
 
 | # | State | Kind |
 | :-- | :-- | :-- |
@@ -364,15 +364,13 @@ The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan
 | 8 | `verdict` | working |
 | 9 | `PR_OPEN` | working |
 | 10 | `COPILOT_WAIT` | waiting |
-| 11 | `COPILOT_FIX` | working |
-| 12 | `REVIEWER_ASSIGNED` | working |
-| 13 | `HUMAN_REVIEW` | waiting |
-| 14 | `HUMAN_FIX` | working |
-| 15 | `ESCALATED` | waiting |
-| 16 | `RE_REVIEW` | working |
-| 17 | `APPROVED` | working |
-| 18 | `QA_HANDOFF` | working |
-| 19 | `DONE` | terminal |
+| 11 | `REVIEWER_ASSIGNED` | working |
+| 12 | `HUMAN_REVIEW` | waiting |
+| 13 | `RE_REVIEW` | working |
+| 14 | `APPROVED` | working |
+| 15 | `QA_HANDOFF` | working |
+| 16 | `DONE` | terminal |
+| 17 | `ESCALATED` | waiting |
 
 <!-- amy:end workflow-states -->
 

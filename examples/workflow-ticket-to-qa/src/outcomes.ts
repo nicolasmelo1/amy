@@ -55,42 +55,55 @@ export interface EffectOutcomes {
 export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): TicketRecord {
   const next: TicketRecord = { ...record, judged: [...record.judged] };
 
-  if (outcomes.triage) next.triage = outcomes.triage;
-  if (outcomes.clarification?.length) next.clarification = outcomes.clarification;
-  if (outcomes.implementation) next.lastImplementation = outcomes.implementation;
-  applyContinuation(next, outcomes.continuationContext);
-  if (outcomes.implemented) next.implemented = outcomes.implemented;
-  if (outcomes.pullRequestNumber !== undefined) {
-    next.pullRequestNumber = outcomes.pullRequestNumber;
-  }
-  if (outcomes.reviewer) next.reviewer = outcomes.reviewer;
-
+  applyFacts(next, outcomes);
   mergeVerdicts(next, outcomes.verdicts);
-
-  if (outcomes.answered?.length) {
-    next.answered = [...new Set([...(record.answered ?? []), ...outcomes.answered])];
-  }
-
+  applyAnswered(next, record, outcomes);
   mergeHandedOver(next, outcomes);
-
-  if (outcomes.escalation) next.escalation = outcomes.escalation;
-
+  applyTheEscalation(next, outcomes);
   mergeDiscussion(next, outcomes.discussed);
-
-  if (outcomes.escalationResolvedAt && next.escalation) {
-    next.escalation = {
-      ...next.escalation,
-      resolvedAt: outcomes.escalationResolvedAt,
-      ...(outcomes.escalationDecision?.length ? { decision: outcomes.escalationDecision } : {}),
-    };
-
-    // The owner's answer changes the judgement, so every comment that was
-    // parked as a disagreement has to be looked at again rather than staying
-    // parked forever.
-    next.judged = next.judged.filter((j) => j.verdict !== "disagreed");
-  }
+  applyTheOwnersAnswer(next, outcomes);
 
   return next;
+}
+
+/** What the look found out about the work itself, each fact on its own. */
+function applyFacts(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (outcomes.triage) record.triage = outcomes.triage;
+  if (outcomes.clarification?.length) record.clarification = outcomes.clarification;
+  if (outcomes.implementation) record.lastImplementation = outcomes.implementation;
+  applyContinuation(record, outcomes.continuationContext);
+  if (outcomes.implemented) record.implemented = outcomes.implemented;
+  if (outcomes.pullRequestNumber !== undefined) {
+    record.pullRequestNumber = outcomes.pullRequestNumber;
+  }
+  if (outcomes.reviewer) record.reviewer = outcomes.reviewer;
+}
+
+/** The threads this look answered in words, so none of them is answered twice. */
+function applyAnswered(record: TicketRecord, before: TicketRecord, outcomes: EffectOutcomes): void {
+  if (!outcomes.answered?.length) return;
+  record.answered = [...new Set([...(before.answered ?? []), ...outcomes.answered])];
+}
+
+/** The owner has been asked about this work, and when. */
+function applyTheEscalation(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (outcomes.escalation) record.escalation = outcomes.escalation;
+}
+
+/**
+ * The owner's answer, and what it changes.
+ *
+ * It changes the judgement, so every comment that was parked as a disagreement
+ * has to be looked at again rather than staying parked forever.
+ */
+function applyTheOwnersAnswer(record: TicketRecord, outcomes: EffectOutcomes): void {
+  if (!outcomes.escalationResolvedAt || !record.escalation) return;
+  record.escalation = {
+    ...record.escalation,
+    resolvedAt: outcomes.escalationResolvedAt,
+    ...(outcomes.escalationDecision?.length ? { decision: outcomes.escalationDecision } : {}),
+  };
+  record.judged = record.judged.filter((one) => one.verdict !== "disagreed");
 }
 
 function applyContinuation(

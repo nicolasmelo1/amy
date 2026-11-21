@@ -298,7 +298,9 @@ describe("a repository that leaves the ticket", () => {
   });
 
   it("resumes from where it stopped when the repository's label comes back", async () => {
-    const stopped = record("HUMAN_FIX", { reviewer: "edsger" });
+    // A review the work was waiting on: the state it stopped in, not one the
+    // machine used to change code in, which is refused at load.
+    const stopped = record("HUMAN_REVIEW", { reviewer: "edsger" });
     const removed = await (await runtime({ tracker: fakeTracker({ get: vi.fn().mockResolvedValue(ticket({ repo: BACKEND, repos: [FRONTEND] })) }) })).observe(stopped);
     expect(plan(stopped, removed, policy).kind).toBe("settled");
 

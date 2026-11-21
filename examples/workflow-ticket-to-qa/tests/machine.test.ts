@@ -430,12 +430,12 @@ describe("COPILOT_WAIT", () => {
     );
   });
 
-  it("goes to fix when the bot left an unresolved thread", () => {
+  it("sends the work to IMPLEMENTING when the bot left an unresolved thread", () => {
     const obs = observation({
       pullRequest: pullRequest({ reviews: [botReview()], threads: [botThread()] }),
     });
 
-    expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe("COPILOT_FIX");
+    expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe("IMPLEMENTING");
   });
 
   it("ignores a resolved bot thread", () => {
@@ -467,8 +467,10 @@ describe("COPILOT_WAIT", () => {
       pullRequest: pullRequest({ reviews: [botReview()], threads: [thread()] }),
     });
 
+    // A human's thread is work from the review too, and the one place code
+    // changes takes it up like any other.
     expect(expectAdvance(plan(record("COPILOT_WAIT"), obs, policy)).to).toBe(
-      "REVIEWER_ASSIGNED",
+      "IMPLEMENTING",
     );
   });
 
@@ -876,7 +878,7 @@ describe("HUMAN_REVIEW", () => {
     );
   });
 
-  it("goes to fix when they leave an open thread", () => {
+  it("sends the work back to IMPLEMENTING when they leave an open thread", () => {
     const obs = observation({
       pullRequest: pullRequest({
         reviewDecision: "CHANGES_REQUESTED",
@@ -886,7 +888,7 @@ describe("HUMAN_REVIEW", () => {
     });
 
     expect(expectAdvance(plan(record("HUMAN_REVIEW", assigned), obs, policy)).to).toBe(
-      "HUMAN_FIX",
+      "IMPLEMENTING",
     );
   });
 
@@ -1041,12 +1043,12 @@ describe("what the forge says, before a person is asked", () => {
     );
   });
 
-  it("hands red checks to the owner instead of assigning anybody", () => {
+  it("works the red checks rather than assigning anybody", () => {
     const obs = observation({ pullRequest: at("failing"), reviewLoad: {} });
 
     const p = expectAdvance(plan(record("REVIEWER_ASSIGNED"), obs, policy));
 
-    expect(p.to).toBe("ESCALATED");
+    expect(p.to).toBe("IMPLEMENTING");
     expect(p.why).toContain("are red");
   });
 
@@ -1104,9 +1106,11 @@ describe("what the forge says, before a person is asked", () => {
       escalation: { reason: "the checks are red", askedAt: WORKDAY.toISOString() },
     });
 
-    expect(expectWait(plan(r, observation({ pullRequest: at("failing") }), policy)).why).toContain(
-      "waiting on the owner",
-    );
+    // The red checks are work, but the owner already has the decision: nothing
+    // is built behind their back, and they are not asked twice.
+    const p = expectWait(plan(r, observation({ pullRequest: at("failing") }), policy));
+    expect(p.why).toContain("waiting on the owner");
+    expect(p.effects).toEqual([]);
   });
 
   it("does not read a verdict as a merge state, or the other way round", () => {
@@ -1648,6 +1652,7 @@ describe("the attempt ceilings an escalation replaces", () => {
     const result = validateConfig("@amykit/workflow-ticket-to-qa", configSchema, {
       repos: ["acme/widgets"],
       qaStatusName: "In QA",
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
       policy: { [key]: 3 },
     });
 

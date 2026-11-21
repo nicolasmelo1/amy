@@ -40,7 +40,7 @@ describe("CommandGate", () => {
     expect(runner.calls[0]?.options?.cwd).toBe("/w/northwind/northwind-backend");
   });
 
-  it("stops at the first failure so the agent gets one thing to fix", async () => {
+  it("runs every check, so a red one is not hidden behind the first", async () => {
     const { runner, gate } = gateFor(
       { "Northwind/northwind-backend": BACKEND_GATE },
       [fails("lint", "3 problems")],
@@ -49,7 +49,7 @@ describe("CommandGate", () => {
     const outcome = await gate.run(workplace());
 
     expect(outcome.ok).toBe(false);
-    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls).toHaveLength(BACKEND_GATE.length);
     expect(outcome.output).toContain("3 problems");
     expect(outcome.output).toContain("exited 1");
   });

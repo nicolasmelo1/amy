@@ -24,7 +24,7 @@ import {
   unitOf,
 } from "@amykit/core";
 import type { Git } from "@amykit/core";
-import { implementStep, judgeStep } from "@amykit/agent-kit";
+import { extractJson, implementStep, judgeStep } from "@amykit/agent-kit";
 import {
   ReviewerHints,
   branchOf,
@@ -225,6 +225,25 @@ export function remember(
  * not a single action that writes is declared, so the mount can hold the
  * empty claim to its word: nothing here could reach a write even by mistake.
  */
+/**
+ * The branch this move's work sits on, ready to be committed to.
+ *
+ * A stacked ticket is cut from its parent's branch; anything else from the
+ * repository's base. The extra argument is left off entirely when there is no
+ * stack, so a git that never heard of one sees the call it always saw.
+ */
+async function prepareTheWorkBranch(
+  git: Pick<Git, "prepareBranch">,
+  ticket: Ticket,
+  branch: string,
+  workId: string,
+  stack: StackBase | undefined,
+): Promise<void> {
+  const from = stack && "base" in stack ? stack.base : undefined;
+  if (from) await git.prepareBranch(ticket.repo, branch, workId, from);
+  else await git.prepareBranch(ticket.repo, branch, workId);
+}
+
 export function actionsFor(policy: Policy): Partial<TicketActions> {
   return Object.fromEntries(Object.entries(ACTIONS).filter(([name]) => policy.writes === "operator"
     ? !(WRITE_EFFECTS as readonly string[]).includes(name)
@@ -302,13 +321,8 @@ const ACTIONS: TicketActions = {
   "implement": async (scope, work, effect) => {
     const { git } = scope.checkouts;
     const ticket = work.observation.ticket;
-    const branch = branchOf(ticket);
-    const from = work.observation.stack && "base" in work.observation.stack ? work.observation.stack.base : undefined;
-    // A stacked ticket is cut from its parent's branch; anything else from the
-    // repository's base. The extra argument is left off entirely when there is
-    // no stack, so a git that never heard of one sees the call it always saw.
-    if (from) await git.prepareBranch(ticket.repo, branch, work.record.id, from);
-    else await git.prepareBranch(ticket.repo, branch, work.record.id);
+    const branch = await theBranchTheWorkIsOn(scope, ticket);
+    await prepareTheWorkBranch(git, ticket, branch, work.record.id, work.observation.stack);
     const cwd = await git.acquire(ticket.repo, work.record.id);
     // The round's own comments, and nobody else's: the threads this move took
     // up are what the step is asked to answer.
@@ -340,6 +354,13 @@ const ACTIONS: TicketActions = {
       commit: () => commitTheChange(git, cwd, ticket.repo, `${ticket.id}: ${ticket.title}`, work.record.id),
       now: scope.ctx.now,
     });
+    // What the step said about the comments it was handed, if it was handed
+    // any: the record keeps the reader's word, and an unanswered comment is the
+    // one thing that goes to the owner rather than being quietly fixed.
+    if (taken.length > 0 && run.outcome === "completed" && value.output) {
+      outcomesOf(work).verdicts = readVerdicts(extractJson<unknown>(value.output), taken);
+    }
+
     if (run.outcome === "rate-limited") {
       outcomesOf(work).waited = { notATry: true, retryAfterMs: run.retryAfterMs ?? scope.policy.pollBackoffMs };
       outcomesOf(work).continuationContext = [
@@ -520,6 +541,22 @@ const ACTIONS: TicketActions = {
     }
   },
 };
+
+/**
+ * The branch this round commits to.
+ *
+ * The tracker's branch until there is a pull request; the pull request's own
+ * afterwards, which is not always the same one — an operator opening it by
+ * hand names the branch themselves, and a fix pushed to the tracker's branch
+ * would never reach the pull request the review is reading. A round after the
+ * review has a pull request the observation does not read (a look while
+ * implementing asks the forge nothing), so the branch is asked of the forge
+ * here, once, by the ticket the pull request is titled with.
+ */
+async function theBranchTheWorkIsOn(scope: Scope, ticket: Ticket): Promise<string> {
+  const pull = await scope.ports["code-host"].findPullRequestMentioning?.(ticket.repo, ticket.id);
+  return pull?.headBranch ?? branchOf(ticket);
+}
 
 /**
  * The ticket a work id stands for, in the repository the id names.
@@ -784,23 +821,32 @@ const WRITE_WORDS: { [K in WriteEffect["type"]]: (write: Extract<WriteEffect, { 
     `Answer review thread ${write.threadId} ${where}: ${write.text}`,
   "resolve-review-thread": (write, { ticket, pr }) => {
     const thread = pr?.threads.find((candidate) => candidate.id === write.threadId);
-    const on = thread?.path ? `on ${thread.path} ` : "";
+    const on = thread?.path ? ` on ${thread.path}` : "";
     const about = thread ? ` (${thread.body.split("\n")[0]})` : "";
-    return `Resolve the review thread ${on}in ${pr?.url ?? ticket.repo}: the change answered it.${about}`;
+    // The id is what the operator closes it by, and the one thing that names
+    // the thread even when the forge's view of the pull request is not to hand.
+    return `Resolve the review thread ${write.threadId}${on} in ${pr?.url ?? ticket.repo}: the change answered it.${about}`;
   },
   "assign-reviewer": (write, { ticket, pr }) => `Request a review of ${pr?.url ?? ticket.id} from ${write.host}.`,
   "request-rereview": (write, { ticket, pr }) => `Ask ${write.host} to review ${pr?.url ?? ticket.id} again: every comment is addressed.`,
   "hand-off-to-qa": (write, { ticket, qaStatusName }) => `Move ${ticket.id} to ${qaStatusName} and assign it to ${write.tracker}: ${ticket.url}`,
 };
 
-/** The states before a pull request is expected, where none is found by title either. */
+/**
+ * The states where no pull request is looked for by title.
+ *
+ * The tracker's own branch is still read: a machine that opened the pull
+ * request itself finds it there. `verdict` is not one of these — its first
+ * round runs before there is a pull request, but every later one runs after a
+ * round the review sent back, and that round publishes to a pull request that
+ * already exists.
+ */
 const BEFORE_A_PULL_REQUEST: readonly TicketRecord["state"][] = [
   "DISCOVERED",
   "CLARIFYING",
   "READY",
   "IMPLEMENTING",
   "checks",
-  "verdict",
 ];
 
 /**

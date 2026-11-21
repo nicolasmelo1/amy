@@ -443,7 +443,9 @@ describe("the commit body the implementing agent leaves behind", () => {
   function treeAndGit(body: string | undefined) {
     const tree = fs.mkdtempSync(path.join(os.tmpdir(), "amy-commit-body-"));
     const commits: { message: string; bodyFileThere: boolean }[] = [];
-    const committing = async (_repo: string, _branch: string, message: string) => {
+    // The core's `commit(repo, message, workId?)`: the message is its second
+    // argument, and `commitAndPush` names the branch before it.
+    const committing = async (_repo: string, message: string) => {
       commits.push({ message, bodyFileThere: fs.existsSync(path.join(tree, ".amy-commit-body")) });
       return true;
     };
@@ -452,7 +454,7 @@ describe("the commit body the implementing agent leaves behind", () => {
       acquire: async () => tree,
       prepareBranch: async () => {},
       commit: committing,
-      commitAndPush: committing,
+      commitAndPush: async (_repo: string, _branch: string, message: string) => committing(_repo, message),
       push: async () => {},
       headSha: async () => "0".repeat(40),
     };

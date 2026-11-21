@@ -58,7 +58,14 @@ async function stacked(tickets: Ticket[], host: CodeHost, settings: Record<strin
   };
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "amy-stack-"));
   fs.writeFileSync(path.join(profile, "roster.yaml"), 'confirmedOn: "2026-10-03"\nreviewers:\n  - { tracker: ada@example.test, host: ada, available: true }\nqa: { tracker: grace@example.test, host: grace, available: true }\n');
-  const outcome = await mount([fakeWorkspace(), plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: [REPO], qaStatusName: "In QA", ...settings } }, {
+  const outcome = await mount([fakeWorkspace(), plugin, world], {
+    "@amykit/workflow-ticket-to-qa": {
+      repos: [REPO],
+      qaStatusName: "In QA",
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      ...settings,
+    },
+  }, {
     runner: {
       run: async (command: string, args: readonly string[]) => {
         commands.push([command, ...args].join(" "));

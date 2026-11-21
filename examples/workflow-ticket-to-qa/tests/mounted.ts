@@ -32,7 +32,15 @@ export async function mountedTicket(
     now,
     paths: { state:  "/w/.amy", profile: rosterDirectory() },
   };
-  const outcome = await mount([fakeWorkspace(), plugin, world], { "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA" } }, host);
+  const outcome = await mount([fakeWorkspace(), plugin, world], {
+    "@amykit/workflow-ticket-to-qa": {
+      repos: ["acme/widgets"],
+      qaStatusName: "In QA",
+      // Every number an escalation rests on is written in the config: the
+      // schema has no default for a level's rounds.
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+    },
+  }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   const workflow = outcome.mounted.workflow as unknown as Workflow;
   return { workflow, runtime: outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime };

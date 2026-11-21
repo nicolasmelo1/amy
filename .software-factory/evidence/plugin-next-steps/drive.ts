@@ -194,6 +194,8 @@ function configure(): void {
 ${plugins.map((name) => `      - "${name}"`).join("\n")}
     settings:
       qaStatusName: delivered
+      escalation:
+        scale: { patient: 3, normal: 2, immediate: 1 }
       # A row's plan moved to docs/design/ by a merged pull request is delivered.
       policy:
         maxOpenReviewsPerReviewer: 2

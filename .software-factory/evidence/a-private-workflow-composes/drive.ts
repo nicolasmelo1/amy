@@ -106,7 +106,7 @@ async function mountedTicketToQa(
   };
   const outcome = await core.mount(
     [drawnTicketToQa, world, workspace],
-    { [drawnTicketToQa.name]: { repos: [REPO], qaStatusName: "In QA", ...(options.policy ? { policy: options.policy } : {}) } },
+    { [drawnTicketToQa.name]: { repos: [REPO], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } }, ...(options.policy ? { policy: options.policy } : {}) } },
     {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(),
@@ -488,7 +488,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const stale = plan(asked, obs({ pullRequest: pr({ reviews: [{ author: "ada", state: "CHANGES_REQUESTED", commitSha: head, submittedAt: "2026-09-03T11:00:00.000Z" }] }) }), operator);
   const fresh = plan(asked, obs({ pullRequest: pr({ reviews: [{ author: "ada", state: "APPROVED", commitSha: head, submittedAt: "2026-09-03T12:30:00.000Z" }] }) }), operator);
   // Review 7: a second round on the same head is a second turn.
-  const toReReview = (at: string) => ({ at, from: "HUMAN_FIX", to: "RE_REVIEW", why: "every comment was addressed" });
+  const toReReview = (at: string) => ({ at, from: "HUMAN_REVIEW", to: "RE_REVIEW", why: "every comment was judged, the review has to be redone" });
   const roundOne = ["request-review@ada@round1", `request-review@ada@${head}`];
   const secondRound = plan(
     rec("RE_REVIEW", { reviewer: "ada", history: [toReReview("2026-09-03T11:30:00.000Z"), toReReview("2026-09-03T13:30:00.000Z")], handedOver: roundOne, handedOverAt: Object.fromEntries(roundOne.map((k) => [k, "2026-09-03T12:00:00.000Z"])) }),
@@ -515,7 +515,9 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
     plan(rec("REVIEWER_ASSIGNED", { reviewer: "ada", handedOver: [rkey], handedOverAt: { [rkey]: at } }), obs({ pullRequest: pr({ reviewDecision: "REVIEW_REQUIRED", ...extra }) }), operator);
   const red = requested({ requestedReviewers: ["ada"], checks: { state: "failing", commitSha: head } });
   const conflicting = requested({ requestedReviewers: ["ada"], mergeState: "conflicting" });
-  record("compose.a_requested_review_still_answers_to_the_forges_checks", toOf(red) === "ESCALATED" && toOf(conflicting) === "ESCALATED", { red: toOf(red) ?? red.kind, conflicting: toOf(conflicting) ?? conflicting.kind });
+  // The checks are read by the gate, which is where code is changed; a branch
+  // the forge says cannot merge is the owner's, not the agent's.
+  record("compose.a_requested_review_still_answers_to_the_forges_checks", toOf(red) === "IMPLEMENTING" && toOf(conflicting) === "ESCALATED", { red: toOf(red) ?? red.kind, conflicting: toOf(conflicting) ?? conflicting.kind });
   const cased = requested({ requestedReviewers: ["Ada"] });
   const early = requested({ reviews: [{ author: "ada", state: "APPROVED", commitSha: head, submittedAt: "2026-09-03T12:00:00Z" }] }, "2026-09-03T12:00:00.900Z");
   record("compose.a_review_request_matches_logins_and_instants_as_the_forge_writes_them", toOf(cased) === "HUMAN_REVIEW" && early.kind === "wait", { cased: toOf(cased) ?? cased.kind, early: early.kind });
@@ -524,7 +526,7 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   const named = plan(rec("QA_HANDOFF", { handedOver: ["hand-off-to-qa@grace@example.test"] }), obs({ inQa: true, ticket: { ...obs({}).ticket, status: "In QA", assignee: "grace@example.test" } }), operator);
   record("compose.a_qa_handoff_answers_to_the_owner_it_named", firstTurn(reSaid) === "hand-off-to-qa@ada@example.test" && toOf(named) === "DONE", { reSaid: firstTurn(reSaid), named: toOf(named) ?? named.kind });
   const relabelled = await (await mountedTicketToQa({
-    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos: [OTHER_REPO] }) }),
+    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos: [OTHER_REPO] }), comments: async () => [] }),
     "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
   }, { roster })).observe(rec("HUMAN_REVIEW"));
   const retired = plan(rec("HUMAN_REVIEW"), relabelled, DEFAULT_POLICY);
@@ -532,18 +534,18 @@ for (const name of Object.keys(process.env)) if (name.startsWith("GIT_")) delete
   record("compose.a_repository_that_leaves_the_ticket_retires_its_work_item", relabelled.retired === true && retired.kind === "settled", { retired: relabelled.retired, kind: retired.kind });
 
   const unlabelled = await (await mountedTicketToQa({
-    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO }) }),
+    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO }), comments: async () => [] }),
     "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
   }, { roster })).observe({ ...rec("IMPLEMENTING"), id: ticketToQa.workIdFor(TICKET, OTHER_REPO) });
   record("compose.a_repository_whose_last_label_went_retires_its_work_item", unlabelled.retired === true && unlabelled.ticket.repo === OTHER_REPO, { retired: unlabelled.retired });
 
   const observeAs = async (repos: string[]) => (await mountedTicketToQa({
-    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos }) }),
+    tracker: standIn<Tracker>({ get: async () => ({ ...obs({}).ticket, repo: REPO, repos }), comments: async () => [] }),
     "code-host": standIn<CodeHost>({ findPullRequest: async () => null, findPullRequestMentioning: async () => null }), agent: standIn(), gate: standIn(), notifier: { announce: async () => {} },
-  }, { roster })).observe(rec("HUMAN_FIX", { reviewer: "ada" }));
-  const stopped = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO]), DEFAULT_POLICY);
-  const resumed = plan(rec("HUMAN_FIX", { reviewer: "ada" }), await observeAs([OTHER_REPO, REPO]), DEFAULT_POLICY);
-  record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !drawnTicketToQa.workflow.terminalStates.includes("HUMAN_FIX"), { stopped: stopped.kind, resumed: resumed.kind });
+  }, { roster })).observe(rec("HUMAN_REVIEW", { reviewer: "ada" }));
+  const stopped = plan(rec("HUMAN_REVIEW", { reviewer: "ada" }), await observeAs([OTHER_REPO]), DEFAULT_POLICY);
+  const resumed = plan(rec("HUMAN_REVIEW", { reviewer: "ada" }), await observeAs([OTHER_REPO, REPO]), DEFAULT_POLICY);
+  record("compose.a_retired_work_item_resumes_when_its_repository_returns", stopped.kind === "settled" && resumed.kind !== "settled" && !drawnTicketToQa.workflow.terminalStates.includes("HUMAN_REVIEW"), { stopped: stopped.kind, resumed: resumed.kind });
 
   const refused = await (await mountedTicketToQa({
     tracker: standIn<Tracker>({ inProgress: async () => [{ ...obs({}).ticket, repos: [REPO, OTHER_REPO] }] }),
@@ -709,9 +711,19 @@ function installed(): Lifecycle {
       out.ticketStatus = ticketIn(read(trackerFile)).stateId === "s-qa" ? "In QA" : ticketIn(read(trackerFile)).stateId;
       out.ticketAssignee = ticketIn(read(trackerFile)).assigneeId;
       // A run that never got as far as the branch is a finding, not a crash.
-      const subjects = (branch: string) => { try { return git(root, "--git-dir", path.join(root, "origins", "widgets.git"), "log", "--format=%s", branch).split("\n"); } catch { return []; } };
-      out.fixOnOwnBranch = subjects(OPS_BRANCH).some((s) => s.includes("address review comments"));
-      out.fixOnTicketBranch = subjects(BRANCH).some((s) => s.includes("address review comments"));
+      // A fix is committed on the branch the pull request is on — one an
+      // operator named — so that branch holds commits the tracker's does not,
+      // and the tracker's holds nothing the pull request's is missing. What the
+      // commit is called is amy's own subject, not the shape of the fix.
+      const ahead = (branch: string, of: string): number => {
+        try {
+          return Number(git(root, "--git-dir", path.join(root, "origins", "widgets.git"), "rev-list", "--count", `${of}..${branch}`).trim());
+        } catch {
+          return 0;
+        }
+      };
+      out.fixOnOwnBranch = ahead(OPS_BRANCH, BRANCH) > 0;
+      out.fixOnTicketBranch = ahead(BRANCH, OPS_BRANCH) > 0;
       out.trackerWrites = lines<{ query?: string; operation: string }>(path.join(root, "world", "tracker.log")).filter((l) => /mutation/i.test(l.query ?? "")).map((l) => l.operation);
       out.ghWrites = lines<{ argv: string[] }>(path.join(root, "world", "gh.log")).map((l) => l.argv.join(" ")).filter((argv) => /--method (POST|PUT|PATCH|DELETE)|mutation /.test(argv));
       out.trees = [REPO, OTHER_REPO].map((r) => ({ repo: r, head: headOf(root, r.slice(r.indexOf("/") + 1), BRANCH) }));
@@ -839,7 +851,14 @@ function installed(): Lifecycle {
         return "opened the pull request";
       }
       if (said.startsWith("Resolve the review thread")) {
-        for (const pull of pulls) pull.threads = pull.threads.map((thread) => (said.includes(thread.path ?? "\u0000") ? { ...thread, isResolved: true } : thread));
+        // The sentence names the thread by its file where it has one, and by
+        // what it says where it does not: the operator closes the conversation
+        // the machine answered, whichever of the two the forge gave it.
+        const closes = (thread: { id?: string; path?: string; body?: string }) =>
+          said.includes(thread.id ?? "\u0000") ||
+          said.includes(thread.path ?? "\u0000") ||
+          Boolean(thread.body && said.includes(thread.body.split("\n")[0]!));
+        for (const pull of pulls) pull.threads = pull.threads.map((thread) => (closes(thread) ? { ...thread, isResolved: true } : thread));
         write(hostFile, hostState);
         return "resolved the thread";
       }

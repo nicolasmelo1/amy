@@ -100,7 +100,7 @@ export function isWrite(effect: Effect): effect is WriteEffect {
 export const { act, advance, wait, settled } = planning<TicketState, Effect>();
 
 /** One origin that sent a round back, and how much it found. */
-export interface RoundOrigin {
+interface RoundOrigin {
   readonly origin: string;
   readonly findings: number;
 }

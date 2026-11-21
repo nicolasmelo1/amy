@@ -168,6 +168,12 @@ async function world(conversationPolicy: Policy["conversation"]) {
     pathFor: () => dir,
     acquire: async () => dir,
     prepareBranch: async () => {},
+    // A step commits and publishing pushes: the two are apart, as the core's.
+    commit: async (repo: string, message: string, workId?: string) => {
+      commits.push([repo, message, workId]);
+      return true;
+    },
+    push: async () => true,
     commitAndPush: async (...args) => {
       commits.push(args);
       return true;
@@ -199,7 +205,7 @@ async function world(conversationPolicy: Policy["conversation"]) {
   );
   const mounted = await mount(
     [lent, standIns],
-    { [drawn.name]: { repos: ["acme/widgets"], qaStatusName: "In QA", policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
+    { [drawn.name]: { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } }, policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
     { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now, paths: { state: dir, profile } },
   );
   if (!mounted.ok) throw new Error(mounted.problems.join("; "));

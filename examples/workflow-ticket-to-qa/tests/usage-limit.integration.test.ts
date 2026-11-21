@@ -14,13 +14,14 @@ import { InMemoryStore, fakeAgent, fakeGit, policy, record, ticketWorkerDeps } f
  * the reset its stream reported, the second is a refusal that reported none.
  */
 describe("usage limits through the ticket worker", () => {
-  it("keeps one tree, refunds two limits, then escalates after two failures", async () => {
+  it("keeps one tree, refunds two limits, then escalates after three failures", async () => {
     let clock = new Date("2026-09-03T10:00:00.000Z");
     const replies: HarnessReply[] = [
       { text: "half a change", run: { outcome: "rate-limited", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "half a change", retryAfterMs: 60_000 } },
       { text: "", run: { outcome: "rate-limited", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "limited" } },
       { text: "broken", run: { outcome: "failed", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "broken" } },
       { text: "still broken", run: { outcome: "failed", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "still broken" } },
+      { text: "broken again", run: { outcome: "failed", harness: "claude", model: "claude-sonnet-4-5[1m]", durationMs: 1, costSource: "unknown", output: "broken again" } },
     ];
     const agent = fakeAgent({ ask: vi.fn().mockImplementation(async () => replies.shift()!) });
     const git = { ...fakeGit(), headSha: vi.fn().mockResolvedValue("0".repeat(40)) };
@@ -28,7 +29,7 @@ describe("usage limits through the ticket worker", () => {
     const queue = new FileQueue(path.join(root, "queue"));
     const records = new InMemoryStore();
     records.save(record("IMPLEMENTING"));
-    const worker = new Worker({ queue, records, ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, maxImplementAttempts: 2, pollBackoffMs: 90_000 }, now: () => clock })) });
+    const worker = new Worker({ queue, records, ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, pollBackoffMs: 90_000 }, now: () => clock })) });
 
     const look = async (enqueue = false) => {
       if (enqueue)
@@ -71,16 +72,17 @@ describe("usage limits through the ticket worker", () => {
 
       await look();
       expect(records.load("PROJ-1239")).toMatchObject({ state: "IMPLEMENTING", attempts: { IMPLEMENTING: 1 } });
-      await look();
-      await look(); // the next decision sees both genuine failures and escalates.
+      // Each genuine failure is one move, and the poll between looks is the
+      // machine's own backoff: keep looking until the patient level is spent.
+      for (let i = 0; i < 8 && records.load("PROJ-1239")?.state !== "ESCALATED"; i += 1) await look();
       const settled = records.load("PROJ-1239")!;
-      expect(settled).toMatchObject({ state: "ESCALATED", attempts: { IMPLEMENTING: 2 } });
-      expect(settled.lastImplementation?.output).toBe("still broken");
+      expect(settled).toMatchObject({ state: "ESCALATED", attempts: { IMPLEMENTING: 3 } });
+      expect(settled.lastImplementation?.output).toBe("broken again");
       expect(settled.continuationContext).toBeUndefined();
       expect(settled.history.map((move) => `${move.from}>${move.to}`)).toContain("IMPLEMENTING>ESCALATED");
       // Only actual failed attempts read the branch; the two limited asks left
       // no retry result, revision, commit, or no-retry evidence behind.
-      expect(git.headSha).toHaveBeenCalledTimes(2);
+      expect(git.headSha).toHaveBeenCalledTimes(3);
       expect(git.commitAndPush).not.toHaveBeenCalled();
       expect(settled.implemented).toBeDefined();
     } finally {

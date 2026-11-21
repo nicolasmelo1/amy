@@ -414,6 +414,19 @@ workflows:
     workflow: "@amykit/workflow-ticket-to-qa"${profilePlugins}
     settings:
       qaStatusName: In QA
+      escalation:
+        # This install has one usable model: the Codex stand-in answers its
+        # version and nothing else, which is the budget line the doctor reads.
+        # So one review comment's rounds are counted at the patient level, and
+        # the patient level allows four of them: this walk sends the review's
+        # comments back three times — the bot's, the reviewer's, and the one the
+        # owner's answer put back in play — and the rung above the first is a
+        # harness this world does not carry. The ladder is still mounted, and
+        # the escalation this walk reaches is the owner's.
+        scale: { patient: 4, normal: 2, immediate: 1 }
+        origins:
+          gate: { level: patient }
+          thread: { level: patient }
 
       # Zero, because the queue is the schedule and this run is driven a move
       # at a time. In production these are the minutes a waiting state backs

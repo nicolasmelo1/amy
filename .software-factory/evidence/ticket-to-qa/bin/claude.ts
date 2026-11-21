@@ -137,8 +137,9 @@ function verdictFor(threadId: string): string | undefined {
   return verdict;
 }
 
-function addressThreads(): string {
-  const verdicts = threadsAsked().map((threadId) => {
+/** One verdict per thread asked about, consuming the script; `fixed` changes the file. */
+function verdictsFor(threadIds: readonly string[]): string {
+  const verdicts = threadIds.map((threadId) => {
     const verdict = verdictFor(threadId);
     if (verdict === "fixed") append(`# answered ${threadId}`);
     return {
@@ -154,7 +155,17 @@ function addressThreads(): string {
   return JSON.stringify({ verdicts });
 }
 
+function addressThreads(): string {
+  return verdictsFor(threadsAsked());
+}
+
 function implement(): string {
+  // A round that was handed review comments answers them, in the one place
+  // code changes: a fix appends what it answered, and a comment it will not
+  // change is a verdict the machine carries to the owner.
+  const asked = threadsAsked();
+  if (asked.length > 0) return verdictsFor(asked);
+
   // The first attempt leaves out what the gate insists on. That is not
   // decoration: a red gate is the one path that has to work before any of
   // this is trustworthy, and it has to come from the code being wrong.

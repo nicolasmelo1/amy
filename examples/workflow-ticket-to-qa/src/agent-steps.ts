@@ -148,9 +148,10 @@ export function implementPrompt(
   from: "automated" | "human" = "human",
 ): string {
   return withOutsideNotice([
-    comments.length > 0
-      ? `Implement this ticket in the current repository, answering the review comments on its pull request.`
-      : `Implement this ticket in the current repository.`,
+    `Implement this ticket in the current repository.`,
+    ...(comments.length > 0
+      ? [``, `This round also answers the review comments on its pull request.`]
+      : []),
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
@@ -178,6 +179,7 @@ export function implementPrompt(
           `Fix the underlying cause. Do not discard work that was already correct.`,
         ]
       : []),
+    ...answerLines(comments),
     ``,
     `Follow the conventions already in this repository. Do not commit: that is`,
     `handled for you.`,
@@ -270,8 +272,32 @@ export function discussPrompt(
  * the last one says who is being waited on. Every voice is outside text, so
  * each speaks from inside its own envelope.
  */
+/**
+ * What a step that was handed comments must say about each of them.
+ *
+ * One JSON object, the same shape every thread step answers with, because an
+ * answer the machine cannot read is an answer it has to guess at — and the one
+ * guess it must never make is that the change it just made is what a person
+ * asked for.
+ */
+function answerLines(comments: readonly ReviewThread[]): string[] {
+  if (comments.length === 0) return [];
+  return [
+    ``,
+    `For each comment, either change the code or say why you disagree. Do not`,
+    `argue on the pull request.`,
+    ``,
+    `Then answer with a single JSON object and nothing else:`,
+    ``,
+    `{"verdicts": [{"threadId": "...", "verdict": "fixed", "note": "what you changed"}]}`,
+    ``,
+    `Use "disagreed" only when you did not change the code, and say why in the`,
+    `note. A disagreement goes to the ticket owner to settle, so be specific.`,
+  ];
+}
+
 /** The comments a step is asked about, headed by who left them. */
-export function commentLines(threads: readonly ReviewThread[], from: "automated" | "human"): string[] {
+function commentLines(threads: readonly ReviewThread[], from: "automated" | "human"): string[] {
   if (threads.length === 0) return [];
   return [
     from === "automated"

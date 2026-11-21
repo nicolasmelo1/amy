@@ -41,6 +41,7 @@ describe("usage limits from a Claude stream through the ticket worker", () => {
       { stdout: refused("still limited"), exitCode: 0 },
       { stdout: failed("broken"), exitCode: 1 },
       { stdout: failed("still broken"), exitCode: 1 },
+      { stdout: failed("broken again"), exitCode: 1 },
     ];
     const runner = new ScriptedRunner([]);
     runner.run = vi.fn(async () => {
@@ -57,7 +58,7 @@ describe("usage limits from a Claude stream through the ticket worker", () => {
     const worker = new Worker({
       queue,
       records,
-      ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, maxImplementAttempts: 2, pollBackoffMs: 90_000 }, now: () => clock })),
+      ...(await ticketWorkerDeps({ agent, git, policy: { ...policy, pollBackoffMs: 90_000 }, now: () => clock })),
     });
     const at = (when: Date) => {
       clock = when;
@@ -103,10 +104,10 @@ describe("usage limits from a Claude stream through the ticket worker", () => {
         await tick();
       }
       const settled = records.load("PROJ-1239")!;
-      // Escalated after the second failure, not the second limit.
-      expect(settled).toMatchObject({ state: "ESCALATED", attempts: { IMPLEMENTING: 2 } });
-      expect(vi.mocked(agent.ask)).toHaveBeenCalledTimes(4);
-      expect(settled.lastImplementation?.output).toBe("still broken");
+      // Escalated after the patient level's failures, not the second limit.
+      expect(settled).toMatchObject({ state: "ESCALATED", attempts: { IMPLEMENTING: 3 } });
+      expect(vi.mocked(agent.ask)).toHaveBeenCalledTimes(5);
+      expect(settled.lastImplementation?.output).toBe("broken again");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

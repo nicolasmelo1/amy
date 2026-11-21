@@ -117,7 +117,7 @@ type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): 
  * mid-sentence, or one that answered a different question — is no verdict,
  * which is what the step's own `verify` refuses.
  */
-export function verdictLine(text: string): "APPROVED" | "CHANGES_ASKED" | undefined {
+function verdictLine(text: string): "APPROVED" | "CHANGES_ASKED" | undefined {
   const lines = text.split("\n").reverse();
   for (const line of lines) {
     const said = verdictWord(line);
@@ -131,7 +131,7 @@ export function verdictLine(text: string): "APPROVED" | "CHANGES_ASKED" | undefi
  * How many things a review found: its bulleted lines, the verdict itself not
  * among them. A review that found something and wrote one paragraph is one.
  */
-export function findingsIn(text: string): number {
+function findingsIn(text: string): number {
   const found = text
     .split("\n")
     .map((line) => line.replace(/^[\s>*_`#-]+/, "").trim())
