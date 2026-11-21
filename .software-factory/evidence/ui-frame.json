@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "ui-frame",
-  "implementation_sha256": "12232d552fdf5ba09bb782d962a52cfebc27a3bd27a28758399d4a81888d6d94",
+  "implementation_sha256": "7bf914cc548a8fafe089c995de489beb35495136f72b3853f7075b54f9f2e435",
   "runs": [
     {
       "scenario": "ui-frame",
       "status": "passed",
       "actor": "Claude (agent), running .software-factory/evidence/ui-frame-scenario.sh against the packed and installed @amykit/ui, @amykit/ui-conformance and stub renderers from another process on macOS, for Nicolas Melo",
       "report": ".software-factory/evidence/ui-frame-run.json",
-      "report_sha256": "612d003b7df2ad171119b923587e1444843d7998757a01046b62637af04a16f7",
+      "report_sha256": "b19511684d4c535bbc3286dc080454f59e9064d69f5319e0931cc922658eea2c",
       "required_assertions": []
     }
   ]

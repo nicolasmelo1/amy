@@ -91,26 +91,26 @@ for arg in "\$@"; do
       ;;
   esac
 done
-# The core every plugin imports is this checkout's, not the last one npm
+# The packages every plugin imports are this checkout's, not whatever npm
 # would fetch from the registry: a plugin built against an export added since
-# would fail to import beside a published copy. Swapped in after npm has
-# written the root, so the root's own manifest still names only what the
-# command asked for.
+# would fail to import beside a published copy, and on a release commit the
+# registry does not have this version at all until the release job publishes
+# it. So the packed closure the install reaches is pinned in the root before
+# npm resolves anything, the same way amy-add-remove pins it.
 prefix=""
 previous=""
 for arg in "\$@"; do
   if [ "\$previous" = "--prefix" ]; then prefix="\$arg"; fi
   previous="\$arg"
 done
+if [ -n "\$prefix" ] && [ -f "\$prefix/package.json" ]; then
+  "$repo/node_modules/.bin/tsx" "$here/lib/pin-packed.ts" "\$prefix/package.json" "$work/lib/packages" \
+    "@acme/workflow-oncall=$work/third-party" -- "\$@"
+fi
 # The artifact paths are made by this scenario, without spaces; eval expands
 # the tarball glob only after the package name above has become that path.
 status=0
 eval "'$npm_real' \$args" || status=\$?
-core="\$prefix/node_modules/@amykit/core"
-if [ "\$status" = 0 ] && [ -n "\$prefix" ] && [ -d "\$core" ]; then
-  rm -rf "\$core" && mkdir -p "\$core"
-  tar xzf $work/lib/packages/amykit-core-*.tgz -C "\$core" --strip-components=1
-fi
 exit "\$status"
 SH
 chmod +x "$work/bin/npm"
