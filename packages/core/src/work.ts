@@ -46,6 +46,12 @@ export interface WorkRecord {
    */
   climbedByOrigin?: Record<string, number>;
   /**
+   * Rounds counted at the rung the work stands on, by origin. Reset when the
+   * rung advances, so a level's number of rounds is always counted from the
+   * rung the work reached rather than from the first attempt.
+   */
+  spentByOrigin?: Record<string, number>;
+  /**
    * Set when the engine let this work go at its attempt ceiling. Kept on the
    * record rather than inferred from the queue, because queue history is
    * pruned and history is not: without it, a pruned item would be discovered

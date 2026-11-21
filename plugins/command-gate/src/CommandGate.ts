@@ -1,13 +1,9 @@
 import { CommandRunner, Git, AttemptOutcome, Gate, Workplace } from "@amykit/core";
 
 
-/** The refusal, once a command has been run and one of them was red. */
-function red(transcript: string[], command: string, exitCode: number | null, output: string): AttemptOutcome {
-  // One check, because it stops here: how many were red is what it saw, and a
-  // workflow weighing this round against a threshold is told the number it
-  // actually found rather than only that it failed.
-  transcript.push(`$ ${command}\nexited ${exitCode}\n\n${output}`);
-  return { ok: false, output: transcript.join("\n\n"), at: new Date().toISOString(), findings: 1 };
+/** One command that was red, in the transcript the refusal carries. */
+function red(command: string, exitCode: number | null, output: string): string {
+  return `$ ${command}\nexited ${exitCode}\n\n${output}`;
 }
 
 export interface CommandGateConfig {
@@ -24,9 +20,11 @@ export interface CommandGateConfig {
  * The deterministic check, as a list of shell commands run in the work's own
  * tree.
  *
- * It stops at the first failure rather than collecting all of them, so the
- * agent gets one clear thing to fix instead of a wall of noise where the
- * second half is caused by the first.
+ * It runs every command, so the answer it gives the workflow is how many
+ * checks were red rather than only whether one was: escalation weighs that
+ * number, and a run that stopped at the first failure would always say one.
+ * The transcript keeps each failure whole, so an agent still meets every red
+ * check by name.
  */
 export class CommandGate implements Gate {
   constructor(
@@ -51,6 +49,7 @@ export class CommandGate implements Gate {
     }
 
     const transcript: string[] = [];
+    let findings = 0;
 
     for (const command of commands) {
       const result = await this.runner.run("sh", ["-c", command], {
@@ -62,11 +61,18 @@ export class CommandGate implements Gate {
 
       const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
 
-      if (!result.ok) return red(transcript, command, result.exitCode, output);
+      if (!result.ok) {
+        findings += 1;
+        transcript.push(red(command, result.exitCode, output));
+        continue;
+      }
 
       transcript.push(`$ ${command}\nok`);
     }
 
+    if (findings > 0) {
+      return { ok: false, output: transcript.join("\n\n"), at: new Date().toISOString(), findings };
+    }
     return { ok: true, output: transcript.join("\n"), at: new Date().toISOString(), findings: 0 };
   }
 }

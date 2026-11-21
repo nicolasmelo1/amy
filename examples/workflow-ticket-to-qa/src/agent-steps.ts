@@ -35,11 +35,18 @@ export interface TriageOutcome {
 /** A triage question may offer a closed, single-choice answer set. */
 export type TriageQuestion = string | { prompt: string; answers: string[] };
 
-/** What one judged review comment concluded. */
+/**
+ * What one judged review comment concluded.
+ *
+ * `fixed` means the code changed, and `disagreed` means it needs the owner.
+ * `answered` is a comment the work answered in words rather than in code, and
+ * `out-of-scope` one the brief cuts: both are replied to on the thread rather
+ * than built. `contradicts-brief` is new work that would undo what the brief
+ * asks for, which is the owner's to settle.
+ */
 export interface ThreadVerdict {
   threadId: string;
-  /** `fixed` means the code changed. `disagreed` means it needs the owner. */
-  verdict: "fixed" | "disagreed";
+  verdict: "fixed" | "disagreed" | "answered" | "out-of-scope" | "contradicts-brief";
   note: string;
 }
 
@@ -121,6 +128,15 @@ export function unreadTriage(at: string): TriageOutcome {
   return { clear: false, questions: [], askedQuestions: [], at };
 }
 
+/**
+ * The step that implements a ticket, and — when a round came back from the
+ * review — the comments it is this round's work to answer.
+ *
+ * The comments are the *only* ones named: a thread the machine did not take up
+ * is one it was not asked about, and a step that read it anyway would answer
+ * somebody else's round. `from` is who left them, because the same two lines
+ * head a review's comments in every prompt that carries them.
+ */
 export function implementPrompt(
   ticket: Ticket,
   retryContext?: string,
@@ -128,9 +144,13 @@ export function implementPrompt(
   conversation?: readonly string[],
   discussion?: readonly string[],
   unitOwn = false,
+  comments: readonly ReviewThread[] = [],
+  from: "automated" | "human" = "human",
 ): string {
   return withOutsideNotice([
-    `Implement this ticket in the current repository.`,
+    comments.length > 0
+      ? `Implement this ticket in the current repository, answering the review comments on its pull request.`
+      : `Implement this ticket in the current repository.`,
     ``,
     ...titleLines(ticket),
     `Tracker: ${ticket.url}`,
@@ -139,6 +159,7 @@ export function implementPrompt(
     ...labelLines(ticket),
     ...conversationLines(conversation),
     ...decisionLines(discussion),
+    ...commentLines(comments, from),
     ...(continuationContext
       ? [
           ``,
@@ -180,16 +201,12 @@ export function threadPrompt(
   ];
 
   return withOutsideNotice([
-    from === "automated"
-      ? `An automated reviewer left comments on the pull request for this ticket.`
-      : `A human reviewer left comments on the pull request for this ticket.`,
+    ...commentLines(threads, from),
     ``,
     ...titleLines(ticket),
     ...briefLines(ticket, unitOwn),
     ...bodyLines(ticket),
     ...labelLines(ticket),
-    `Comments:`,
-    ...threads.flatMap(threadLines),
     ...(hints.length ? [``, `Reviewer notes:`, ...hints.map((hint) => `- ${hint}`)] : []),
     ...decisionLines(discussion),
     ``,
@@ -253,6 +270,19 @@ export function discussPrompt(
  * the last one says who is being waited on. Every voice is outside text, so
  * each speaks from inside its own envelope.
  */
+/** The comments a step is asked about, headed by who left them. */
+export function commentLines(threads: readonly ReviewThread[], from: "automated" | "human"): string[] {
+  if (threads.length === 0) return [];
+  return [
+    from === "automated"
+      ? `An automated reviewer left comments on the pull request for this ticket.`
+      : `A human reviewer left comments on the pull request for this ticket.`,
+    ``,
+    `Comments:`,
+    ...threads.flatMap(threadLines),
+  ];
+}
+
 function threadLines(thread: ReviewThread): string[] {
   return [
     outsideText(`[${thread.id}] ${thread.author} said:\n${thread.body}`, { source: "review comment" }),

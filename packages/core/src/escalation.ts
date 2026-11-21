@@ -62,11 +62,11 @@ export function levelFor(
 }
 
 /**
- * Where one origin's rounds put its work, given the rung it already reached.
+ * Where one origin's rounds put its work, reading the count from the first rung.
  *
- * The rung only ever moves up. A round that finds less than the last one did
- * can put the level back to the patient one, and reading that as "come down a
- * rung" would hand the same work to the weaker model twice.
+ * Every round this rung has already seen buys at most one rung: `rounds` is
+ * counted from the rung the work reached, so the number here is the work's
+ * standing and never a jump of several rungs when a level turns stricter.
  */
 export function climbOf(
   rules: EscalationRules,
@@ -80,27 +80,42 @@ export function climbOf(
   return { origin, level, needed, rounds, rung, exhausted: rung >= rules.rungs - 1 };
 }
 
-/** One origin's standing, read from what the record remembers about it. */
+/**
+ * One origin's standing, read from what the record remembers about it.
+ *
+ * A record that has been counted before answers with the rung it reached:
+ * the findings of a round that has not come back yet cannot move it, and a
+ * level that turns stricter cannot jump it. A record saved before this move
+ * carries rounds and no rung, and is read the way it was written.
+ */
 export function climbFor(
   rules: EscalationRules,
   record: WorkRecord,
   origin: string,
   findings: number,
 ): Climb {
-  return climbOf(rules, origin, record.roundsByOrigin?.[origin] ?? 0, findings, record.climbedByOrigin?.[origin] ?? 0);
+  const rounds = record.roundsByOrigin?.[origin] ?? 0;
+  const climbed = record.climbedByOrigin?.[origin];
+  if (climbed === undefined) return climbOf(rules, origin, rounds, findings, 0);
+  const { level, needed } = levelFor(rules, origin, findings);
+  return { origin, level, needed, rounds, rung: climbed, exhausted: climbed >= rules.rungs - 1 };
 }
 
 /**
  * The strictest standing of every origin that sent this round back.
  *
  * Two lanes meeting at one join each count their own rounds, and the work is
- * asked of the stronger rung the moment either of them has earned it.
+ * asked of the level that escalates sooner when both stand on the same rung:
+ * the one whose number of rounds per rung is smaller, whichever was read
+ * first.
  */
 export function strictest(among: readonly Climb[]): Climb | undefined {
-  return among.reduce<Climb | undefined>(
-    (worst, one) => (worst === undefined || one.rung > worst.rung ? one : worst),
-    undefined,
-  );
+  return among.reduce<Climb | undefined>((worst, one) => {
+    if (worst === undefined) return one;
+    if (one.rung !== worst.rung) return one.rung > worst.rung ? one : worst;
+    if (one.needed !== worst.needed) return one.needed < worst.needed ? one : worst;
+    return one.origin < worst.origin ? one : worst;
+  }, undefined);
 }
 
 /** The rung an ask starts on: never the last, which is the person the work escalates to. */
@@ -108,11 +123,26 @@ export function startRung(climb: Climb, rules: EscalationRules): number {
   return Math.min(climb.rung, Math.max(0, rules.rungs - 2));
 }
 
-/** A record that counted one more round against an origin, and remembers the rung it earned. */
+/**
+ * A record that counted one more round against an origin.
+ *
+ * The rung advances only when this round spends the last of the level's
+ * number, and only by one: a level that turns stricter mid-way moves the
+ * work a single rung, never several. A round that lands before that keeps the
+ * rung and counts toward the next one, which is why the count at the rung is
+ * kept apart from the total.
+ */
 export function counted<R extends WorkRecord>(record: R, climb: Climb): R {
+  const before = record.roundsByOrigin?.[climb.origin] ?? 0;
+  const climbed = record.climbedByOrigin?.[climb.origin] ?? 0;
+  const spent = (record.spentByOrigin?.[climb.origin] ?? before) + 1;
+  // A climb read from a record that never stored a rung has already counted
+  // these rounds, so this round cannot advance the same rung a second time.
+  const advance = climb.rung <= climbed && spent >= climb.needed;
   return {
     ...record,
-    roundsByOrigin: { ...record.roundsByOrigin, [climb.origin]: (record.roundsByOrigin?.[climb.origin] ?? 0) + 1 },
-    climbedByOrigin: { ...record.climbedByOrigin, [climb.origin]: Math.max(record.climbedByOrigin?.[climb.origin] ?? 0, climb.rung) },
+    roundsByOrigin: { ...record.roundsByOrigin, [climb.origin]: before + 1 },
+    climbedByOrigin: { ...record.climbedByOrigin, [climb.origin]: Math.max(climbed, climb.rung) + (advance ? 1 : 0) },
+    spentByOrigin: { ...record.spentByOrigin, [climb.origin]: advance ? 0 : spent },
   };
 }

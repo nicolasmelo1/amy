@@ -65,6 +65,9 @@ export interface TicketMount {
 const SETTINGS = {
   repos: ["Northwind/northwind-backend"],
   qaStatusName: "In QA",
+  // Every number an escalation rests on is written in the config, with no
+  // default in code, so a fixture that mounts the workflow writes them too.
+  escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
 };
 
 /**

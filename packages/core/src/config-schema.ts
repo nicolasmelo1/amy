@@ -56,17 +56,23 @@ type GroupKeys<S extends ConfigSchema, G extends string> = {
   [K in keyof S]: K extends `${G}.${infer Leaf}` ? (Leaf extends `${string}.${string}` ? never : Leaf) : never
 }[keyof S];
 
-/** The value one schema field promises after validation, by its required/default shape. */
-export type ValueFor<Field extends ConfigField, S extends ConfigSchema = ConfigSchema> =
+/** A value, narrowed by whether the field is required and what its default is. */
+type UnlessOptional<Field extends ConfigField, Value> =
+  Field extends { readonly required: true }
+    ? Value
+    : Field extends { readonly default: infer Default }
+      ? undefined extends Default ? Value | undefined : Value
+      : Value | undefined;
+
+/** What a `oneOf` setting may name: the keys of its group, or any name when the group names none. */
+type Named<Field extends ConfigField, S extends ConfigSchema> =
   Field extends { readonly type: "oneOf"; readonly group: infer Group extends string }
     ? ([GroupKeys<S, Group>] extends [never] ? string : GroupKeys<S, Group>)
-    : ConfigValueFor<Field["type"]> extends infer Value
-      ? Field extends { readonly required: true }
-        ? Value
-        : Field extends { readonly default: infer Default }
-          ? undefined extends Default ? Value | undefined : Value
-          : Value | undefined
-      : never;
+    : ConfigValueFor<Field["type"]>;
+
+/** The value one schema field promises after validation, by its required/default shape. */
+export type ValueFor<Field extends ConfigField, S extends ConfigSchema = ConfigSchema> =
+  UnlessOptional<Field, Named<Field, S>>;
 
 /** One intersection piece a dotted schema key contributes to the plugin's config. */
 type PieceOf<S extends ConfigSchema, K extends keyof S> = K extends `${infer Head}.${infer Rest}`
@@ -179,6 +185,14 @@ function splitSchema(
   const problems: string[] = [];
   const config: Record<string, unknown> = {};
   const named = namesDeclared(schema);
+  // A default naming a value the group does not declare is refused even when
+  // every config leaves the setting out: it would be applied silently, and a
+  // level misspelt there is a threshold nobody ever weighs.
+  for (const [key, spec] of Object.entries(schema)) {
+    if (spec.type !== "oneOf" || spec.default === undefined) continue;
+    const outside = namesNothing(plugin, key, spec, spec.default, named);
+    if (outside) problems.push(outside);
+  }
   for (const [key, spec] of Object.entries(schema)) {
     const [head, ...path] = key.split(".");
     if (path.length === 0) {

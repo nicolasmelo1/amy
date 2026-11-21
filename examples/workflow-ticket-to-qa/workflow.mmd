@@ -3,6 +3,9 @@ stateDiagram-v2
     %% Dashed states wait on a reviewer; bold ones on the person whose ticket
     %% it is. ESCALATED goes back to where the escalation stopped the work.
     %% The gate and the self-review run as two lanes, and meet at the verdict.
+    %% IMPLEMENTING is the one place code changes: every review comment, a
+    %% failing check and the owner's word are work it takes up, and nothing
+    %% reaches the remote until the checks have read it.
     state checks <<fork>>
     state verdict <<join>>
     classDef waiting stroke-dasharray: 4 4
@@ -23,13 +26,11 @@ stateDiagram-v2
     verdict --> IMPLEMENTING: either found something
     verdict --> PR_OPEN: both are clean
     PR_OPEN --> COPILOT_WAIT: the pull request exists
-    COPILOT_WAIT --> COPILOT_FIX: open automated threads
-    COPILOT_FIX --> COPILOT_WAIT: every thread judged
+    COPILOT_WAIT --> IMPLEMENTING: a comment or a red check to take up
     COPILOT_WAIT --> REVIEWER_ASSIGNED: nothing automated outstanding
+    REVIEWER_ASSIGNED --> IMPLEMENTING: a comment or a red check to take up
     REVIEWER_ASSIGNED --> HUMAN_REVIEW: a reviewer was asked
-    HUMAN_REVIEW --> HUMAN_FIX: open threads
-    HUMAN_FIX --> ESCALATED: too large, or a comment needs the owner
-    HUMAN_FIX --> RE_REVIEW: every comment addressed
+    HUMAN_REVIEW --> IMPLEMENTING: a comment or the owner's word to take up
     HUMAN_REVIEW --> RE_REVIEW: every thread judged
     RE_REVIEW --> HUMAN_REVIEW: asked to look again
     RE_REVIEW --> REVIEWER_ASSIGNED: no reviewer recorded
@@ -39,15 +40,13 @@ stateDiagram-v2
     QA_HANDOFF --> DONE
 
     IMPLEMENTING --> ESCALATED: the agent failed every attempt
-    verdict --> ESCALATED: the checks stayed red
-    COPILOT_FIX --> ESCALATED: too large for an agent
+    COPILOT_WAIT --> ESCALATED: too large for an agent
+    verdict --> ESCALATED: the origin's rounds ran out on the rung below a person
     REVIEWER_ASSIGNED --> ESCALATED: the forge says the branch is broken
 
     COPILOT_WAIT --> PR_OPEN: no pull request
-    COPILOT_FIX --> PR_OPEN: no pull request
     REVIEWER_ASSIGNED --> PR_OPEN: no pull request
     HUMAN_REVIEW --> PR_OPEN: no pull request
-    HUMAN_FIX --> PR_OPEN: no pull request
 
     DONE --> [*]
 
@@ -56,3 +55,5 @@ stateDiagram-v2
     class CLARIFYING,ESCALATED attention
     class GATE,SELF_REVIEW call
     class ESCALATED returns
+    class GATE,SELF_REVIEW,COPILOT_WAIT,REVIEWER_ASSIGNED,HUMAN_REVIEW sendsBack
+    class IMPLEMENTING verified

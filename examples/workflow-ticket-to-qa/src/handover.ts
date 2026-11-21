@@ -118,6 +118,8 @@ function keyFor(write: WriteEffect, record: TicketRecord, obs: Observation): str
       return `open-pull-request@${obs.ticket.repo}`;
     case "resolve-review-thread":
       return `resolve@${write.threadId}`;
+    case "reply-thread":
+      return `answer@${write.threadId}`;
     case "assign-reviewer":
       return `request-review@${write.host}`;
     // Keyed by the round — how many times the work has come back to ask
@@ -143,6 +145,7 @@ function describe(writes: readonly WriteEffect[]): string {
     "escalate": "take the decision",
     "open-pull-request": "open the pull request",
     "resolve-review-thread": "resolve the answered threads",
+    "reply-thread": "answer the thread",
     "assign-reviewer": "request the review",
     "request-rereview": "request the review again",
     "hand-off-to-qa": "hand the ticket to QA",

@@ -24,9 +24,10 @@ import {
 } from "@amykit/core";
 import { z } from "zod";
 import { after, before, decide } from "./machine.js";
-import { DEFAULT_POLICY, Policy } from "./observation.js";
+import { DEFAULT_POLICY, ESCALATION, Policy } from "./observation.js";
 import { TicketRecord } from "./record.js";
 import { EXAMPLE_ROSTER, ROSTER_FILE, Roster, confirmRoster, isConfirmedFor, loadRoster } from "./roster.js";
+import { isTicketId } from "./ticket.js";
 import { actionsFor, discover, observe, progress, remember, splitWorkId } from "./actions.js";
 import { Finding, gateLane, selfReviewLane } from "./lanes.js";
 
@@ -166,15 +167,106 @@ export const configSchema = {
     description: "guidance appended to the review prompt when answering a particular reviewer, by host login",
     default: {},
   },
-  "policy.maxImplementAttempts": {
-    type: "number",
-    default: 3,
-    description: "how many times an agent may try to implement one ticket before it is escalated",
+  onlyTickets: {
+    type: "string[]",
+    default: [] as string[],
+    description:
+      "the ticket ids this install works, and no others; empty is every ticket the tracker reports. An entry that is not a ticket id is refused at mount",
   },
-  "policy.maxGateAttempts": {
+  stackBases: {
+    type: "record",
+    default: {},
+    description:
+      "the parent each ticket's branch is cut from, by ticket id, for a stack its description does not state. An entry that is not a ticket id is refused at mount",
+  },
+  // The numbers every escalation rests on. A level is how many rounds it
+  // allows before the work climbs one rung; the origins say which level each
+  // kind of new work is counted at, and how much it must find to be counted at
+  // the stricter one; the ladder's length is where a person is.
+  "escalation.scale.patient": {
+    type: "number",
+    required: true,
+    description: "how many rounds a patient level allows before the work climbs one rung",
+  },
+  "escalation.scale.normal": {
+    type: "number",
+    required: true,
+    description: "how many rounds a normal level allows before the work climbs one rung",
+  },
+  "escalation.scale.immediate": {
+    type: "number",
+    required: true,
+    description: "how many rounds an immediate level allows before the work climbs one rung",
+  },
+  "escalation.origins.gate.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "normal",
+    description: "the level the gate's rounds are counted at",
+  },
+  "escalation.origins.gate.beyond": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "immediate",
+    description: "the level the gate's rounds are counted at once a round brings back findingsAt findings or more",
+  },
+  "escalation.origins.gate.findingsAt": {
     type: "number",
     default: 3,
-    description: "how many times the gate may see one change before the work is escalated",
+    description: "how many findings a gate's round must bring back for the beyond level to apply",
+  },
+  "escalation.origins.thread.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "normal",
+    description: "the level a review thread's rounds are counted at",
+  },
+  "escalation.origins.thread.beyond": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "immediate",
+    description: "the level a review thread's rounds are counted at once a round brings back findingsAt findings or more",
+  },
+  "escalation.origins.thread.findingsAt": {
+    type: "number",
+    default: 3,
+    description: "how many findings a round of review threads must bring back for the beyond level to apply",
+  },
+  "escalation.origins.owner.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "immediate",
+    description: "the level the owner's word is counted at: what the person whose ticket it is asks for is not a round to be patient about",
+  },
+  "escalation.origins.self-review.level": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "normal",
+    description: "the level the work's own review of itself is counted at",
+  },
+  "escalation.origins.self-review.beyond": {
+    type: "oneOf",
+    group: "escalation.scale",
+    default: "immediate",
+    description: "the level the self-review's rounds are counted at once a round brings back findingsAt findings or more",
+  },
+  "escalation.origins.self-review.findingsAt": {
+    type: "number",
+    default: 3,
+    description: "how many findings the self-review must bring back for the beyond level to apply",
+  },
+  "escalation.rungs": {
+    type: "number",
+    default: 3,
+    description: "how long the ladder is; its last rung is a person, so work that runs out one rung below escalates",
+  },
+  // The rule set the decision reads. It is filled from the `escalation` block
+  // above at every mount, and declared here so the policy's defaults are the
+  // schema's own rather than a second answer kept somewhere else.
+  "policy.escalation": {
+    type: "record",
+    default: ESCALATION as unknown as Record<string, unknown>,
+    description: "the levels, origins and ladder an escalation is counted on, read from the escalation block",
   },
   "policy.pollBackoffMs": {
     type: "number",
@@ -233,11 +325,38 @@ export const needs = {
   worktree: optional<Worktree>(),
 };
 
+/**
+ * The policy the declaration is held to, and the decision reads.
+ *
+ * `DEFAULT_POLICY` without the two attempt ceilings this move replaces: both
+ * were settings once, and neither is any more. What is left is every number a
+ * decision reads that `config.yaml` still names, plus the escalation rules,
+ * which are filled from the `escalation` block at every mount.
+ */
+const MOUNTED_POLICY: Policy = {
+  escalation: ESCALATION,
+  pollBackoffMs: DEFAULT_POLICY.pollBackoffMs,
+  rosterBackoffMs: DEFAULT_POLICY.rosterBackoffMs,
+  maxOpenReviewsPerReviewer: DEFAULT_POLICY.maxOpenReviewsPerReviewer,
+  maxPullRequestFiles: DEFAULT_POLICY.maxPullRequestFiles,
+  maxPullRequestLines: DEFAULT_POLICY.maxPullRequestLines,
+  writes: DEFAULT_POLICY.writes,
+  conversation: DEFAULT_POLICY.conversation,
+  // Read by a record saved before rounds were counted per origin, and by
+  // nothing this version writes. `policyFits` holds them to the schema, which
+  // declares no such setting, so they are left off here and put back on the
+  // runtime, where a folded record's attempts are all that reads them.
+} as unknown as Policy;
+
 export const plugin = defineWorkflow({
   name: "ticket-to-qa",
   pluginName: "@amykit/workflow-ticket-to-qa",
   configSchema,
-  policy: DEFAULT_POLICY,
+  // The policy the decision reads, without the two attempt ceilings this move
+  // replaces: both were settings, both are gone from the schema, and a record
+  // saved by a version that counted them is read against their last values
+  // (`DEFAULT_POLICY`), never against a number written here.
+  policy: MOUNTED_POLICY,
   needs,
   // A project is brief, work and proof; a ticket's walk is the work half
   // alone. The ticket already carries its own statement of the work, and the
@@ -247,14 +366,43 @@ export const plugin = defineWorkflow({
     brief: "the ticket itself says what the work is; grooming a feature is not what this walk does, so no brief phase runs first",
     prove: "the command gate's scenario run after every implementation is what proves the work; this walk keeps no separate proving phase",
   },
+  // Where work comes back from, and the kinds of new work each of those
+  // states can raise. The diagram marks the same states `sendsBack`, and the
+  // two lists are held equal at mount.
+  origins: {
+    GATE: ["gate"],
+    SELF_REVIEW: ["self-review"],
+    COPILOT_WAIT: ["thread", "gate"],
+    REVIEWER_ASSIGNED: ["gate", "thread"],
+    HUMAN_REVIEW: ["thread", "owner"],
+  },
+  // The one step whose reply its own `verify` judges, so the diagram marks it
+  // `verified` and a second rung is asked of a run that did not hold.
+  verifies: ["IMPLEMENTING"],
+  // Publishing, as two actions of this workflow's own. The round's commits go
+  // out from the workplace's tree — the port a tree comes from is the one
+  // `push` needs mounted, and the git inside it is the workplace's, not a
+  // port's. An answer goes back where the review was written: the work's own
+  // thread where a chat is mounted, and the ticket where one is not, which is
+  // the port every install of this walk has.
+  catalogue: {
+    push: { port: "worktree", method: "push" },
+    "reply-thread": { port: "tracker", method: "comment" },
+  },
   trackerWrites: ({ policy }) => writesOf(policy) === "operator"
     ? []
     : ["comment", "set-status", "assign", "create-follow-up"],
   codeHostWrites: ({ policy }) => writesOf(policy) === "operator"
     ? []
     : ["open-pull-request", "request-review", "resolve-thread"],
-  runtimePolicy: ({ ports, policy }) => ({
+  runtimePolicy: ({ ports, policy, config }) => ({
     ...policy,
+    // Kept on the runtime for a record saved before rounds were counted per
+    // origin: its failed attempts were read against these, and its next look
+    // still is. They are no longer settings, and no config may name them.
+    maxImplementAttempts: DEFAULT_POLICY.maxImplementAttempts,
+    maxGateAttempts: DEFAULT_POLICY.maxGateAttempts,
+    escalation: escalationOf(config),
     writes: writesOf(policy),
     conversation: conversationOf(policy, ports.conversation),
   }),
@@ -306,6 +454,30 @@ function checkInput(work: TicketRecord): { repo: string; workId: string; revisio
   const repo = work.implemented?.repo;
   if (!repo) throw new Error(`${work.id} reached the checks with no repository recorded for its implementation`);
   return { repo, workId: work.id, ...(work.implemented?.revision ? { revision: work.implemented.revision } : {}) };
+}
+
+/**
+ * The escalation rules the decision reads, from the `escalation` block.
+ *
+ * Two settings that name another setting's keys have no type the schema can
+ * give them, so the ids an install limits itself with are checked here, at
+ * mount, by that name: a value that is not a ticket id is a typo that would
+ * silently work nothing, and it is refused with the value it read.
+ */
+function escalationOf(config: Settings): Policy["escalation"] {
+  for (const id of config.onlyTickets ?? []) {
+    if (!isTicketId(id)) {
+      throw new Error(`\`onlyTickets\` names ${JSON.stringify(id)}, which is not a ticket id; name tickets by the id the tracker gives them`);
+    }
+  }
+  for (const [ticket, parent] of Object.entries(config.stackBases ?? {})) {
+    for (const id of [ticket, parent]) {
+      if (!isTicketId(id)) {
+        throw new Error(`\`stackBases\` names ${JSON.stringify(id)}, which is not a ticket id; a stack base is a ticket's id`);
+      }
+    }
+  }
+  return config.escalation as unknown as Policy["escalation"];
 }
 
 function writesOf(policy: Policy): Policy["writes"] {

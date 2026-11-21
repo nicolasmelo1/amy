@@ -146,16 +146,21 @@ export class Git {
    * makes no move at all, and `--ignore-other-worktrees` is what lets a
    * branch that exists because another item carried it be checked out here
    * without the second tree refusing or the first tree losing its place.
+   *
+   * `from` is where a branch this machine has to create is cut from: a
+   * stacked ticket asks for its parent's branch rather than the repository's
+   * base. A branch the remote or the tree already holds is never re-pointed,
+   * so the stack only chooses the starting point of a branch that is new.
    */
-  async prepareBranch(repo: string, branch: string, workId?: string): Promise<void> {
+  async prepareBranch(repo: string, branch: string, workId?: string, from?: string): Promise<void> {
     this.mayMove(repo, branch, workId);
     const worktrees = this.worktrees;
     if (worktrees && workId !== undefined) {
       const tree = await worktrees.acquire(workId, repo);
-      await this.onBranch(tree, repo, branch, ["--ignore-other-worktrees"]);
+      await this.onBranch(tree, repo, branch, ["--ignore-other-worktrees"], from);
       return;
     }
-    await this.onBranch(this.pathFor(repo), repo, branch, []);
+    await this.onBranch(this.pathFor(repo), repo, branch, [], from);
   }
 
   /**
@@ -169,13 +174,17 @@ export class Git {
    * what it holds; when it has diverged from its remote, it is refused,
    * naming what only the local side holds.
    */
-  private async onBranch(cwd: string, repo: string, branch: string, flags: string[]): Promise<void> {
+  private async onBranch(cwd: string, repo: string, branch: string, flags: string[], from?: string): Promise<void> {
+    // The base a stack is cut from is fetched by name first: a parent's branch
+    // is where the child starts, and the tree has to hold it before the child
+    // can be cut from it — whatever the default refspec happened to bring.
+    if (from !== undefined) await this.gitIn(cwd, "fetch", "origin", from);
     await this.gitIn(cwd, "fetch", "origin", "--prune");
 
     const remote = `refs/remotes/origin/${branch}`;
     const local = `refs/heads/${branch}`;
     const onRemote = await this.succeeds(cwd, "rev-parse", "--verify", remote);
-    const target = onRemote ? `origin/${branch}` : `origin/${baseBranchFor(this.layout, repo)}`;
+    const target = onRemote ? `origin/${branch}` : `origin/${from ?? baseBranchFor(this.layout, repo)}`;
 
     if (!(await this.succeeds(cwd, "rev-parse", "--verify", local))) {
       await this.gitIn(cwd, "checkout", "-b", branch, target, ...flags);
