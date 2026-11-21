@@ -1,14 +1,14 @@
 ---
-base: 7bd6ca58fc340455bfe544d957dd8c503f3dd1a0
+base: 81e3965fad5c3d201865e8542398074edde05271
 sources:
   - { id: S1, kind: code, ref: "plugins/claude/src/envelope.ts", symbol: "classify", said: "a run is failed only when the envelope says is_error or the CLI exits non-zero; an answer that is wrong but well formed is completed, so the ladder never climbs on it" }
-  - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "AskContext", said: "verify(reply) may turn a completed run to failed while a rung is left; only implementStep passes one (no file changed), so triage, address-threads, self-review and chat climb on a crash and on nothing else" }
+  - { id: S2, kind: code, ref: "packages/core/src/ports/Harness.ts", symbol: "AskContext", said: "verify(reply) may turn a completed run to failed while a rung is left, and rung says where an ask begins; a step declaring neither is asked first, so triage, address-threads and chat climb on a crash only" }
   - { id: S3, kind: code, ref: "packages/agent-kit/src/steps.ts", symbol: "judgeStep", said: "an unreadable JSON answer throws in extractJson after the relay returned, so the stronger rung is never asked" }
-  - { id: S4, kind: code, ref: "packages/agent-kit/src/handoff.ts", symbol: "handoffNote", said: "the next rung is told the previous one 'did not succeed', never why" }
-  - { id: S5, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "climb", said: "every ask starts at the step's first rung; the relay has no way to begin higher" }
-  - { id: S6, kind: code, ref: "examples/workflow-ticket-to-qa/src/machine.ts", symbol: "attemptsIn", said: "rounds are counted per state (IMPLEMENTING, verdict) against policy.maxImplementAttempts and policy.maxGateAttempts; nothing says who sent the work back or how much it found" }
-  - { id: S7, kind: code, ref: "packages/core/src/ports/Gate.ts", symbol: "Gate", said: "a gate answers ok and its output; how many checks were red is not said" }
-  - { id: S8, kind: code, ref: "packages/core/src/diagram.ts", symbol: "DrawnTransition", said: "an edge label is prose amy does not interpret; classes (waiting, attention, anywhere, returns, call) are what amy reads" }
+  - { id: S4, kind: code, ref: "packages/agent-kit/src/handoff.ts", symbol: "handoffNote", said: "the next rung is told the previous one 'did not succeed', or the reason a refused reply was refused; it is never told nothing" }
+  - { id: S5, kind: code, ref: "packages/agent-kit/src/HarnessRelay.ts", symbol: "climb", said: "the relay begins at the rung the caller names in AskContext.rung, clamped to its own ladder, and climbs from there" }
+  - { id: S6, kind: code, ref: "examples/workflow-ticket-to-qa/src/machine.ts", symbol: "attemptsIn", said: "rounds are counted per origin on the record (roundsByOrigin) and the rung each origin reached beside them (climbedByOrigin); the two old ceilings are read only for a record saved before they went" }
+  - { id: S7, kind: code, ref: "packages/core/src/ports/Gate.ts", symbol: "Gate", said: "a gate answers ok, its output and how many checks were red (findings); absent is 'nobody said', never a guess" }
+  - { id: S8, kind: code, ref: "packages/core/src/diagram.ts", symbol: "DrawnTransition", said: "an edge label is prose amy does not interpret; classes (waiting, attention, anywhere, returns, call, verified, sendsBack) are what amy reads" }
   - { id: S9, kind: code, ref: "packages/core/src/config-schema.ts", symbol: "ConfigOf", said: "dotted schema keys type the workflow's config and validateConfig refuses missing, mistyped and unknown keys; amy doctor runs it. A value that must name another setting's key has no type" }
   - { id: S10, kind: decision, said: "each agent step may declare its own verify in code; the field is optional for whoever builds the workflow. Decided 2026-11-17; the default the core was to give is cut by S46" }
   - { id: S11, kind: decision, said: "two mechanisms, not one: verify judges a reply while the relay can still climb; a round that comes back later (red gate, changes asked, review threads) is decide()'s, keyed by where the work came back from. Decided 2026-11-17" }
@@ -20,7 +20,7 @@ sources:
   - { id: S17, kind: decision, said: "an origin whose rounds run out on the ladder's top rung advances to ESCALATED; policy.maxImplementAttempts and policy.maxGateAttempts are removed. Decided 2026-11-17" }
   - { id: S18, kind: decision, said: "the diagram marks an agent state that declares a verify with class verified, and a state that sends work back with class sendsBack; the workflow's declared origins must equal the sendsBack states, refused at mount. Decided 2026-11-17" }
   - { id: S19, kind: friction, said: "2026-11-17: a private project's fork changed code in COPILOT_FIX and HUMAN_FIX and pushed it without the checks; routing every change through IMPLEMENTING instead made the workflow smaller" }
-  - { id: S20, kind: code, ref: "examples/workflow-ticket-to-qa/workflow.mmd", said: "COPILOT_FIX and HUMAN_FIX change code from the review loop; only IMPLEMENTING's change reaches GATE and SELF_REVIEW" }
+  - { id: S20, kind: code, ref: "examples/workflow-ticket-to-qa/workflow.mmd", said: "the diagram draws GATE, SELF_REVIEW, COPILOT_WAIT, REVIEWER_ASSIGNED and HUMAN_REVIEW as sendsBack and IMPLEMENTING as verified; the workflow's declared origins and verifying steps are held equal to it at mount" }
   - { id: S21, kind: decision, said: "IMPLEMENTING is the one place the code changes: from READY on, a deciding state that finds new work (the owner's word, a thread not taken, checks failing on the head) goes there. Decided 2026-11-18" }
   - { id: S22, kind: decision, said: "COPILOT_FIX and HUMAN_FIX are removed with no legacy path; a record saved in either is refused at load by name. Decided 2026-11-18" }
   - { id: S23, kind: decision, said: "the origins S12 counts are the kinds of new work: the owner, a review thread, the forge's checks, GATE, SELF_REVIEW and the proof. Decided 2026-11-18" }
@@ -32,7 +32,7 @@ sources:
   - { id: S29, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "findPullRequestMentioning", said: "a code host may find a pull request by the ticket id it mentions, beside findPullRequest by branch" }
   - { id: S30, kind: code, ref: "plugins/codex/src/CodexHarness.ts", symbol: "classify", said: "a codex turn that completed with a message is completed, however wrong its answer" }
   - { id: S31, kind: code, ref: "plugins/hermes-agent/src/HermesHarness.ts", symbol: "classify", said: "a hermes run its report calls completed is completed, however wrong its answer; hermes reports a rate limit only as failure_reason" }
-  - { id: S32, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", symbol: "requireTicket", said: "a work id with no repository suffix is worked in the tracker's repo, even when the ticket's labels name only other repositories" }
+  - { id: S32, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", symbol: "requireTicket", said: "a called work id with no repository suffix is worked in the first repository its labels name when they leave out the team's; a work id of its own is worked in the tracker's" }
   - { id: S33, kind: friction, said: "2026-11-11: a private project called ticket-to-qa with a bare ticket id; a ticket labelled for the frontend in a team whose repository is the backend was worked in the backend" }
   - { id: S34, kind: decision, said: "a called work id that names no repository is worked where the ticket's labels put it, the first when several, when they leave out the team's; a work id of its own keeps today's retirement. Decided 2026-11-18" }
   - { id: S35, kind: friction, said: "2026-11-11: a private project's tickets stack, one branch cut from another's, and ticket-to-qa always cuts from the repository's base" }
@@ -40,10 +40,10 @@ sources:
   - { id: S37, kind: decision, said: "a stacked ticket is cut from its parent's open pull request branch, or the branch it merged into; it waits while the parent has none in its repository, and is cut from base when the parent is elsewhere. Decided 2026-11-18" }
   - { id: S38, kind: decision, said: "config onlyTickets, a list of ticket ids, limits what is worked; empty is every ticket, and an entry that is not a ticket id is refused. Decided 2026-11-18" }
   - { id: S39, kind: friction, said: "2026-11-19: a private project's implementing run reasoned there was nothing to change; implementStep read it as failed, the relay climbed to opus, and opus spent about thirty minutes reaching the same answer, twice that day" }
-  - { id: S40, kind: code, ref: "packages/agent-kit/src/steps.ts", symbol: "implementStep", said: "verify turns every run that committed nothing into failed with NO_CHANGE, so a reasoned 'nothing to change' climbs the ladder exactly like a run that gave up" }
+  - { id: S40, kind: code, ref: "packages/agent-kit/src/steps.ts", symbol: "implementStep", said: "implementStep commits through the caller and reports unchanged progress with the agent's own words as the reason; it declares no verify of its own, so a run that changed nothing never climbs" }
   - { id: S41, kind: decision, said: "an implementing run that changes no file and gives its reason in a NOTHING_TO_CHANGE line is completed, not climbed; decide() reads the reason as S26 reads failing checks. Silence still climbs. Decided 2026-11-19; cut by S46" }
   - { id: S42, kind: friction, said: "2026-11-19: a private project's fork pushed every step's commit as it was made, so a change GATE then refused was already on the pull request and its reviewers saw it" }
-  - { id: S43, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", said: "IMPLEMENTING and the thread fix call git.commitAndPush, so every commit reaches the remote before GATE and SELF_REVIEW have read it" }
+  - { id: S43, kind: code, ref: "examples/workflow-ticket-to-qa/src/actions.ts", said: "IMPLEMENTING commits with git.commit and never pushes; publishing pushes the round once GATE and SELF_REVIEW are green" }
   - { id: S44, kind: code, ref: "packages/core/src/git.ts", symbol: "commit", said: "Git already commits without pushing (commit) and pushes on its own (push), as a fast-forward or not at all" }
   - { id: S46, kind: decision, said: "no step verifies by default: judgeStep and implementStep pass every run that completed; a step that wants to climb declares its own verify. The NOTHING_TO_CHANGE marker goes. Decided 2026-11-20" }
   - { id: S47, kind: decision, said: "an unreadable JSON answer fails the action as today and the engine tries again, on no stronger rung: no friction ever recorded one, and A2 came from reading S3 alone. Decided 2026-11-20" }
@@ -91,6 +91,7 @@ touches:
   - docs/reference/configuration.md
   - .software-factory/policy.yaml
   - .software-factory/evidence/plugin-agent-relay/probe.ts
+  - .software-factory/evidence/plugin-agent-relay-scenario.sh
   - examples/workflow-ticket-to-qa/src/record.ts
   - examples/workflow-ticket-to-qa/src/review.ts
   - examples/workflow-ticket-to-qa/src/effects.ts
