@@ -390,6 +390,13 @@ describe("a self-review reply that says no verdict", () => {
     expect(judged.run.refused).toMatch(/APPROVED|CHANGES_ASKED|verdict/);
   });
 
+  it("refuses a reply whose verdict is not where it ends", async () => {
+    const context = await selfReviewContext();
+
+    const judged = await context.verify!(completed("APPROVED\n\nI have not read the migration yet, and will look at it next.") as never);
+    expect(judged.run.outcome).toBe("failed");
+  });
+
   it.each(["looks right\nAPPROVED", "the rounding is wrong\nCHANGES_ASKED: round once"])("passes a reply that ends on a verdict: %s", async (text) => {
     const context = await selfReviewContext();
 

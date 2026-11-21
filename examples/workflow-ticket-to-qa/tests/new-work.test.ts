@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Plan, WorkflowRuntime, applyPlan, attemptsIn, movedBy } from "@amykit/core";
 import {
   WORKDAY,
   botReview,
   botThread,
+  fakeHost,
+  mountTicketToQa,
   observation,
   policy,
   pullRequest,
@@ -168,5 +170,111 @@ describe("new work weighed against the brief", () => {
     expect(destination(decided)).not.toBe("IMPLEMENTING");
     const effects = decided.kind === "settled" ? [] : decided.effects;
     expect(effects.some((e) => /reply|answer/.test(e.type) && JSON.stringify(e).includes("T2"))).toBe(true);
+  });
+});
+
+describe("the owner's word where the work is discussed", () => {
+  /** A chat whose thread for the unit holds one reply from the owner. */
+  const chatSaying = (text: string, at: string) => ({
+    threads: true as const,
+    known: vi.fn(async () => ({ id: "thread-1" })),
+    open: vi.fn(async () => ({ id: "thread-1" })),
+    post: vi.fn(async () => "m1"),
+    replies: vi.fn(async (_thread: unknown, since: string) =>
+      at > since ? [{ at, author: "owner", text, files: [] }] : []),
+  });
+
+  it("in the unit's thread, at a review, is new work for IMPLEMENTING from origin owner", async () => {
+    const pr = pullRequest({ reviews: [review()] });
+    const mounted = (await mountTicketToQa({
+      now: () => WORKDAY,
+      host: fakeHost(pr),
+      conversation: chatSaying("Please also round the tax line.", "2026-09-03T11:30:00.000Z") as never,
+    })) as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const r = record("HUMAN_REVIEW", { reviewer: "ada", pullRequestNumber: 4940 });
+
+    const seen = await mounted.observe(r);
+    const decided = plan(r, seen, mounted.policy as never);
+
+    expect(seen.pullRequest?.number).toBe(4940);
+    expect(destination(decided)).toBe("IMPLEMENTING");
+    expect(JSON.stringify(decided)).toContain("round the tax line");
+  });
+
+  it("is not an answer the work already acted on before it was built", () => {
+    // The question the triage asked was answered at 10:00 and the triage read
+    // that answer at 11:00: the work was built from it, so it is not new.
+    const r = record("HUMAN_REVIEW", {
+      reviewer: "ada",
+      pullRequestNumber: 4940,
+      triage: { clear: true, questions: [], askedQuestions: ["Which invoice?"], at: "2026-09-03T11:00:00.000Z" },
+      clarification: ["owner@example.test answered: the March one"],
+    });
+    const seen = observation({
+      pullRequest: pullRequest({ reviews: [review()] }),
+      conversation: [{ author: "owner@example.test", body: "the March one", at: "2026-09-03T10:00:00.000Z", fromAmy: false }],
+    });
+
+    expect(destination(plan(r, seen, policy))).not.toBe("IMPLEMENTING");
+  });
+});
+
+describe("a ticket whose pull request is open on a branch the tracker does not name", () => {
+  it.each(["DISCOVERED", "CLARIFYING"] as const)("is found from %s by the id it mentions and taken up at its review", async (state) => {
+    const pr = pullRequest({ number: 77, reviews: [] });
+    const mounted = (await mountTicketToQa({
+      now: () => WORKDAY,
+      host: fakeHost(null, { findPullRequestMentioning: vi.fn().mockResolvedValue(pr) }),
+    })) as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const r = record(state, state === "CLARIFYING"
+      ? { triage: { clear: false, questions: ["Which invoice?"], askedQuestions: ["Which invoice?"], at: WORKDAY.toISOString() } }
+      : {});
+
+    const seen = await mounted.observe(r);
+
+    expect(seen.pullRequest?.number).toBe(77);
+    expect(destination(plan(r, seen, policy))).toBe("REVIEWER_ASSIGNED");
+  });
+});
+
+describe("a second thread that contradicts the brief, after the owner settled the first", () => {
+  it("is asked of the owner, not built", () => {
+    const r = record("HUMAN_REVIEW", {
+      reviewer: "ada",
+      pullRequestNumber: 4940,
+      escalation: { reason: "T1: removing the rounding undoes the brief", askedAt: "2026-09-03T09:00:00.000Z", resolvedAt: "2026-09-03T09:30:00.000Z" },
+      judged: [
+        { threadId: "T1", verdict: "fixed", note: "the change answers it" },
+        { threadId: "T2", verdict: "contradicts-brief" as never, note: "dropping the currency undoes the brief's second criterion" },
+      ],
+    });
+    const seen = observation({
+      pullRequest: pullRequest({
+        reviews: [review({ state: "CHANGES_REQUESTED" })],
+        reviewDecision: "CHANGES_REQUESTED",
+        threads: [thread({ id: "T1", isResolved: true }), thread({ id: "T2", body: "drop the currency" })],
+      }),
+    });
+
+    const decided = plan(r, seen, policy);
+
+    expect(destination(decided)).not.toBe("IMPLEMENTING");
+    expect(decided.kind === "advance" ? decided.effects.filter((e) => e.type === "escalate" && JSON.stringify(e).includes("T2")) : []).toHaveLength(1);
+  });
+});
+
+describe("checks failing on the head that the agent finds nothing to change for", () => {
+  it("charge no round to anybody, taken up and answered", () => {
+    const failing = observation({ pullRequest: pullRequest({ reviews: [botReview(), review()], checks: { state: "failing", commitSha: pullRequest().headSha } }) });
+    const taken = look(record("REVIEWER_ASSIGNED", { pullRequestNumber: 4940 }), failing);
+    expect(taken.next.state).toBe("IMPLEMENTING");
+
+    const reason = "the failing check is a flaky upstream job, nothing in this change touches it";
+    const ran = look(taken.next, observation(), {
+      implementation: { ok: true, output: reason, at: "2026-09-03T12:30:00.000Z", progress: { kind: "unchanged", key: "implementation", detail: reason } },
+    });
+    const { next } = look(ran.next, observation());
+
+    expect(next.roundsByOrigin ?? {}).toEqual({});
   });
 });

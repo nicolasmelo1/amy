@@ -13,6 +13,7 @@ import {
   policy,
   pullRequest,
   record,
+  review,
   thread,
   ticketWorkerDeps,
 } from "@amykit/test-fixtures";
@@ -150,5 +151,59 @@ describe("a round the checks send back", () => {
 
     expect(Object.values(back.roundsByOrigin ?? {}).reduce((sum, n) => sum + n, 0)).toBe(2);
     expect(Object.keys(back.roundsByOrigin ?? {}).sort()).toHaveLength(2);
+  });
+});
+
+describe("a round the forge's checks send back", () => {
+  const failing = { checks: { state: "failing" as const, commitSha: pullRequest().headSha } };
+
+  it.each([
+    ["COPILOT_WAIT", { pullRequestNumber: 4940 }],
+    ["REVIEWER_ASSIGNED", { pullRequestNumber: 4940 }],
+  ] as const)("at %s counts toward its own origin, never the gate's", (state, fields) => {
+    const seen = observation({ pullRequest: pullRequest({ ...failing, reviews: [botReview()] }) });
+
+    const { next } = look(record(state, fields), seen);
+
+    expect(next.state).toBe("IMPLEMENTING");
+    expect(Object.values(next.roundsByOrigin ?? {}).reduce((sum, n) => sum + n, 0)).toBe(1);
+    expect(next.roundsByOrigin?.gate).toBeUndefined();
+  });
+});
+
+describe("the owner's rounds", () => {
+  it("advance to ESCALATED once they have run out on the top rung, as every origin's do", () => {
+    const spent = { roundsByOrigin: { owner: 2 }, climbedByOrigin: { owner: policy.escalation.rungs - 1 }, spentByOrigin: { owner: 0 } };
+    const r = record("HUMAN_REVIEW", { reviewer: "ada", pullRequestNumber: 4940, ownerWord: { author: "owner@example.test", body: "round it", at: "2026-09-03T10:00:00.000Z" }, ...spent });
+    const seen = observation({
+      pullRequest: pullRequest({ reviews: [review()] }),
+      conversation: [{ author: "owner@example.test", body: "and round the tax line too", at: "2026-09-03T11:30:00.000Z", fromAmy: false }],
+    });
+
+    expect(plan(r, seen, policy)).toMatchObject({ kind: "advance", to: "ESCALATED" });
+  });
+});
+
+describe("review threads taken up beside another origin's work", () => {
+  it.each([
+    [
+      "the owner's word",
+      record("HUMAN_REVIEW", { reviewer: "ada", pullRequestNumber: 4940 }),
+      observation({
+        pullRequest: pullRequest({ reviews: [review()], threads: [thread({ id: "T7" })] }),
+        conversation: [{ author: "owner@example.test", body: "round the tax line", at: "2026-09-03T11:30:00.000Z", fromAmy: false }],
+      }),
+    ],
+    [
+      "checks failing on the head",
+      record("REVIEWER_ASSIGNED", { pullRequestNumber: 4940 }),
+      observation({ pullRequest: pullRequest({ reviews: [botReview()], threads: [thread({ id: "T7" })], checks: { state: "failing", commitSha: pullRequest().headSha } }) }),
+    ],
+  ])("count a round toward the review thread's origin when taken up with %s", (_with, r, seen) => {
+    const { next } = look(r, seen);
+
+    expect(next.state).toBe("IMPLEMENTING");
+    expect(next.taking).toContain("T7");
+    expect(next.roundsByOrigin?.thread).toBe(1);
   });
 });

@@ -269,3 +269,29 @@ describe("a verify the step declares itself", () => {
     expect(result.value).toMatchObject({ ok: true, progress: { kind: "advanced" } });
   });
 });
+
+describe("an implementing attempt that climbed past a refused rung", () => {
+  it("says the attempt advanced when the refused rung committed a change and the rung after it added nothing", async () => {
+    const weak = rung("sonnet", "completed", "changed the parser");
+    const strong = rung("opus", "completed", "the parser change already holds; nothing more to do");
+    // The first rung's work is committed before its verify refuses it; the
+    // second finds that work in place and leaves the tree as it is.
+    const commits = [true, false];
+    const refusesTheFirst = async (reply: HarnessReply): Promise<HarnessReply> =>
+      reply.run.model === "sonnet"
+        ? { ...reply, run: { ...reply.run, outcome: "failed" as const, refused: "the answer never names the ticket" } }
+        : reply;
+
+    const result = await implementStep(new HarnessRelay(oneLadder([weak, strong])), {
+      prompt: "do it",
+      cwd: "/w",
+      context: { verify: refusesTheFirst },
+      commit: async () => commits.shift()!,
+      now: NOW,
+    });
+
+    expect([weak.asked, strong.asked]).toEqual([1, 1]);
+    // The head moved during this attempt, so it is not a run that changed nothing.
+    expect(result.value).toMatchObject({ ok: true, progress: { kind: "advanced", key: "implementation" } });
+  });
+});

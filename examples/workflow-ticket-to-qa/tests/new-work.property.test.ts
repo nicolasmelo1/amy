@@ -54,3 +54,22 @@ describe("new work after READY", () => {
     );
   });
 });
+
+/** The owner's word, which the pull request does not show but the work's conversation does. */
+const OWNER_SAID: Partial<Observation> = {
+  pullRequest: pullRequest({ reviews: [botReview(), review()] }),
+  conversation: [{ author: "owner@example.test", body: "Please also round the tax line.", at: "2026-09-03T11:30:00.000Z", fromAmy: false }],
+};
+
+describe("the owner's word after READY", () => {
+  it("goes_to_implementing_from_every_state_that_reads_the_pull_request", () => {
+    fc.assert(
+      fc.property(fc.constantFrom(...AFTER_READY), (from) => {
+        const answer = plan(record(from.state, from.record), observation(OWNER_SAID), policy);
+
+        const to = answer.kind === "advance" ? answer.to : answer.kind;
+        expect(to === "IMPLEMENTING" ? to : `${from.state} -> ${to} on the owner's word`).toBe("IMPLEMENTING");
+      }),
+    );
+  });
+});
