@@ -3879,6 +3879,11 @@
         },
         {
           "depth": 2,
+          "title": "Completed is not the same as holding",
+          "slug": "completed-is-not-the-same-as-holding"
+        },
+        {
+          "depth": 2,
           "title": "Acceptance criteria",
           "slug": "acceptance-criteria"
         }
@@ -11015,6 +11020,10 @@
           "relay.the_first_mention_sets_the_order",
           "relay.escalates_the_model_after_a_failure",
           "relay.does_not_change_harness_on_a_failure",
+          "relay.climbs_on_a_refused_verify",
+          "relay.handoff_carries_the_refusal",
+          "relay.a_round_from_an_origin_starts_higher",
+          "relay.the_round_after_starts_at_the_same_rung",
           "relay.changes_harness_after_a_rate_limit",
           "relay.skips_the_rest_of_the_throttled_harness",
           "relay.starts_nothing_else_after_an_abandoned_run",
