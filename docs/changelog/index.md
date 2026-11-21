@@ -22,7 +22,9 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
-Nothing is pending. `.changeset/` is empty, which between releases is not a mistake.
+### The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.
+
+`patch` · `@amykit/workflow-ticket-to-qa`
 
 <!-- amy:end changelog-unreleased -->
 
