@@ -12,7 +12,7 @@
     ]
   },
   "observed": {
-    "assertions_run": 40,
+    "assertions_run": 47,
     "assertions_failed": 0,
     "node": "v22.22.2"
   },
@@ -79,6 +79,26 @@
     },
     {
       "type": "relay.records_which_axis_moved",
+      "status": "passed"
+    },
+    {
+      "type": "relay.climbs_on_a_refused_verify",
+      "status": "passed"
+    },
+    {
+      "type": "relay.keeps_the_harness_a_refusal_was_answered_on",
+      "status": "passed"
+    },
+    {
+      "type": "relay.answers_the_refused_step_on_the_stronger_rung",
+      "status": "passed"
+    },
+    {
+      "type": "relay.handoff_carries_the_refusal",
+      "status": "passed"
+    },
+    {
+      "type": "relay.records_the_refusal_as_a_failure",
       "status": "passed"
     },
     {
@@ -175,6 +195,14 @@
     },
     {
       "type": "relay.names_the_skills_there_were_to_choose_from",
+      "status": "passed"
+    },
+    {
+      "type": "relay.a_round_from_an_origin_starts_higher",
+      "status": "passed"
+    },
+    {
+      "type": "relay.the_round_after_starts_at_the_same_rung",
       "status": "passed"
     }
   ]
