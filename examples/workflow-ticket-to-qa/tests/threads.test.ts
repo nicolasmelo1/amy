@@ -291,14 +291,15 @@ describe("publishing a round to a reviewer already on the pull request", () => {
 });
 
 describe("an answer said on a review thread", () => {
-  it("is said on that thread on the pull request, not in the chat or on the ticket, and remembered as said", async () => {
+  /** Says one answer with replies configured on the places given, and reports where it went. */
+  async function answerWith(places: string[]) {
     const conversation = threads();
     const comment = vi.fn(async () => {});
     const replyToReviewThread = vi.fn(async () => {});
     const outcomes: Record<string, unknown> = {};
-
     await actionsFor(policy)["reply-thread"]!({
       ports: { conversation, tracker: { comment }, "code-host": fakeHost(pullRequest(), { replyToReviewThread } as never) },
+      config: { repliesOn: places },
       ctx: { now: () => NOW },
       announce: async () => {},
     } as never, {
@@ -306,10 +307,27 @@ describe("an answer said on a review thread", () => {
       observation: { ticket: ticket(), pullRequest: pullRequest({ threads: [thread({ id: "T2" })] }) },
       outcomes,
     } as never, { type: "reply-thread", threadId: "T2", text: "the brief keeps currency out of scope" });
+    return {
+      said: {
+        conversation: conversation.opened.length > 0,
+        "code-host": replyToReviewThread.mock.calls.length > 0,
+        tracker: comment.mock.calls.length > 0,
+      },
+      outcomes,
+    };
+  }
 
-    expect(replyToReviewThread).toHaveBeenCalledWith("T2", expect.stringContaining("the brief keeps currency out of scope"));
-    expect(comment).not.toHaveBeenCalled();
-    expect(conversation.opened).toEqual([]);
+  it.each([["conversation"], ["code-host"], ["tracker"]])("is said only where the config says replies go: %s", async (place) => {
+    const { said, outcomes } = await answerWith([place]);
+
+    expect(said).toEqual({ conversation: place === "conversation", "code-host": place === "code-host", tracker: place === "tracker" });
+    expect(outcomes.answered).toEqual(["T2"]);
+  });
+
+  it("is said in every place the config names, and remembered as said once", async () => {
+    const { said, outcomes } = await answerWith(["conversation", "code-host"]);
+
+    expect(said).toEqual({ conversation: true, "code-host": true, tracker: false });
     expect(outcomes.answered).toEqual(["T2"]);
   });
 });

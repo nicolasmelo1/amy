@@ -50,6 +50,8 @@ export interface TicketMount {
   now?: () => Date;
   log?: EventLog;
   policy?: Policy;
+  /** Settings laid over the fixture's own, when a test is about one of them. */
+  settings?: Record<string, unknown>;
   /** The brief store, when the test is about one ticket reading a brief. */
   briefs?: BriefStore;
   /**
@@ -90,7 +92,7 @@ export async function mountTicketToQa(options: TicketMount = {}): Promise<Workfl
     configSchema: drawnTicketToQa.configSchema,
     register: (registry, ctx) => drawnTicketToQa.register(registry, { ...ctx, checkouts: () => checkouts }),
   };
-  const settings = { ...SETTINGS, ...(options.policy ? { policy: options.policy } : {}) };
+  const settings = { ...SETTINGS, ...(options.settings ?? {}), ...(options.policy ? { policy: options.policy } : {}) };
   const outcome = await mount([lent, world], { [drawnTicketToQa.name]: settings }, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: options.now ?? ((): Date => new Date()),

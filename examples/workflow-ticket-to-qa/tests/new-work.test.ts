@@ -5,6 +5,7 @@ import {
   botReview,
   botThread,
   fakeHost,
+  fakeTracker,
   mountTicketToQa,
   observation,
   policy,
@@ -190,6 +191,7 @@ describe("the owner's word where the work is discussed", () => {
       now: () => WORKDAY,
       host: fakeHost(pr),
       conversation: chatSaying("Please also round the tax line.", "2026-09-03T11:30:00.000Z") as never,
+      settings: { repliesOn: ["conversation"] },
     })) as unknown as WorkflowRuntime<TicketRecord, Observation>;
     const r = record("HUMAN_REVIEW", { reviewer: "ada", pullRequestNumber: 4940 });
 
@@ -199,6 +201,24 @@ describe("the owner's word where the work is discussed", () => {
     expect(seen.pullRequest?.number).toBe(4940);
     expect(destination(decided)).toBe("IMPLEMENTING");
     expect(JSON.stringify(decided)).toContain("round the tax line");
+  });
+
+  it("is read only where the config says replies come from", async () => {
+    const pr = pullRequest({ reviews: [review()] });
+    const comments = vi.fn(async () => [{ author: "owner@example.test", body: "Please also drop the footer.", at: "2026-09-03T11:40:00.000Z", fromAmy: false }]);
+    const mounted = (await mountTicketToQa({
+      now: () => WORKDAY,
+      host: fakeHost(pr),
+      tracker: fakeTracker({ comments } as never),
+      conversation: chatSaying("Please also round the tax line.", "2026-09-03T11:30:00.000Z") as never,
+      settings: { repliesOn: ["code-host"] },
+    })) as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const r = record("HUMAN_REVIEW", { reviewer: "ada", pullRequestNumber: 4940 });
+
+    const decided = plan(r, await mounted.observe(r), mounted.policy as never);
+
+    expect(JSON.stringify(decided)).not.toContain("round the tax line");
+    expect(JSON.stringify(decided)).not.toContain("drop the footer");
   });
 
   it("is not an answer the work already acted on before it was built", () => {
