@@ -1048,6 +1048,11 @@
           "slug": "coming-next"
         },
         {
+          "depth": 3,
+          "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
+          "slug": "the-property-that-keeps-every-code-change-in-implementing-now-plants-the-defect-it-rejects"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -11893,7 +11898,20 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "six-apes-attend",
+        "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
