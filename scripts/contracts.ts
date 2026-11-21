@@ -439,7 +439,15 @@ async function ghFindings(manifest: ContractsManifest, found: Findings): Promise
 /** The newest release of a harness's publisher, named the way the pinned version is. */
 async function latestHarness(harness: { readonly releases: string }): Promise<string> {
   const url = `${harness.releases}/latest`;
-  const response = await fetch(url, { headers: { "user-agent": "amy-contracts", accept: "application/vnd.github+json" } });
+  // Signed like `release`: unsigned, a CI runner shares 60 calls an hour with
+  // every other job on its address, and the check went red on a 403.
+  const response = await fetch(url, {
+    headers: {
+      "user-agent": "amy-contracts",
+      accept: "application/vnd.github+json",
+      ...(process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
+    },
+  });
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   const tag = String(((await response.json()) as { tag_name?: string }).tag_name ?? "");
   // Codex tags releases `rust-v0.166.0`, hermes `v0.23.0`.
