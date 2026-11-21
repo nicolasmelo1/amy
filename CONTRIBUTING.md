@@ -183,6 +183,11 @@ When one of these rules fires, its message says why the rule exists. Read it
 before changing the code, and never loosen the rule to get past it: the rule
 files are hash-locked, so loosening one shows up in the diff.
 
+The ladder that spends a stronger model is the other half of it: a step's reply
+is judged where the step is written, a round that comes back is counted by where
+it came back from, and every threshold is in `config.yaml`. Why the judging and
+the counting are separate: [a step escalates by where its work came back from](docs/design/a-step-escalates-by-where-its-work-came-back-from.md).
+
 A **workflow** is a diagram, its decisions and its actions: `workflow.mmd`, the Mermaid diagram that says
 *where* work can go and is the only place its states are written; `decide`, one
 pure decision per drawn state that says *where it goes next*; and `actions`,
