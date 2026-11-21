@@ -122,6 +122,31 @@ transcription can go stale where a parser cannot, so a template that stops
 offering the example it copied turns the check red rather than leaving it
 mounting something nobody is offered.
 
+## Completed is not the same as holding
+
+A harness that exits zero and prints a well-formed answer has *run*, and this
+is the case the relay used to walk past: an answer that was wrong, or that
+said the ticket could not be worked, completed, so the ladder stopped at the
+weakest rung that produced one. The step's own `verify` is what says an answer
+does not hold, and once it does, the relay climbs on it exactly as it climbs on
+a crash: one rung up, the same harness while it has a stronger model.
+
+`relay.climbs_on_a_refused_verify` walks that path against the built claude
+plugin: the fake's envelope for `sonnet` is a successful run whose result is an
+answer the step refuses, and the rung that answers is `opus`.
+`relay.handoff_carries_the_refusal` reads the prompt the second rung was
+actually handed, and finds the reason the first answer was refused in it,
+rather than the sentence that says nothing: a stronger model told only "did
+not succeed" buys the same answer at a higher price.
+
+The other half of the same mechanism is where a round *starts*. A round GATE
+sent back is not a fresh question, so `relay.a_round_from_an_origin_starts_higher`
+mounts the built workflow over the built relay and drives its `IMPLEMENTING`
+action with a record whose gate rounds are spent: the first rung asked is the
+second one. `relay.the_round_after_starts_at_the_same_rung` runs the round
+after it and finds the same rung again, because an escalation is permanent and
+never jumps to the person at the top.
+
 ## Acceptance criteria
 
 - [x] The relay is what mounts the `agent` port, and the harnesses on their
@@ -138,6 +163,18 @@ mounting something nobody is offered.
 - [x] A failure does not change harness while that harness still has a
       stronger model to offer
       (proof: assertion:relay.does_not_change_harness_on_a_failure)
+- [x] A reply that completed and its step's own verify refused is asked of the
+      next rung, rather than accepted as the answer
+      (proof: assertion:relay.climbs_on_a_refused_verify)
+- [x] The next rung is told the refusal's reason, not that the previous one
+      "did not succeed"
+      (proof: assertion:relay.handoff_carries_the_refusal)
+- [x] A round GATE sent back starts IMPLEMENTING at the rung its origin's
+      rounds earned, in the built workflow walking the built relay
+      (proof: assertion:relay.a_round_from_an_origin_starts_higher)
+- [x] The round after it starts at the same rung, because an escalation is
+      permanent
+      (proof: assertion:relay.the_round_after_starts_at_the_same_rung)
 - [x] A rate limit changes harness, because a bigger model sits behind the
       same quota that just refused
       (proof: assertion:relay.changes_harness_after_a_rate_limit)
@@ -202,7 +239,7 @@ mounting something nobody is offered.
       (proof: assertion:prompt.carries_the_answers_to_its_own_questions)
 
 **Exit condition:** the gate carries a sealed manifest whose report shows
-these twenty-six assertions passing against the built artifacts, and touching
+every assertion above passing against the built artifacts, and touching
 the relay or the shared agent kit turns `sf check` red until the run is
 repeated and resealed.
 

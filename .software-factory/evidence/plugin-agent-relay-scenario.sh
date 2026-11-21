@@ -62,6 +62,12 @@ envelope() {
   printf '{"type":"result","subtype":"%s","is_error":%s,"api_error_status":%s,"result":"{\\"clear\\": true}","duration_ms":10,"total_cost_usd":0.01,"usage":{"input_tokens":2,"output_tokens":4,"cache_read_input_tokens":0,"cache_creation_input_tokens":0},"modelUsage":{"claude-%s-4-5[1m]":{"costUSD":0.01}}}\n' "$1" "$2" "$3" "$model"
 }
 
+# A completed run whose answer is the caller's text: the envelope is fine and
+# a step's own verify is what refuses it.
+envelopeSaying() {
+  printf '{"type":"result","subtype":"success","is_error":false,"api_error_status":null,"result":"%s","duration_ms":10,"total_cost_usd":0.01,"usage":{"input_tokens":2,"output_tokens":4,"cache_read_input_tokens":0,"cache_creation_input_tokens":0},"modelUsage":{"claude-%s-4-5[1m]":{"costUSD":0.01}}}\n' "$1" "$model"
+}
+
 case "$AMY_E2E_CLAUDE" in
   throttled)
     # A 429 in the envelope, which is the only place a quota is stated.
@@ -81,6 +87,15 @@ case "$AMY_E2E_CLAUDE" in
       exit 1
     fi
     envelope success false null
+    ;;
+  unclear-answer)
+    # The weaker model answers with something its step refuses; the stronger
+    # one answers. It is the same envelope shape a real completed run has.
+    if [ "$model" = "sonnet" ]; then
+      envelopeSaying '{\"clear\": false}'
+    else
+      envelope success false null
+    fi
     ;;
   *)
     envelope success false null
