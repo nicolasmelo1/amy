@@ -1,5 +1,46 @@
 # @amykit/plugin-agent-relay
 
+## 0.9.0
+
+### Patch Changes
+
+- a169c23: **A skill reaches every harness.**
+  
+  A step's skill was lent only to Claude; Codex received `/name` with nothing
+  behind it and Hermes refused the turn. Codex now runs under a fresh `HOME` that
+  holds only the lent skill, and names it explicitly on `turn/start`; Hermes
+  passes `-s <name>` with amy's skill root named in the profile's
+  `skills.external_dirs`, and both declare `lendsSkill`. The relay never sends a
+  skill's name to a rung it did not hand the skill to, a ladder that could reach
+  such a harness is refused at boot, and the conformance suite fails a harness
+  that answers a skill turn without declaring it. Codex and Hermes are held to
+  their pinned CLI contracts, vendored beside the doubles.
+- f4282ca: **Nothing a process writes is lost to another, and no call waits forever.**
+  
+  `amy run` now discovers before it ticks, through the same pass `amy tick` and the
+  daemon use, so a ticket sitting in the world is picked up on the first pass. One
+  transport in core gives every request a deadline and counts the body as it
+  arrives; Slack, Linear, Telegram and the models.dev refresh go through it. One
+  atomic write stages under a name only its writer holds, and notes, tasks and
+  records use it: two writers at one instant both survive, and `amy look` changes
+  a record under its own lock instead of overwriting the engine's move. The
+  Telegram bot takes core's lock, so a stale one is buried through a tombstone
+  rather than renamed aside by two processes at once. `config explain`, `workflow
+  check` and `workflow export` build their resolver with the profile they act for,
+  so a fork is what they read. Three repo-local rules keep each class out: a bare
+  `fetch`, a hand-built `.tmp` name and a resolver without its profile.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+  - @amykit/agent-kit@0.9.0
+  - @amykit/model-specs@0.9.0
+
 ## 0.8.0
 
 ### Minor Changes

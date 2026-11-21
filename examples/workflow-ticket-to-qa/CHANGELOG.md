@@ -1,5 +1,75 @@
 # @amykit/workflow-ticket-to-qa
 
+## 0.9.0
+
+### Minor Changes
+
+- 96edd4a: **An escalation knows where its work came back from.** `@amykit/core` gains
+  `escalation.ts`: every origin of new work is configured the same way, with a
+  named scale of rounds in `config.yaml` and a level that applies from a number
+  of findings on. Rounds are counted per origin from the rung the work reached,
+  so a round buys one rung and never several, and a rung never comes down when the
+  next round finds less. A gate answers how many checks were red. A config field
+  may be `oneOf`, typed as the union of the keys a dotted group declares and
+  refused when it names anything else. A diagram marks a state `verified` or
+  `sendsBack`, and a mount refuses one whose marks disagree with the workflow's
+  own declarations.
+  
+  `@amykit/agent-kit` asks a step's rung directly instead of always starting at
+  the first, and tells the next rung why a completed reply was refused. No step
+  verifies by default: `judgeStep` and `implementStep` take the reply they are
+  given, and a step that wants a climb declares its own `verify`, which is the one
+  that decides. A run that ended without changing a file is an answer on the rung
+  that gave it, with the agent's own words as the reason.
+  
+  The ticket-to-QA workflow keeps one place that changes code. A reviewer's
+  thread, an automated thread, failing checks and the owner's word all send the
+  work to `IMPLEMENTING`, and a change reaches the remote once per round through
+  publishing, after the gate has run on it. What a round found is counted against
+  the origin that sent it back, an origin that spends its ladder escalates to the
+  owner, and the two attempt ceilings it used to carry are gone.
+
+### Patch Changes
+
+- fde989b: **A ticket reads the brief its project judged.**
+  
+  `briefOf` resolves the brief a unit is worked against: the one stored under
+  the unit's own id first, the tracker's `briefId` after. Triage, self-review,
+  the question triage appends and a project's GROOMED gate read that one brief,
+  so a unit groomed for itself is worked against what the gate judged.
+- fde989b: **The review and an in-flight question read the brief the unit was worked with.**
+  
+  The self-review lane resolves the brief under the unit's work id, not the
+  ticket's, so a ticket worked in one of several repositories reviews against
+  the same brief triage read and labels it as its own. A record triaged before
+  triage kept the brief it read appends its question to the brief the current
+  look resolved, instead of appending nowhere.
+- 3757d88: **The review is handed the unit's work id.**
+  
+  A project's phase record is named for the call (`PROJ-1239/WORKFLOW#1`), and
+  the self-review lane was reading the brief under that id, which a brief store
+  refuses for its slash. The lane now receives the unit's work id and resolves
+  the brief there, so a project's review reads what triage read and labels it
+  the brief the ticket is worked against.
+- fde989b: **The work phase reads its project's brief.**
+  
+  A project's phase folders now decide which phases run, so a workflow that
+  declares its own brief phase absent can still be the work phase of a project
+  that grooms one. Triage records the brief its prompt was built from and
+  appends its question there, a unit's brief is read under its work id even when
+  the ticket spans repositories, prompts name the brief as the one the ticket is
+  worked against, and `briefOf` names the id whose read failed.
+- Updated dependencies [e7a5a2e]
+- Updated dependencies [a169c23]
+- Updated dependencies [96edd4a]
+- Updated dependencies [fde989b]
+- Updated dependencies [1198a21]
+- Updated dependencies [1232657]
+- Updated dependencies [f4282ca]
+- Updated dependencies [fde989b]
+  - @amykit/core@0.9.0
+  - @amykit/agent-kit@0.9.0
+
 ## 0.8.0
 
 ### Minor Changes
