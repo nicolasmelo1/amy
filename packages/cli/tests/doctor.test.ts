@@ -166,7 +166,7 @@ describe("diagnose", () => {
     expect(labelled(checks, "worktrees root")).toBeUndefined();
     expect(labelled(checks, "gh available")).toBeUndefined();
     expect(labelled(checks, "git available")).toBeUndefined();
-    expect(labelled(checks, "claude available")?.ok).toBe(true);
+    expect(labelled(checks, "claude available")).toBeUndefined();
   });
 
   it("fails when nothing would vouch for a change", async () => {
@@ -212,12 +212,13 @@ describe("diagnose", () => {
     expect(labelled(checks, "LINEAR_API_KEY")).toBeUndefined();
   });
 
-  it("checks the tools it shells out to", async () => {
+  it("checks workspace tools without requiring Claude", async () => {
     const checks = await diagnose(deps({ workspacePort: {} }));
 
-    for (const tool of ["gh", "claude", "git"]) {
+    for (const tool of ["gh", "git"]) {
       expect(labelled(checks, `${tool} available`)?.ok).toBe(true);
     }
+    expect(labelled(checks, "claude available")).toBeUndefined();
   });
 
   it("reports the first line of a tool's complaint", async () => {

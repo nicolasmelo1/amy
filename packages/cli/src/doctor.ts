@@ -377,10 +377,6 @@ function environment({ environments, env }: DoctorDeps): Check[] {
     .map((name) => ({ label: name, ok: Boolean(env[name]) }));
 }
 
-const REQUIRED_TOOLS: readonly [string, readonly string[]][] = [
-  ["claude", ["--version"]],
-];
-
 /**
  * The tools only work in a repository needs: asked of an install that mounts
  * a workspace, so a machine that drives no code is not told it is broken for
@@ -392,9 +388,10 @@ const WORKSPACE_TOOLS: readonly [string, readonly string[]][] = [
 ];
 
 async function tools({ runner, workspacePort }: DoctorDeps): Promise<Check[]> {
+  if (!workspacePort) return [];
   const checks: Check[] = [];
 
-  for (const [tool, args] of [...(workspacePort ? WORKSPACE_TOOLS : []), ...REQUIRED_TOOLS]) {
+  for (const [tool, args] of WORKSPACE_TOOLS) {
     const result = await runner.run(tool, args, { timeoutMs: 30_000 });
     checks.push({
       label: `${tool} available`,

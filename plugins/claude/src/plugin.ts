@@ -1,4 +1,4 @@
-import { definePlugin } from "@amykit/core";
+import { NodeCommandRunner, definePlugin } from "@amykit/core";
 import { contributeTiers, contributeUsage } from "@amykit/agent-kit";
 import { ClaudeHarness, writingMode } from "./ClaudeHarness.js";
 import { configSchema } from "./config.js";
@@ -7,6 +7,15 @@ import { ClaudeUsageReader } from "./usage.js";
 export const plugin = definePlugin<typeof configSchema>({
   name: "@amykit/plugin-claude",
   configSchema,
+  checks: [
+    {
+      name: "claude available",
+      async run() {
+        const result = await new NodeCommandRunner().run("claude", ["--version"], { timeoutMs: 30_000 });
+        return { label: "claude available", ok: result.ok, detail: result.ok ? "" : (result.stderr.split("\n")[0] ?? "") };
+      },
+    },
+  ],
   register(registry, ctx) {
     const tiers = ctx.config.models;
     // Refused here, at mount, rather than as a run that answers and edits nothing.
