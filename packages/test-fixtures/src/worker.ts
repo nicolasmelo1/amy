@@ -64,12 +64,26 @@ export interface TicketMount {
 }
 
 /** What ticket-to-qa is configured with, for a test. */
+/** The escalation block a fixture mounts: a patient ladder of three rungs. */
+function anEscalation(): Record<string, unknown> {
+  const origin = (level: string) => ({ level, beyond: "immediate", findingsAt: 3 });
+  return {
+    scale: { patient: 3, normal: 2, immediate: 1 },
+    rungs: 3,
+    origins: { gate: origin("normal"), thread: origin("normal"), "self-review": origin("normal"), owner: { level: "immediate" } },
+  };
+}
+
 const SETTINGS = {
   repos: ["Northwind/northwind-backend"],
+  // Where an answer is said and where the owner's word is read from: both of
+  // the ports a test can mount without a plugin of its own. A test about one
+  // of the places lays its own list over this one.
+  repliesOn: ["conversation", "tracker"],
   qaStatusName: "In QA",
   // Every number an escalation rests on is written in the config, with no
   // default in code, so a fixture that mounts the workflow writes them too.
-  escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+  escalation: anEscalation(),
 };
 
 /**

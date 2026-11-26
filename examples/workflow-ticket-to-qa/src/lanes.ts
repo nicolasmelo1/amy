@@ -118,12 +118,18 @@ type Asking = Agent & { ask(prompt: string, cwd: string, context?: AskContext): 
  * which is what the step's own `verify` refuses.
  */
 function verdictLine(text: string): "APPROVED" | "CHANGES_ASKED" | undefined {
-  const lines = text.split("\n").reverse();
-  for (const line of lines) {
-    const said = verdictWord(line);
-    if (said.startsWith("CHANGES_ASKED")) return "CHANGES_ASKED";
-    if (said.startsWith("APPROVED")) return "APPROVED";
-  }
+  // Where it ends, not where it was mentioned: a review that said APPROVED
+  // and then kept thinking has not passed the change, and reading the word
+  // from the middle of it would publish work nobody has finished reviewing.
+  const last = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .at(-1);
+  if (last === undefined) return undefined;
+  const said = verdictWord(last);
+  if (said.startsWith("CHANGES_ASKED")) return "CHANGES_ASKED";
+  if (said.startsWith("APPROVED")) return "APPROVED";
   return undefined;
 }
 

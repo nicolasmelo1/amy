@@ -404,7 +404,7 @@ describe("diagnose", () => {
     const SCALE = { patient: 3, normal: 2, immediate: 1 };
     const withSlice = (escalation: Record<string, unknown> | undefined) => ({
       ...DEFAULT_CONFIG,
-      plugins: { [TICKET]: { repos: ["acme/widgets"], qaStatusName: "In QA", ...(escalation ? { escalation } : {}) } },
+      plugins: { [TICKET]: { repos: ["acme/widgets"], repliesOn: ["conversation", "tracker"], qaStatusName: "In QA", ...(escalation ? { escalation } : {}) } },
     });
     const schemas = () => ({ [TICKET]: ticketToQa.configSchema! });
 

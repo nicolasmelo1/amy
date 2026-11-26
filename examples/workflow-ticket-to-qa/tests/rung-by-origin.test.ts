@@ -102,7 +102,7 @@ async function mountedWith(
   };
   const host: HostServices = { runner: alwaysChanged(), now, paths: { state: "/w/.amy", profile: rosterDirectory() } };
   const outcome = await mount([fakeWorkspace(), plugin, world], {
-    "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation },
+    "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", repliesOn: ["conversation", "tracker"], escalation },
   }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   const workflow = outcome.mounted.workflow as unknown as Workflow;
@@ -123,7 +123,7 @@ describe("a step's rung, earned by the rounds its origin sent back", () => {
     // The gate is counted at `patient`, three rounds a rung, on a ladder of a
     // model, a stronger model and a person.
     const { rungs, end } = await walk(
-      { scale: { patient: 3, normal: 2, immediate: 1 }, origins: { gate: { level: "patient" } }, rungs: 3 },
+      { scale: { patient: 3, normal: 2, immediate: 1 }, origins: { gate: { level: "patient", findingsAt: 3 }, thread: { findingsAt: 3 }, "self-review": { findingsAt: 3 } }, rungs: 3 },
       () => 1,
     );
 

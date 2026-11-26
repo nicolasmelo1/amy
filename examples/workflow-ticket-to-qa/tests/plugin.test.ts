@@ -14,7 +14,17 @@ const HOST: HostServices = {
 };
 
 const SETTINGS = {
-  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
+  "@amykit/workflow-ticket-to-qa": {
+    repos: ["acme/widgets"],
+    repliesOn: ["conversation", "tracker"],
+    qaStatusName: "In QA",
+    escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
+  },
+};
+
+/** The same settings with `repliesOn` left out, for the test that says the config owes it. */
+const WITHOUT_REPLIES = {
+  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } } },
 };
 
 /** Everything this workflow reaches for, mounted by somebody else. */
@@ -347,7 +357,6 @@ describe("a ticket already under way when the install limits itself", () => {
     const ready = { ...(plugin.newRecord(outside.id, new Date("2026-09-03T12:00:00.000Z")) as object), state: "READY" } as never;
 
     const decided = workflow.plan(ready, (await runtime.observe(ready)) as never, runtime.policy as never);
-
     expect(decided.kind).toBe("settled");
   });
 });
@@ -358,7 +367,7 @@ describe("where replies are said and read", () => {
   }, HOST);
 
   it("is a setting the config must name, with no default", async () => {
-    const outcome = await mountWith([plugin, world]);
+    const outcome = await mount([fakeWorkspace(), plugin, world], WITHOUT_REPLIES, HOST);
 
     expect(outcome.ok).toBe(false);
     expect(outcome.ok ? "" : outcome.problems.join("; ")).toContain("repliesOn");

@@ -360,6 +360,26 @@ export class GitHubCodeHost implements CodeHost {
     await this.threadMutation("resolveReviewThread", threadId);
   }
 
+  /**
+   * Says the answer on the thread the person wrote on.
+   *
+   * The reply is a comment on the thread, not a resolution: the answer is a
+   * turn in the conversation, and whether that settles it is the person's
+   * call, which is why `resolveReviewThread` is a separate act on a separate
+   * action. A body that GitHub refuses comes back as a failed call, like
+   * every other mutation here.
+   */
+  async replyToReviewThread(threadId: string, body: string): Promise<void> {
+    await this.graphql(
+      `mutation Reply($id: ID!, $body: String!) {
+        addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $id, body: $body}) {
+          comment { id }
+        }
+      }`,
+      { id: threadId, body },
+    );
+  }
+
   async unresolveReviewThread(threadId: string): Promise<void> {
     await this.threadMutation("unresolveReviewThread", threadId);
   }

@@ -1657,6 +1657,20 @@ describe("the workspace's keys, as the update folds them", () => {
     expect(fs.readFileSync(config(), "utf-8")).toBe(after);
   });
 
+  it("names the ports a reply is said on, for a machine that predates the setting", () => {
+    write(machine);
+    const said = migrateSettingsFile(home);
+
+    const moved = yaml.parse(fs.readFileSync(config(), "utf-8")) as {
+      workflows: Record<string, { settings: Record<string, unknown> }>;
+    };
+    // Both places a reply went before the setting existed: the work's thread
+    // where a chat was mounted, the ticket where one was not.
+    expect(moved.workflows.tickets!.settings.repliesOn).toEqual(["conversation", "tracker"]);
+    expect(said.said.some((line) => line.includes("repliesOn"))).toBe(true);
+    expect(migrateSettingsFile(home).said).toEqual([]);
+  });
+
   /** A command-gate slice an older install wrote, with no top-level gate to move into it. */
   const gateSliceOnly = (checkouts: string[]) => [
     "plugins:",

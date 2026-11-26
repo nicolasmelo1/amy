@@ -1,6 +1,6 @@
 import { AskContext, Harness, HarnessReply } from "@amykit/core";
 import { NamedHarness } from "./collection.js";
-import { HandoffLog, handoffNote, recordHandoff, recordSkillHandoff } from "./handoff.js";
+import { HandoffLog, handoffNote, recordHandoff, recordSkillHandoff, skillHandoffNote } from "./handoff.js";
 import { nextRung } from "./ladder.js";
 import { Ladders, everyRung, rungsFor } from "./ladders.js";
 
@@ -53,10 +53,11 @@ export class HarnessRelay implements Harness {
     if (skills.length === 0) return this.climb(prompt, cwd, context, undefined);
 
     let last: HarnessReply | null = null;
+    let handoff: string | undefined;
 
     for (let index = 0; index < skills.length; index += 1) {
       const skill = skills[index]!;
-      last = await this.climb(prompt, cwd, context, skill);
+      last = await this.climb(prompt, cwd, context, skill, handoff);
 
       if (last.run.outcome === "completed") return last;
 
@@ -67,6 +68,8 @@ export class HarnessRelay implements Harness {
       if (!next || last.run.outcome === "abandoned") break;
 
       recordSkillHandoff(this.deps, context.workId, step(context), skill, next, last.run);
+      // The next skill is told why this one's answer was refused, never nothing.
+      handoff = skillHandoffNote(skill, last.run);
     }
 
     return last!;
@@ -84,6 +87,7 @@ export class HarnessRelay implements Harness {
     cwd: string,
     context: AskContext,
     skill: string | undefined,
+    start?: string,
   ): Promise<HarnessReply> {
     // Chosen once per climb rather than per rung: a step that swapped ladders
     // half way up would make "the next rung" mean nothing.
@@ -93,7 +97,7 @@ export class HarnessRelay implements Harness {
     // rung its rounds earned, not of the first one again.
     const begin = Math.min(Math.max(0, Math.trunc(context.rung ?? 0)), ladder.length - 1);
     let index = begin;
-    let handoff: string | undefined;
+    let handoff: string | undefined = start;
     let last: HarnessReply | null = null;
     const handed = withSkill(context, skill, this.deps.locate);
 

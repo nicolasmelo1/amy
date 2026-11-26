@@ -100,7 +100,8 @@ type Planner = (record: TicketRecord, obs: Observation, policy: Policy) => Plan;
  * Whatever it already pushed or opened is left as it is.
  */
 function retire(obs: Observation): Plan {
-  return settled(`${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories; the work there stops where it is until it is again`);
+  const why = obs.retiredBecause ?? `${obs.ticket.repo} is no longer one of ${obs.ticket.id}'s repositories`;
+  return settled(`${why}; the work there stops where it is until it is again`);
 }
 
 /**
@@ -344,7 +345,7 @@ function planImplementing(record: TicketRecord, obs: Observation, policy: Policy
     waitingOnTheStack(record, obs, policy) ??
     aChangeThatChangedNothing(record, policy) ??
     theChangeTheAgentFinished(record) ??
-    aLegacyRecordAtItsCeiling(record, policy) ??
+    aRunThatKeepsFailing(record, policy) ??
     theAttempt(record)
   );
 }
@@ -371,33 +372,34 @@ function aChangeThatChangedNothing(record: TicketRecord, policy: Policy): Plan |
   const progress = record.lastImplementation?.progress;
   if (record.lastImplementation?.ok !== true || progress?.kind !== "unchanged") return null;
   if (!implementationIsCurrent(record)) return null;
+  // A run that answered a round without changing a file is decided on, not
+  // held: the head stands and the reason is on the record, so the checks read
+  // it rather than the same question being asked on every poll. One that
+  // answered nothing at all simply holds.
+  if (record.pendingRounds?.length) {
+    // The round is answered with the agent's words: the head stands and the
+    // review reads what it said, rather than the same red rollup coming back
+    // to the same answer on every poll.
+    return advance("HUMAN_REVIEW", `the implementation changed nothing: ${progress.detail}`);
+  }
   return wait(policy.pollBackoffMs, `the implementation changed nothing: ${progress.detail}`);
+}
+
+/**
+ * A run that keeps failing is a round the same origin keeps sending back, and
+ * the ladder is what stops it: once that origin has spent every rung below a
+ * person, the work is theirs rather than another try.
+ */
+function aRunThatKeepsFailing(record: TicketRecord, policy: Policy): Plan | null {
+  if (record.lastImplementation?.ok !== false) return null;
+  const climb = standingAfter(record, policy, record.lastOrigin ?? "gate", 1);
+  return climb.exhausted ? handToTheOwner(record, climb, policy) : null;
 }
 
 /** A run that held, on the commit the record is standing on: the lanes read it. */
 function theChangeTheAgentFinished(record: TicketRecord): Plan | null {
   if (!implementationIsCurrent(record) || !record.lastImplementation?.ok) return null;
   return advance("checks", "the agent finished; the gate and the review decide if it holds");
-}
-
-/**
- * A record saved before rounds were counted per origin, read the way it was
- * written: its failed attempts against the ceiling this move replaced.
- *
- * An origin that keeps sending work back spends its rungs where the work is
- * judged — the verdict escalates when the checks' climb is exhausted, and
- * `weighNewWork` when a review's or the owner's is — so nothing left here
- * counts a round for a record that already counts them.
- */
-function aLegacyRecordAtItsCeiling(record: TicketRecord, policy: Policy): Plan | null {
-  if (record.roundsByOrigin !== undefined) return null;
-  const attempts = attemptsIn(record, "IMPLEMENTING");
-  if (attempts < patientRounds(policy)) return null;
-  return advance("ESCALATED", `the agent failed ${attempts} times, this needs the owner`, {
-    type: "escalate",
-    reason: `Implementation failed ${attempts} times. Last output:\n${record.lastImplementation?.output ?? "none"}`,
-    threadIds: [],
-  });
 }
 
 /** The attempt itself, on the rung the record has climbed to, carrying what it answers. */
@@ -421,17 +423,25 @@ function ownerWordLine(word: { author: string; body: string; at: string }): stri
 }
 
 /** Hands work whose origin spent the ladder to the person whose ticket it is. */
-function handToTheOwner(record: TicketRecord, climb: Climb, policy: Policy): Plan {
+function handToTheOwner(
+  record: TicketRecord,
+  climb: Climb,
+  policy: Policy,
+  rounds: readonly { origin: string; findings: number }[] = [{ origin: climb.origin, findings: 1 }],
+): Plan {
   if (record.escalation && !record.escalation.resolvedAt) {
     return wait(policy.pollBackoffMs, `waiting on the owner: ${climb.origin}'s rounds ran out`);
   }
-  return advance("ESCALATED", `${climb.origin}'s rounds ran out on the last rung before a person`, {
+  // The round that spent the ladder is still a round, and the record keeps it:
+  // an escalation that said three rounds when four came back would read as a
+  // different history from the one the log carries.
+  return carrying(advance("ESCALATED", `${climb.origin}'s rounds ran out on the last rung before a person`, {
     type: "escalate",
     reason:
       `${climb.origin} has sent this change back ${climb.rounds} time(s), which is every round the \`${climb.level}\` level allows at every rung I have. ` +
       `Last time:\n${retryContextFor(record) ?? "nothing was said"}`,
     threadIds: [],
-  });
+  }), { rounds });
 }
 
 /**
@@ -447,25 +457,13 @@ function planVerdict(record: TicketRecord, obs: Observation, policy: Policy): Pl
     return advance("PR_OPEN", "the gate is green and the review found nothing to stop it", ...publish(record, obs));
   }
 
-  const rules = policy.escalation;
   const sentBack = [
     ...(gate === "RED" ? [{ origin: "gate", findings: findingsOf(record.lastGate) }] : []),
     ...(review === "CHANGES_ASKED" ? [{ origin: "self-review", findings: findingsOf(record.lastSelfReview) }] : []),
   ];
-  // A record saved before rounds were counted per origin is read the way it
-  // was written: its rounds of checks against the ceiling this move replaced.
-  const legacy = attemptsIn(record, "verdict");
-  if (record.roundsByOrigin === undefined && legacy >= patientRounds(policy)) {
-    return advance("ESCALATED", `the checks found something across ${legacy} rounds`, {
-      type: "escalate",
-      reason: `The checks found something across ${legacy} rounds. Last time:\n${retryContextFor(record) ?? "nothing was said"}`,
-      threadIds: [],
-    });
-  }
-
-  const climbs = sentBack.map(({ origin, findings }) => climbFor(rules, record, origin, findings));
+  const climbs = sentBack.map(({ origin, findings }) => standingAfter(record, policy, origin, findings));
   const worst = strictest(climbs);
-  if (worst?.exhausted) return handToTheOwner(record, worst, policy);
+  if (worst?.exhausted) return handToTheOwner(record, worst, policy, sentBack);
 
   const found = [gate === "RED" ? "the gate is red" : undefined, review === "CHANGES_ASKED" ? "the review asked for changes" : undefined]
     .filter((said) => said !== undefined)
@@ -503,6 +501,10 @@ function publish(record: TicketRecord, obs: Observation): Effect[] {
   // A thread the change disagrees with, or one the brief puts out of scope, is
   // not closed by a push: the first is the owner's to settle, the second is
   // answered on the thread itself.
+  // An answer already said on a thread is not said again: the round that
+  // published it was the one that said it, and a reply on every poll reads as
+  // a machine arguing with itself.
+  const said = new Set(record.answered ?? []);
   const resolved = record.judged
     .filter(
       (judged) =>
@@ -513,6 +515,7 @@ function publish(record: TicketRecord, obs: Observation): Effect[] {
     .map((judged) => ({ type: "resolve-review-thread" as const, threadId: judged.threadId }));
   const answered = record.judged
     .filter((judged) => (judged.verdict === "answered" || judged.verdict === "out-of-scope") && stillOpen(judged.threadId))
+    .filter((judged) => !said.has(judged.threadId))
     .map((judged) => ({ type: "reply-thread" as const, threadId: judged.threadId, text: judged.note }));
   const asked = record.reviewer
     ? [{ type: "request-rereview" as const, host: record.reviewer }]
@@ -563,7 +566,7 @@ function planAutomatedReviewWait(
     );
   }
 
-  const newWork = weighNewWork(record, pr, policy);
+  const newWork = weighNewWork(record, pr, obs, policy);
   if (newWork) return newWork;
 
   return advance("REVIEWER_ASSIGNED", "the automated reviewer has nothing outstanding");
@@ -582,12 +585,18 @@ function planAutomatedReviewWait(
  * settle — asked once, and never built behind their back — and one the brief
  * puts out of scope is answered on its thread rather than built.
  */
-function weighNewWork(record: TicketRecord, pr: PullRequestView, policy: Policy): Plan | null {
+function weighNewWork(
+  record: TicketRecord,
+  pr: PullRequestView,
+  obs: Observation,
+  policy: Policy,
+): Plan | null {
   const waited = waitingOnTheOwner(record, policy);
   if (waited) return waited;
 
   const review = reviewOf(record, pr);
   return (
+    theOwnersWord(record, obs, pr, policy) ??
     theOwnerIsOwed(record, review, policy) ??
     answersOutOfScope(record, review) ??
     redChecks(record, pr, review, policy) ??
@@ -632,6 +641,33 @@ function waitingOnTheOwner(record: TicketRecord, policy: Policy): Plan | null {
 }
 
 /**
+ * The owner's word, taken up wherever the pull request is read.
+ *
+ * It is new work whatever the reviewer is doing: they are the person whose
+ * ticket it is, and what they ask for is done in the one place code changes.
+ * The open comments taken up beside it are their own origin's work, and the
+ * one whose rounds are spent is what the ask rests on.
+ */
+function theOwnersWord(
+  record: TicketRecord,
+  obs: Observation,
+  pr: PullRequestView,
+  policy: Policy,
+): Plan | null {
+  const word = ownerWordSince(record, obs);
+  if (!word) return null;
+  const threads = unjudgedThreads(pr, record);
+  const rounds = [
+    { origin: "owner", findings: 1 },
+    ...(threads.length > 0 ? [{ origin: "thread", findings: threads.length }] : []),
+  ];
+  const climbs = rounds.map((one) => standingAfter(record, policy, one.origin, one.findings));
+  const spent = strictest(climbs);
+  if (spent?.exhausted) return handToTheOwner(record, spent, policy, rounds);
+  return takenUp(`the owner asked for something: ${word.body}`, rounds, threads, word);
+}
+
+/**
  * The question only the owner can answer: a comment the change disagrees with,
  * or one that undoes the brief, is asked about once and never built behind
  * their back. Once they have answered it is work like any other, and this
@@ -640,9 +676,28 @@ function waitingOnTheOwner(record: TicketRecord, policy: Policy): Plan | null {
 function theOwnerIsOwed(record: TicketRecord, review: Review, policy: Policy): Plan | null {
   const owner = disputed(review.judged);
   if (!owner) return null;
-  if (record.escalation?.resolvedAt) return null;
-  if (record.escalation) return wait(policy.pollBackoffMs, `waiting on the owner: ${owner.threadId} needs their call`);
+  if (settledBy(record, owner)) return null;
+  if (record.escalation && !record.escalation.resolvedAt) {
+    return wait(policy.pollBackoffMs, `waiting on the owner: ${owner.threadId} needs their call`);
+  }
   return escalateTheContradiction(owner);
+}
+
+/**
+ * Whether the owner has already settled this thread.
+ *
+ * An escalation names the comments it was asked about, so a second comment
+ * that contradicts the brief is a new question rather than one already
+ * answered: the owner's answer to the first says nothing about it.
+ */
+function settledBy(record: TicketRecord, one: ThreadVerdict): boolean {
+  const ask = record.escalation;
+  if (!ask?.resolvedAt) return false;
+  if (ask.threadIds !== undefined) return ask.threadIds.includes(one.threadId);
+  // An escalation asked before the record kept its threads says which one it
+  // was about at the head of its reason — `T1: the comment is wrong` — so a
+  // second contradicting comment is still a question nobody has answered.
+  return (ask.reason.split(":")[0] ?? "").includes(one.threadId);
 }
 
 /**
@@ -661,7 +716,15 @@ function answersOutOfScope(record: TicketRecord, review: Review): Plan | null {
   );
 }
 
-/** A check that is red on the head is a round from the gate, taken up like the rest. */
+/**
+ * A check that is red on the head is a round, taken up like the rest.
+ *
+ * Where a review about that head has already come back, the round is the
+ * review's: the reviewer sent the work back and the red check is what it
+ * found, so counting it again as the gate's would spend two origins' rounds
+ * for one ask. A head nobody reviewed is the forge's own refusal, and that is
+ * the gate's.
+ */
 function redChecks(
   record: TicketRecord,
   pr: PullRequestView,
@@ -669,9 +732,14 @@ function redChecks(
   policy: Policy,
 ): Plan | null {
   if (!checksFailedOnHead(pr)) return null;
+  // A head the agent answered with "nothing to change" has had its checks
+  // read: the reason is on the record, and reading the same red rollup again
+  // would send the work back to the answer it already gave.
+  if (record.lastImplementation?.progress?.kind === "unchanged" && implementationIsCurrent(record)) return null;
+  const origin = pr.reviews.length > 0 ? "thread" : "gate";
   return takeUpOrEscalate(
     record,
-    [{ origin: "gate", findings: 1 }],
+    [{ origin, findings: 1 }],
     review.threads,
     `the checks on ${pr.headSha.slice(0, 7)} are red, which is work`,
     policy,
@@ -743,10 +811,27 @@ function takeUpOrEscalate(
   why: string,
   policy: Policy,
 ): Plan {
-  const climbs = rounds.map((one) => climbFor(policy.escalation, record, one.origin, one.findings));
+  const climbs = rounds.map((one) => standingAfter(record, policy, one.origin, one.findings));
   const worst = strictest(climbs);
-  if (worst?.exhausted) return handToTheOwner(record, worst, policy);
+  if (worst?.exhausted) return handToTheOwner(record, worst, policy, rounds);
   return takenUp(why, rounds, threads);
+}
+
+/**
+ * Where this round leaves an origin: the round that spends a level's last
+ * allowance is the one that climbs, so the work is asked one rung higher
+ * rather than run again on a rung it has already used up.
+ */
+function standingAfter(
+  record: TicketRecord,
+  policy: Policy,
+  origin: string,
+  findings: number,
+): Climb {
+  const climb = climbFor(policy.escalation, record, origin, findings);
+  const spent = (record.spentByOrigin?.[origin] ?? climb.rounds) + 1;
+  const rung = spent >= climb.needed ? climb.rung + 1 : climb.rung;
+  return { ...climb, rung, exhausted: rung >= policy.escalation.rungs - 1 };
 }
 
 /** New work on its way to the one place code changes, with what it took up. */
@@ -788,11 +873,23 @@ function unjudgedThreads(pr: PullRequestView, record: TicketRecord): readonly Re
  * a comment the machine wrote is never the owner speaking.
  */
 function ownerWordSince(record: TicketRecord, obs: Observation): { author: string; body: string; at: string } | undefined {
-  const since = record.ownerWord?.at;
+  // A word the triage already read is not new work: it answered a question the
+  // machine asked, and building it again would charge a round for an answer
+  // that was used before the first change was made.
+  // Only a triage that read answers has already acted on a word: a triage
+  // that asked nothing is not a moment the owner's word stopped being news.
+  const since = record.clarification?.length ? laterOf(record.ownerWord?.at, record.triage?.at) : record.ownerWord?.at;
   return obs.conversation
     .filter((said) => !said.fromAmy && said.author !== undefined && said.body.trim().length > 0)
     .filter((said) => since === undefined || said.at > since)
     .at(-1);
+}
+
+/** The later of two instants, ignoring the one that is not there. */
+function laterOf(one: string | undefined, other: string | undefined): string | undefined {
+  if (one === undefined) return other;
+  if (other === undefined) return one;
+  return one >= other ? one : other;
 }
 
 /**
@@ -951,7 +1048,7 @@ function planReviewerAssignment(
   // New work on the pull request is taken up before anybody is asked to read
   // it: a red check or an open comment is the implementation's, not a
   // reviewer's.
-  const newWork = weighNewWork(record, pr, policy);
+  const newWork = weighNewWork(record, pr, obs, policy);
   if (newWork) return newWork;
 
   const broken = whatTheForgeSays(pr);
@@ -969,6 +1066,13 @@ function planReviewerAssignment(
       `the roster was last confirmed on ${obs.roster.confirmedOn}, not today`,
       `Confirm today's reviewers and QA before I assign ${unitOf(record)}.`,
     );
+  }
+
+  // A reviewer this work already has is asked again rather than replaced:
+  // handing a change somebody has read to a second person loses the thread
+  // they were reading it by, and the record loses who sent it back.
+  if (record.reviewer) {
+    return advance("HUMAN_REVIEW", `${record.reviewer} reads the round the review asked for`);
   }
 
   const reviewer = leastLoadedReviewer(obs.roster, obs.reviewLoad);
@@ -1029,15 +1133,8 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
   // The owner's word is new work whatever the reviewer is doing: they are the
   // person whose ticket it is, and what they ask for is done in the one place
   // code changes.
-  const word = ownerWordSince(record, obs);
-  if (word) {
-    return takenUp(
-      `the owner asked for something: ${word.body}`,
-      [{ origin: "owner", findings: 1 }],
-      unjudgedThreads(pr, record),
-      word,
-    );
-  }
+  const word = theOwnersWord(record, obs, pr, policy);
+  if (word) return word;
 
   // A disagreement the record already carries is the owner's call now: waiting
   // for the reviewer to look again would leave the machine holding a question
@@ -1045,34 +1142,40 @@ function planHumanReview(record: TicketRecord, obs: Observation, policy: Policy)
   const disputedAlready = disputed(
     record.judged.filter((one) => pr.threads.some((thread) => thread.id === one.threadId && !thread.isResolved)),
   );
-  if (disputedAlready && !record.escalation) {
+  if (disputedAlready && !settledBy(record, disputedAlready) && (!record.escalation || record.escalation.resolvedAt !== undefined)) {
     return escalateTheContradiction(disputedAlready);
   }
 
-  if (!hasReviewedHead(pr, reviewer)) {
-    return wait(
-      policy.pollBackoffMs,
-      `waiting for ${reviewer} to review ${pr.headSha.slice(0, 7)}`,
-    );
-  }
+  const waiting = waitingForTheReviewer(record, pr, reviewer, policy);
+  if (waiting) return waiting;
+  return decidedAtThisReview(record, pr, obs, policy);
+}
 
+/** The two reasons this state waits on one person, and nothing else. */
+function waitingForTheReviewer(
+  record: TicketRecord,
+  pr: PullRequestView,
+  reviewer: string,
+  policy: Policy,
+): Plan | null {
+  const head = pr.headSha.slice(0, 7);
+  if (!hasReviewedHead(pr, reviewer)) return wait(policy.pollBackoffMs, `waiting for ${reviewer} to review ${head}`);
   const askedAgain = askedAgainAt(record);
   if (askedAgain !== undefined && !reviewedSince(pr, reviewer, askedAgain)) {
-    return wait(policy.pollBackoffMs, `waiting for ${reviewer} to look again at ${pr.headSha.slice(0, 7)}`);
+    return wait(policy.pollBackoffMs, `waiting for ${reviewer} to look again at ${head}`);
   }
+  return null;
+}
 
-  if (pr.reviewDecision === "APPROVED") {
-    return advance("APPROVED", `${reviewer} approved the current head`);
-  }
-
-  const newWork = weighNewWork(record, pr, policy);
+/** What the reviewer's answer, and the pull request beside it, mean for the work. */
+function decidedAtThisReview(record: TicketRecord, pr: PullRequestView, obs: Observation, policy: Policy): Plan {
+  if (pr.reviewDecision === "APPROVED") return advance("APPROVED", `${record.reviewer} approved the current head`);
+  const newWork = weighNewWork(record, pr, obs, policy);
   if (newWork) return newWork;
-
   if (pr.reviewDecision === "CHANGES_REQUESTED") {
     return advance("RE_REVIEW", "every thread was judged, the review has to be redone");
   }
-
-  return wait(policy.pollBackoffMs, `${reviewer} commented without deciding`);
+  return wait(policy.pollBackoffMs, `${record.reviewer} commented without deciding`);
 }
 
 /**
@@ -1135,11 +1238,12 @@ function planHumanFix(record: TicketRecord, obs: Observation, policy: Policy): P
  * Back to where the escalation interrupted the work, once the owner answers.
  *
  * A record escalated before the resume point was remembered has none, and
- * goes where every escalation used to: the comments, judged again.
+ * goes to the review that reads the answer: HUMAN_FIX changed code outside
+ * the checks, which is a state this walk no longer draws.
  */
 function planEscalated(record: TicketRecord, obs: Observation, policy: Policy): Plan {
   if (obs.escalationAnswered) {
-    const back = record.resumeAt ?? "HUMAN_FIX";
+    const back = record.resumeAt ?? "HUMAN_REVIEW";
     return advance(back, `the owner decided, back to ${back} where the escalation stopped it`);
   }
   const escalation = record.escalation;

@@ -29,6 +29,7 @@ import { TicketRecord } from "./record.js";
 import { EXAMPLE_ROSTER, ROSTER_FILE, Roster, confirmRoster, isConfirmedFor, loadRoster } from "./roster.js";
 import { isTicketId } from "./ticket.js";
 import { actionsFor, discover, observe, progress, remember, splitWorkId } from "./actions.js";
+import { quoted, repliesOnIn, type ReplyPlace } from "./replies.js";
 import { Finding, gateLane, selfReviewLane } from "./lanes.js";
 
 type Settings = ConfigOf<typeof configSchema>;
@@ -156,6 +157,21 @@ const rosterCheck: PluginCheck<Settings> = {
 export const configSchema = {
   repos: { type: "string[]", required: true, description: "every repository review load is counted across" },
   ...BRANCH_SETTINGS,
+  /**
+   * Where a reply is said, and where the owner's word is read from.
+   *
+   * Port names, never products. A product's name names a plugin, and a plugin
+   * is one way to mount the `conversation` port rather than a place a reply
+   * goes; the same ticket answered in a chat and on its review thread is the
+   * same machine saying the same sentence. Required with no default, because
+   * a default is a guess about which surface the operator watches.
+   */
+  repliesOn: {
+    type: "string[]",
+    required: true,
+    example: ["conversation", "code-host", "tracker"],
+    description: "the ports a reply is said on and the owner's word read from: conversation, code-host or tracker",
+  },
   qaStatusName: {
     type: "string",
     required: true,
@@ -212,7 +228,7 @@ export const configSchema = {
   },
   "escalation.origins.gate.findingsAt": {
     type: "number",
-    default: 3,
+    required: true,
     description: "how many findings a gate's round must bring back for the beyond level to apply",
   },
   "escalation.origins.thread.level": {
@@ -229,7 +245,7 @@ export const configSchema = {
   },
   "escalation.origins.thread.findingsAt": {
     type: "number",
-    default: 3,
+    required: true,
     description: "how many findings a round of review threads must bring back for the beyond level to apply",
   },
   "escalation.origins.owner.level": {
@@ -252,12 +268,12 @@ export const configSchema = {
   },
   "escalation.origins.self-review.findingsAt": {
     type: "number",
-    default: 3,
+    required: true,
     description: "how many findings the self-review must bring back for the beyond level to apply",
   },
   "escalation.rungs": {
     type: "number",
-    default: 3,
+    required: true,
     description: "how long the ladder is; its last rung is a person, so work that runs out one rung below escalates",
   },
   // The rule set the decision reads. It is filled from the `escalation` block
@@ -379,12 +395,11 @@ export const plugin = defineWorkflow({
   // The one step whose reply its own `verify` judges, so the diagram marks it
   // `verified` and a second rung is asked of a run that did not hold.
   verifies: ["IMPLEMENTING"],
-  // Publishing, as two actions of this workflow's own. The round's commits go
-  // out from the workplace's tree — the port a tree comes from is the one
-  // `push` needs mounted, and the git inside it is the workplace's, not a
-  // port's. An answer goes back where the review was written: the work's own
-  // thread where a chat is mounted, and the ticket where one is not, which is
-  // the port every install of this walk has.
+  // Publishing, as two actions of this workflow's own. `push` needs the port
+  // a tree comes from, and the git inside it is the workplace's rather than a
+  // port's. An answer goes to every place `repliesOn` names, so this map names
+  // the port the action cannot run without: the ticket, mounted everywhere.
+  // The other places are read from the setting at the call.
   catalogue: {
     push: { port: "worktree", method: "push" },
     "reply-thread": { port: "tracker", method: "comment" },
@@ -392,20 +407,34 @@ export const plugin = defineWorkflow({
   trackerWrites: ({ policy }) => writesOf(policy) === "operator"
     ? []
     : ["comment", "set-status", "assign", "create-follow-up"],
-  codeHostWrites: ({ policy }) => writesOf(policy) === "operator"
+  // A reply on the forge is a comment on a review thread, and it is claimed
+  // only where the install says replies go there: a workflow that never writes
+  // the code host should not hold the capability to.
+  codeHostWrites: ({ policy, config }) => writesOf(policy) === "operator"
     ? []
-    : ["open-pull-request", "request-review", "resolve-thread"],
-  runtimePolicy: ({ ports, policy, config }) => ({
-    ...policy,
-    // Kept on the runtime for a record saved before rounds were counted per
-    // origin: its failed attempts were read against these, and its next look
-    // still is. They are no longer settings, and no config may name them.
-    maxImplementAttempts: DEFAULT_POLICY.maxImplementAttempts,
-    maxGateAttempts: DEFAULT_POLICY.maxGateAttempts,
-    escalation: escalationOf(config),
-    writes: writesOf(policy),
-    conversation: conversationOf(policy, ports.conversation),
-  }),
+    : [
+        ...(repliesOnIn(config.repliesOn ?? []).includes("code-host") ? ["reply-thread"] : []),
+        "open-pull-request",
+        "request-review",
+        "resolve-thread",
+      ],
+  runtimePolicy: ({ ports, policy, config }) => {
+    // Where a reply goes, refused here rather than at the first answer: a port
+    // this machine cannot reach is a setting that silently drops every answer,
+    // and boot is the last place it is still cheap to say so.
+    placesThisInstallHas(config, ports);
+    return {
+      ...policy,
+      // Kept on the runtime for a record saved before rounds were counted per
+      // origin: its failed attempts were read against these, and its next look
+      // still is. They are no longer settings, and no config may name them.
+      maxImplementAttempts: DEFAULT_POLICY.maxImplementAttempts,
+      maxGateAttempts: DEFAULT_POLICY.maxGateAttempts,
+      escalation: escalationOf(config),
+      writes: writesOf(policy),
+      conversation: conversationOf(policy, ports.conversation),
+    };
+  },
   // The gate and the self-review, as two lanes of the `checks` fork: each
   // lent the implementation's commit, read-only, and each folded back into
   // the record the implementation is retried from.
@@ -485,6 +514,30 @@ function writesOf(policy: Policy): Policy["writes"] {
     throw new Error(`ticket-to-qa policy.writes must be "machine" or "operator", not ${JSON.stringify(policy.writes)}`);
   }
   return policy.writes;
+}
+
+/**
+ * The places this install can actually say a reply, from `repliesOn`.
+ *
+ * The names are checked against the three that exist, and then against what
+ * is mounted. A port the workflow cannot run without is refused by name here,
+ * the way the core refuses any missing need; `conversation` stays optional
+ * because an install that answers on the forge alone is a real install, and
+ * the reply action refuses it by name on the day something is said there.
+ */
+function placesThisInstallHas(
+  config: Settings,
+  ports: { conversation: Conversation | undefined; tracker: unknown; "code-host": unknown },
+): ReplyPlace[] {
+  const named = repliesOnIn(config.repliesOn ?? []);
+  const required = named.filter((place) => place !== "conversation");
+  const lacking = required.filter((place) => !ports[place]);
+  if (lacking.length > 0) {
+    throw new Error(
+      `\`repliesOn\` names ${quoted(lacking)} and nothing mounts ${lacking.length === 1 ? "it" : "them"}; mount a plugin for ${lacking.length === 1 ? "that port" : "those ports"}, or take ${lacking.length === 1 ? "it" : "them"} out of \`repliesOn\``,
+    );
+  }
+  return named;
 }
 
 function conversationOf(policy: Policy, conversation: Conversation | undefined): Policy["conversation"] {

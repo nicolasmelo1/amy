@@ -54,9 +54,10 @@ async function mounted(conversation: Conversation): Promise<WorkflowRuntime> {
   const outcome = await mount([fakeWorkspace(), plugin, world], {
     "@amykit/workflow-ticket-to-qa": {
       repos: ["acme/widgets"],
+      repliesOn: ["conversation", "tracker"],
       qaStatusName: "In QA",
       // The levels an escalation is counted at are settings with no default.
-      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
     },
   }, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },

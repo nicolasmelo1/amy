@@ -20,7 +20,7 @@ const TICKETS: Profile = {
   plugins: [],
   takesNotes: false,
   takesTasks: false,
-  settings: { qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
+  settings: { repliesOn: ["conversation", "tracker"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } } },
 };
 
 const CONFIG = { ...DEFAULT_CONFIG, repos: ["acme/widgets"], notify: { hermes: null, inbox: false } };

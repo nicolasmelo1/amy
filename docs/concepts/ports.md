@@ -165,6 +165,7 @@ Declared in `packages/core/src/ports/CodeHost.ts`.
 | `openPullRequest(request: OpenPullRequestRequest): Promise<number>` | Throws a `CodeHostRefusal` when the host answers that it will not; any other throw is a failure. |
 | `requestReview(repo: string, pullRequestNumber: number, host: string): Promise<void>` |  |
 | `resolveReviewThread(threadId: string): Promise<void>` | Closes one review thread, by its own id, in one act. |
+| `replyToReviewThread(threadId: string, body: string): Promise<void>` | Says an answer in a review thread, on the thread itself. |
 | `unresolveReviewThread(threadId: string): Promise<void>` | Puts a closed thread back, for a fix that was reverted. |
 | `reviewLoad(repos: readonly string[]): Promise<Record<string, number>>` | Open reviews per login, counted across every given repository. |
 | `reviewsRequestedOf(login: string, repos: readonly string[]): Promise<ReviewRequest[]>` | The open pull requests waiting on one login's review, in these repositories and no others. |

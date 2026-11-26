@@ -70,6 +70,7 @@ export function fakeHost(pr: PullRequestView | null = null, overrides: Partial<C
     pullRequest: vi.fn<CodeHost["pullRequest"]>().mockResolvedValue(pr),
     openPullRequest: vi.fn<CodeHost["openPullRequest"]>().mockResolvedValue(4940),
     requestReview: vi.fn<CodeHost["requestReview"]>().mockResolvedValue(undefined),
+    replyToReviewThread: vi.fn<CodeHost["replyToReviewThread"]>().mockResolvedValue(undefined),
     resolveReviewThread: vi.fn<CodeHost["resolveReviewThread"]>().mockResolvedValue(undefined),
     unresolveReviewThread: vi.fn<CodeHost["unresolveReviewThread"]>().mockResolvedValue(undefined),
     reviewLoad: vi.fn<CodeHost["reviewLoad"]>().mockResolvedValue({}),

@@ -208,7 +208,12 @@ describe("a handed-off write, one look at a time", () => {
 
   it("hands the escalation over instead of filing a follow-up", () => {
     const decision = plan(
-      record("IMPLEMENTING", { attempts: { IMPLEMENTING: 3 }, lastImplementation: { ok: false, output: "no", at: WORKDAY.toISOString() } }),
+      record("IMPLEMENTING", {
+        attempts: { IMPLEMENTING: 3 },
+        roundsByOrigin: { gate: 6 },
+        climbedByOrigin: { gate: policy.escalation.rungs - 1 },
+        lastImplementation: { ok: false, output: "no", at: WORKDAY.toISOString() },
+      }),
       observation(),
       policy,
     );

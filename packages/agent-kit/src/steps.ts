@@ -44,7 +44,10 @@ export async function implementStep(agent: Agent, input: ImplementInput): Promis
   const declares = input.context?.verify;
   const verify = async (reply: HarnessReply): Promise<HarnessReply> => {
     asked = true;
-    changed = await input.commit();
+    // The head moved if any rung of this attempt moved it: the rung that came
+    // back and found the earlier rung's work in place added nothing, and the
+    // attempt still changed the tree.
+    changed = (await input.commit()) || changed;
     return declares ? declares(reply) : reply;
   };
 

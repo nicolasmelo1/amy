@@ -187,7 +187,7 @@ async function mounted() {
   const artifacts = path.join(home, "projects", "shop", "artifacts");
   const briefs = new Map<string, BriefRecord>();
   const composed = composeProject({
-    profile: { name: "shop", settings: { repos: ["acme/shop"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } } },
+    profile: { name: "shop", settings: { repos: ["acme/shop"], qaStatusName: "In QA", repliesOn: ["conversation", "tracker"], escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } } } },
     slices: {},
     phases: [
       { phase: "brief", plugin: brief, name: brief.name },
@@ -217,7 +217,7 @@ async function mounted() {
     paths: { state: home, profile, artifacts },
   };
   const opened: string[] = [];
-  const outcome = await mount([...providers, composed.plugin, browser(opened)], { [composedPluginName({ name: "shop" })]: { repos: ["acme/shop"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } } }, host);
+  const outcome = await mount([...providers, composed.plugin, browser(opened)], { [composedPluginName({ name: "shop" })]: { repos: ["acme/shop"], qaStatusName: "In QA", repliesOn: ["conversation", "tracker"], escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } } } }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));
   // The check the daemon makes before it looks at anything: every action a
   // phase can plan has its port, and its catalogue entry.

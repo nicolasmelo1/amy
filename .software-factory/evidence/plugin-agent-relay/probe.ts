@@ -546,6 +546,7 @@ function codeHostOf(): CodeHost {
     pullRequest: async () => null,
     openPullRequest: async () => 0,
     requestReview: async () => undefined,
+    replyToReviewThread: async () => undefined,
     resolveReviewThread: async () => undefined,
     unresolveReviewThread: async () => undefined,
     reviewLoad: async () => ({}),
@@ -633,8 +634,9 @@ const declaredTicketToQa = withDiagramBeside(ticketToQa, path.join(repo, "exampl
       "@amykit/plugin-agent-relay": { ladder: ["claude:sonnet", "claude:opus"] },
       "@amykit/workflow-ticket-to-qa": {
         repos: [ticket.repo],
+        repliesOn: ["tracker"],
         qaStatusName: "In QA",
-        escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
       },
     },
     {

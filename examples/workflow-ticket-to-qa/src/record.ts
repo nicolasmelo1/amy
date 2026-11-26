@@ -9,6 +9,8 @@ export type { AttemptOutcome, ThreadVerdict, TriageOutcome };
 export interface Escalation {
   reason: string;
   askedAt: string;
+  /** The threads the owner was asked to settle; a later one is a new ask. */
+  threadIds?: string[];
   followUpTicketId?: string;
   resolvedAt?: string;
   /**
@@ -99,6 +101,8 @@ export interface TicketRecord extends WorkRecord {
    * runs, `state` is already `ESCALATED` on every move into it.
    */
   resumeAt?: TicketState;
+  /** The rounds this attempt is answering, given back when nothing changed. */
+  pendingRounds?: readonly { origin: string; findings: number }[];
   /**
    * The writes already handed to the operator, by key, so each one is said
    * once and the looks after it wait for its effect instead of saying it

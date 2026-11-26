@@ -29,14 +29,26 @@ export function handOver(decided: Plan, record: TicketRecord, obs: Observation, 
     return advance(decided.to as TicketState, decided.why, ...others, handOverOf(turns));
   }
 
-  return turnOrWait(turns, others, record, obs, policy);
+  return turnOrWait(decided, turns, others, record, obs, policy);
 }
 
 /**
  * A write the state stays put for: said if it has not been, and waited on
  * until the observation shows it made if it has.
+ *
+ * A turn said is not a turn made: the wait reads the world for the effect the
+ * same way the two turns above do, and only then lets the plan through. A wait
+ * that only checked that the turn had been *said* would hold a handed-off
+ * machine for ever once an operator did what they were asked.
  */
-function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecord, obs: Observation, policy: Policy): Plan {
+function turnOrWait(
+  decided: Plan,
+  turns: HandOverTurn[],
+  others: Effect[],
+  record: TicketRecord,
+  obs: Observation,
+  policy: Policy,
+): Plan {
   const said = new Set(record.handedOver ?? []);
   const write = turns[0]!.write;
   if (write.type === "hand-off-to-qa" && handedToQa(obs, write.tracker)) {
@@ -49,10 +61,38 @@ function turnOrWait(turns: HandOverTurn[], others: Effect[], record: TicketRecor
   }
 
   const unsaid = turns.filter((turn) => !said.has(turn.key));
-  if (unsaid.length === 0) {
-    return wait(policy.pollBackoffMs, `waiting for the operator to ${describe(turns.map((turn) => turn.write))}`, ...others);
+  if (unsaid.length > 0) {
+    return act(`handing ${describe(unsaid.map((turn) => turn.write))} to the operator`, ...others, handOverOf(unsaid));
   }
-  return act(`handing ${describe(unsaid.map((turn) => turn.write))} to the operator`, ...others, handOverOf(unsaid));
+  if (decided.kind === "advance" && turns.every((turn) => carriedOut(turn.write, obs, record))) {
+    return advance(decided.to as TicketState, decided.why, ...others);
+  }
+  return wait(policy.pollBackoffMs, `waiting for the operator to ${describe(turns.map((turn) => turn.write))}`, ...others);
+}
+
+/**
+ * Whether the world shows the write made. Only the writes with something the
+ * observation can see are read here: a push shows as a moved head, a thread as
+ * one the forge marks resolved, a pull request as the one that was asked for.
+ * A write whose effect this cannot see keeps the machine waiting, which is what
+ * it did before — never a guess.
+ */
+function carriedOut(write: WriteEffect, obs: Observation, record: TicketRecord): boolean {
+  const pr = obs.pullRequest;
+  switch (write.type) {
+    case "open-pull-request":
+      return pr !== null;
+    case "resolve-review-thread":
+      return pr?.threads.some((thread) => thread.id === write.threadId && thread.isResolved) === true;
+    case "assign-reviewer":
+      return pr?.requestedReviewers.some((host) => host.toLowerCase() === write.host.toLowerCase()) === true;
+    case "hand-off-to-qa":
+      return handedToQa(obs, write.tracker);
+    case "request-rereview":
+      return observedReview(write.host, obs, record.handedOverAt?.[`request-rereview@${write.host}`]);
+    default:
+      return false;
+  }
 }
 
 /**

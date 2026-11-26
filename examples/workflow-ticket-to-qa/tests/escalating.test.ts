@@ -25,13 +25,22 @@ const at = (time: string, ok: boolean, output = "") => ({ ok, at: `2026-09-03T${
 const RAISED_FROM: { state: TicketState; record: Partial<TicketRecord>; observation: Partial<Observation> }[] = [
   {
     state: "IMPLEMENTING",
-    record: { attempts: { IMPLEMENTING: policy.maxImplementAttempts }, lastImplementation: at("10:00", false, "broken") },
+    // The gate spent every rung below a person, which is what escalates now:
+    // there is no attempts ceiling left to read.
+    record: {
+      attempts: { IMPLEMENTING: 3 },
+      roundsByOrigin: { gate: 6 },
+      climbedByOrigin: { gate: policy.escalation.rungs - 1 },
+      lastImplementation: at("10:00", false, "broken"),
+    },
     observation: {},
   },
   {
     state: "verdict",
     record: {
-      attempts: { verdict: policy.maxGateAttempts, IMPLEMENTING: policy.maxImplementAttempts },
+      attempts: { verdict: 3, IMPLEMENTING: 3 },
+      roundsByOrigin: { gate: 6 },
+      climbedByOrigin: { gate: policy.escalation.rungs - 1 },
       lastImplementation: at("10:00", true),
       lastGate: at("10:05", false, "typecheck failed"),
       lanes: { GATE: { call: "PROJ-1239/GATE#3", end: "RED" }, SELF_REVIEW: { call: "PROJ-1239/SELF_REVIEW#3", end: "APPROVED" } },
@@ -87,7 +96,7 @@ describe("an escalation remembers the state it interrupted", () => {
     const [implementing] = RAISED_FROM;
     const seen = observation();
 
-    const into = look(record("IMPLEMENTING", { ...implementing!.record, looks: { IMPLEMENTING: policy.maxImplementAttempts } }), seen, {
+    const into = look(record("IMPLEMENTING", { ...implementing!.record, looks: { IMPLEMENTING: 3 } }), seen, {
       escalation: { reason: "failed", askedAt: "2026-09-03T11:00:00.000Z" },
     });
     const back = look(into.next, observation({ escalationAnswered: true })).next;
@@ -97,12 +106,14 @@ describe("an escalation remembers the state it interrupted", () => {
     expect(plan(back, seen, policy)).toMatchObject({ kind: "act", effects: [{ type: "implement" }] });
   });
 
-  it("resumes a record escalated before the resume point existed where escalations always went", () => {
+  it("resumes a record escalated before the resume point existed where escalations go now", () => {
     const legacy = record("ESCALATED", { escalation: { reason: "old", askedAt: "2026-09-01T09:00:00.000Z" } });
 
+    // HUMAN_FIX is not a state this walk draws: a record escalated before the
+    // resume point was written comes back to the review that reads the answer.
     expect(plan(legacy, observation({ escalationAnswered: true }), policy)).toMatchObject({
       kind: "advance",
-      to: "HUMAN_FIX",
+      to: "HUMAN_REVIEW",
     });
   });
 
