@@ -91,3 +91,4 @@ Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 s
 | 81 | [A run handed tools is held to them](a-run-handed-tools-is-held-to-them.md) |
 | 82 | [Linear is read through its MCP server](linear-is-read-through-its-mcp-server.md) |
 | 83 | [A take says what it found](a-take-says-what-it-found.md) |
+| 84 | [A reply is said where the config names it](a-reply-is-said-where-the-config-names-it.md) |
