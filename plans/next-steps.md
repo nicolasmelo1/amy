@@ -8,7 +8,6 @@ the rest.
 | # | Plan |
 | --- | --- |
 | 1 | [The escalation repair proves what it says](the-escalation-repair-proves-what-it-says.md) |
-| 2 | [A step escalates by where its work came back from](a-step-escalates-by-where-its-work-came-back-from.md) |
 | 3 | [A run that goes in circles stops](a-run-that-goes-in-circles-stops.md) |
 | 4 | [An action acts](an-action-acts.md) |
 | 5 | [Every setup step says what it is for](every-setup-step-says-what-it-is-for.md) |

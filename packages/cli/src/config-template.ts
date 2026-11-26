@@ -109,6 +109,24 @@ export interface BootCheck {
  * interpretation of the config this module exists not to have — and
  * `namesTheExample` keeps the transcription honest instead.
  */
+/**
+ * The escalation block an install starts from, written once.
+ *
+ * `amy update` writes the same values into a machine that predates them, and
+ * two literals drifting apart would mean two installs that escalate
+ * differently for no reason anybody chose.
+ */
+export const ESCALATION_SETTINGS = {
+  scale: { patient: 3, normal: 2, immediate: 1 },
+  rungs: 3,
+  origins: {
+    gate: { level: "normal", beyond: "immediate", findingsAt: 3 },
+    thread: { level: "normal", beyond: "immediate", findingsAt: 3 },
+    "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 },
+    owner: { level: "immediate" },
+  },
+} as const;
+
 const EXAMPLE_WORKFLOW = {
   name: "ticket-to-qa",
   workflow: "@amykit/workflow-ticket-to-qa",
@@ -121,12 +139,14 @@ const EXAMPLE_WORKFLOW = {
    * one uncomment later.
    */
   settings: {
+    // Where a reply is said and the owner's word is read from, by port name:
+    // required with no default, because which surface is watched is the
+    // operator's answer and not the template's guess.
+    repliesOn: ["conversation", "tracker"],
     qaStatusName: "In QA",
     // The numbers an escalation rests on: each is required, and none has a
     // default in code, so the template an install starts from carries them.
-    escalation: {
-      scale: { patient: 3, normal: 2, immediate: 1 },
-    },
+    escalation: ESCALATION_SETTINGS,
   },
 } as const;
 

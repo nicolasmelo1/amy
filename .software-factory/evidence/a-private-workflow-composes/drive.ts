@@ -106,7 +106,7 @@ async function mountedTicketToQa(
   };
   const outcome = await core.mount(
     [drawnTicketToQa, world, workspace],
-    { [drawnTicketToQa.name]: { repos: [REPO], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } }, ...(options.policy ? { policy: options.policy } : {}) } },
+    { [drawnTicketToQa.name]: { repos: [REPO], repliesOn: ["conversation"], qaStatusName: "In QA", escalation: { scale: { patient: 8, normal: 4, immediate: 2 }, rungs: 3, origins: { gate: { level: "patient", findingsAt: 6 }, thread: { level: "patient", findingsAt: 6 }, "self-review": { level: "patient", findingsAt: 6 }, owner: { level: "immediate" } } }, ...(options.policy ? { policy: options.policy } : {}) } },
     {
       runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
       now: () => new Date(),

@@ -193,9 +193,15 @@ function configure(): void {
     plugins:
 ${plugins.map((name) => `      - "${name}"`).join("\n")}
     settings:
+      repliesOn: [tracker]
       qaStatusName: delivered
       escalation:
         scale: { patient: 3, normal: 2, immediate: 1 }
+        rungs: 3
+        origins:
+          gate: { findingsAt: 3 }
+          thread: { findingsAt: 3 }
+          self-review: { findingsAt: 3 }
       # A row's plan moved to docs/design/ by a merged pull request is delivered.
       policy:
         maxOpenReviewsPerReviewer: 2

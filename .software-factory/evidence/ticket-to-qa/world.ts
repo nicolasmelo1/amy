@@ -401,7 +401,7 @@ const CONCURRENT_PLUGINS = [
   "@amykit/plugin-command-gate",
 ];
 
-function config(root: string, endpoint: string, engine: EngineChoice, withSlack: boolean): string {
+function config(root: string, endpoint: string, engine: EngineChoice, withSlack: boolean, repliesOn: readonly string[]): string {
   const plugins = engine === "concurrent" ? CONCURRENT_PLUGINS : withSlack ? SLACK_PLUGINS : SERIAL_PLUGINS;
   const profilePlugins = `\n    plugins:\n${plugins.map((name) => `      - "${name}"`).join("\n")}`;
   return `# The workflow is named, not shipped: a machine drives nothing until the
@@ -414,6 +414,7 @@ workflows:
     workflow: "@amykit/workflow-ticket-to-qa"${profilePlugins}
     settings:
       qaStatusName: In QA
+      repliesOn: [${repliesOn.join(", ")}]
       escalation:
         # This install has one usable model: the Codex stand-in answers its
         # version and nothing else, which is the budget line the doctor reads.
@@ -423,10 +424,19 @@ workflows:
         # owner's answer put back in play — and the rung above the first is a
         # harness this world does not carry. The ladder is still mounted, and
         # the escalation this walk reaches is the owner's.
-        scale: { patient: 4, normal: 2, immediate: 1 }
+        # Generous on purpose: this world is the lifecycle, not the ladder. The
+        # work here goes back to the agent several times over one ticket, and
+        # the ladder it does reach is the one the owner's disagreement raises.
+        scale: { patient: 8, normal: 4, immediate: 2 }
+        # The ladder is the stand-in and the person above it; a scripted round
+        # never brings six findings, so every round this walk counts stays at
+        # the patient level and the one escalation it reaches is the owner's.
+        rungs: 3
         origins:
-          gate: { level: patient }
-          thread: { level: patient }
+          gate: { level: patient, findingsAt: 6 }
+          thread: { level: patient, findingsAt: 6 }
+          self-review: { level: patient, findingsAt: 6 }
+          owner: { level: immediate }
 
       # Zero, because the queue is the schedule and this run is driven a move
       # at a time. In production these are the minutes a waiting state backs
@@ -566,9 +576,23 @@ export function editRoster(root: string): void {
 }
 
 /** Writes the config an operator would have edited, over the one `amy setup` wrote. */
-export function configure(root: string, endpoint: string, engine: EngineChoice = "serial", withSlack = false): void {
+/**
+ * Writes the run's config.
+ *
+ * `repliesOn` defaults to what this world mounts: a conversation and the
+ * ticket when a Slack plugin is in the roster, the ticket alone when it is
+ * not. A drive whose conversation is another plugin passes the places itself,
+ * because the setting names ports and not the roster it was written beside.
+ */
+export function configure(
+  root: string,
+  endpoint: string,
+  engine: EngineChoice = "serial",
+  withSlack = false,
+  repliesOn: readonly string[] = withSlack ? ["conversation", "tracker"] : ["tracker"],
+): void {
   const amyDir = path.join(root, "home", ".amy");
-  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine, withSlack), "utf-8");
+  fs.writeFileSync(path.join(amyDir, "config.yaml"), config(root, endpoint, engine, withSlack, repliesOn), "utf-8");
 
   // An operator's brief is durable state, not a prompt fixture. The child
   // ticket names this exact parent id through the tracker on each observation.

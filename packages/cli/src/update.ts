@@ -8,6 +8,7 @@ import { paths } from "./paths.js";
 import { type AmyConfig, DEFAULT_CONFIG } from "./config.js";
 import { type Profile } from "./profiles.js";
 import { pluginList } from "./slices.js";
+import { ESCALATION_SETTINGS } from "./config-template.js";
 
 /**
  * One package this machine's two roots hold, and what the range in them
@@ -719,13 +720,18 @@ export function migrateSettingsFile(home: string): SettingsMoved {
   // a machine that kept its settings from an older release would otherwise move
   // nothing — or move into a config the boot check refuses.
   const escalated = materializeEscalationScale(top, said);
+  // Where a reply is said, and where the owner's word is read from, is now a
+  // setting with no default. An install that kept its config would refuse to
+  // mount the ticket workflow until it said so, so the update says it, in the
+  // file, in the one place an operator can narrow it.
+  const replied = materializeRepliesOn(top, said);
   const ceilings = dropRetiredCeilings(top, said);
   // A command-gate slice an older install wrote is put right whether or not
   // a top-level key moved into it: its `commands` and `checkouts` were valid
   // there, and the slice's schema now refuses both by name at boot.
   const normalized = normalizeCommandGateSlice(document, top, said);
 
-  if (dropped.length === 0 && !materialized && !escalated && !ceilings && !converged && !normalized) return { ok: true, said: [] };
+  if (dropped.length === 0 && !materialized && !escalated && !replied && !ceilings && !converged && !normalized) return { ok: true, said: [] };
 
   const movedTo = `${place}.moved`;
   // The kept file is the machine's config before its first move, a byte the
@@ -866,11 +872,35 @@ function materializeEscalationScale(top: yaml.YAMLMap, said: string[]): boolean 
     const settingsMap = profile.get("settings");
     if (yaml.isMap(settingsMap) && settingsMap.has("escalation")) continue;
     if (yaml.isMap(settingsMap)) {
-      settingsMap.add(new yaml.Pair("escalation", toMap({ scale: { patient: 3, normal: 2, immediate: 1 } })));
+      settingsMap.add(new yaml.Pair("escalation", toMap(ESCALATION_SETTINGS)));
     } else {
-      profile.add(new yaml.Pair("settings", toMap({ escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } })));
+      profile.add(new yaml.Pair("settings", toMap({ escalation: ESCALATION_SETTINGS })));
     }
     said.push("escalation.scale: set to patient 3, normal 2, immediate 1, the ladder init writes, which the ticket workflow now requires");
+    wrote = true;
+  }
+  return wrote;
+}
+
+/**
+ * Names the ports a reply is said on, for a machine that predates the setting.
+ *
+ * The value is both ports a reply used to take: the work's own thread where a
+ * chat was mounted, and the ticket where one was not. Naming both loses no
+ * answer on either install, and an operator who wants one narrows the list in
+ * the file rather than discovering the other was implied.
+ */
+function materializeRepliesOn(top: yaml.YAMLMap, said: string[]): boolean {
+  let wrote = false;
+  for (const profile of ticketProfiles(top)) {
+    const settingsMap = profile.get("settings");
+    if (yaml.isMap(settingsMap) && settingsMap.has("repliesOn")) continue;
+    if (yaml.isMap(settingsMap)) {
+      settingsMap.add(new yaml.Pair("repliesOn", seqOf(["conversation", "tracker"])));
+    } else {
+      profile.add(new yaml.Pair("settings", toMap({ repliesOn: ["conversation", "tracker"] })));
+    }
+    said.push("repliesOn: set to conversation and tracker, where a reply went before the setting existed, so an answer still reaches the thread and the ticket");
     wrote = true;
   }
   return wrote;
@@ -1363,6 +1393,13 @@ function unwrap(node: unknown): unknown {
   if (yaml.isScalar(node)) return node.value;
   if (yaml.isMap(node) || yaml.isSeq(node)) return node.toJSON();
   return node;
+}
+
+/** A list of plain names, as the file writes one. */
+function seqOf(names: readonly string[]): yaml.YAMLSeq {
+  const seq = new yaml.YAMLSeq();
+  for (const name of names) seq.add(new yaml.Scalar(name));
+  return seq;
 }
 
 function toMap(value: Record<string, unknown>): yaml.YAMLMap {

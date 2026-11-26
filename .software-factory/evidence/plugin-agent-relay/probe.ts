@@ -1,6 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Agent, Budget, Event, Ticket } from "@amykit/core";
+import { spawnSync } from "node:child_process";
+import type {
+  Agent,
+  AskContext,
+  Budget,
+  CodeHost,
+  Event,
+  Gate,
+  HarnessReply,
+  Notifier,
+  Plugin,
+  Ticket,
+  Tracker,
+  Workflow,
+  WorkflowRuntime,
+} from "@amykit/core";
 
 /** The nth argument the scenario passed, or a usage line and an exit. */
 function argument(n: number): string {
@@ -13,15 +28,27 @@ function argument(n: number): string {
 const [work, repo, report] = [argument(0), argument(1), argument(2)];
 const dist = (...where: string[]): string => path.join(repo, ...where, "dist", "index.js");
 
-const { mount, NodeCommandRunner }: typeof import("@amykit/core") = await import(dist("packages", "core"));
+const {
+  mount,
+  NodeCommandRunner,
+  WORKFLOW_RUNTIME,
+  WORKSPACE_PORT,
+  actionsOf,
+  implementationOf,
+  runAction,
+  withDiagramBeside,
+}: typeof import("@amykit/core") = await import(dist("packages", "core"));
 const { plugin: claude }: typeof import("@amykit/plugin-claude") = await import(dist("plugins", "claude"));
 const { plugin: codex }: typeof import("@amykit/plugin-codex") = await import(dist("plugins", "codex"));
 const { plugin: hermes }: typeof import("@amykit/plugin-hermes-agent") = await import(dist("plugins", "hermes-agent"));
 const { plugin: relay }: typeof import("@amykit/plugin-agent-relay") = await import(dist("plugins", "agent-relay"));
 const { judgeStep }: typeof import("@amykit/agent-kit") = await import(dist("packages", "agent-kit"));
-const { triagePrompt, readTriage, unreadTriage }: typeof import("@amykit/workflow-ticket-to-qa") = await import(
-  dist("examples", "workflow-ticket-to-qa")
-);
+const {
+  plugin: ticketToQa,
+  triagePrompt,
+  readTriage,
+  unreadTriage,
+}: typeof import("@amykit/workflow-ticket-to-qa") = await import(dist("examples", "workflow-ticket-to-qa"));
 
 const assertions: { type: string; status: "passed" | "failed" }[] = [];
 const record = (type: string, ok: boolean): number => assertions.push({ type, status: ok ? "passed" : "failed" });
@@ -49,14 +76,30 @@ function mustHave<T>(port: T | null | undefined, kind: string): T {
  * A triage, the way ticket-to-qa runs one: its prompt, on the agent's one
  * method, named in the context so the ladders and skills key on it.
  */
-const triage = async (agent: Agent | null | undefined, ticket: Ticket, conversation?: readonly string[]) =>
+const triage = async (
+  agent: Agent | null | undefined,
+  ticket: Ticket,
+  conversation?: readonly string[],
+  verify?: AskContext["verify"],
+) =>
   judgeStep(mustHave(agent, "agent"), {
     prompt: triagePrompt(ticket, conversation),
     cwd: path.join(work, "checkouts", "widgets"),
-    context: { workId: ticket.id, step: "triage" },
+    context: { workId: ticket.id, step: "triage", ...(verify === undefined ? {} : { verify }) },
     read: (answer) => readTriage(answer, "2026-09-03T12:00:00.000Z"),
     fallback: unreadTriage("2026-09-03T12:00:00.000Z"),
   });
+
+/**
+ * A step's own verify for 3b: the run completed and still is not the answer.
+ *
+ * `refused` is what the next rung is told, so a handoff carrying "did not
+ * succeed" instead is the defect this one is written to catch.
+ */
+async function refuseUnclear(reply: HarnessReply): Promise<HarnessReply> {
+  if (!reply.text.includes('"clear": false')) return reply;
+  return { ...reply, run: { ...reply.run, outcome: "failed", refused: "it answered that the ticket was not clear" } };
+}
 
 /** The prompt the fake claude was last handed, which is what a triage claim reads. */
 const lastPrompt = () => fs.readFileSync(path.join(work, "last-prompt.txt"), "utf-8");
@@ -138,7 +181,7 @@ function reset(mode: string): void {
   process.env.AMY_E2E_CLAUDE = mode;
 }
 
-const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(Boolean);
+const called = (): string[] => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(Boolean);
 
 // 0. The annotated example config mounts. A rung named in both the default
 // ladder and a step's own is one rung — the collection holds one `claude:opus`
@@ -277,6 +320,29 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
   const handoff = events.filter((e) => e.kind === "agent.handoff");
   record("relay.records_the_handoff_with_its_cause", handoff[0]?.detail?.cause === "failed");
   record("relay.records_which_axis_moved", handoff[0]?.detail?.moved === "model");
+}
+
+// 3b. A run that completed and its own step refused is climbed on, and the
+// next rung is told why: a stronger model that is not told what was wrong
+// with the answer buys the same answer again.
+{
+  reset("unclear-answer");
+  const { agent, events } = await hostWith(LADDER);
+  const result = await triage(agent, TICKET, undefined, refuseUnclear);
+
+  const asked = called();
+  record("relay.climbs_on_a_refused_verify", asked.join(",") === "claude:sonnet,claude:opus");
+  // The refused run is a run: nothing about the harness changed, and the
+  // stronger rung is the one that answered.
+  record("relay.keeps_the_harness_a_refusal_was_answered_on", !asked.some((c) => c.startsWith("codex")));
+  record("relay.answers_the_refused_step_on_the_stronger_rung", result.run.model === "claude-opus-4-5[1m]");
+  record(
+    "relay.handoff_carries_the_refusal",
+    lastPrompt().includes("that answer was refused: it answered that the ticket was not clear"),
+  );
+
+  const handoff = events.filter((e) => e.kind === "agent.handoff");
+  record("relay.records_the_refusal_as_a_failure", handoff[0]?.detail?.cause === "failed");
 }
 
 // 4. A quota changes harness, and skips the rest of the throttled one.
@@ -446,6 +512,168 @@ const called = () => fs.readFileSync(calls, "utf-8").trim().split("\n").filter(B
     "relay.names_the_skills_there_were_to_choose_from",
     said.includes("/first-skill") && said.includes("/second-skill"),
   );
+}
+
+/** Git in the world a workflow prepares its branches in. */
+function gitIn(cwd: string, ...args: string[]): void {
+  const done = spawnSync("git", ["-c", "user.email=amy@example.test", "-c", "user.name=amy", ...args], {
+    cwd,
+    encoding: "utf-8",
+  });
+  if (done.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${done.stderr}`);
+}
+
+/** The tracker, answering one ticket and writing nothing back. */
+function trackerOf(ticket: Ticket): Tracker {
+  return {
+    inProgress: async () => [ticket],
+    get: async (id) => (id === ticket.id ? ticket : null),
+    comments: async () => [],
+    hasReplyAfter: async () => false,
+    comment: async () => undefined,
+    setStatus: async () => undefined,
+    assign: async () => undefined,
+    createFollowUp: async () => "PROJ-0",
+  };
+}
+
+/** The code host, with no pull request: the round is about the rung, not the review. */
+function codeHostOf(): CodeHost {
+  return {
+    findPullRequest: async () => null,
+    pullRequestAncestry: async () => null,
+    findPullRequestMentioning: async () => null,
+    pullRequest: async () => null,
+    openPullRequest: async () => 0,
+    requestReview: async () => undefined,
+    replyToReviewThread: async () => undefined,
+    resolveReviewThread: async () => undefined,
+    unresolveReviewThread: async () => undefined,
+    reviewLoad: async () => ({}),
+    reviewsRequestedOf: async () => [],
+    changesRequestedOf: async () => [],
+    authoredWithChangesRequested: async () => [],
+    merge: async () => undefined,
+    submitReview: async () => undefined,
+    createIssue: async () => 0,
+    commitStatuses: async () => [],
+  };
+}
+
+/** The gate and the notifier the mounting workflow asks for, and nothing else. */
+function gateAndNotifier(): { gate: Gate; notifier: Notifier } {
+  return {
+    gate: { run: async () => ({ ok: true, at: "2026-09-03T12:00:00.000Z", output: "" }) },
+    notifier: { announce: async () => undefined },
+  };
+}
+
+/** The workplace and the ports ticket-to-qa reaches for, over one ticket. */
+function worldFor(ticket: Ticket, workspaceRoot: string): { workspace: Plugin; world: Plugin } {
+  const { gate, notifier } = gateAndNotifier();
+  return {
+    workspace: {
+      name: "@amykit/plugin-workspace",
+      register: (registry) => {
+        registry.port(WORKSPACE_PORT, { workspaceRoot, checkouts: {} });
+      },
+    },
+    world: {
+      name: "@amykit/plugin-world",
+      register: (registry) => {
+        registry.port("tracker", trackerOf(ticket));
+        registry.port("code-host", codeHostOf());
+        registry.port("gate", gate);
+        registry.port("notifier", notifier);
+      },
+    },
+  };
+}
+
+/** The workflow as a host mounts it: its states come from the diagram beside its entry. */
+const declaredTicketToQa = withDiagramBeside(ticketToQa, path.join(repo, "examples", "workflow-ticket-to-qa", "dist", "index.js"));
+
+// 9. A round that comes back from GATE starts where its rounds earned. The
+// built workflow decides the rung from the record and the built relay walks
+// it, so the first rung asked is the second one, on that round and the next.
+{
+  const workspaceRoot = path.join(work, "checkouts");
+  const checkout = path.join(workspaceRoot, "widgets");
+  const remote = path.join(work, "remotes", "widgets.git");
+  // A real repository, because the workflow's own git prepares the branch the
+  // ticket names: a stand-in checkout would prove the rung against a tree amy
+  // never made.
+  if (!fs.existsSync(path.join(checkout, ".git"))) {
+    fs.rmSync(checkout, { recursive: true, force: true });
+    fs.mkdirSync(remote, { recursive: true });
+    gitIn(remote, "init", "-q", "--bare", "-b", "main");
+    gitIn(work, "clone", "-q", remote, checkout);
+    fs.writeFileSync(path.join(checkout, "invoice.md"), "# invoice\n");
+    gitIn(checkout, "add", ".");
+    gitIn(checkout, "commit", "-qm", "one");
+    gitIn(checkout, "push", "-q", "-u", "origin", "main");
+  }
+
+  const profile = path.join(work, "roster");
+  fs.mkdirSync(profile, { recursive: true });
+  fs.writeFileSync(
+    path.join(profile, "roster.yaml"),
+    JSON.stringify({
+      confirmedOn: "2026-09-03",
+      reviewers: [{ tracker: "ada@example.test", host: "ada", available: true }],
+      qa: { tracker: "grace@example.test", host: "grace", available: true },
+    }),
+  );
+
+  const ticket = { ...TICKET, branchName: "proj-1239" };
+  const { workspace, world } = worldFor(ticket, workspaceRoot);
+  const mounted = await mount(
+    [workspace, declaredTicketToQa, world, claude, relay],
+    {
+      "@amykit/plugin-claude": { models: ["sonnet", "opus"] },
+      "@amykit/plugin-agent-relay": { ladder: ["claude:sonnet", "claude:opus"] },
+      "@amykit/workflow-ticket-to-qa": {
+        repos: [ticket.repo],
+        repliesOn: ["tracker"],
+        qaStatusName: "In QA",
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
+      },
+    },
+    {
+      runner: new NodeCommandRunner(),
+      now: () => new Date("2026-09-03T12:00:00.000Z"),
+      paths: { state: path.join(work, ".amy"), profile },
+    },
+  );
+  if (!mounted.ok) throw new Error(`the ticket workflow did not mount: ${mounted.problems.join("; ")}`);
+
+  const runtime = mounted.mounted.contributions.get(WORKFLOW_RUNTIME)?.get("ticket-to-qa") as unknown as WorkflowRuntime;
+  const workflow = mounted.mounted.workflow as unknown as Workflow;
+
+  for (const rounds of [2, 3]) {
+    reset("fine");
+    const seen = {
+      ...declaredTicketToQa.newRecord(ticket.id, new Date("2026-09-03T12:00:00.000Z")),
+      state: "IMPLEMENTING",
+      lastOrigin: "gate",
+      roundsByOrigin: { gate: rounds },
+      climbedByOrigin: { gate: 1 },
+      lastGate: { ok: false, at: "2026-09-03T11:00:00.000Z", findings: 2, output: "typecheck failed" },
+    };
+    const observation = await runtime.observe(seen);
+    const planned = workflow.plan(seen, observation, runtime.policy);
+    for (const action of actionsOf(planned)) {
+      await runAction(implementationOf(runtime, action.type), action, { record: seen, observation, outcomes: {} }, () => undefined);
+    }
+
+    // `normal` is two rounds at this config, so the round that starts here is
+    // the one after them, and the round after that is asked the same rung: an
+    // escalation is permanent, and never jumps to the person at the top.
+    record(
+      rounds === 2 ? "relay.a_round_from_an_origin_starts_higher" : "relay.the_round_after_starts_at_the_same_rung",
+      called()[0] === "claude:opus",
+    );
+  }
 }
 
 const failed = assertions.filter((a) => a.status !== "passed");

@@ -142,7 +142,8 @@ async function world(conversationPolicy: Policy["conversation"]) {
       reviewLoad: async () => ({}),
       openPullRequest: unreached,
       requestReview: unreached,
-      resolveReviewThread: unreached,
+      replyToReviewThread: async () => {},
+    resolveReviewThread: unreached,
       unresolveReviewThread: unreached,
       reviewsRequestedOf: unreached,
       changesRequestedOf: unreached,
@@ -205,7 +206,7 @@ async function world(conversationPolicy: Policy["conversation"]) {
   );
   const mounted = await mount(
     [lent, standIns],
-    { [drawn.name]: { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } }, policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
+    { [drawn.name]: { repos: ["acme/widgets"], repliesOn: ["conversation"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } }, policy: { ...DEFAULT_POLICY, conversation: conversationPolicy } } },
     { runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) }, now, paths: { state: dir, profile } },
   );
   if (!mounted.ok) throw new Error(mounted.problems.join("; "));

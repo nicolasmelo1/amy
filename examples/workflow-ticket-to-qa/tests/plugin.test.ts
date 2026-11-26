@@ -14,7 +14,17 @@ const HOST: HostServices = {
 };
 
 const SETTINGS = {
-  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 } } },
+  "@amykit/workflow-ticket-to-qa": {
+    repos: ["acme/widgets"],
+    repliesOn: ["conversation", "tracker"],
+    qaStatusName: "In QA",
+    escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
+  },
+};
+
+/** The same settings with `repliesOn` left out, for the test that says the config owes it. */
+const WITHOUT_REPLIES = {
+  "@amykit/workflow-ticket-to-qa": { repos: ["acme/widgets"], qaStatusName: "In QA", escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } } },
 };
 
 /** Everything this workflow reaches for, mounted by somebody else. */
@@ -322,5 +332,59 @@ describe("the tickets an install limits itself to", () => {
       );
     expect(refused).toContain(twice.id);
     expect(refused).toContain("Stack base");
+  });
+});
+
+describe("a ticket already under way when the install limits itself", () => {
+  it("is not worked further once onlyTickets leaves it out", async () => {
+    const outside = ticket({ id: "PROJ-1" });
+    const listing: Plugin = {
+      name: "@amykit/plugin-world",
+      register: (registry) => {
+        registry.port("tracker", fakeTracker({ get: async () => outside, inProgress: async () => [outside] }));
+        registry.port("code-host", fakeHost());
+        registry.port("agent", fakeAgent());
+        registry.port("gate", fakeGate());
+        registry.port("notifier", { announce: async () => {} });
+      },
+    };
+    const outcome = await mount([fakeWorkspace(), plugin, listing], {
+      "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], onlyTickets: ["PROJ-2"] },
+    }, HOST);
+    if (!outcome.ok) throw new Error(outcome.problems.join("; "));
+    const workflow = outcome.mounted.workflow!;
+    const runtime = outcome.mounted.contributions.get(WORKFLOW_RUNTIME)!.get(workflow.name) as WorkflowRuntime;
+    const ready = { ...(plugin.newRecord(outside.id, new Date("2026-09-03T12:00:00.000Z")) as object), state: "READY" } as never;
+
+    const decided = workflow.plan(ready, (await runtime.observe(ready)) as never, runtime.policy as never);
+    expect(decided.kind).toBe("settled");
+  });
+});
+
+describe("where replies are said and read", () => {
+  const withReplies = (repliesOn: unknown) => mount([fakeWorkspace(), plugin, world], {
+    "@amykit/workflow-ticket-to-qa": { ...SETTINGS["@amykit/workflow-ticket-to-qa"], repliesOn },
+  }, HOST);
+
+  it("is a setting the config must name, with no default", async () => {
+    const outcome = await mount([fakeWorkspace(), plugin, world], WITHOUT_REPLIES, HOST);
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toContain("repliesOn");
+  });
+
+  it("accepts the ports replies can be said on and read from, by their names", async () => {
+    const outcome = await withReplies(["conversation", "code-host", "tracker"]);
+
+    expect(outcome.ok ? "" : outcome.problems.join("; ")).toBe("");
+  });
+
+  it("refuses a name that is not one of those ports, naming it and the names it accepts", async () => {
+    const outcome = await withReplies(["slack"]);
+
+    expect(outcome.ok).toBe(false);
+    const said = outcome.ok ? "" : outcome.problems.join("; ");
+    expect(said).toContain("slack");
+    for (const name of ["conversation", "code-host", "tracker"]) expect(said).toContain(name);
   });
 });

@@ -50,6 +50,8 @@ export interface TicketMount {
   now?: () => Date;
   log?: EventLog;
   policy?: Policy;
+  /** Settings laid over the fixture's own, when a test is about one of them. */
+  settings?: Record<string, unknown>;
   /** The brief store, when the test is about one ticket reading a brief. */
   briefs?: BriefStore;
   /**
@@ -62,12 +64,26 @@ export interface TicketMount {
 }
 
 /** What ticket-to-qa is configured with, for a test. */
+/** The escalation block a fixture mounts: a patient ladder of three rungs. */
+function anEscalation(): Record<string, unknown> {
+  const origin = (level: string) => ({ level, beyond: "immediate", findingsAt: 3 });
+  return {
+    scale: { patient: 3, normal: 2, immediate: 1 },
+    rungs: 3,
+    origins: { gate: origin("normal"), thread: origin("normal"), "self-review": origin("normal"), owner: { level: "immediate" } },
+  };
+}
+
 const SETTINGS = {
   repos: ["Northwind/northwind-backend"],
+  // Where an answer is said and where the owner's word is read from: both of
+  // the ports a test can mount without a plugin of its own. A test about one
+  // of the places lays its own list over this one.
+  repliesOn: ["conversation", "tracker"],
   qaStatusName: "In QA",
   // Every number an escalation rests on is written in the config, with no
   // default in code, so a fixture that mounts the workflow writes them too.
-  escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+  escalation: anEscalation(),
 };
 
 /**
@@ -90,7 +106,7 @@ export async function mountTicketToQa(options: TicketMount = {}): Promise<Workfl
     configSchema: drawnTicketToQa.configSchema,
     register: (registry, ctx) => drawnTicketToQa.register(registry, { ...ctx, checkouts: () => checkouts }),
   };
-  const settings = { ...SETTINGS, ...(options.policy ? { policy: options.policy } : {}) };
+  const settings = { ...SETTINGS, ...(options.settings ?? {}), ...(options.policy ? { policy: options.policy } : {}) };
   const outcome = await mount([lent, world], { [drawnTicketToQa.name]: settings }, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
     now: options.now ?? ((): Date => new Date()),

@@ -237,8 +237,9 @@ async function host({ channels = [channelPlugin("recorder")], extra = [], log, o
       "@amykit/plugin-serial-engine": { maxItemAttempts: 5 },
       "@amykit/workflow-ticket-to-qa": {
         repos: ["acme/widgets"],
+        repliesOn: ["tracker"],
         qaStatusName: "In QA",
-        escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
         ...overrides["@amykit/workflow-ticket-to-qa"],
       },
     },
@@ -614,8 +615,9 @@ const kindsOf = (kind: string) => linesIn(logDir).filter((event) => event.kind =
     overrides: {
       "@amykit/workflow-ticket-to-qa": {
         repos: [UNMAPPED, MAPPED],
+        repliesOn: ["tracker"],
         qaStatusName: "In QA",
-        escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+        escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
         defaultBranch: "main",
         baseBranch: { [MAPPED]: "trunk" },
       },

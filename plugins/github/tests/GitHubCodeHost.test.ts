@@ -410,6 +410,44 @@ describe("GitHubCodeHost.requestReview", () => {
   });
 });
 
+describe("GitHubCodeHost.replyToReviewThread", () => {
+  // One mutation, the thread the view already carried, and the answer as its
+  // other variable: the reply is a comment on the thread, never a resolution.
+  it("says the answer on the thread by its id in one call", async () => {
+    const runner = new ScriptedRunner([
+      {
+        match: whenArgsInclude("graphql"),
+        result: {
+          stdout: JSON.stringify({
+            data: { addPullRequestReviewThreadReply: { comment: { id: "C1" } } },
+          }),
+        },
+      },
+    ]);
+
+    await new GitHubCodeHost(runner).replyToReviewThread("T1", "the brief keeps currency out of scope");
+
+    const asked = runner.argvFor("gh").join(" ");
+    expect(asked).toContain("addPullRequestReviewThreadReply");
+    expect(asked).toContain("pullRequestReviewThreadId: $id");
+    expect(asked).toContain("id=T1");
+    expect(asked).toContain("the brief keeps currency out of scope");
+    expect(asked).not.toContain("resolveReviewThread");
+    expect(runner.calls).toHaveLength(1);
+  });
+
+  it("refuses out loud when GitHub will not take the reply, rather than dropping it", async () => {
+    const runner = new ScriptedRunner([
+      {
+        match: whenArgsInclude("graphql"),
+        result: { ok: false, exitCode: 1, stdout: "", stderr: "Not Found" },
+      },
+    ]);
+
+    await expect(new GitHubCodeHost(runner).replyToReviewThread("T404", "hello")).rejects.toThrow(/Not Found/);
+  });
+});
+
 describe("GitHubCodeHost.resolveReviewThread", () => {
   // The shape the plan was verified against: one mutation, the thread id the
   // view already carried as its only variable, one call.

@@ -124,6 +124,7 @@ class MergeRequestHost implements CodeHost {
 
   // Everything below is the forge's other half, which opening a pull request never reaches.
   requestReview(): Promise<void> { return this.notOffered("requestReview"); }
+  replyToReviewThread(): Promise<void> { return this.notOffered("replyToReviewThread"); }
   resolveReviewThread(): Promise<void> { return this.notOffered("resolveReviewThread"); }
   unresolveReviewThread(): Promise<void> { return this.notOffered("unresolveReviewThread"); }
   reviewLoad(): Promise<Record<string, number>> { return this.notOffered("reviewLoad"); }

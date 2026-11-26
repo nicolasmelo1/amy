@@ -90,20 +90,31 @@ function startLoop(): void {
   });
 }
 
+/** The last message id the chat held when the question was sent. */
+let askedAt = 0;
+/** The last message id seen while reading, and when the chat last took one. */
+let lastId = -1;
+let lastChange = Date.now();
+
 try {
   build(root, { source: world });
   addSecondTicket();
   const tracker = serve(path.join(world, "tracker.ts"), path.join(root, "world", "tracker.json"), path.join(root, "world", "tracker.port"));
   const telegram = serve(path.join(repo, ".software-factory/evidence/plugin-telegram/bot-api.ts"), path.join(root, "world", "telegram.port"));
   const bot = `http://127.0.0.1:${telegram}`;
-  const say = async (text: string, where: { topic?: number; quotes?: number } = {}) =>
-    (await (await fetch(`${bot}/operator/say`, { method: "POST", body: JSON.stringify({ text, ...where }) })).json()) as { message_id: number };
+  const say = async (text: string, where: { topic?: number; quotes?: number } = {}) => {
+    const before = (await (await fetch(`${bot}/operator/world`)).json()) as TelegramWorld;
+    askedAt = Math.max(0, ...before.inTheChat.map((one) => one.id));
+    return (await (await fetch(`${bot}/operator/say`, { method: "POST", body: JSON.stringify({ text, ...where }) })).json()) as { message_id: number };
+  };
   const telegramWorld = async () => (await (await fetch(`${bot}/operator/world`)).json()) as TelegramWorld;
 
   // The machine as the operator's `amy setup` left it: its state directory,
   // with the config the run writes next.
   fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
-  configure(root, `http://127.0.0.1:${tracker}/graphql`);
+  // Telegram is this install's conversation and the ticket its tracker: both
+  // places a reply can be said on, named by port rather than by plugin.
+  configure(root, `http://127.0.0.1:${tracker}/graphql`, "serial", false, ["conversation", "tracker"]);
   let config = fs.readFileSync(configFile, "utf-8")
     .replace(/^plugins:\n/m, `plugins:\n  "@amykit/plugin-telegram":\n    operator: "${OPERATOR}"\n    server: ${bot}\n`)
     .replace(/^agent:\n {2}model: sonnet\n/m, "agent:\n  model: sonnet\n  ladder: [\"claude:sonnet\", \"claude:opus\"]\n")
@@ -253,7 +264,15 @@ try {
 } finally {
   loop.wanted = false;
   for (const child of children) child.kill();
-  if (!keep) fs.rmSync(root, { recursive: true, force: true });
+  // A stand-in can still be closing a file when the loop stops, and a
+  // half-removed temporary directory is not a finding about the machine.
+  if (!keep) {
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      // Left for the next run's cleanup: the assertions are already written.
+    }
+  }
   else console.log(`kept the world in ${root}`);
 }
 
@@ -273,8 +292,23 @@ async function answered(words: string): Promise<string> {
   let found: string | undefined;
   await until(async () => {
     const said = (await (await fetch(`http://127.0.0.1:${fs.readFileSync(path.join(root, "world", "telegram.port"), "utf-8").trim()}/operator/world`)).json()) as TelegramWorld;
-    found = [...said.inTheChat].reverse().find((one) => one.text.includes(words))?.text;
-    return found !== undefined && !seen.has(found);
+    // A long answer is more than one message: the bot splits at the platform's
+    // ceiling, so the sentence that ends it — the one saying nothing ran — can
+    // land in the next one. Read from the message that matches to the end of
+    // what came after the question, the way a person reading the thread would.
+    const since = said.inTheChat.filter((one) => one.id > askedAt);
+    const at = since.map((one) => one.text.includes(words)).lastIndexOf(true);
+    found = at < 0 ? undefined : since.slice(at).map((one) => one.text).join("\n");
+    // The parts of a split answer arrive one after another, so a match is not
+    // the whole answer: wait until the chat has stopped taking new messages,
+    // then read it again from the top.
+    const newest = said.inTheChat.at(-1)?.id ?? 0;
+    if (newest !== lastId) {
+      lastId = newest;
+      lastChange = Date.now();
+      return false;
+    }
+    return found !== undefined && !seen.has(found) && Date.now() - lastChange > 1200;
   }, 90_000, `amy to say "${words}" in the chat`);
   seen.add(found!);
   return found!;

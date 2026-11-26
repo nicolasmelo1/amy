@@ -5,6 +5,7 @@ import path from "node:path";
 import { AskContext, Budget, Conversation, HarnessReply, Plan, Reply, Tracker, dispatchesTo } from "@amykit/core";
 import { FileQueue } from "@amykit/plugin-file-queue";
 import { Worker } from "@amykit/plugin-serial-engine";
+import type { TicketRecord } from "../src/record.js";
 import { plan } from "../src/machine.js";
 import { configSchema } from "../src/plugin.js";
 import { validateConfig } from "@amykit/core";
@@ -342,10 +343,14 @@ describe("IMPLEMENTING", () => {
   });
 
   it("escalates instead of retrying forever", () => {
+    // The ceiling is the origin's rounds, counted per origin: a record whose
+    // gate has spent every rung below a person is not tried again.
     const r = record("IMPLEMENTING", {
-      attempts: { IMPLEMENTING: policy.maxImplementAttempts },
+      attempts: { IMPLEMENTING: 3 },
+      roundsByOrigin: { gate: 6 },
+      climbedByOrigin: { gate: policy.escalation.rungs - 1 },
       lastImplementation: attempt(false, "2026-09-03T10:00:00.000Z", "still broken"),
-    });
+    } as Partial<TicketRecord>);
 
     const p = expectAdvance(plan(r, observation(), policy));
 
@@ -384,11 +389,13 @@ describe("verdict", () => {
 
   it("escalates checks that keep finding something", () => {
     const r = record("verdict", {
-      attempts: { verdict: policy.maxGateAttempts },
+      attempts: { verdict: 3 },
+      roundsByOrigin: { gate: 2 },
+      climbedByOrigin: { gate: policy.escalation.rungs - 1 },
       lanes: met("RED", "APPROVED"),
       lastImplementation: attempt(true, "2026-09-03T10:00:00.000Z"),
       lastGate: attempt(false, "2026-09-03T10:05:00.000Z", "typecheck failed"),
-    });
+    } as Partial<TicketRecord>);
 
     const p = expectAdvance(plan(r, observation(), policy));
 
@@ -981,7 +988,9 @@ describe("ESCALATED", () => {
   it("re-judges the comments once they do", () => {
     const obs = observation({ escalationAnswered: true });
 
-    expect(expectAdvance(plan(record("ESCALATED"), obs, policy)).to).toBe("HUMAN_FIX");
+    // HUMAN_FIX is gone: an escalation with no resume point comes back to the
+    // review that reads the answer.
+    expect(expectAdvance(plan(record("ESCALATED"), obs, policy)).to).toBe("HUMAN_REVIEW");
   });
 });
 
@@ -1651,8 +1660,9 @@ describe("the attempt ceilings an escalation replaces", () => {
   it.each(["maxImplementAttempts", "maxGateAttempts"])("refuses a config that still sets policy.%s, naming it", (key) => {
     const result = validateConfig("@amykit/workflow-ticket-to-qa", configSchema, {
       repos: ["acme/widgets"],
+      repliesOn: ["conversation", "tracker"],
       qaStatusName: "In QA",
-      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
       policy: { [key]: 3 },
     });
 

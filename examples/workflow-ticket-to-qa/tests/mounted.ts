@@ -35,10 +35,11 @@ export async function mountedTicket(
   const outcome = await mount([fakeWorkspace(), plugin, world], {
     "@amykit/workflow-ticket-to-qa": {
       repos: ["acme/widgets"],
+      repliesOn: ["conversation", "tracker"],
       qaStatusName: "In QA",
       // Every number an escalation rests on is written in the config: the
       // schema has no default for a level's rounds.
-      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
     },
   }, host);
   if (!outcome.ok) throw new Error(outcome.problems.join("; "));

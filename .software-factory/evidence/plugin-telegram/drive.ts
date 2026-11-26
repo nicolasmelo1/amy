@@ -71,7 +71,9 @@ try {
   // The machine as the operator's `amy setup` left it: its state directory,
   // with the config the run writes next.
   fs.mkdirSync(path.join(home, ".amy"), { recursive: true });
-  configure(root, `http://127.0.0.1:${tracker}/graphql`);
+  // Telegram is this install's conversation and the ticket its tracker: both
+  // places a reply can be said on, named by port rather than by plugin.
+  configure(root, `http://127.0.0.1:${tracker}/graphql`, "serial", false, ["conversation", "tracker"]);
   fs.appendFileSync(path.join(home, ".amy", "config.yaml"), `
 # The conversation: one topic per ticket in the operator's private chat with
 # the bot, on a stand-in Bot API.

@@ -1,5 +1,5 @@
 ---
-base: c39407fa4068fd8c3a5282fb9949cb21f6b08101
+base: e2faa83d
 sources:
   - { id: S1, kind: code, ref: "packages/core/src/ports/CodeHost.ts", symbol: "CodeHost", said: "a review thread is resolved by id and nothing in the port says an answer on the thread itself, so a reply can only be repeated in a chat or on the ticket" }
   - { id: S2, kind: code, ref: "packages/core/src/ports/Conversation.ts", symbol: "Conversation", said: "a chat says a reply in a room and reads the owner's word from it; the room is not the thread a person wrote on" }

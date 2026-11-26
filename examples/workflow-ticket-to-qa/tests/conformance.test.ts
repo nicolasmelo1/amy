@@ -338,3 +338,20 @@ describe("the review loop's own fix states", () => {
     expect(drawn.verified).toEqual(expect.arrayContaining(["IMPLEMENTING"]));
   });
 });
+
+describe("an escalation the owner answers with no resume point recorded", () => {
+  it("never sends the work into a state ticket-to-qa no longer draws", async () => {
+    const { workflow, runtime } = await ticketWorkerDeps({ now: () => new Date("2026-09-03T12:00:00.000Z") });
+    const escalated = {
+      ...newRecord("PROJ-1239", new Date("2026-09-03T12:00:00.000Z")),
+      state: "ESCALATED",
+      escalation: { reason: "old", askedAt: "2026-09-01T09:00:00.000Z" },
+    } as unknown as TicketRecord;
+    const drawn = readDiagram(fs.readFileSync(fileURLToPath(new URL("../workflow.mmd", import.meta.url)), "utf-8"));
+
+    const decided = workflow.plan(escalated, { ...((await runtime.observe(escalated)) as object), escalationAnswered: true } as never, runtime.policy);
+
+    expect(decided.kind).toBe("advance");
+    expect(drawn.states).toContain(decided.kind === "advance" ? decided.to : "");
+  });
+});
