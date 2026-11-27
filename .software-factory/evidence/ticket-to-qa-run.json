@@ -90,23 +90,23 @@
       "DONE"
     ],
     "in_flight_at_the_brake": {
-      "pid": 33938,
+      "pid": 15003,
       "ended": true,
       "pidFileGone": true
     },
     "what_the_world_did": [
       "the Slack operator pressed ✅ for BRL and revised the brief",
-      "the automated reviewer looked at 684ef38 and left one comment",
-      "the automated reviewer looked at 2c0636f and had nothing to say",
+      "the automated reviewer looked at 0d91583 and left one comment",
+      "the automated reviewer looked at e7250d2 and had nothing to say",
       "one of ada's other reviews was merged, so they are carrying one fewer",
-      "ada asked for changes on 2c0636f",
-      "the automated reviewer looked at 3e0206b and had nothing to say",
+      "ada asked for changes on e7250d2",
+      "the automated reviewer looked at 6633741 and had nothing to say",
       "the owner settled the disagreement in Slack",
-      "the automated reviewer looked at 4ce86ad and had nothing to say",
+      "the automated reviewer looked at f7bafb7 and had nothing to say",
       "one of ada's other reviews was merged, so they are carrying one fewer",
-      "ada approved 4ce86ad",
-      "the automated reviewer looked at 7521fcc and had nothing to say",
-      "ada approved 7521fcc"
+      "ada approved f7bafb7",
+      "the automated reviewer looked at efb495d and had nothing to say",
+      "ada approved efb495d"
     ],
     "agent_calls": [
       "triage",
@@ -137,7 +137,7 @@
     "final_status": "In QA",
     "brief_show": {
       "code": 0,
-      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-21T09:38:41.517Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-21T09:38:41.030Z): Should the invoice total use BRL?\"\n}"
+      "out": "{\n  \"id\": \"BILL-4020\",\n  \"revision\": 2,\n  \"explains\": [\n    \"BILL-4021\"\n  ],\n  \"updatedAt\": \"2026-11-27T15:58:14.469Z\",\n  \"text\": \"Constraint\\nKeep BRL beside the total; do not round the total.\\n\\nQuestion (from BILL-4021, 2026-11-27T15:58:13.959Z): Should the invoice total use BRL?\"\n}"
     },
     "budget": "Codex: unavailable — codex app-server exited before completion (1)",
     "second_run_transitions": 34,
@@ -145,24 +145,24 @@
     "concurrent_looks_that_moved_lanes_side_by_side": 10,
     "gate_runs": [
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-wfMKfU/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
-        "head": "64c977b7ad7b1ca04d6c7032fd0d3d014bba2340"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-5UqYzr/worktrees/tickets/BILL-4021-GATE-1/acme-widgets",
+        "head": "f38920f76fd695aa4517effd4573c6d887774310"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-wfMKfU/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
-        "head": "684ef389fb1cd956f727c5fb2034b17db2accd54"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-5UqYzr/worktrees/tickets/BILL-4021-GATE-2/acme-widgets",
+        "head": "0d91583471e8bea727f12b34fcc2ff8977563573"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-wfMKfU/worktrees/tickets/BILL-4021-GATE-3/acme-widgets",
-        "head": "2c0636f5019cf9f75e870d64fceb67278f9caae5"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-5UqYzr/worktrees/tickets/BILL-4021-GATE-3/acme-widgets",
+        "head": "e7250d2eae70d5228465d874370b0988557daf62"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-wfMKfU/worktrees/tickets/BILL-4021-GATE-4/acme-widgets",
-        "head": "3e0206b76d122b6e8edc38e93783747152590f26"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-5UqYzr/worktrees/tickets/BILL-4021-GATE-4/acme-widgets",
+        "head": "6633741d0d6a0a9faca4bea29943046207eb2cf9"
       },
       {
-        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-wfMKfU/worktrees/tickets/BILL-4021-GATE-5/acme-widgets",
-        "head": "4ce86ad1fd44f97ba24d21be3bdc7ff22177b6db"
+        "tree": "/private/var/folders/sj/0mtp4h6x3yn4t4s67wz45m3h0000gn/T/amy-e2e-5UqYzr/worktrees/tickets/BILL-4021-GATE-5/acme-widgets",
+        "head": "f7bafb70b7d8d5fac38c4679069cdb792815a9d2"
       }
     ]
   },
