@@ -425,6 +425,11 @@
           "description": ""
         },
         {
+          "title": "A step escalates by where its work came back from",
+          "path": "/design/a-step-escalates-by-where-its-work-came-back-from",
+          "description": ""
+        },
+        {
           "title": "A testkit proves the machine",
           "path": "/design/a-testkit-proves-the-machine",
           "description": ""
@@ -1044,8 +1049,18 @@
         },
         {
           "depth": 3,
-          "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
-          "slug": "check-the-claude-executable-only-when-the-selected-profile-mounts-the-claude-plugin"
+          "title": "A step escalates by where its work came back from, with nothing left of the two ceilings it replaced. Rounds are counted per origin, and the round that spends a level's last allowance is the one that climbs: a gate, a review thread, the self-review, the owner and a failing run each spend their own ladder, and the work escalates only when one of them has nothing left below a person. escalation.rungs and every *.findingsAt are required with no default, the annotated config teaches the whole block, and a record saved before rounds were counted per origin reads every origin at zero rather than at an attempts ceiling that no longer exists.",
+          "slug": "a-step-escalates-by-where-its-work-came-back-from-with-nothing-left-of-the-two-ceilings-it-replaced-rounds-are-counted-per-origin-and-the-round-that-spends-a-levels-last-allowance-is-the-one-that-climbs-a-gate-a-review-thread-the-self-review-the-owner-and-a-failing-run-each-spend-their-own-ladder-and-the-work-escalates-only-when-one-of-them-has-nothing-left-below-a-person-escalationrungs-and-every-findingsat-are-required-with-no-default-the-annotated-config-teaches-the-whole-block-and-a-record-saved-before-rounds-were-counted-per-origin-reads-every-origin-at-zero-rather-than-at-an-attempts-ceiling-that-no-longer-exists"
+        },
+        {
+          "depth": 3,
+          "title": "Where a reply is said, and where the owner's word is read from, is one setting named by ports (repliesOn) instead of a guess that preferred a chat and fell back to the ticket. It is required with no default; it refuses a product name like slack by naming the ports that exist; and an answer is said on every port it names and on no other. The code host gained replyToReviewThread, so the answer can be written on the review thread it belongs to instead of repeated where the reviewer is not looking, and amy update writes the setting into a machine that predates it.",
+          "slug": "where-a-reply-is-said-and-where-the-owners-word-is-read-from-is-one-setting-named-by-ports-replieson-instead-of-a-guess-that-preferred-a-chat-and-fell-back-to-the-ticket-it-is-required-with-no-default-it-refuses-a-product-name-like-slack-by-naming-the-ports-that-exist-and-an-answer-is-said-on-every-port-it-names-and-on-no-other-the-code-host-gained-replytoreviewthread-so-the-answer-can-be-written-on-the-review-thread-it-belongs-to-instead-of-repeated-where-the-reviewer-is-not-looking-and-amy-update-writes-the-setting-into-a-machine-that-predates-it"
+        },
+        {
+          "depth": 3,
+          "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
+          "slug": "the-property-that-keeps-every-code-change-in-implementing-now-plants-the-defect-it-rejects"
         },
         {
           "depth": 2,
@@ -2501,6 +2516,17 @@
       ]
     },
     {
+      "path": "/design/a-step-escalates-by-where-its-work-came-back-from",
+      "file": "docs/design/a-step-escalates-by-where-its-work-came-back-from.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-step-escalates-by-where-its-work-came-back-from.md",
+      "title": "A step escalates by where its work came back from",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
+    },
+    {
       "path": "/design/a-testkit-proves-the-machine",
       "file": "docs/design/a-testkit-proves-the-machine.md",
       "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/a-testkit-proves-the-machine.md",
@@ -3881,6 +3907,11 @@
           "depth": 2,
           "title": "The config the template writes is the same machine",
           "slug": "the-config-the-template-writes-is-the-same-machine"
+        },
+        {
+          "depth": 2,
+          "title": "Completed is not the same as holding",
+          "slug": "completed-is-not-the-same-as-holding"
         },
         {
           "depth": 2,
@@ -6369,6 +6400,11 @@
             "name": "resolveReviewThread",
             "signature": "resolveReviewThread(threadId: string): Promise<void>",
             "doc": "Closes one review thread, by its own id, in one act."
+          },
+          {
+            "name": "replyToReviewThread",
+            "signature": "replyToReviewThread(threadId: string, body: string): Promise<void>",
+            "doc": "Says an answer in a review thread, on the thread itself."
           },
           {
             "name": "unresolveReviewThread",
@@ -9924,8 +9960,7 @@
           {
             "name": "escalation.origins.gate.findingsAt",
             "type": "number",
-            "required": false,
-            "default": 3,
+            "required": true,
             "description": "how many findings a gate's round must bring back for the beyond level to apply"
           },
           {
@@ -9952,8 +9987,7 @@
           {
             "name": "escalation.origins.self-review.findingsAt",
             "type": "number",
-            "required": false,
-            "default": 3,
+            "required": true,
             "description": "how many findings the self-review must bring back for the beyond level to apply"
           },
           {
@@ -9973,8 +10007,7 @@
           {
             "name": "escalation.origins.thread.findingsAt",
             "type": "number",
-            "required": false,
-            "default": 3,
+            "required": true,
             "description": "how many findings a round of review threads must bring back for the beyond level to apply"
           },
           {
@@ -9987,8 +10020,7 @@
           {
             "name": "escalation.rungs",
             "type": "number",
-            "required": false,
-            "default": 3,
+            "required": true,
             "description": "how long the ladder is; its last rung is a person, so work that runs out one rung below escalates"
           },
           {
@@ -10104,6 +10136,12 @@
             "type": "string",
             "required": true,
             "description": "the status a ticket moves to when it is handed to QA"
+          },
+          {
+            "name": "repliesOn",
+            "type": "string[]",
+            "required": true,
+            "description": "the ports a reply is said on and the owner's word read from: conversation, code-host or tracker"
           },
           {
             "name": "repos",
@@ -11020,6 +11058,10 @@
           "relay.the_first_mention_sets_the_order",
           "relay.escalates_the_model_after_a_failure",
           "relay.does_not_change_harness_on_a_failure",
+          "relay.climbs_on_a_refused_verify",
+          "relay.handoff_carries_the_refusal",
+          "relay.a_round_from_an_origin_starts_higher",
+          "relay.the_round_after_starts_at_the_same_rung",
           "relay.changes_harness_after_a_rate_limit",
           "relay.skips_the_rest_of_the_throttled_harness",
           "relay.starts_nothing_else_after_an_abandoned_run",
@@ -11875,8 +11917,40 @@
     "releases": [],
     "unreleased": [
       {
-        "id": "doctor-checks-claude-when-mounted",
-        "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
+        "id": "a-round-is-counted-where-it-came-back-from",
+        "title": "A step escalates by where its work came back from, with nothing left of the two ceilings it replaced. Rounds are counted per origin, and the round that spends a level's last allowance is the one that climbs: a gate, a review thread, the self-review, the owner and a failing run each spend their own ladder, and the work escalates only when one of them has nothing left below a person. `escalation.rungs` and every `*.findingsAt` are required with no default, the annotated config teaches the whole block, and a record saved before rounds were counted per origin reads every origin at zero rather than at an attempts ceiling that no longer exists.",
+        "body": "Around it: a reply is said where `repliesOn` names the ports (and the code host can answer on a review thread, `replyToReviewThread`); a failed run is a round its origin sent back, and one that changed nothing gives its round back; checks failing on a head the agent answered with \"nothing to change\" are not new work; the owner's word is new work whether the pull request is waiting on the bot, on a reviewer or on them; the second contradicting comment is a new question even after the first was settled; a `Stack base` line wins over `stackBases` and a parent in another repository cuts from base; a review verdict counts only where the review ends; and a record escalated with no resume point comes back to `HUMAN_REVIEW`, since `HUMAN_FIX` is a state this walk no longer draws.",
+        "bumps": [
+          {
+            "package": "@amykit/agent-kit",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-codex",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "replies-go-where-the-config-names-them",
+        "title": "Where a reply is said, and where the owner's word is read from, is one setting named by ports (`repliesOn`) instead of a guess that preferred a chat and fell back to the ticket. It is required with no default; it refuses a product name like `slack` by naming the ports that exist; and an answer is said on every port it names and on no other. The code host gained `replyToReviewThread`, so the answer can be written on the review thread it belongs to instead of repeated where the reviewer is not looking, and `amy update` writes the setting into a machine that predates it.",
         "body": "",
         "bumps": [
           {
@@ -11884,7 +11958,27 @@
             "level": "patch"
           },
           {
-            "package": "@amykit/plugin-claude",
+            "package": "@amykit/core",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-github",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      },
+      {
+        "id": "six-apes-attend",
+        "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/workflow-ticket-to-qa",
             "level": "patch"
           }
         ],

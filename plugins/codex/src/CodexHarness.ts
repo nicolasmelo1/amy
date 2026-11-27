@@ -631,7 +631,8 @@ export function resetAt(
 export function classify(turn: CodexTurn): AgentOutcome {
   if (isLimited(turn.error?.codexErrorInfo)) return "rate-limited";
   if (turn.status === "abandoned") return "abandoned";
-  return turn.status === "completed" && Boolean(messageOfTurn(turn))
-    ? "completed"
-    : "failed";
+  // A turn that completed completed, message or not: an implementing run that
+  // looked, changed nothing and said nothing is not a crash, and reading it as
+  // one would hand it to a stronger rung that finds the same nothing.
+  return turn.status === "completed" ? "completed" : "failed";
 }

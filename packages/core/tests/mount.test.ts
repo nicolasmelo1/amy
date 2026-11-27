@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
+import type { ConfigField } from "../src/config-schema.js";
 import { DIAGRAM_FILE } from "../src/diagram.js";
 import { declaredWorkflowsOnly, defineWorkflow, diagramBeside, notWritten, port, withDiagram, withDiagramBeside } from "../src/define-workflow.js";
 import { call } from "../src/calls.js";
@@ -1607,8 +1608,7 @@ function required(schema: Plugin["configSchema"]): Record<string, unknown> {
   const settings: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(schema ?? {})) {
     if (!entry.required || entry.default !== undefined) continue;
-    const stand =
-      entry.type === "string[]" ? ["acme/shop"] : entry.type === "number" ? 1 : entry.type === "boolean" ? false : entry.type === "record" ? {} : "x";
+    const stand = standInFor(entry);
     const path = key.split(".");
     const leaf = path.pop()!;
     let into = settings;
@@ -1620,6 +1620,22 @@ function required(schema: Plugin["configSchema"]): Record<string, unknown> {
     into[leaf] = stand;
   }
   return settings;
+}
+
+/**
+ * A value for one required field, by its type.
+ *
+ * A schema that says what its own value looks like is honoured: a list of port
+ * names is not a list of repositories, and filling it with one makes the mount
+ * refuse a setting the schema itself wrote.
+ */
+function standInFor(entry: ConfigField): unknown {
+  const field = entry as { type: ConfigField["type"]; example?: unknown };
+  if (field.type === "string[]") return Array.isArray(field.example) ? field.example : ["acme/shop"];
+  if (field.type === "number") return 1;
+  if (field.type === "boolean") return false;
+  if (field.type === "record") return {};
+  return "x";
 }
 
 describe("a core action's name is the core's", () => {

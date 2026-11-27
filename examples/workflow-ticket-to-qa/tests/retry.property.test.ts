@@ -22,8 +22,11 @@ describe("limits leave the retry budget unchanged", () => {
       for (let number = 0; number < maxImplementAttempts; number += 1) {
         record = applyPlan(record, limit, new Date(`2026-09-03T10:1${number}:00.000Z`), {});
       }
+      // Attempts are not a ceiling any more: they are how many times the
+      // agent was asked, and the ladder is what stops it. A record with no
+      // per-origin rounds is read at zero, so the work is asked again.
       const decision = plan(record, observation(), { ...policy, maxImplementAttempts });
-      expect(decision).toMatchObject({ kind: "advance", to: "ESCALATED" });
+      expect(decision.kind).toBe("act");
     }), { numRuns: 100 });
   });
 });

@@ -405,7 +405,7 @@ describe("diagnose", () => {
     const SCALE = { patient: 3, normal: 2, immediate: 1 };
     const withSlice = (escalation: Record<string, unknown> | undefined) => ({
       ...DEFAULT_CONFIG,
-      plugins: { [TICKET]: { repos: ["acme/widgets"], qaStatusName: "In QA", ...(escalation ? { escalation } : {}) } },
+      plugins: { [TICKET]: { repos: ["acme/widgets"], repliesOn: ["conversation", "tracker"], qaStatusName: "In QA", ...(escalation ? { escalation } : {}) } },
     });
     const schemas = () => ({ [TICKET]: ticketToQa.configSchema! });
 
@@ -435,6 +435,31 @@ describe("diagnose", () => {
       const check = labelled(checks, `settings for ${TICKET}`);
       expect(check?.ok).toBe(false);
       expect(check?.detail).toContain("urgent");
+    });
+
+    it("declares every findings threshold as required, with no default", () => {
+      const thresholds = Object.entries(ticketToQa.configSchema!).filter(([key]) => key.endsWith(".findingsAt"));
+
+      expect(thresholds.length).toBeGreaterThan(0);
+      for (const [key, spec] of thresholds) {
+        expect({ key, required: spec.required, default: spec.default }).toEqual({ key, required: true, default: undefined });
+      }
+    });
+
+    it("declares the ladder's length as required, with no default", () => {
+      const rungs = ticketToQa.configSchema!["escalation.rungs"];
+
+      expect(rungs).toBeDefined();
+      expect({ required: rungs!.required, default: rungs!.default }).toEqual({ required: true, default: undefined });
+    });
+
+    it("is red when the config leaves a findings threshold out, naming the key", async () => {
+      // Every scale value written, and no origin's threshold.
+      const checks = await diagnose(deps({ config: withSlice({ scale: SCALE }), schemas: schemas() }));
+
+      const check = labelled(checks, `settings for ${TICKET}`);
+      expect(check?.ok).toBe(false);
+      expect(check?.detail).toContain("escalation.origins.gate.findingsAt");
     });
   });
 

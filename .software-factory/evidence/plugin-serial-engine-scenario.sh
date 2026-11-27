@@ -50,7 +50,7 @@ if [ -f "$AMY_E2E_GH_DOWN" ]; then
 fi
 # No pull request for this branch, which is the honest answer here: the
 # scenario never gets as far as opening one.
-printf '{"data":{"repository":{"pullRequests":{"nodes":[]}}}}\n'
+printf '{"data":{"repository":{"pullRequests":{"nodes":[]}},"search":{"nodes":[]}}}\n'
 FAKE
 
 chmod +x "$work/bin/gh"

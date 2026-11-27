@@ -208,6 +208,7 @@ export function isCodeHostRefusal(error: unknown): error is CodeHostRefusal {
 export const CODE_HOST_WRITE_CAPABILITIES = [
   "open-pull-request",
   "request-review",
+  "reply-thread",
   "resolve-thread",
   "merge",
   "submit-review",
@@ -266,6 +267,16 @@ export interface CodeHost {
    * somebody to close by hand.
    */
   resolveReviewThread(threadId: string): Promise<void>;
+
+  /**
+   * Says an answer in a review thread, on the thread itself.
+   *
+   * An answer belongs where the question was written, and a review thread is
+   * the one place a person wrote to this machine expecting to read the reply
+   * there. Without this the answer can only be repeated in a chat or on the
+   * ticket, both of which make the person go and look somewhere else.
+   */
+  replyToReviewThread(threadId: string, body: string): Promise<void>;
 
   /**
    * Puts a closed thread back, for a fix that was reverted.
@@ -384,6 +395,7 @@ export interface CodeHost {
 export const CODE_HOST_WRITE_FOR_METHOD: Readonly<Record<string, CodeHostWriteCapability>> = {
   openPullRequest: "open-pull-request",
   requestReview: "request-review",
+  replyToReviewThread: "reply-thread",
   resolveReviewThread: "resolve-thread",
   unresolveReviewThread: "resolve-thread",
   merge: "merge",

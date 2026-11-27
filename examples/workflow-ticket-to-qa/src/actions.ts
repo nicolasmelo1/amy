@@ -42,6 +42,7 @@ import { Observation, Policy, Said, StackBase } from "./observation.js";
 import { decided, decisionLines } from "./discussion.js";
 import { EffectOutcomes, applyOutcomes, applyTransition, applyWork } from "./outcomes.js";
 import type { configSchema, needs } from "./plugin.js";
+import { repliesOnIn, type ReplyPlace } from "./replies.js";
 import { loadRoster } from "./roster.js";
 import { TicketRecord } from "./record.js";
 import { Ticket, pullRequestTitle, stackBasesIn } from "./ticket.js";
@@ -167,15 +168,29 @@ async function stackFor(scope: Scope, ticket: Ticket): Promise<StackBase | undef
     );
   }
   const configured = (scope.config.stackBases ?? {}) as Readonly<Record<string, string>>;
-  const parent = configured[ticket.id] ?? lines[0];
+  // The ticket's own line is where the work says it stands; the config is
+  // the answer for a ticket whose description says nothing.
+  const parent = lines[0] ?? configured[ticket.id];
   if (!parent) return undefined;
 
-  const host = scope.ports["code-host"];
   const parentTicket = await scope.ports.tracker.get(parent);
+  // A parent whose work lives in another repository has no branch here to
+  // start from, and waiting on it would hold this ticket for ever.
+  if (parentTicket?.repo !== undefined && parentTicket.repo !== ticket.repo) return undefined;
+  return startFrom(scope, ticket, parent, parentTicket);
+}
+
+/** The branch a stacked ticket starts on, or a hold that names the parent. */
+async function startFrom(
+  scope: Scope,
+  ticket: Ticket,
+  parent: string,
+  parentTicket: Ticket | null,
+): Promise<StackBase> {
+  const host = scope.ports["code-host"];
   const byId = (await host.findPullRequestMentioning?.(ticket.repo, parent)) ?? null;
   const found = byId ?? (parentTicket?.branchName ? await host.findPullRequest(ticket.repo, parentTicket.branchName) : null);
   if (!found) return { parent, waiting: true };
-
   const base = found.merged ? found.base : found.headBranch ?? parentTicket?.branchName;
   return base ? { parent, base } : { parent, waiting: true };
 }
@@ -389,21 +404,32 @@ const ACTIONS: TicketActions = {
 
   /**
    * Answers a review comment on its thread, for work the brief answers rather
-   * than builds. The answer goes where the person wrote it: the work's own
-   * thread when a conversation is mounted, and the ticket when it is not.
+   * than builds. The answer is said in every place `repliesOn` names, and
+   * nowhere else: a chat thread, the review thread on the forge, the ticket.
+   * A place the setting names that this install does not mount is refused by
+   * name, because an answer nobody can read is worse than a boot that failed.
    */
   "reply-thread": async (scope, work, effect) => {
     const text = effect.text?.trim();
     if (!text) return;
     const ticket = work.observation.ticket;
     const answer = `${effect.threadId}: ${text}`;
-    const { conversation } = scope.ports;
-    if (conversation) {
-      const thread = await conversation.open(unitOf(work.record), ticket.title);
-      await conversation.post(thread, { text: answer });
-      return;
+    for (const place of repliesOnIn(scope.config.repliesOn)) {
+      if (place === "code-host") {
+        await scope.ports["code-host"].replyToReviewThread(effect.threadId, text);
+        continue;
+      }
+      if (place === "conversation") {
+        const chat = scope.ports.conversation;
+        if (!chat) {
+          throw new Error(`\`repliesOn\` names \`conversation\`, and nothing mounts it; mount a chat plugin, or take it out of \`repliesOn\``);
+        }
+        const thread = await chat.open(unitOf(work.record), ticket.title);
+        await chat.post(thread, { text: answer });
+        continue;
+      }
+      await scope.ports.tracker.comment(ticket.id, answer);
     }
-    await scope.ports.tracker.comment(ticket.id, answer);
     outcomesOf(work).answered = [effect.threadId];
   },
 
@@ -537,7 +563,13 @@ const ACTIONS: TicketActions = {
     outcomes.handedOverAt = scope.ctx.now().toISOString();
     for (const { write } of effect.turns) {
       if (write.type === "assign-reviewer") outcomes.reviewer = write.host;
-      if (write.type === "escalate") outcomes.escalation = { reason: write.reason, askedAt: scope.ctx.now().toISOString() };
+      if (write.type === "escalate") {
+        outcomes.escalation = {
+          reason: write.reason,
+          askedAt: scope.ctx.now().toISOString(),
+          ...(write.threadIds.length ? { threadIds: [...write.threadIds] } : {}),
+        };
+      }
     }
   },
 };
@@ -623,11 +655,25 @@ async function requestReview(scope: Scope, work: Work, host: string): Promise<vo
  * only when the operator opens it, because they may open it from another
  * branch; the machine opens it from this one and has nothing to search for.
  */
+/** The states where the machine itself will open the pull request, so nothing is searched for. */
+const MACHINE_OPENS_IT: readonly TicketRecord["state"][] = ["READY", "IMPLEMENTING", "checks", "verdict"];
+
 async function pullRequestFor(scope: Scope, ticket: Ticket, state: TicketRecord["state"]): Promise<PullRequestView | null> {
   const host = scope.ports["code-host"];
   const byBranch = await host.findPullRequest(ticket.repo, branchOf(ticket));
-  if (byBranch || BEFORE_A_PULL_REQUEST.includes(state)) return byBranch;
-  if (state === "PR_OPEN" && scope.policy.writes !== "operator") return byBranch;
+  if (byBranch) return byBranch;
+  // A ticket nobody has started is looked for by the id it mentions: a pull
+  // request already open for it is taken up at its review rather than opened
+  // again. Once the machine is the one that will open it, searching would
+  // adopt somebody else's work.
+  //
+  // With the writes handed to the operator the machine never opens it at all,
+  // and the one they opened — from whatever branch they chose — is the only
+  // one there is: searching is the whole lookup, in every state.
+  if (scope.policy.writes === "operator") {
+    return (await host.findPullRequestMentioning?.(ticket.repo, ticket.id)) ?? null;
+  }
+  if (MACHINE_OPENS_IT.includes(state) || state === "PR_OPEN") return null;
   return (await host.findPullRequestMentioning?.(ticket.repo, ticket.id)) ?? null;
 }
 
@@ -646,31 +692,86 @@ async function answersFor(
   current: TicketRecord,
   ticket: Ticket,
 ): Promise<Pick<Observation, "conversation" | "escalationAnswered">> {
-  const { tracker } = scope.ports;
+  const places = repliesOnIn(scope.config.repliesOn);
   const awaitingAnswer = current.state === "CLARIFYING" && Boolean(current.triage);
   const awaitingOwner = Boolean(current.escalation && !current.escalation.resolvedAt);
-  // A review is where the owner's own word is new work too: the ticket's
-  // comments are read for it, from the last word acted on rather than from the
-  // beginning of time.
-  const listening = REVIEWING_STATES.includes(current.state);
+  // A review is where the owner's own word is new work too, read from the last
+  // word acted on rather than from the beginning of time, and only from the
+  // places `repliesOn` names: a machine that answers on the forge and reads the
+  // tracker is told which of the two it does, not guessed at.
   if (!awaitingAnswer && !awaitingOwner) {
-    if (!listening) return { conversation: [], escalationAnswered: false };
-    return { conversation: await tracker.comments(ticket.id, current.ownerWord?.at), escalationAnswered: false };
+    return { conversation: await wordAtAReview(scope, current, ticket, places), escalationAnswered: false };
   }
+  return waitingOnADecision(scope, current, ticket, places, { answer: awaitingAnswer, owner: awaitingOwner });
+}
 
-  const since = awaitingAnswer ? current.triage!.at : current.escalation!.askedAt;
+/** The later of two instants, ignoring the one that is not there. */
+function later(one: string | undefined, other: string | undefined): string | undefined {
+  if (one === undefined) return other;
+  if (other === undefined) return one;
+  return new Date(one).getTime() >= new Date(other).getTime() ? one : other;
+}
+
+/** What the owner said at a review, from the places replies come from. */
+async function wordAtAReview(scope: Scope, current: TicketRecord, ticket: Ticket, places: readonly ReplyPlace[]): Promise<Said[]> {
+  if (!REVIEWING_STATES.includes(current.state)) return [];
+  // A word the work was built from is not new work: the triage's own read of
+  // the answer is the moment it stopped being news, so nothing said before it
+  // counts again here — a chat keeps every message, and reading yesterday's
+  // answer as today's review would send the round back for ever.
+  const since = later(current.ownerWord?.at, current.triage?.at) ?? BEFORE_ANY_WORD;
+  const said: Said[] = [];
+  if (places.includes("conversation") && scope.ports.conversation) {
+    said.push(...(await repliesFor(scope.ports.conversation, unitOf(current), since)));
+  }
+  if (places.includes("tracker")) said.push(...(await scope.ports.tracker.comments(ticket.id, since)));
+  // A button carries the question it answered, so a press is never the word at
+  // a review: a chat replays its own asks with their buttons, and reading one
+  // as new work sends the round back to the step that asked for ever. And the
+  // same sentence written in two places is one word: an install that answers in
+  // a chat and on the ticket must not count one remark twice and climb a rung
+  // for a round it never had.
+  const words = new Map<string, Said>();
+  for (const reply of said) {
+    if (reply.answer) continue;
+    words.set(reply.body.trim(), reply);
+  }
+  return [...words.values()];
+}
+
+/** A wait on a question or an escalation, read only where replies come from. */
+async function waitingOnADecision(
+  scope: Scope,
+  current: TicketRecord,
+  ticket: Ticket,
+  places: readonly ReplyPlace[],
+  awaiting: { answer: boolean; owner: boolean },
+): Promise<Pick<Observation, "conversation" | "escalationAnswered">> {
+  const { tracker } = scope.ports;
+  const since = awaiting.answer ? current.triage!.at : current.escalation!.askedAt;
   const said = await saidSince(scope, unitOf(current), ticket, since);
   // A button carries the question it answered. A press from an earlier wait
   // is evidence for that earlier question, never an escalation decision.
-  const relevant = said?.filter((reply) => !reply.answer || (awaitingAnswer && current.triage!.askedQuestions.includes(reply.answer.ask)));
-  const escalationAnswered = awaitingOwner && (relevant ? decided(relevant, scope.policy) : await tracker.hasReplyAfter(ticket.id, since));
+  const relevant = said?.filter((reply) => !reply.answer || (awaiting.answer && current.triage!.askedQuestions.includes(reply.answer.ask)));
+  const escalationAnswered = awaiting.owner && (relevant
+    ? decided(relevant, scope.policy)
+    : places.includes("tracker") && (await tracker.hasReplyAfter(ticket.id, since)));
   // The ticket's comments are read once there is an answer in them, not on
   // every poll of a wait: the owner's words are what the resumed step acts on.
-  return {
-    conversation: relevant ?? (awaitingAnswer || escalationAnswered ? await tracker.comments(ticket.id, since) : []),
-    escalationAnswered,
-  };
+  const resumed = relevant ?? (awaiting.answer || escalationAnswered
+    ? (places.includes("tracker") ? await tracker.comments(ticket.id, since) : [])
+    : []);
+  return { conversation: resumed, escalationAnswered };
 }
+
+/**
+ * The instant before anything was said.
+ *
+ * A record that has not acted on a word yet has no `at` to read from, and a
+ * chat port asks for one: reading from before the first message is what "from
+ * the beginning" means to a port that only speaks in instants.
+ */
+const BEFORE_ANY_WORD = "1970-01-01T00:00:00.000Z";
 
 /** The states after the change exists, where the owner's word is new work. */
 const REVIEWING_STATES: readonly TicketRecord["state"][] = [
@@ -737,8 +838,11 @@ function implementingRung(work: Work, policy: Policy): { rung?: number } {
  * tracker's own reading of who wrote what is the one to trust.
  */
 async function saidSince(scope: Scope, unit: string, ticket: Ticket, since: string): Promise<Said[] | null> {
-  if (scope.ports.conversation) return repliesFor(scope.ports.conversation, unit, since);
-  if (scope.policy.writes !== "operator") return null;
+  const places = repliesOnIn(scope.config.repliesOn);
+  if (places.includes("conversation") && scope.ports.conversation) {
+    return repliesFor(scope.ports.conversation, unit, since);
+  }
+  if (!places.includes("tracker") || scope.policy.writes !== "operator") return null;
   return (await scope.ports.tracker.comments(ticket.id, since)).map((comment) => ({ ...comment, fromAmy: false }));
 }
 
@@ -747,8 +851,13 @@ async function saidSince(scope: Scope, unit: string, ticket: Ticket, since: stri
  * in several repositories — whether each one merged.
  */
 async function whereItStands(scope: Scope, ticket: Ticket, state: TicketRecord["state"]) {
+  // An install that named the tickets it works does not work the others: a
+  // record already under way is settled where it stands rather than driven on.
+  const only = (scope.config.onlyTickets ?? []) as readonly string[];
+  const outsideTheList = only.length > 0 && !only.includes(ticket.id);
   return {
-    retired: !(ticket.repos ?? [ticket.repo]).includes(ticket.repo),
+    retired: outsideTheList || !(ticket.repos ?? [ticket.repo]).includes(ticket.repo),
+    ...(outsideTheList ? { retiredBecause: `${ticket.id} is not one of the tickets this install works` } : {}),
     inQa: ticket.status === scope.config.qaStatusName,
     ...(state === "QA_HANDOFF" && (ticket.repos?.length ?? 0) > 1 ? { repositories: await mergedIn(scope, ticket) } : {}),
   };
@@ -841,13 +950,6 @@ const WRITE_WORDS: { [K in WriteEffect["type"]]: (write: Extract<WriteEffect, { 
  * round the review sent back, and that round publishes to a pull request that
  * already exists.
  */
-const BEFORE_A_PULL_REQUEST: readonly TicketRecord["state"][] = [
-  "DISCOVERED",
-  "CLARIFYING",
-  "READY",
-  "IMPLEMENTING",
-  "checks",
-];
 
 /**
  * `PROJ-1@owner%2Fname` is PROJ-1 in owner/name; a bare id names no

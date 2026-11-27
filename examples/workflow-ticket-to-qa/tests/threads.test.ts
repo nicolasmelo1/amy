@@ -54,9 +54,10 @@ async function mounted(conversation: Conversation): Promise<WorkflowRuntime> {
   const outcome = await mount([fakeWorkspace(), plugin, world], {
     "@amykit/workflow-ticket-to-qa": {
       repos: ["acme/widgets"],
+      repliesOn: ["conversation", "tracker"],
       qaStatusName: "In QA",
       // The levels an escalation is counted at are settings with no default.
-      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
     },
   }, {
     runner: { run: async () => ({ ok: true, exitCode: 0, stdout: "", stderr: "" }) },
@@ -235,5 +236,99 @@ describe("publishing a change the review sent back", () => {
     const effects = await effectsFromVerdict(green(takenUp(record("verdict"))), pr);
 
     expect(effects.some((e) => /request/.test(e.type) && e.host === "ada")).toBe(true);
+  });
+});
+
+describe("publishing a round to a reviewer already on the pull request", () => {
+  const greenWith = (overrides: Partial<TicketRecord>): TicketRecord => ({
+    ...record("verdict"),
+    lastImplementation: { ok: true, output: "", at: "2026-09-03T11:00:00.000Z" },
+    lastGate: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z" },
+    lastSelfReview: { ok: true, output: "", at: "2026-09-03T11:05:00.000Z", verdict: "APPROVED" },
+    lanes: { GATE: { call: `${UNIT}/GATE#2`, end: "GREEN" }, SELF_REVIEW: { call: `${UNIT}/SELF_REVIEW#2`, end: "APPROVED" } },
+    pullRequestNumber: 4940,
+    ...overrides,
+  });
+
+  /** Every effect planned from the verdict until the work waits on a person's review, or stops. */
+  async function effectsUntilReview(start: TicketRecord, seen: Observation) {
+    const runtime = (await ticketWorkerDeps({ now: () => NOW })).runtime as unknown as WorkflowRuntime<TicketRecord, Observation>;
+    const effects: { type: string; [key: string]: unknown }[] = [];
+    let current = start;
+    for (let count = 0; count < 8 && current.state !== "HUMAN_REVIEW"; count += 1) {
+      const decided = plan(current, seen, policy);
+      if (decided.kind === "settled" || decided.kind === "wait") break;
+      effects.push(...(decided.effects as { type: string }[]));
+      current = runtime.apply(applyPlan(current, decided, NOW, {}), decided, {}, seen, NOW, movedBy(current, decided));
+    }
+    return { effects, reached: current };
+  }
+
+  it("asks the recorded reviewer again and assigns nobody else", async () => {
+    const pr = pullRequest({ reviews: [{ author: "copilot-pull-request-reviewer[bot]", state: "COMMENTED", commitSha: pullRequest().headSha, submittedAt: "2026-09-03T11:30:00.000Z" }] });
+    const { effects, reached } = await effectsUntilReview(greenWith({ reviewer: "edsger" }), observation({ pullRequest: pr }));
+
+    const asked = effects
+      .filter((effect) => effect.type === "request-rereview" || effect.type === "assign-reviewer")
+      .map((effect) => effect.host);
+    expect(asked).toEqual(["edsger"]);
+    expect(reached.reviewer).toBe("edsger");
+  });
+
+  it("does not say again an answer it already said on the thread", async () => {
+    const pr = pullRequest({ threads: [thread({ id: "T2" })] });
+    const start = greenWith({
+      reviewer: "ada",
+      judged: [{ threadId: "T2", verdict: "out-of-scope", note: "the brief keeps currency out of scope" }],
+      answered: ["T2"],
+    });
+
+    const decided = plan(start, observation({ pullRequest: pr }), policy);
+
+    const replies = (decided.kind === "settled" || decided.kind === "wait" ? [] : decided.effects as { type: string; threadId?: string }[])
+      .filter((effect) => effect.type === "reply-thread" && effect.threadId === "T2");
+    expect(replies).toHaveLength(0);
+  });
+});
+
+describe("an answer said on a review thread", () => {
+  /** Says one answer with replies configured on the places given, and reports where it went. */
+  async function answerWith(places: string[]) {
+    const conversation = threads();
+    const comment = vi.fn(async () => {});
+    const replyToReviewThread = vi.fn(async () => {});
+    const outcomes: Record<string, unknown> = {};
+    await actionsFor(policy)["reply-thread"]!({
+      ports: { conversation, tracker: { comment }, "code-host": fakeHost(pullRequest(), { replyToReviewThread } as never) },
+      config: { repliesOn: places },
+      ctx: { now: () => NOW },
+      announce: async () => {},
+    } as never, {
+      record: { id: UNIT },
+      observation: { ticket: ticket(), pullRequest: pullRequest({ threads: [thread({ id: "T2" })] }) },
+      outcomes,
+    } as never, { type: "reply-thread", threadId: "T2", text: "the brief keeps currency out of scope" });
+    return {
+      said: {
+        conversation: conversation.opened.length > 0,
+        "code-host": replyToReviewThread.mock.calls.length > 0,
+        tracker: comment.mock.calls.length > 0,
+      },
+      outcomes,
+    };
+  }
+
+  it.each([["conversation"], ["code-host"], ["tracker"]])("is said only where the config says replies go: %s", async (place) => {
+    const { said, outcomes } = await answerWith([place]);
+
+    expect(said).toEqual({ conversation: place === "conversation", "code-host": place === "code-host", tracker: place === "tracker" });
+    expect(outcomes.answered).toEqual(["T2"]);
+  });
+
+  it("is said in every place the config names, and remembered as said once", async () => {
+    const { said, outcomes } = await answerWith(["conversation", "code-host"]);
+
+    expect(said).toEqual({ conversation: true, "code-host": true, tracker: false });
+    expect(outcomes.answered).toEqual(["T2"]);
   });
 });

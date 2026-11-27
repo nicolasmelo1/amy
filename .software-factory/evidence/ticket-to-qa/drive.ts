@@ -57,6 +57,15 @@ const keep = process.argv.includes("--keep");
 const TSX = path.join(source, "..", "..", "..", "node_modules", ".bin", "tsx");
 
 const MAX_TICKS = 80;
+
+/**
+ * The third walk gets more, because it is not the same walk wearing a different
+ * checkout. A ticket whose gate and self-review each take their own look, whose
+ * pull request is read a round at a time, and which the answer sends back four
+ * times, spends a look on a second ticket's question at every tick as well —
+ * the machine is picking both up, and only one of them is being answered here.
+ */
+const MAX_THIRD_TICKS = 180;
 const WAITING = ["CLARIFYING", "COPILOT_WAIT", "HUMAN_REVIEW", "ESCALATED"];
 
 /**
@@ -436,7 +445,11 @@ function reactions(): Record<string, Reaction> {
       const slackFile = path.join(root, "world", "slack.json");
       const slack = read<{ nextTs: number; messages: { ts: string; channel?: string; thread_ts?: string; user: string; text: string; reactions: never[] }[] }>(slackFile);
       const thread = [...slack.messages].reverse().find((message) => message.user === "U0AMYBOT");
-      const ts = `${Math.max(slack.nextTs, Math.floor(Date.now() / 1000))}.000100`;
+      // The answer is written on the scenario's clock, one second after the
+      // question: a wall-clock stamp here answers every later ask as well,
+      // because it is later than all of them.
+      const askedAt = Math.floor(new Date(found(record.escalation, "escalation").askedAt).getTime() / 1000);
+      const ts = `${Math.max(slack.nextTs, askedAt + 1)}.000100`;
       slack.nextTs = Number(ts.slice(0, ts.indexOf("."))) + 1;
       slack.messages.push({ ts, ...(thread?.channel ? { channel: thread.channel } : {}), ...(thread?.thread_ts ? { thread_ts: thread.thread_ts } : {}), user: SLACK_OPERATOR, text: "Agreed, leave the rename out of this one. Do the rest.", reactions: [] });
       write(slackFile, slack);
@@ -796,7 +809,7 @@ function pruned(root: string): Pruned {
 /** Ticks the third ticket until it settles, answering its question once. */
 function walkThird(root: string, react: Record<string, Reaction>, moves: Move[]): void {
   let thirdAnswered = false;
-  for (let tick = 0; tick < MAX_TICKS; tick += 1) {
+  for (let tick = 0; tick < MAX_THIRD_TICKS; tick += 1) {
     const result = amy(root, ["tick"]);
     if (result.code !== 0) throw new Error(`amy tick exited ${result.code}: ${result.out}`);
     const third = recordOf(root, TICKET_THREE);

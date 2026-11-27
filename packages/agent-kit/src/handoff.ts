@@ -15,6 +15,26 @@ export interface HandoffLog {
  * expensive enough to risk hitting the same quota again.
  */
 export function handoffNote(from: Rung, run: AgentRun): string {
+  return said(`${from.harness} (${from.model})`, run);
+}
+
+/**
+ * The same, from one skill to the next.
+ *
+ * A skill's answer can be refused where the skill's own method is what is
+ * missing, and the next skill is the one who should be told why: the relay
+ * hands it the reason, in the words the harness handoff uses.
+ */
+export function skillHandoffNote(from: string, run: AgentRun): string | undefined {
+  // Only a reason is passed on: the next skill's prompt is its own question,
+  // and a first skill that simply did not answer leaves nothing to say that
+  // the step did not already say.
+  if (!run.refused && run.outcome !== "rate-limited") return undefined;
+  return said(`the /${from} skill`, run);
+}
+
+/** What a run that stopped did, in the words the next attempt is given. */
+function said(by: string, run: AgentRun): string {
   const because =
     run.outcome === "rate-limited"
       ? `ran out of quota partway through`
@@ -23,7 +43,7 @@ export function handoffNote(from: Rung, run: AgentRun): string {
         : `did not succeed`;
 
   return [
-    `A previous attempt by ${from.harness} (${from.model}) ${because}.`,
+    `A previous attempt by ${by} ${because}.`,
     `The working tree is exactly as it left it, so this may be half-done work`,
     `rather than a clean start. Continue it; do not begin again.`,
     ...(run.output ? [``, `What it said:`, ``, run.output] : []),

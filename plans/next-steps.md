@@ -8,7 +8,6 @@ the rest.
 | # | Plan |
 | --- | --- |
 | 1 | [The escalation repair proves what it says](the-escalation-repair-proves-what-it-says.md) |
-| 2 | [A step escalates by where its work came back from](a-step-escalates-by-where-its-work-came-back-from.md) |
 | 3 | [A run that goes in circles stops](a-run-that-goes-in-circles-stops.md) |
 | 4 | [An action acts](an-action-acts.md) |
 | 5 | [Every setup step says what it is for](every-setup-step-says-what-it-is-for.md) |
@@ -91,3 +90,4 @@ Not a plan yet, for want of a credential: recording a real Claude Code 2.1.325 s
 | 81 | [A run handed tools is held to them](a-run-handed-tools-is-held-to-them.md) |
 | 82 | [Linear is read through its MCP server](linear-is-read-through-its-mcp-server.md) |
 | 83 | [A take says what it found](a-take-says-what-it-found.md) |
+| 84 | [A reply is said where the config names it](a-reply-is-said-where-the-config-names-it.md) |

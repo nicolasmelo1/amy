@@ -52,10 +52,14 @@ export interface EffectOutcomes {
  * and the only place a ticket record changes shape, so the rules that stop
  * the machine looping live in one readable function.
  */
-export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): TicketRecord {
+export function applyOutcomes(
+  record: TicketRecord,
+  outcomes: EffectOutcomes,
+  policy: Policy = DEFAULT_POLICY,
+): TicketRecord {
   const next: TicketRecord = { ...record, judged: [...record.judged] };
 
-  applyFacts(next, outcomes);
+  applyFacts(next, outcomes, policy);
   mergeVerdicts(next, outcomes.verdicts);
   applyAnswered(next, record, outcomes);
   mergeHandedOver(next, outcomes);
@@ -67,10 +71,19 @@ export function applyOutcomes(record: TicketRecord, outcomes: EffectOutcomes): T
 }
 
 /** What the look found out about the work itself, each fact on its own. */
-function applyFacts(record: TicketRecord, outcomes: EffectOutcomes): void {
+function applyFacts(record: TicketRecord, outcomes: EffectOutcomes, policy: Policy): void {
   if (outcomes.triage) record.triage = outcomes.triage;
   if (outcomes.clarification?.length) record.clarification = outcomes.clarification;
-  if (outcomes.implementation) record.lastImplementation = outcomes.implementation;
+  if (outcomes.implementation) {
+    record.lastImplementation = outcomes.implementation;
+    // A run that failed is a round its origin sent back, counted where it
+    // happened: the ladder, not an unbounded retry, is what stops it.
+    if (!outcomes.implementation.ok) {
+      const origin = record.lastOrigin ?? "gate";
+      Object.assign(record, countedRound(record, origin, 1, policy));
+    }
+    if (outcomes.implementation.progress?.kind === "unchanged") giveBackRounds(record);
+  }
   applyContinuation(record, outcomes.continuationContext);
   if (outcomes.implemented) record.implemented = outcomes.implemented;
   if (outcomes.pullRequestNumber !== undefined) {
@@ -137,7 +150,10 @@ export function applyTransition(record: TicketRecord, moved: Moved | null): Tick
     return { ...record, resumeAt: moved.from as TicketState };
   }
   if (moved.from === "ESCALATED") {
-    const { resumeAt: _resumed, ...rest } = record;
+    // Every budget starts again where the escalation stopped the work: the
+    // owner's answer is a new instruction, and the rounds an origin spent
+    // getting there are not rounds against what they asked for.
+    const { resumeAt: _resumed, roundsByOrigin: _rounds, climbedByOrigin: _climbed, spentByOrigin: _spent, pendingRounds: _pending, ...rest } = record;
     return { ...rest, attempts: {}, looks: {} };
   }
   return record;
@@ -189,7 +205,7 @@ export function applyTicketPlan(
   policy: Policy = DEFAULT_POLICY,
 ): TicketRecord {
   const moved = movedBy(record, plan);
-  const applied = applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes);
+  const applied = applyOutcomes(applyPlan(record, plan, now, outcomes), outcomes, policy);
   return applyWork(applyTransition(applied, moved), record.state, plan, now, policy, outcomes.verdicts ?? []);
 }
 
@@ -223,24 +239,71 @@ export function applyWork(
   const carried = plan as TicketPlan;
   if (plan.kind !== "advance") return record;
   if (plan.to === "checks") return answered(record, said);
-  if (plan.to === "ESCALATED" && from !== "ESCALATED" && !record.escalation) {
-    return { ...record, escalation: { reason: plan.why, askedAt: now.toISOString() } };
-  }
+  if (plan.to === "ESCALATED" && from !== "ESCALATED") return handedOver(record, plan, now, policy);
   if (plan.to !== "IMPLEMENTING") return record;
+  return tookUp(record, carried, policy);
+}
 
+/**
+ * The round that spent the ladder, counted before it is handed over.
+ *
+ * An escalation is where the rounds ran out, not a way to forget them. The ask
+ * itself may already be on the record, written by the effect that handed it
+ * over, so what is kept is whichever answer came first.
+ */
+function handedOver(record: TicketRecord, plan: Plan, now: Date, policy: Policy): TicketRecord {
+  const counted = ((plan as TicketPlan).rounds ?? []).reduce(
+    (soFar, one) => countedRound(soFar, one.origin, one.findings, policy),
+    record,
+  );
+  return {
+    ...counted,
+    escalation: record.escalation ?? { reason: plan.why, askedAt: now.toISOString() },
+  };
+}
+
+/** A round taken up: what it counted, what it took, and where it stands now. */
+function tookUp(record: TicketRecord, carried: TicketPlan, policy: Policy): TicketRecord {
   const rounds = carried.rounds ?? [];
-  let counted = record;
-  for (const one of rounds) {
-    counted = countedRound(counted, one.origin, one.findings, policy);
-  }
-  const climbs = rounds.map((one) => climbFor(policy.escalation, counted, one.origin, one.findings));
-  const worst = strictest(climbs);
+  const counted = rounds.reduce(
+    (soFar, one) => countedRound(soFar, one.origin, one.findings, policy),
+    record,
+  );
+  const worst = strictest(rounds.map((one) => climbFor(policy.escalation, counted, one.origin, one.findings)));
   return {
     ...counted,
     ...(carried.taking?.length ? { taking: [...carried.taking] } : {}),
+    ...(rounds.length ? { pendingRounds: rounds.map((one) => ({ ...one })) } : {}),
     ...(carried.ownerWord ? { ownerWord: carried.ownerWord } : {}),
     ...(worst ? { lastOrigin: worst.origin } : {}),
   };
+}
+
+/**
+ * The rounds an unchanged run was answering, given back.
+ *
+ * Nothing was built, so nothing came back: the origin did not spend a round on
+ * an answer that changed no file, and the ladder is not climbed on work nobody
+ * could do.
+ */
+function giveBackRounds(record: TicketRecord): void {
+  const pending = record.pendingRounds ?? [];
+  if (pending.length === 0) return;
+  const rounds = { ...record.roundsByOrigin };
+  const spent = { ...record.spentByOrigin };
+  for (const one of pending) {
+    const had = rounds[one.origin] ?? 0;
+    // A count that is back to none is not a count: the origin has no rounds
+    // on the record, exactly as before the round was taken up.
+    if (had > 1) rounds[one.origin] = had - 1;
+    else delete rounds[one.origin];
+    const onRung = (spent[one.origin] ?? 1) - 1;
+    spent[one.origin] = onRung > 0 ? onRung : 0;
+  }
+  record.roundsByOrigin = rounds;
+  record.spentByOrigin = spent;
+  const { pendingRounds: _done, ...rest } = record;
+  Object.assign(record, rest);
 }
 
 /** One origin's round, counted on the record. */

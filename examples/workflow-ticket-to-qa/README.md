@@ -104,19 +104,19 @@ plugins:
       origins:
         gate:
           beyond: "immediate"
-          findingsAt: 3
+          findingsAt: <number>
           level: "normal"
         owner:
           level: "immediate"
         self-review:
           beyond: "immediate"
-          findingsAt: 3
+          findingsAt: <number>
           level: "normal"
         thread:
           beyond: "immediate"
-          findingsAt: 3
+          findingsAt: <number>
           level: "normal"
-      rungs: 3
+      rungs: <number>
       scale:
         immediate: <number>
         normal: <number>
@@ -132,6 +132,7 @@ plugins:
       rosterBackoffMs: 1800000
       writes: "machine"
     qaStatusName: <string>
+    repliesOn: <string[]>
     repos: <string[]>
     reviewerHints: {}
     stackBases: {}
@@ -143,16 +144,16 @@ plugins:
 | `budget` | `record` | no | `{}` | agent budget, including an optional progress block that stops repeated no-evidence runs |
 | `defaultBranch` | `string` | no | `main` | the branch new work is cut from, for a repository that named none, which is not always `main` |
 | `escalation.origins.gate.beyond` | `oneOf` | no | `immediate` | the level the gate's rounds are counted at once a round brings back findingsAt findings or more |
-| `escalation.origins.gate.findingsAt` | `number` | no | `3` | how many findings a gate's round must bring back for the beyond level to apply |
+| `escalation.origins.gate.findingsAt` | `number` | **yes** |  | how many findings a gate's round must bring back for the beyond level to apply |
 | `escalation.origins.gate.level` | `oneOf` | no | `normal` | the level the gate's rounds are counted at |
 | `escalation.origins.owner.level` | `oneOf` | no | `immediate` | the level the owner's word is counted at: what the person whose ticket it is asks for is not a round to be patient about |
 | `escalation.origins.self-review.beyond` | `oneOf` | no | `immediate` | the level the self-review's rounds are counted at once a round brings back findingsAt findings or more |
-| `escalation.origins.self-review.findingsAt` | `number` | no | `3` | how many findings the self-review must bring back for the beyond level to apply |
+| `escalation.origins.self-review.findingsAt` | `number` | **yes** |  | how many findings the self-review must bring back for the beyond level to apply |
 | `escalation.origins.self-review.level` | `oneOf` | no | `normal` | the level the work's own review of itself is counted at |
 | `escalation.origins.thread.beyond` | `oneOf` | no | `immediate` | the level a review thread's rounds are counted at once a round brings back findingsAt findings or more |
-| `escalation.origins.thread.findingsAt` | `number` | no | `3` | how many findings a round of review threads must bring back for the beyond level to apply |
+| `escalation.origins.thread.findingsAt` | `number` | **yes** |  | how many findings a round of review threads must bring back for the beyond level to apply |
 | `escalation.origins.thread.level` | `oneOf` | no | `normal` | the level a review thread's rounds are counted at |
-| `escalation.rungs` | `number` | no | `3` | how long the ladder is; its last rung is a person, so work that runs out one rung below escalates |
+| `escalation.rungs` | `number` | **yes** |  | how long the ladder is; its last rung is a person, so work that runs out one rung below escalates |
 | `escalation.scale.immediate` | `number` | **yes** |  | how many rounds an immediate level allows before the work climbs one rung |
 | `escalation.scale.normal` | `number` | **yes** |  | how many rounds a normal level allows before the work climbs one rung |
 | `escalation.scale.patient` | `number` | **yes** |  | how many rounds a patient level allows before the work climbs one rung |
@@ -166,6 +167,7 @@ plugins:
 | `policy.rosterBackoffMs` | `number` | no | `1800000` | how long to hold while the roster is waiting to be confirmed |
 | `policy.writes` | `string` | no | `machine` | machine: amy comments, opens pull requests, requests reviews and moves the ticket to QA. operator: each of those is said to you once instead, and amy waits until it sees you made it. Nothing is written on the tracker or the code host |
 | `qaStatusName` | `string` | **yes** |  | the status a ticket moves to when it is handed to QA |
+| `repliesOn` | `string[]` | **yes** |  | the ports a reply is said on and the owner's word read from: conversation, code-host or tracker |
 | `repos` | `string[]` | **yes** |  | every repository review load is counted across |
 | `reviewerHints` | `record` | no | `{}` | guidance appended to the review prompt when answering a particular reviewer, by host login |
 | `stackBases` | `record` | no | `{}` | the parent each ticket's branch is cut from, by ticket id, for a stack its description does not state. An entry that is not a ticket id is refused at mount |

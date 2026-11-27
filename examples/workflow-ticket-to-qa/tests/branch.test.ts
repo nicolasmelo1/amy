@@ -61,8 +61,9 @@ async function stacked(tickets: Ticket[], host: CodeHost, settings: Record<strin
   const outcome = await mount([fakeWorkspace(), plugin, world], {
     "@amykit/workflow-ticket-to-qa": {
       repos: [REPO],
+      repliesOn: ["conversation", "tracker"],
       qaStatusName: "In QA",
-      escalation: { scale: { patient: 3, normal: 2, immediate: 1 } },
+      escalation: { scale: { patient: 3, normal: 2, immediate: 1 }, rungs: 3, origins: { gate: { level: "normal", beyond: "immediate", findingsAt: 3 }, thread: { level: "normal", beyond: "immediate", findingsAt: 3 }, "self-review": { level: "normal", beyond: "immediate", findingsAt: 3 }, owner: { level: "immediate" } } },
       ...settings,
     },
   }, {
@@ -127,5 +128,32 @@ describe("a stacked ticket", () => {
 
     expect(decided.kind).toBe("wait");
     expect(decided.why).toContain(PARENT);
+  });
+});
+
+describe("a stacked ticket whose parent lives in another repository", () => {
+  it("is cut from its repository's base rather than waiting on the parent", async () => {
+    const world = await stacked([child(), parent({ repo: "Northwind/northwind-frontend" })], hostWith(null));
+
+    const decided = await cut(world);
+
+    expect(decided.kind).toBe("act");
+    expect(world.commands.some((command) => command.startsWith("git checkout"))).toBe(true);
+    expect(world.commands.some((command) => command.includes(PARENT_BRANCH))).toBe(false);
+  });
+});
+
+describe("a stacked ticket whose own Stack base line and the config's stackBases disagree", () => {
+  it("is cut from the parent its own line names, over the config's", async () => {
+    const world = await stacked(
+      [child(), parent(), ticket({ id: "PROJ-2000", title: "Another parent", branchName: "ada/proj-2000-another", repo: REPO })],
+      hostWith(pullRequest({ headBranch: PARENT_BRANCH })),
+      { stackBases: { "PROJ-1239": "PROJ-2000" } },
+    );
+
+    const decided = await cut(world);
+
+    expect(decided.kind).not.toBe("wait");
+    expect(world.commands.some((command) => command.includes(PARENT_BRANCH))).toBe(true);
   });
 });

@@ -103,11 +103,40 @@ exported in the shell wins over both.
 #       settings:
 #         # The status a ticket moves to when it is handed to QA.
 #         qaStatusName: In QA
-#         # The ceilings the ticket workflow's decisions read live here too —
-#         # every one has a default, so naming a block is starting a tune.
+#         # Where a reply is said, and where your own words are read from:
+#         # port names, never plugin names. An install that answers on the
+#         # forge and reads the ticket says so here.
+#         repliesOn: [conversation, tracker]
+#         # Every number an escalation rests on, written here: a level is how
+#         # many rounds it allows before the work climbs one rung, a rung is a
+#         # harness to ask, and each kind of new work says which level it is
+#         # counted at and how many findings move it to the stricter one.
+#         escalation:
+#           scale:
+#             patient: 3
+#             normal: 2
+#             immediate: 1
+#           rungs: 3
+#           origins:
+#             gate:
+#               level: normal
+#               beyond: immediate
+#               findingsAt: 3
+#             thread:
+#               level: normal
+#               beyond: immediate
+#               findingsAt: 3
+#             self-review:
+#               level: normal
+#               beyond: immediate
+#               findingsAt: 3
+#             owner:
+#               level: immediate
+#         # The waits and the tune the decisions read, named only when yours
+#         # differ from the defaults above.
 #         # policy:
-#         #   maxImplementAttempts: 3
 #         #   pollBackoffMs: 300000
+#         #   rosterBackoffMs: 1800000
 #
 # A workflow of your own is the same shape, under ~/.amy/workflows;
 # `amy workflow new <name>` writes one.

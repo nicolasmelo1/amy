@@ -54,6 +54,8 @@ export interface Observation {
    * rather than left to hand the ticket over beside the ones that remain.
    */
   retired?: boolean;
+  /** Why the work stopped here, when it is not the repository leaving the ticket. */
+  retiredBecause?: string;
   /**
    * Whether the ticket already sits in the QA status, as the tracker reports
    * it. Read so a QA handoff the operator made by hand is something the

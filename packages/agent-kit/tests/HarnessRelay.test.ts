@@ -403,3 +403,25 @@ describe("handing the step to a skill", () => {
     expect(reply.run.output).toContain("was not found");
   });
 });
+
+describe("a refused reply when the step names skills", () => {
+  it("tells the next skill's first rung why the last answer was refused", async () => {
+    const claude = rung("claude", "sonnet", ["completed"]);
+    const why = "the review ended on no verdict";
+    let seen = 0;
+
+    await new HarnessRelay(oneLadder([claude]), {
+      skills: { review: ["first", "second"] },
+      locate: located,
+    }).ask("review it", "/x", {
+      step: "review",
+      // Refuses the first skill's answer only.
+      verify: async (answer) =>
+        (seen += 1) === 1 ? { ...answer, run: { ...answer.run, outcome: "failed" as const, refused: why } } : answer,
+    });
+
+    expect(claude.asked.map((p) => p.split("\n")[0])).toEqual(["/first", "/second"]);
+    // The next one asked is told the reason, never nothing.
+    expect(claude.asked[1]).toContain(`answered, and that answer was refused: ${why}`);
+  });
+});
