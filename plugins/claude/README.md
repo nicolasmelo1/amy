@@ -56,6 +56,12 @@ Every field is checked at boot against the schema this package declares. A key t
 not one of the above is a refusal naming the plugin and the key, not a setting that
 silently never applied.
 
+## What it brings
+
+`amy doctor` runs, after its own checks, every check this package names:
+
+- `claude available`
+
 ## Where the reasoning is
 
 - [Writing a plugin](https://github.com/nicolasmelo1/amy/tree/main/docs/guides/write-a-plugin.md)

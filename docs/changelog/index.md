@@ -28,6 +28,12 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 Around it: a reply is said where `repliesOn` names the ports (and the code host can answer on a review thread, `replyToReviewThread`); a failed run is a round its origin sent back, and one that changed nothing gives its round back; checks failing on a head the agent answered with "nothing to change" are not new work; the owner's word is new work whether the pull request is waiting on the bot, on a reviewer or on them; the second contradicting comment is a new question even after the first was settled; a `Stack base` line wins over `stackBases` and a parent in another repository cuts from base; a review verdict counts only where the review ends; and a record escalated with no resume point comes back to `HUMAN_REVIEW`, since `HUMAN_FIX` is a state this walk no longer draws.
 
+### Check the Claude executable only when the selected profile mounts the Claude plugin.
+
+`patch` · `@amykit/cli`, `@amykit/plugin-claude`
+
+
+
 ### Where a reply is said, and where the owner's word is read from, is one setting named by ports (`repliesOn`) instead of a guess that preferred a chat and fell back to the ticket. It is required with no default; it refuses a product name like `slack` by naming the ports that exist; and an answer is said on every port it names and on no other. The code host gained `replyToReviewThread`, so the answer can be written on the review thread it belongs to instead of repeated where the reviewer is not looking, and `amy update` writes the setting into a machine that predates it.
 
 `patch` · `@amykit/cli`, `@amykit/core`, `@amykit/plugin-github`, `@amykit/workflow-ticket-to-qa`

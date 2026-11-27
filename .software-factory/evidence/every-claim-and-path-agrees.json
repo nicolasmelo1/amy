@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "gate": "every-claim-and-path-agrees",
-  "implementation_sha256": "c07d1f4889913a8439b1395b71fd744ed130464b54a6653921fb374d7dc7afc6",
+  "implementation_sha256": "c8d05fcab598a802ed1d8ce655616b3aecc0263df5159acdab4ff2852ae1e7c2",
   "runs": [
     {
       "scenario": "every-claim-and-path-agrees",
       "status": "passed",
       "actor": "Claude (agent), driving the built amy's claims in separate processes with .software-factory/evidence/every-claim-and-path-agrees-scenario.sh on macOS for Nicolas Melo",
       "report": ".software-factory/evidence/every-claim-and-path-agrees-run.json",
-      "report_sha256": "500d54d166511a028fafcd04ca1a110a7c1c767992c71d96e1f8344324a75cdb",
+      "report_sha256": "cddbbfc484306a6210c56eb7f6d91e653842c02288db3cb5e25836bb5ae30736",
       "required_assertions": [
         "agree.a_stale_update_claim_is_recovered_once",
         "agree.amy_stop_writes_where_the_launcher_reads"
