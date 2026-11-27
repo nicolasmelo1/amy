@@ -1043,6 +1043,11 @@
           "slug": "coming-next"
         },
         {
+          "depth": 3,
+          "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
+          "slug": "check-the-claude-executable-only-when-the-selected-profile-mounts-the-claude-plugin"
+        },
+        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -11868,7 +11873,24 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [],
+    "unreleased": [
+      {
+        "id": "doctor-checks-claude-when-mounted",
+        "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
+        "body": "",
+        "bumps": [
+          {
+            "package": "@amykit/cli",
+            "level": "patch"
+          },
+          {
+            "package": "@amykit/plugin-claude",
+            "level": "patch"
+          }
+        ],
+        "level": "patch"
+      }
+    ],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",

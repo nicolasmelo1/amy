@@ -22,7 +22,9 @@ npm run docs:changelog     # refresh the cache from GitHub
 
 <!-- amy:generated changelog-unreleased -->
 
-Nothing is pending. `.changeset/` is empty, which between releases is not a mistake.
+### Check the Claude executable only when the selected profile mounts the Claude plugin.
+
+`patch` · `@amykit/cli`, `@amykit/plugin-claude`
 
 <!-- amy:end changelog-unreleased -->
 
