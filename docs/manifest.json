@@ -640,6 +640,11 @@
           "description": ""
         },
         {
+          "title": "The escalation repair proves what it says",
+          "path": "/design/the-escalation-repair-proves-what-it-says",
+          "description": ""
+        },
+        {
           "title": "The event log can be watched",
           "path": "/design/the-event-log-can-be-watched",
           "description": ""
@@ -3610,6 +3615,17 @@
           "slug": "the-files"
         }
       ]
+    },
+    {
+      "path": "/design/the-escalation-repair-proves-what-it-says",
+      "file": "docs/design/the-escalation-repair-proves-what-it-says.md",
+      "edit": "https://github.com/nicolasmelo1/amy/blob/main/docs/design/the-escalation-repair-proves-what-it-says.md",
+      "title": "The escalation repair proves what it says",
+      "description": "",
+      "group": "",
+      "order": 999,
+      "generated": false,
+      "headings": []
     },
     {
       "path": "/design/the-event-log-can-be-watched",

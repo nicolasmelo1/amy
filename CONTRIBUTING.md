@@ -187,6 +187,8 @@ The ladder that spends a stronger model is the other half of it: a step's reply
 is judged where the step is written, a round that comes back is counted by where
 it came back from, and every threshold is in `config.yaml`. Why the judging and
 the counting are separate: [a step escalates by where its work came back from](docs/design/a-step-escalates-by-where-its-work-came-back-from.md).
+What the delivered contract was repaired to hold, and the regressions that say
+so: [the escalation repair proves what it says](docs/design/the-escalation-repair-proves-what-it-says.md).
 
 A **workflow** is a diagram, its decisions and its actions: `workflow.mmd`, the Mermaid diagram that says
 *where* work can go and is the only place its states are written; `decide`, one
