@@ -1048,26 +1048,6 @@
           "slug": "coming-next"
         },
         {
-          "depth": 3,
-          "title": "A step escalates by where its work came back from, with nothing left of the two ceilings it replaced. Rounds are counted per origin, and the round that spends a level's last allowance is the one that climbs: a gate, a review thread, the self-review, the owner and a failing run each spend their own ladder, and the work escalates only when one of them has nothing left below a person. escalation.rungs and every *.findingsAt are required with no default, the annotated config teaches the whole block, and a record saved before rounds were counted per origin reads every origin at zero rather than at an attempts ceiling that no longer exists.",
-          "slug": "a-step-escalates-by-where-its-work-came-back-from-with-nothing-left-of-the-two-ceilings-it-replaced-rounds-are-counted-per-origin-and-the-round-that-spends-a-levels-last-allowance-is-the-one-that-climbs-a-gate-a-review-thread-the-self-review-the-owner-and-a-failing-run-each-spend-their-own-ladder-and-the-work-escalates-only-when-one-of-them-has-nothing-left-below-a-person-escalationrungs-and-every-findingsat-are-required-with-no-default-the-annotated-config-teaches-the-whole-block-and-a-record-saved-before-rounds-were-counted-per-origin-reads-every-origin-at-zero-rather-than-at-an-attempts-ceiling-that-no-longer-exists"
-        },
-        {
-          "depth": 3,
-          "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
-          "slug": "check-the-claude-executable-only-when-the-selected-profile-mounts-the-claude-plugin"
-        },
-        {
-          "depth": 3,
-          "title": "Where a reply is said, and where the owner's word is read from, is one setting named by ports (repliesOn) instead of a guess that preferred a chat and fell back to the ticket. It is required with no default; it refuses a product name like slack by naming the ports that exist; and an answer is said on every port it names and on no other. The code host gained replyToReviewThread, so the answer can be written on the review thread it belongs to instead of repeated where the reviewer is not looking, and amy update writes the setting into a machine that predates it.",
-          "slug": "where-a-reply-is-said-and-where-the-owners-word-is-read-from-is-one-setting-named-by-ports-replieson-instead-of-a-guess-that-preferred-a-chat-and-fell-back-to-the-ticket-it-is-required-with-no-default-it-refuses-a-product-name-like-slack-by-naming-the-ports-that-exist-and-an-answer-is-said-on-every-port-it-names-and-on-no-other-the-code-host-gained-replytoreviewthread-so-the-answer-can-be-written-on-the-review-thread-it-belongs-to-instead-of-repeated-where-the-reviewer-is-not-looking-and-amy-update-writes-the-setting-into-a-machine-that-predates-it"
-        },
-        {
-          "depth": 3,
-          "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
-          "slug": "the-property-that-keeps-every-code-change-in-implementing-now-plants-the-defect-it-rejects"
-        },
-        {
           "depth": 2,
           "title": "Released",
           "slug": "released"
@@ -8313,7 +8293,7 @@
     "shipped": [
       {
         "name": "@amykit/agent-kit",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "What every agent does the same way: the ladders, the handoffs, and steps built on ask that never touch git.",
         "directory": "packages/agent-kit",
@@ -8327,7 +8307,7 @@
       },
       {
         "name": "@amykit/cli",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "cli",
         "description": "The amy command line: one install per machine, reached from any harness.",
         "directory": "packages/cli",
@@ -8348,7 +8328,7 @@
       },
       {
         "name": "@amykit/core",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "Plugin contracts, the action catalogue, the registry and the loader. Knows no domain.",
         "directory": "packages/core",
@@ -8362,7 +8342,7 @@
       },
       {
         "name": "@amykit/model-specs",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "What each model costs per token, vendored and versioned.",
         "directory": "packages/model-specs",
@@ -8376,7 +8356,7 @@
       },
       {
         "name": "@amykit/plugin-agent-browser",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Drives a web page through agent-browser: open, snapshot, act on refs, diff, and a UI check that settles on structure, then pixels, then an agent.",
         "directory": "plugins/agent-browser",
@@ -8412,7 +8392,7 @@
       },
       {
         "name": "@amykit/plugin-agent-desktop",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Drives a desktop app through agent-desktop: snapshot its accessibility tree and act on its refs.",
         "directory": "plugins/agent-desktop",
@@ -8441,7 +8421,7 @@
       },
       {
         "name": "@amykit/plugin-agent-relay",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "One agent made of several: swaps harness on a quota, escalates model on a failure.",
         "directory": "plugins/agent-relay",
@@ -8500,7 +8480,7 @@
       },
       {
         "name": "@amykit/plugin-claude",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "The claude CLI as the agent, over its JSON envelope.",
         "directory": "plugins/claude",
@@ -8552,7 +8532,7 @@
       },
       {
         "name": "@amykit/plugin-codex",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "The codex CLI as the agent, over its JSONL event stream.",
         "directory": "plugins/codex",
@@ -8599,7 +8579,7 @@
       },
       {
         "name": "@amykit/plugin-command",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Any command line tool, reached by a name the config allows.",
         "directory": "plugins/command",
@@ -8636,7 +8616,7 @@
       },
       {
         "name": "@amykit/plugin-command-gate",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "A gate that runs the target repository's own commands.",
         "directory": "plugins/command-gate",
@@ -8681,7 +8661,7 @@
       },
       {
         "name": "@amykit/plugin-concurrent-engine",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Advances one work item per tick, moving every lane of a fork at once.",
         "directory": "plugins/concurrent-engine",
@@ -8724,7 +8704,7 @@
       },
       {
         "name": "@amykit/plugin-file-brief-store",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Briefs kept as one file per item.",
         "directory": "plugins/file-brief-store",
@@ -8748,7 +8728,7 @@
       },
       {
         "name": "@amykit/plugin-file-log",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "The event log kept as one JSON Lines file per day.",
         "directory": "plugins/file-log",
@@ -8762,7 +8742,7 @@
       },
       {
         "name": "@amykit/plugin-file-notes",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Friction as a directory of notes: written by hand, by a hook, or by a tick that failed.",
         "directory": "plugins/file-notes",
@@ -8800,7 +8780,7 @@
       },
       {
         "name": "@amykit/plugin-file-queue",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "A queue kept as one file per item, claimed by rename.",
         "directory": "plugins/file-queue",
@@ -8845,7 +8825,7 @@
       },
       {
         "name": "@amykit/plugin-file-store",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Work records kept as one file per item.",
         "directory": "plugins/file-store",
@@ -8875,7 +8855,7 @@
       },
       {
         "name": "@amykit/plugin-file-tasks",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Tasks as a directory of files: written by `amy btw`, by an editor, or by a hook.",
         "directory": "plugins/file-tasks",
@@ -8906,7 +8886,7 @@
       },
       {
         "name": "@amykit/plugin-file-worktree",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "One isolated checkout per piece of work, created or reused, pruned by retention.",
         "directory": "plugins/file-worktree",
@@ -8987,7 +8967,7 @@
       },
       {
         "name": "@amykit/plugin-github",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "GitHub as the code host, through the gh CLI.",
         "directory": "plugins/github",
@@ -9011,7 +8991,7 @@
       },
       {
         "name": "@amykit/plugin-hermes-agent",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Hermes as the agent, over its one-shot mode and usage report.",
         "directory": "plugins/hermes-agent",
@@ -9073,7 +9053,7 @@
       },
       {
         "name": "@amykit/plugin-linear",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Linear as the tracker, over its GraphQL API.",
         "directory": "plugins/linear",
@@ -9128,7 +9108,7 @@
       },
       {
         "name": "@amykit/plugin-next-steps",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "A next-steps table as the tracker: a row is a work item, its plan the body, read from the base branch.",
         "directory": "plugins/next-steps",
@@ -9186,7 +9166,7 @@
       },
       {
         "name": "@amykit/plugin-notify-fanout",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Posts announcements to a mounted conversation, or fans them out through configured channels when no conversation is mounted.",
         "directory": "plugins/notify-fanout",
@@ -9202,7 +9182,7 @@
       },
       {
         "name": "@amykit/plugin-notify-hermes",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Announcements over Hermes, which already owns the messaging credentials.",
         "directory": "plugins/notify-hermes",
@@ -9230,7 +9210,7 @@
       },
       {
         "name": "@amykit/plugin-notify-inbox",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Announcements as a file on disk plus a desktop notification.",
         "directory": "plugins/notify-inbox",
@@ -9257,7 +9237,7 @@
       },
       {
         "name": "@amykit/plugin-plan-check",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "The quality bar for a drafted plan: the repository's own check, run in its checkout.",
         "directory": "plugins/plan-check",
@@ -9306,7 +9286,7 @@
       },
       {
         "name": "@amykit/plugin-prove",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "Proves a phase against the real system: one workflow walks the scenario each brief settled, through the operations the mounted plugins offer.",
         "directory": "plugins/prove",
@@ -9375,7 +9355,7 @@
       },
       {
         "name": "@amykit/plugin-serial-engine",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Advances one work item by one move per tick.",
         "directory": "plugins/serial-engine",
@@ -9418,7 +9398,7 @@
       },
       {
         "name": "@amykit/plugin-slack",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "A Slack thread per piece of work, over the Web API, as the conversation port.",
         "directory": "plugins/slack",
@@ -9495,7 +9475,7 @@
       },
       {
         "name": "@amykit/plugin-telegram",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "A topic per piece of work in the operator's private chat with a Telegram bot, as the conversation port.",
         "directory": "plugins/telegram",
@@ -9541,7 +9521,7 @@
       },
       {
         "name": "@amykit/plugin-terminal",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "Drives an interactive terminal program through terminal-use: run it, type, press keys, wait for text and read the screen.",
         "directory": "plugins/terminal",
@@ -9577,7 +9557,7 @@
       },
       {
         "name": "@amykit/plugin-terminal-conversation",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "plugin",
         "description": "The person's terminal as an amy conversation: asks post to stdout, and answers come back as a line or a number.",
         "directory": "plugins/terminal-conversation",
@@ -9593,7 +9573,7 @@
       },
       {
         "name": "@amykit/services",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "amy's own domains: every operation declared once, with its documentation, and the OpenAPI document every door is read from.",
         "directory": "packages/services",
@@ -9607,7 +9587,7 @@
       },
       {
         "name": "@amykit/ui",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "A view is data: a closed vocabulary of primitives, JSX without React, diff and patch, a text renderer, and the closed frame every renderer is measured against.",
         "directory": "packages/ui",
@@ -9621,7 +9601,7 @@
       },
       {
         "name": "@amykit/ui-conformance",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "The frame's conformance script: drives a renderer by keys, by a remapped keymap and by the mouse, and holds what it laid out to the frame, to the other renderers and to the approved golden.",
         "directory": "packages/ui-conformance",
@@ -9635,7 +9615,7 @@
       },
       {
         "name": "@amykit/workflow-errand",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "Something said in passing becomes work: capture it, do it, say what happened.",
         "directory": "examples/workflow-errand",
@@ -9711,7 +9691,7 @@
       },
       {
         "name": "@amykit/workflow-feature-grooming",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "Feature grooming against read-only base-branch source snapshots.",
         "directory": "examples/workflow-feature-grooming",
@@ -9758,7 +9738,7 @@
       },
       {
         "name": "@amykit/workflow-note-to-plan",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "The note-to-plan workflow: friction becomes a plan in the repository it is about.",
         "directory": "examples/workflow-note-to-plan",
@@ -9844,7 +9824,7 @@
       },
       {
         "name": "@amykit/workflow-pull-request",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "A workflow other workflows call: open a pull request for a branch, through whichever code host is mounted.",
         "directory": "examples/workflow-pull-request",
@@ -9878,7 +9858,7 @@
       },
       {
         "name": "@amykit/workflow-setup",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "Onboarding as an amy workflow: amy setup walks a fresh machine through harness, workflow and channels, one ask at a time.",
         "directory": "packages/workflow-setup",
@@ -9905,7 +9885,7 @@
       },
       {
         "name": "@amykit/workflow-testkit",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "library",
         "description": "The tests every workflow needs and nobody writes, driven against a world its author supplies.",
         "directory": "packages/workflow-testkit",
@@ -9919,7 +9899,7 @@
       },
       {
         "name": "@amykit/workflow-ticket-to-qa",
-        "version": "0.9.0",
+        "version": "0.9.1",
         "kind": "workflow",
         "description": "The ticket-to-QA workflow: its states, its typed port contracts, and a pure plan().",
         "directory": "examples/workflow-ticket-to-qa",
@@ -11920,92 +11900,7 @@
   },
   "changelog": {
     "releases": [],
-    "unreleased": [
-      {
-        "id": "a-round-is-counted-where-it-came-back-from",
-        "title": "A step escalates by where its work came back from, with nothing left of the two ceilings it replaced. Rounds are counted per origin, and the round that spends a level's last allowance is the one that climbs: a gate, a review thread, the self-review, the owner and a failing run each spend their own ladder, and the work escalates only when one of them has nothing left below a person. `escalation.rungs` and every `*.findingsAt` are required with no default, the annotated config teaches the whole block, and a record saved before rounds were counted per origin reads every origin at zero rather than at an attempts ceiling that no longer exists.",
-        "body": "Around it: a reply is said where `repliesOn` names the ports (and the code host can answer on a review thread, `replyToReviewThread`); a failed run is a round its origin sent back, and one that changed nothing gives its round back; checks failing on a head the agent answered with \"nothing to change\" are not new work; the owner's word is new work whether the pull request is waiting on the bot, on a reviewer or on them; the second contradicting comment is a new question even after the first was settled; a `Stack base` line wins over `stackBases` and a parent in another repository cuts from base; a review verdict counts only where the review ends; and a record escalated with no resume point comes back to `HUMAN_REVIEW`, since `HUMAN_FIX` is a state this walk no longer draws.",
-        "bumps": [
-          {
-            "package": "@amykit/agent-kit",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-codex",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "doctor-checks-claude-when-mounted",
-        "title": "Check the Claude executable only when the selected profile mounts the Claude plugin.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-claude",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "replies-go-where-the-config-names-them",
-        "title": "Where a reply is said, and where the owner's word is read from, is one setting named by ports (`repliesOn`) instead of a guess that preferred a chat and fell back to the ticket. It is required with no default; it refuses a product name like `slack` by naming the ports that exist; and an answer is said on every port it names and on no other. The code host gained `replyToReviewThread`, so the answer can be written on the review thread it belongs to instead of repeated where the reviewer is not looking, and `amy update` writes the setting into a machine that predates it.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/cli",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/core",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/plugin-github",
-            "level": "patch"
-          },
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      },
-      {
-        "id": "six-apes-attend",
-        "title": "The property that keeps every code change in IMPLEMENTING now plants the defect it rejects.",
-        "body": "",
-        "bumps": [
-          {
-            "package": "@amykit/workflow-ticket-to-qa",
-            "level": "patch"
-          }
-        ],
-        "level": "patch"
-      }
-    ],
+    "unreleased": [],
     "changelogs": [
       {
         "name": "@amykit/agent-kit",
