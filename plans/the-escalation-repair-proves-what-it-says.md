@@ -1,5 +1,5 @@
 ---
-base: c39407fa4068fd8c3a5282fb9949cb21f6b08101
+base: a60165e3ac86124baf0705efbe953feddbc267ab
 sources:
   - { id: S1, kind: decision, said: "the delivered escalation contract is repaired from its red regression tests: each returned kind of work keeps its own rounds, starts the configured rung, and stops at ESCALATED rather than reusing the old ceilings. Decided 2026-11-21" }
   - { id: S2, kind: decision, said: "ticket-to-qa declares the reply ports it reads and writes; the required list admits only conversation, code-host and tracker, and migration supplies the old behaviour explicitly. Decided 2026-11-21" }
@@ -44,9 +44,10 @@ touches:
   - registry/plugin-codex.json
   - registry/workflow-ticket-to-qa.json
   - docs/development/the-gate.md
+  - CONTRIBUTING.md
 criteria:
   - { id: A1, statement: "every returned origin keeps its own rounds, starts its configured rung, and reaches ESCALATED at the top without reading legacy attempts", proof: "test:examples/workflow-ticket-to-qa/tests/rung-by-origin.test.ts", sources: [S1] }
-  - { id: A2, statement: "ticket-to-qa requires repliesOn, reads and writes only its named ports, and update supplies the explicit former port set", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts", sources: [S2] }
+  - { id: A2, statement: "ticket-to-qa requires repliesOn, reads and writes only its named ports, and update supplies the explicit former port set", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts, test:packages/cli/tests/update.test.ts", sources: [S2] }
   - { id: A3, statement: "new work, threads, stack bases, host discovery, reviewer publication and unchanged runs follow the delivered workflow contract", proof: "test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S1, S3] }
   - { id: A4, statement: "relay handoff and completion classification preserve a refused reason and accept a completed turn without a message", proof: "test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S3] }
 crosses:
