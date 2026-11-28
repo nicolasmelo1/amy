@@ -71,7 +71,7 @@ exit: "the delivered escalation contract is green under its regression tests, th
 # The escalation repair proves what it says
 
 The delivered escalation change left claims only its own regressions could settle,
-and those tests are green now: each returned origin keeps its rounds and starts the
-rung its level names, the ladder ends at `ESCALATED`, a reply is read and said only
-on the ports `repliesOn` names, and `amy update` writes that setting into a config
-that predates it.
+and every one of them is green now: each returned origin keeps its own rounds and
+starts the rung its level names, the ladder ends at `ESCALATED`, a reply is read
+and said only on the ports `repliesOn` names, and `amy update` writes that
+setting into a config that predates it.
