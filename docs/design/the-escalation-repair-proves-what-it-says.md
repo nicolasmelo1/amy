@@ -46,10 +46,10 @@ touches:
   - docs/development/the-gate.md
   - CONTRIBUTING.md
 criteria:
-  - { id: A1, statement: "every returned origin keeps its own rounds, starts its configured rung, and reaches ESCALATED at the top without reading legacy attempts", proof: "test:examples/workflow-ticket-to-qa/tests/rung-by-origin.test.ts", sources: [S1] }
-  - { id: A2, statement: "ticket-to-qa requires repliesOn, reads and writes only its named ports, and update supplies the explicit former port set", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts, test:packages/cli/tests/update.test.ts", sources: [S2] }
-  - { id: A3, statement: "new work, threads, stack bases, host discovery, reviewer publication and unchanged runs follow the delivered workflow contract", proof: "test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S1, S3] }
-  - { id: A4, statement: "relay handoff and completion classification preserve a refused reason and accept a completed turn without a message", proof: "test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S3] }
+  - { id: A1, statement: "every returned origin keeps its own rounds, starts its configured rung, and reaches ESCALATED at the top without reading legacy attempts", proof: "test:examples/workflow-ticket-to-qa/tests/rung-by-origin.test.ts", sources: [S1] , done: true }
+  - { id: A2, statement: "ticket-to-qa requires repliesOn, reads and writes only its named ports, and update supplies the explicit former port set", proof: "test:examples/workflow-ticket-to-qa/tests/plugin.test.ts, test:packages/cli/tests/update.test.ts", sources: [S2] , done: true }
+  - { id: A3, statement: "new work, threads, stack bases, host discovery, reviewer publication and unchanged runs follow the delivered workflow contract", proof: "test:examples/workflow-ticket-to-qa/tests/new-work.test.ts", sources: [S1, S3] , done: true }
+  - { id: A4, statement: "relay handoff and completion classification preserve a refused reason and accept a completed turn without a message", proof: "test:packages/agent-kit/tests/HarnessRelay.test.ts", sources: [S3] , done: true }
 crosses:
   - { mechanism: agent-replies, answer: works, proof: "A4" }
   - { mechanism: attempts-and-waits, answer: works, proof: "A1, A3" }
@@ -67,6 +67,11 @@ guarantee:
   - { holds: "a reply is read and said only on ports the workflow config names", not_against: "a port implementation failing its own write" }
 exit: "the delivered escalation contract is green under its regression tests, the published packages have current registries, and every stale gate is re-proven"
 ---
+
 # The escalation repair proves what it says
 
-The delivered escalation change left its claims red under review regressions. This repair turns those claims into a green workflow, adapter and configuration contract.
+The delivered escalation change left claims only its own regressions could settle,
+and every one of them is green now: each returned origin keeps its own rounds and
+starts the rung its level names, the ladder ends at `ESCALATED`, a reply is read
+and said only on the ports `repliesOn` names, and `amy update` writes that
+setting into a config that predates it.
